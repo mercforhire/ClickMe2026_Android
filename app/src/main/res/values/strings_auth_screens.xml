@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Password Changed (iOS LoginPasswordSetView verbatim, D-10). -->
+    <string name="password_changed_headline">Password\nUpdated!</string>
+    <string name="password_changed_body">Your password has been successfully updated. You can now use your new password to log in.</string>
+    <string name="password_changed_go_to_login">Go to Login</string>
+</resources>
