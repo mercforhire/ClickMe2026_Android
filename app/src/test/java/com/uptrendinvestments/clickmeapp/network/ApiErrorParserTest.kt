@@ -21,27 +21,80 @@ import kotlin.coroutines.cancellation.CancellationException
 class ApiErrorParserTest {
     private val iosWireValues =
         listOf(
-            "MISSING_TOKEN", "INVALID_TOKEN", "INVALID_CODE", "AUTH_SERVICE_UNAVAILABLE", "EXPIRED_TOKEN",
-            "EMAIL_TAKEN", "FORBIDDEN", "NOT_FOUND", "NO_RELATIONSHIP", "VALIDATION_ERROR",
-            "VALIDATION_FAILED", "INVALID_INPUT", "INVALID_MONTH", "INVALID_WEEK_START", "SLOT_UNAVAILABLE",
-            "DUPLICATE_BOOKING", "INVALID_STATUS", "ALREADY_CANCELLED", "ALREADY_PROCESSED", "SESSION_NOT_ACTIVE",
-            "SESSION_IN_PROGRESS", "EXPERT_HAS_UPCOMING_BOOKINGS", "CALL_UNAVAILABLE", "CANNOT_BOOK_SELF",
-            "EXPERT_NOT_BOOKABLE", "MEETING_LINK_UNAVAILABLE", "RESCHEDULE_OUTSIDE_AUTH_WINDOW",
-            "PAYMENT_METHOD_REQUIRED", "THREAD_BLOCKED", "NOT_BLOCKER", "CANNOT_BLOCK_SELF", "EXPERT_NOT_FOUND",
-            "PAYMENT_FAILED", "PAYMENT_REQUIRES_ACTION", "INTENT_EXPIRED", "PI_CONTEXT_MISMATCH",
-            "PI_AMOUNT_MISMATCH", "AMOUNT_BELOW_MINIMUM", "PRICE_BELOW_MINIMUM", "PAID_TOPIC_REQUIRES_PAYMENT",
-            "INVALID_PROMO", "INVALID_PAYMENT_METHOD", "BOOKING_ATTEMPT_CONFLICT", "LONG_LEAD_REQUIRES_SAVED_CARD",
-            "COMMISSION_NOT_CONFIGURED", "DIRECT_CHARGE_DISABLED", "REFUND_AMOUNT_MISSING", "NO_PAYOUT_METHOD",
-            "KYC_INCOMPLETE", "CONFIG_MISSING", "INVALID_COUNTRY", "CONNECT_NOT_RATIFIED", "ENDPOINT_RETIRED",
-            "EMAIL_REQUIRED", "CONFIRMATION_REQUIRED", "TOKEN_USER_MISMATCH", "ACCOUNT_SUSPENDED",
-            "CANNOT_REPORT_SELF", "EXPERT_UNAVAILABLE", "CLIENT_UNAVAILABLE", "RECIPIENT_UNAVAILABLE",
-            "UPLOAD_ERROR", "TOO_MANY_REQUESTS", "RATE_LIMITED", "INTERNAL_ERROR",
+            "MISSING_TOKEN",
+            "INVALID_TOKEN",
+            "INVALID_CODE",
+            "AUTH_SERVICE_UNAVAILABLE",
+            "EXPIRED_TOKEN",
+            "EMAIL_TAKEN",
+            "FORBIDDEN",
+            "NOT_FOUND",
+            "NO_RELATIONSHIP",
+            "VALIDATION_ERROR",
+            "VALIDATION_FAILED",
+            "INVALID_INPUT",
+            "INVALID_MONTH",
+            "INVALID_WEEK_START",
+            "SLOT_UNAVAILABLE",
+            "DUPLICATE_BOOKING",
+            "INVALID_STATUS",
+            "ALREADY_CANCELLED",
+            "ALREADY_PROCESSED",
+            "SESSION_NOT_ACTIVE",
+            "SESSION_IN_PROGRESS",
+            "EXPERT_HAS_UPCOMING_BOOKINGS",
+            "CALL_UNAVAILABLE",
+            "CANNOT_BOOK_SELF",
+            "EXPERT_NOT_BOOKABLE",
+            "MEETING_LINK_UNAVAILABLE",
+            "RESCHEDULE_OUTSIDE_AUTH_WINDOW",
+            "PAYMENT_METHOD_REQUIRED",
+            "THREAD_BLOCKED",
+            "NOT_BLOCKER",
+            "CANNOT_BLOCK_SELF",
+            "EXPERT_NOT_FOUND",
+            "PAYMENT_FAILED",
+            "PAYMENT_REQUIRES_ACTION",
+            "INTENT_EXPIRED",
+            "PI_CONTEXT_MISMATCH",
+            "PI_AMOUNT_MISMATCH",
+            "AMOUNT_BELOW_MINIMUM",
+            "PRICE_BELOW_MINIMUM",
+            "PAID_TOPIC_REQUIRES_PAYMENT",
+            "INVALID_PROMO",
+            "INVALID_PAYMENT_METHOD",
+            "BOOKING_ATTEMPT_CONFLICT",
+            "LONG_LEAD_REQUIRES_SAVED_CARD",
+            "COMMISSION_NOT_CONFIGURED",
+            "DIRECT_CHARGE_DISABLED",
+            "REFUND_AMOUNT_MISSING",
+            "NO_PAYOUT_METHOD",
+            "KYC_INCOMPLETE",
+            "CONFIG_MISSING",
+            "INVALID_COUNTRY",
+            "CONNECT_NOT_RATIFIED",
+            "ENDPOINT_RETIRED",
+            "EMAIL_REQUIRED",
+            "CONFIRMATION_REQUIRED",
+            "TOKEN_USER_MISMATCH",
+            "ACCOUNT_SUSPENDED",
+            "CANNOT_REPORT_SELF",
+            "EXPERT_UNAVAILABLE",
+            "CLIENT_UNAVAILABLE",
+            "RECIPIENT_UNAVAILABLE",
+            "UPLOAD_ERROR",
+            "TOO_MANY_REQUESTS",
+            "RATE_LIMITED",
+            "INTERNAL_ERROR",
         )
 
     private fun httpException(
         status: Int,
         body: String,
-    ): HttpException = HttpException(Response.error<Any>(status, body.toResponseBody("application/json".toMediaType())))
+    ): HttpException {
+        val responseBody = body.toResponseBody("application/json".toMediaType())
+        return HttpException(Response.error<Any>(status, responseBody))
+    }
 
     @Test
     fun errorCode_hasExactly65Cases() {
@@ -52,7 +105,13 @@ class ApiErrorParserTest {
     @Test
     fun errorCode_wireValuesAreUniqueAndMatchIosInOrder() {
         assertEquals(iosWireValues, ErrorCode.entries.map { it.wire })
-        assertEquals(65, ErrorCode.entries.map { it.wire }.toSet().size)
+        assertEquals(
+            65,
+            ErrorCode.entries
+                .map { it.wire }
+                .toSet()
+                .size,
+        )
     }
 
     @Test
@@ -78,7 +137,9 @@ class ApiErrorParserTest {
 
     @Test
     fun validationEnvelope_withFieldErrors_usesFirstFieldMessage() {
-        val body = """{"status":"error","code":"VALIDATION_ERROR","errors":[{"field":"email","message":"Invalid email"}]}"""
+        val body =
+            """{"status":"error","code":"VALIDATION_ERROR",""" +
+                """"errors":[{"field":"email","message":"Invalid email"}]}"""
         val e = ApiErrorParser.httpError(422, body)
         assertEquals(422, e.status)
         assertEquals(ErrorCode.ValidationError, e.code)
@@ -149,7 +210,10 @@ class ApiErrorParserTest {
 
     @Test
     fun from_httpException_mapsStatusAndCode() {
-        val t = ApiErrorParser.from(httpException(403, """{"status":"error","code":"ACCOUNT_SUSPENDED","message":"Suspended"}"""))
+        val t =
+            ApiErrorParser.from(
+                httpException(403, """{"status":"error","code":"ACCOUNT_SUSPENDED","message":"Suspended"}"""),
+            )
         assertTrue(t is ApiException.Http)
         t as ApiException.Http
         assertEquals(403, t.status)
@@ -175,7 +239,11 @@ class ApiErrorParserTest {
 
     @Test
     fun httpException_messageNeverCarriesBodyText() {
-        val e = ApiErrorParser.httpError(409, """{"status":"error","code":"SLOT_UNAVAILABLE","message":"secret server text"}""")
+        val e =
+            ApiErrorParser.httpError(
+                409,
+                """{"status":"error","code":"SLOT_UNAVAILABLE","message":"secret server text"}""",
+            )
         assertFalse(e.message.orEmpty().contains("secret server text"))
         assertEquals("HTTP 409 SLOT_UNAVAILABLE", e.message)
     }
