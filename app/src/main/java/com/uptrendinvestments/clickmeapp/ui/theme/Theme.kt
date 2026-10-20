@@ -1,50 +1,59 @@
 package com.uptrendinvestments.clickmeapp.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
 
-private val DarkColorScheme =
+internal val ClickMeDarkColorScheme =
     darkColorScheme(
-        primary = Purple80,
-        secondary = PurpleGrey80,
-        tertiary = Pink80,
+        primary = ClickMePalette.primary,
+        onPrimary = ClickMePalette.onPrimary,
+        primaryContainer = ClickMePalette.primaryContainer,
+        onPrimaryContainer = ClickMePalette.onPrimaryContainer,
+        inversePrimary = ClickMePalette.inversePrimary,
+        secondary = ClickMePalette.secondary,
+        onSecondary = ClickMePalette.onSecondary,
+        secondaryContainer = ClickMePalette.secondaryContainer,
+        onSecondaryContainer = ClickMePalette.primary,
+        tertiary = ClickMePalette.tertiary,
+        onTertiary = ClickMePalette.onTertiary,
+        tertiaryContainer = ClickMePalette.tertiaryContainer,
+        onTertiaryContainer = ClickMePalette.onTertiaryContainer,
+        background = ClickMePalette.surface,
+        onBackground = ClickMePalette.onSurface,
+        surface = ClickMePalette.surface,
+        onSurface = ClickMePalette.onSurface,
+        surfaceVariant = ClickMePalette.surfaceContainerHighest,
+        onSurfaceVariant = ClickMePalette.onSurfaceVariant,
+        surfaceTint = ClickMePalette.primary,
+        inverseSurface = ClickMePalette.inverseSurface,
+        inverseOnSurface = ClickMePalette.inverseOnSurface,
+        error = ClickMePalette.error,
+        onError = ClickMePalette.onError,
+        errorContainer = ClickMePalette.errorContainer,
+        onErrorContainer = ClickMePalette.onErrorContainer,
+        outline = ClickMePalette.outline,
+        outlineVariant = ClickMePalette.outlineVariant,
+        scrim = ClickMePalette.scrim,
+        surfaceBright = ClickMePalette.surfaceBright,
+        surfaceDim = ClickMePalette.surface,
+        surfaceContainer = ClickMePalette.surfaceContainer,
+        surfaceContainerHigh = ClickMePalette.surfaceContainerHigh,
+        surfaceContainerHighest = ClickMePalette.surfaceContainerHighest,
+        surfaceContainerLow = ClickMePalette.surfaceContainerLow,
+        surfaceContainerLowest = ClickMePalette.surfaceContainerLowest,
     )
 
-private val LightColorScheme =
-    lightColorScheme(
-        primary = Purple40,
-        secondary = PurpleGrey40,
-        tertiary = Pink40,
-    )
-
+/** Dark-only app theme: no light scheme, no dynamic color, no system-dark branch. */
 @Composable
-fun ClickMe_AndroidTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    val colorScheme =
-        when {
-            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                val context = LocalContext.current
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            }
-
-            darkTheme -> DarkColorScheme
-            else -> LightColorScheme
-        }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content,
-    )
+fun ClickMeTheme(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalClickMeExtras provides ClickMeExtrasDark) {
+        MaterialTheme(
+            colorScheme = ClickMeDarkColorScheme,
+            typography = ClickMeTypography,
+            shapes = ClickMeShapes,
+            content = content,
+        )
+    }
 }
