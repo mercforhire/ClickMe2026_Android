@@ -145,13 +145,13 @@ Plans:
   3. After login the socket connects. Events triggered from the iOS app (a message, typing, a booking update) appear in the `SharedFlow` logs. (PRD Week 2 checkpoint, part 2)
   4. After a token refresh or a network drop, the socket reconnects within about 2 seconds with the current token and keeps receiving events.
 
-**Plans:** 12 plans
+**Plans:** 3/12 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Public forgot/reset endpoints, DTOs, FakeClickMeApi handlers, no-bearer tests (AUTH-02)
-- [ ] 03-02-PLAN.md — FieldError, iOS validators, PasswordStrength + meter, ValidatedField badge/contentType, AuthErrorDialog, AuthTopAppBar (AUTH-01, AUTH-02)
-- [ ] 03-03-PLAN.md — socket.io-client 2.1.2 + lifecycle-process deps, RealtimeConnection seam, socket URL, sealed events + decoder, emit payloads (RT-01, RT-03)
+- [x] 03-01-PLAN.md — Public forgot/reset endpoints, DTOs, FakeClickMeApi handlers, no-bearer tests (AUTH-02)
+- [x] 03-02-PLAN.md — FieldError, iOS validators, PasswordStrength + meter, ValidatedField badge/contentType, AuthErrorDialog, AuthTopAppBar (AUTH-01, AUTH-02)
+- [x] 03-03-PLAN.md — socket.io-client 2.1.2 + lifecycle-process deps, RealtimeConnection seam, socket URL, sealed events + decoder, emit payloads (RT-01, RT-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -170,6 +170,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [ ] 03-12-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred non-blocking device checklist in STATE.md (all)
+
 **UI hint**: yes
 
 ### Phase 4: Signup, Onboarding & Mode Switch
@@ -411,7 +412,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
-| 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
+| 3. Login, Password Recovery & Realtime | 3/12 | In Progress|  |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
