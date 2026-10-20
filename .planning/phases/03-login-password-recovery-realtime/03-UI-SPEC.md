@@ -1,7 +1,8 @@
 ---
 phase: 3
 slug: login-password-recovery-realtime
-status: draft
+status: approved
+reviewed_at: 2026-10-20
 shadcn_initialized: false
 preset: none
 created: 2026-10-20
@@ -108,7 +109,7 @@ Accent reserved for (and nothing else on these screens):
 
 Text links ("Forgot Password?", "Sign Up", "Back to Login") use `onSurface` semibold with underline, **not** accent. This follows the Phase 1 rule "Text links use `onSurface` with underline, not accent", and is a deliberate deviation from iOS, which colored them green. Body copy `onSurfaceMuted` (`#999999`); the Password Changed body uses `onSurfaceVariant`. The Forgot info text uses `onSurfaceMuted` (not `onSurfaceFaint`: it is text the user needs to read).
 
-Strength colors (the iOS red, amber and green map to existing tokens): empty track `overlayWhite15`; Weak `destructive`; Fair `tertiary`; Strong `primary`. Contrast of each on `surface` is 3:1 or better, and the meter is never the only signal (the word is always shown next to it).
+Strength colors (the iOS red, amber and green map to existing tokens): empty track `overlayWhite15`; Weak `destructive`; Fair `tertiary`; Strong `primary`. Contrast of each on `surface` is above 4.5:1 (Phase 1 measured ≥ 5.0:1), and the meter is never the only signal (the word is always shown next to it).
 
 ---
 
@@ -380,11 +381,11 @@ shadcn does not apply to this Android / Compose project; there are no component 
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: FLAG (non-blocking: "Login" CTA and dialog "OK" kept for iOS parity)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-10-20
