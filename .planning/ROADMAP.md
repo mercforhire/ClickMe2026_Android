@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The corporation's D-U-N-S number is confirmed or requested, and the Play Console organization account is created and submitted for Google's verification. The outside wait is logged in STATE.md.
 
 **Planning notes:** The Play account steps are non-code tasks for the user. Start them on day one, because a new D-U-N-S number can take weeks. Don't port `PreviewNavHarness` or the iOS debug logging; use OkHttp's logging interceptor in debug builds only.
-**Plans:** 6/9 plans executed
+**Plans:** 7/9 plans executed
 Plans:
 **Wave 1**
 
@@ -67,7 +67,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-08-PLAN.md — Client/expert home shells, Design system gallery, ClickMeApp AppRoute switch, MainActivity splash hook (Wave 4)
+- [x] 01-08-PLAN.md — Client/expert home shells, Design system gallery, ClickMeApp AppRoute switch, MainActivity splash hook (Wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -345,7 +345,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 6/9 | In Progress|  |
+| 1. Foundation, App Shell & Play Account | 7/9 | In Progress|  |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
