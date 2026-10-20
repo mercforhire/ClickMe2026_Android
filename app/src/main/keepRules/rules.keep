@@ -10,3 +10,8 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# socket.io client (Phase 3). Release R8 is scoped to androidx/kotlin/kotlinx (see build.gradle.kts
+# optimization.packageScope), so these are defensive in case the scope is ever widened.
+-keep class io.socket.** { *; }
+-dontwarn io.socket.**
