@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -76,6 +78,59 @@ class ClickMeApiTest {
             assertEquals("rt", response.data.refreshToken)
             assertEquals(1_792_513_029L, response.data.expiresAt)
             assertEquals("Ada", response.data.user.firstName)
+        }
+
+    @Test
+    fun forgotPasswordPostsIdentityAndDecodesMessage() =
+        runTest {
+            enqueue(200, """{"status":"success","message":"If an account exists, a reset code has been sent."}""")
+
+            val response = api.forgotPassword(ForgotPasswordRequest("a@b.co"))
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/auth/password/forgot", request.url.encodedPath)
+            assertEquals("""{"identity":"a@b.co"}""", request.body?.utf8())
+            assertEquals("If an account exists, a reset code has been sent.", response.message)
+        }
+
+    @Test
+    fun resetPasswordPostsAllFourFieldsAndIgnoresRedirect() =
+        runTest {
+            enqueue(
+                200,
+                """{"status":"success","message":"Password reset.","data":{"redirect_to":"/login"}}""",
+            )
+
+            val response = api.resetPassword(ResetPasswordRequest("a@b.co", "123456", "Passw0rd!", "Passw0rd!"))
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/auth/password/reset", request.url.encodedPath)
+            assertEquals(
+                """{"email":"a@b.co","code":"123456","password":"Passw0rd!","password_confirmation":"Passw0rd!"}""",
+                request.body?.utf8(),
+            )
+            assertEquals("success", response.status)
+            assertEquals("Password reset.", response.message)
+        }
+
+    @Test
+    fun resetPasswordErrorsMapToHttpWithFieldErrors() =
+        runTest {
+            val request = ResetPasswordRequest("a@b.co", "123456", "weak", "weak")
+            enqueue(400, """{"status":"error","code":"EXPIRED_TOKEN","message":"Invalid or expired code"}""")
+            enqueue(422, """{"status":"error","errors":[{"field":"password","message":"Too weak"}]}""")
+
+            val expired = runCatching { apiCall { api.resetPassword(request) } }.exceptionOrNull()
+            val weak = runCatching { apiCall { api.resetPassword(request) } }.exceptionOrNull()
+
+            assertTrue(expired is ApiException.Http)
+            assertEquals(400, (expired as ApiException.Http).status)
+            assertTrue(weak is ApiException.Http)
+            val http = weak as ApiException.Http
+            assertEquals(422, http.status)
+            assertEquals(listOf("password"), http.fieldErrors.map { it.field })
         }
 
     @Test

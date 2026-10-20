@@ -66,7 +66,7 @@ class FakeClickMeApi : ClickMeApi {
         return resetPasswordHandler(body)
     }
 
-    override suspend fun getMe():SuccessDataResponse<MeData> {
+    override suspend fun getMe(): SuccessDataResponse<MeData> {
         meCalls++
         return ok(meHandler())
     }
