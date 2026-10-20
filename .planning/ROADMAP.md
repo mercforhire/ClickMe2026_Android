@@ -47,11 +47,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The corporation's D-U-N-S number is confirmed or requested, and the Play Console organization account is created and submitted for Google's verification. The outside wait is logged in STATE.md.
 
 **Planning notes:** The Play account steps are non-code tasks for the user. Start them on day one, because a new D-U-N-S number can take weeks. Don't port `PreviewNavHarness` or the iOS debug logging; use OkHttp's logging interceptor in debug builds only.
-**Plans:** 9 plans in 5 waves
+**Plans:** 1/9 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Toolchain (Kotlin 2.4.21), locked dependency set, dev/prod flavors with BuildConfig keys, Hilt app, shared strings, ktlint, design-rules script, GitHub Actions CI (Wave 1)
+- [x] 01-01-PLAN.md — Toolchain (Kotlin 2.4.21), locked dependency set, dev/prod flavors with BuildConfig keys, Hilt app, shared strings, ktlint, design-rules script, GitHub Actions CI (Wave 1)
 - [ ] 01-02-PLAN.md — Play Console org account: confirm D-U-N-S, create account, pay fee, submit verification, log the outside wait in STATE.md (Wave 1, user checkpoints)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -345,7 +345,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 0/9 | Planned | - |
+| 1. Foundation, App Shell & Play Account | 1/9 | In Progress|  |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |

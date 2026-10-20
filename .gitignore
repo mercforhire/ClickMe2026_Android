@@ -26,3 +26,6 @@ google-services.json
 /backend-reference
 /.idea/claudeCodeEditorTabs.xml
 /.idea/deploymentTargetSelector.xml
+
+# GSD executor worktrees
+/.claude/worktrees/
