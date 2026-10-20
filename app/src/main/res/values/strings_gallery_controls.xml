@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gallery_heading_press_scale" translatable="false">PressScaleButton</string>
+    <string name="gallery_heading_async_save" translatable="false">AsyncSaveButton</string>
+    <string name="gallery_heading_validated_field" translatable="false">ValidatedField</string>
+    <string name="gallery_heading_empty_state" translatable="false">EmptyState</string>
+
+    <string name="gallery_sample_save" translatable="false">Save changes</string>
+    <string name="gallery_sample_continue" translatable="false">Continue</string>
+    <string name="gallery_sample_cancel" translatable="false">Cancel</string>
+    <string name="gallery_sample_delete" translatable="false">Delete</string>
+    <string name="gallery_sample_email" translatable="false">Email</string>
+    <string name="gallery_sample_password" translatable="false">Password</string>
+    <string name="gallery_sample_email_error" translatable="false">Enter a valid email address.</string>
+    <string name="gallery_sample_empty_heading" translatable="false">No bookings yet</string>
+    <string name="gallery_sample_empty_body" translatable="false">Book a session with an expert and it will show up here.</string>
+    <string name="gallery_sample_empty_action" translatable="false">Explore experts</string>
+
+    <string name="gallery_caption_filled" translatable="false">Filled</string>
+    <string name="gallery_caption_tonal" translatable="false">Tonal</string>
+    <string name="gallery_caption_destructive" translatable="false">Destructive</string>
+    <string name="gallery_caption_disabled" translatable="false">Disabled</string>
+    <string name="gallery_caption_idle" translatable="false">Idle</string>
+    <string name="gallery_caption_saving" translatable="false">Saving</string>
+    <string name="gallery_caption_saved" translatable="false">Saved</string>
+    <string name="gallery_caption_interactive" translatable="false">Tap to run Idle, Saving, Saved</string>
+    <string name="gallery_caption_error" translatable="false">Error</string>
+    <string name="gallery_caption_secure" translatable="false">Secure</string>
+    <string name="gallery_caption_error_state" translatable="false">Error state</string>
+</resources>
