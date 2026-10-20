@@ -33,17 +33,21 @@ import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
-/** Hilt-aware entry for the client shell: supplies the avatar URL and the debug gate. */
+/** Hilt-aware entry for the client shell: supplies the avatar URL, session actions and the debug gate. */
 @Composable
 fun HomeClientScreen(
     onDebugSwitchScaffold: () -> Unit,
     viewModel: HomeClientViewModel = hiltViewModel(),
 ) {
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
+    val debugRefreshStatus by viewModel.debugRefreshStatus.collectAsStateWithLifecycle()
     HomeClientShell(
         avatarUrl = avatarUrl,
         showDebugAffordances = BuildConfig.DEBUG,
         onDebugSwitchScaffold = onDebugSwitchScaffold,
+        onLogout = viewModel::logout,
+        onDebugForceRefresh = viewModel::debugForceRefresh,
+        debugRefreshStatus = debugRefreshStatus,
         // Phase 1: the avatar does nothing yet; Phase 4 wires it to the mode switch.
         onAvatarClick = {},
     )
@@ -59,6 +63,9 @@ fun HomeClientShell(
     showDebugAffordances: Boolean,
     onDebugSwitchScaffold: () -> Unit,
     onAvatarClick: () -> Unit,
+    onLogout: () -> Unit,
+    onDebugForceRefresh: () -> Unit,
+    debugRefreshStatus: String?,
     modifier: Modifier = Modifier,
 ) {
     val state = rememberNavigationState(clientStartTab, clientTabs.map { it.key }.toSet())
@@ -84,6 +91,10 @@ fun HomeClientShell(
                     ClientTabRoot(
                         key = ClientProfileRoot,
                         footer = {
+                            OutlinedButton(onClick = onLogout) {
+                                Text(stringResource(R.string.profile_log_out))
+                            }
+                            Spacer(Modifier.height(Spacing.sm))
                             if (showDebugAffordances) {
                                 OutlinedButton(onClick = onDebugSwitchScaffold) {
                                     Text(stringResource(R.string.debug_switch_to_expert))
@@ -91,6 +102,13 @@ fun HomeClientShell(
                                 Spacer(Modifier.height(Spacing.sm))
                                 OutlinedButton(onClick = { navigator.navigate(DesignSystemGalleryKey) }) {
                                     Text(stringResource(R.string.debug_design_system_gallery))
+                                }
+                                Spacer(Modifier.height(Spacing.sm))
+                                OutlinedButton(onClick = onDebugForceRefresh) {
+                                    Text(stringResource(R.string.debug_force_token_refresh))
+                                }
+                                if (debugRefreshStatus != null) {
+                                    Text(debugRefreshStatus)
                                 }
                             }
                         },

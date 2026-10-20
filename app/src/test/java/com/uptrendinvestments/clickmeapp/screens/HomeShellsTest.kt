@@ -23,8 +23,13 @@ class HomeShellsTest {
     val composeRule = createComposeRule()
 
     private var switchCount = 0
+    private var logoutCount = 0
+    private var refreshCount = 0
 
-    private fun setClient(showDebug: Boolean) {
+    private fun setClient(
+        showDebug: Boolean,
+        refreshStatus: String? = null,
+    ) {
         composeRule.setContent {
             ClickMeTheme {
                 HomeClientShell(
@@ -32,12 +37,18 @@ class HomeShellsTest {
                     showDebugAffordances = showDebug,
                     onDebugSwitchScaffold = { switchCount++ },
                     onAvatarClick = {},
+                    onLogout = { logoutCount++ },
+                    onDebugForceRefresh = { refreshCount++ },
+                    debugRefreshStatus = refreshStatus,
                 )
             }
         }
     }
 
-    private fun setExpert(showDebug: Boolean) {
+    private fun setExpert(
+        showDebug: Boolean,
+        refreshStatus: String? = null,
+    ) {
         composeRule.setContent {
             ClickMeTheme {
                 HomeExpertShell(
@@ -45,6 +56,9 @@ class HomeShellsTest {
                     showDebugAffordances = showDebug,
                     onDebugSwitchScaffold = { switchCount++ },
                     onAvatarClick = {},
+                    onLogout = { logoutCount++ },
+                    onDebugForceRefresh = { refreshCount++ },
+                    debugRefreshStatus = refreshStatus,
                 )
             }
         }
@@ -145,5 +159,43 @@ class HomeShellsTest {
         tapTab("Profile")
         composeRule.onNodeWithText("Switch to client scaffold").assertDoesNotExist()
         composeRule.onNodeWithText("Design system gallery").assertDoesNotExist()
+    }
+
+    @Test
+    fun clientProfileShowsLogOutInReleaseAndInvokesCallback() {
+        setClient(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Force token refresh").assertDoesNotExist()
+        composeRule.onNodeWithText("Log out").performClick()
+        assertEquals(1, logoutCount)
+    }
+
+    @Test
+    fun expertProfileShowsLogOutInReleaseAndInvokesCallback() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Force token refresh").assertDoesNotExist()
+        composeRule.onNodeWithText("Log out").performClick()
+        assertEquals(1, logoutCount)
+    }
+
+    @Test
+    fun clientDebugProfileOffersForceRefreshAndShowsStatus() {
+        setClient(showDebug = true, refreshStatus = "Token refresh OK")
+        tapTab("Profile")
+        composeRule.onNodeWithText("Log out").assertExists()
+        composeRule.onNodeWithText("Token refresh OK").assertExists()
+        composeRule.onNodeWithText("Force token refresh").performScrollTo().performClick()
+        assertEquals(1, refreshCount)
+    }
+
+    @Test
+    fun expertDebugProfileOffersForceRefreshAndShowsStatus() {
+        setExpert(showDebug = true, refreshStatus = "Refresh failed: boom")
+        tapTab("Profile")
+        composeRule.onNodeWithText("Log out").assertExists()
+        composeRule.onNodeWithText("Refresh failed: boom").assertExists()
+        composeRule.onNodeWithText("Force token refresh").performScrollTo().performClick()
+        assertEquals(1, refreshCount)
     }
 }
