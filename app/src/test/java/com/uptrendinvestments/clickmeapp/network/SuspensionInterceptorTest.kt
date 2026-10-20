@@ -51,7 +51,13 @@ class SuspensionInterceptorTest {
         status: Int,
         body: String,
     ): Result {
-        server.enqueue(MockResponse.Builder().code(status).body(body).build())
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .code(status)
+                .body(body)
+                .build(),
+        )
         val builder = Request.Builder().url(server.url(path))
         if (method == "POST") builder.post("{}".toRequestBody()) else builder.get()
         client.newCall(builder.build()).execute().use { return Result(it.code, it.body.string()) }
@@ -88,7 +94,13 @@ class SuspensionInterceptorTest {
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { events.events.collect { seen += it } }
 
             val result =
-                fire(clientFor(store, events), "/api/v1/auth/login", method = "POST", status = 403, body = suspendedBody)
+                fire(
+                    clientFor(store, events),
+                    "/api/v1/auth/login",
+                    method = "POST",
+                    status = 403,
+                    body = suspendedBody,
+                )
 
             assertEquals(403, result.code)
             assertEquals(listOf<SessionEvent>(SessionEvent.Suspended), seen)
@@ -102,7 +114,12 @@ class SuspensionInterceptorTest {
             val seen = mutableListOf<SessionEvent>()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { events.events.collect { seen += it } }
 
-            fire(clientFor(store, events), "/api/v1/me", status = 403, body = """{"status":"error","code":"FORBIDDEN","message":"no"}""")
+            fire(
+                clientFor(store, events),
+                "/api/v1/me",
+                status = 403,
+                body = """{"status":"error","code":"FORBIDDEN","message":"no"}""",
+            )
 
             assertTrue(seen.isEmpty())
             assertEquals(0, store.clearCount)

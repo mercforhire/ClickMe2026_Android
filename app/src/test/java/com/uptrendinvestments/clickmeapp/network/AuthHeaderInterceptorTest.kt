@@ -28,14 +28,21 @@ class AuthHeaderInterceptorTest {
         server.close()
     }
 
-    private fun clientFor(store: FakeSecureTokenStore) = OkHttpClient.Builder().addInterceptor(AuthHeaderInterceptor(store)).build()
+    private fun clientFor(store: FakeSecureTokenStore) =
+        OkHttpClient.Builder().addInterceptor(AuthHeaderInterceptor(store)).build()
 
     private fun call(
         client: OkHttpClient,
         path: String,
         preset: String? = null,
     ): String? {
-        server.enqueue(MockResponse.Builder().code(200).body("{}").build())
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .code(200)
+                .body("{}")
+                .build(),
+        )
         val builder = Request.Builder().url(server.url(path))
         if (preset != null) builder.header("Authorization", preset)
         client.newCall(builder.build()).execute().close()
@@ -77,7 +84,10 @@ class AuthHeaderInterceptorTest {
 
     @Test
     fun `an already present Authorization header is left unchanged`() {
-        assertEquals("Bearer custom", call(clientFor(FakeSecureTokenStore(pair)), "/api/v1/me", preset = "Bearer custom"))
+        assertEquals(
+            "Bearer custom",
+            call(clientFor(FakeSecureTokenStore(pair)), "/api/v1/me", preset = "Bearer custom"),
+        )
     }
 
     @Test
