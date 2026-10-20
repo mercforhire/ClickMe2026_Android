@@ -90,7 +90,7 @@ Plans:
   5. A signed release bundle of `com.uptrendinvestments.clickmeapp` builds. If org verification has cleared, the bundle is uploaded to the internal track, which registers the package name. If not, the upload is logged as an open blocker in STATE.md.
 
 **Planning notes:** Port only the API groups this phase needs (auth, `/me`). Other groups come with their features. Token storage is locked to EncryptedSharedPreferences, which is deprecated upstream; keep it.
-**Plans:** 8/16 plans executed
+**Plans:** 10/16 plans executed
 Plans:
 **Wave 1**
 
@@ -112,8 +112,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-10-PLAN.md — NetworkFactory, debug-only BASIC logging, Hilt NetworkModule, full-stack MockWebServer test (FND-05, FND-06)
-- [ ] 02-11-PLAN.md — UserManager: login, restore matrix (D-01/D-03/D-05), logout, suspension flag, stale /me retry (FND-06, FND-07, FND-08)
+- [x] 02-10-PLAN.md — NetworkFactory, debug-only BASIC logging, Hilt NetworkModule, full-stack MockWebServer test (FND-05, FND-06)
+- [x] 02-11-PLAN.md — UserManager: login, restore matrix (D-01/D-03/D-05), logout, suspension flag, stale /me retry (FND-06, FND-07, FND-08)
 - [ ] 02-12-PLAN.md — Agora spike device run with the iOS expert, 5+ min background audio evidence (FND-14, user checkpoint)
 
 **Wave 5** *(blocked on Wave 4 completion)*
@@ -386,7 +386,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
-| 2. Networking, Session & SDK Spikes | 8/16 | In Progress|  |
+| 2. Networking, Session & SDK Spikes | 10/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |

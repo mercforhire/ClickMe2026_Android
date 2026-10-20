@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Networking, Session & SDK Spikes) — EXECUTING
-Plan: 10 of 16
+Plan: 13 of 16
 Status: Ready to execute
-Last activity: 2026-10-20 -- Phase 2 wave 3 merged (02-06..02-08; 02-09 deferred)
+Last activity: 2026-10-20 -- Phase 2 wave 4 merged (02-10, 02-11; 02-12 deferred)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -81,6 +81,7 @@ Recent decisions affecting current work:
 - Spike inputs file (~/.clickme/spike-inputs.properties) deferred — needed before 02-09 and 02-12; manual testing deferred by user
 - [Phase 2] DEFERRED (human): upload keystore `~/keys/clickme-upload.jks` + `keystore.properties` (02-05 Task 2), then signed `bundleProdRelease` + `jarsigner -verify` check (02-05 Task 3). Needed before 02-15/02-16.
 - [Phase 2] DEFERRED (human): 02-09 Stripe spike device run (SetupIntent card save + PaymentLauncher 3DS on connected account) — needs spike inputs file; plan not executed.
+- [Phase 2] DEFERRED (human): 02-12 Agora spike device run with a live iOS/simulator peer, 5+ min backgrounded, dumpsys/logcat evidence — needs spike inputs file (confirmed booking); plan not executed.
 
 ## Deferred Items
 
