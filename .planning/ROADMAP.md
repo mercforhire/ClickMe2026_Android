@@ -43,7 +43,18 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The shared components (press-scale button, async save button, validated text field, avatar, glow background, Custom Tab launcher) render in the Material 3 theme with the bundled rounded font.
   4. The corporation's D-U-N-S number is confirmed or requested, and the Play Console organization account is created and submitted for Google's verification. The outside wait is logged in STATE.md.
 **Planning notes:** The Play account steps are non-code tasks for the user. Start them on day one, because a new D-U-N-S number can take weeks. Don't port `PreviewNavHarness` or the iOS debug logging; use OkHttp's logging interceptor in debug builds only.
-**Plans:** TBD
+**Plans:** 9 plans in 5 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Toolchain (Kotlin 2.4.21), locked dependency set, dev/prod flavors with BuildConfig keys, Hilt app, shared strings, ktlint, design-rules script, GitHub Actions CI (Wave 1)
+- [ ] 01-02-PLAN.md — Play Console org account: confirm D-U-N-S, create account, pay fee, submit verification, log the outside wait in STATE.md (Wave 1, user checkpoints)
+- [ ] 01-03-PLAN.md — Dark M3 design system: palette, extras, Nunito typography, shapes, spacing, motion, gallery theme section (Wave 2)
+- [ ] 01-04-PLAN.md — Launcher icon and splash artwork from the SplashLogo mark, window/splash themes, manifest wiring, AppRoute + AppViewModel (Wave 2)
+- [ ] 01-05-PLAN.md — Navigation 3 per-tab back stacks, Navigator (Back rule, re-tap, cross-tab), tab definitions, HomeTabScaffold (Wave 3)
+- [ ] 01-06-PLAN.md — PressScaleButton, AsyncSaveButton, ValidatedField, EmptyState/ErrorState, PlaceholderTabContent, gallery controls section (Wave 3)
+- [ ] 01-07-PLAN.md — Avatar, TopBarAvatarButton, GreenGlowBlobLayer, Custom Tab launcher, gallery media section (Wave 3)
+- [ ] 01-08-PLAN.md — Client/expert home shells, Design system gallery, ClickMeApp AppRoute switch, MainActivity splash hook (Wave 4)
+- [ ] 01-09-PLAN.md — Full suite + release build, push and green CI on GitHub, emulator smoke, device checklist (Wave 5)
 **UI hint**: yes
 
 ### Phase 2: Networking, Session & SDK Spikes
@@ -268,7 +279,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 0/TBD | Not started | - |
+| 1. Foundation, App Shell & Play Account | 0/9 | Planned | - |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |

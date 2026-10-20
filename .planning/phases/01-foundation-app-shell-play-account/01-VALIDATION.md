@@ -52,6 +52,32 @@ Filled in by the planner/executor per task. Requirement → test mapping from RE
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
+### Per-Plan Task Map (from the 9 PLAN.md files)
+
+| Plan | Wave | Task | Requirement | Automated command |
+|------|------|------|-------------|-------------------|
+| 01-01 | 1 | T1 toolchain, flavors, ktlint | FND-01 | `./gradlew assembleDevDebug assembleProdDebug ktlintCheck` |
+| 01-01 | 1 | T2 identity, Hilt app, AppConfig | FND-01 | `./gradlew testDevDebugUnitTest testProdDebugUnitTest assembleDevDebug ktlintCheck` |
+| 01-01 | 1 | T3 design-rules script, CI workflow | FND-02 | `bash scripts/check-design-rules.sh` (+ negative fixtures) `&& ./gradlew lintDevDebug lintProdDebug` |
+| 01-02 | 1 | T1-T2 Play Console (human-action) | REL-01, REL-02 | user reply (checkpoint) |
+| 01-02 | 1 | T3 record wait | REL-01, REL-02 | `grep -n 'OUTSIDE WAIT' .planning/STATE.md` |
+| 01-03 | 2 | T1 tokens + ClickMeTheme | FND-09 | `--tests "*ui.theme.ThemeTest"` |
+| 01-03 | 2 | T2 Nunito + typography + gallery theme section | FND-09 | `--tests "*ui.theme.ThemeTest"` + lintDevDebug |
+| 01-04 | 2 | T1 icon + splash artwork | FND-11 | `./gradlew assembleDevDebug lintDevDebug` |
+| 01-04 | 2 | T2 themes, manifest, AppRoute/AppViewModel | FND-11 | `--tests "*AppViewModelTest"` + lint both flavors |
+| 01-05 | 3 | T1 NavigationState + Navigator | FND-12 | `--tests "*navigation.NavigatorTest"` |
+| 01-05 | 3 | T2 tab definitions + HomeTabScaffold | FND-12 | `--tests "com.uptrendinvestments.clickmeapp.navigation.*"` |
+| 01-06 | 3 | T1 buttons, EmptyState, PlaceholderTabContent | FND-10 | `--tests "*components.ControlsTest"` |
+| 01-06 | 3 | T2 ValidatedField + gallery controls | FND-10 | `--tests "*components.ControlsTest"` + lintDevDebug |
+| 01-07 | 3 | T1 Custom Tab launcher | FND-10 | `--tests "*components.web.CustomTabLauncherTest"` |
+| 01-07 | 3 | T2 avatar, glow, gallery media | FND-10 | `--tests "com.uptrendinvestments.clickmeapp.components.*"` |
+| 01-08 | 4 | T1 gallery screen + home shells | FND-10, FND-12 | `./gradlew assembleDevDebug assembleProdDebug ktlintCheck lintDevDebug` |
+| 01-08 | 4 | T2 ClickMeApp + MainActivity + HomeShellsTest | FND-11, FND-12 | full suite command |
+| 01-09 | 5 | T1 full suite, release build, push | FND-02 | full suite + `assembleProdRelease` + `git push origin HEAD` |
+| 01-09 | 5 | T2 emulator smoke + sign-off | FND-11, FND-12 | `adb shell am start -W ...` + VALIDATION.md grep |
+
+`--tests` rows run as `./gradlew :app:testDevDebugUnitTest --tests "<pattern>"`. No three consecutive code tasks lack an automated command.
+
 ---
 
 ## Wave 0 Requirements
