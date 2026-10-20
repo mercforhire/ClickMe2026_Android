@@ -1,3 +1,29 @@
 <resources>
-    <string name="app_name">ClickMe_Android</string>
+    <string name="app_name">ClickMe</string>
+
+    <string name="tab_explore">Explore</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_bookings">Bookings</string>
+    <string name="tab_chats">Chats</string>
+    <string name="tab_profile">Profile</string>
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_topics">Topics</string>
+
+    <string name="empty_state_placeholder_body">Nothing here yet.</string>
+    <string name="error_state_heading">Something went wrong</string>
+    <string name="error_state_body">Check your connection and try again.</string>
+    <string name="error_state_retry">Retry connection</string>
+    <string name="custom_tab_open_failed">Couldn\'t open the link. Try again in your browser.</string>
+    <string name="save_button_saved_default">Saved!</string>
+
+    <string name="a11y_show_password">Show password</string>
+    <string name="a11y_hide_password">Hide password</string>
+    <string name="a11y_your_profile">Your profile</string>
+    <string name="a11y_back">Back</string>
+    <string name="a11y_state_saving">Saving</string>
+    <string name="a11y_state_saved">Saved</string>
+
+    <string name="debug_switch_to_expert" translatable="false">Switch to expert scaffold</string>
+    <string name="debug_switch_to_client" translatable="false">Switch to client scaffold</string>
+    <string name="debug_design_system_gallery" translatable="false">Design system gallery</string>
 </resources>
