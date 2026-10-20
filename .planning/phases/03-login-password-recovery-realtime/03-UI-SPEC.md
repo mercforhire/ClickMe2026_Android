@@ -199,7 +199,7 @@ Background `surface`, no glow. `TopAppBar` (title "Reset Password"). Scrollable 
 | 3 | Email field | `ValidatedField`, placeholder "Email", icon `Outlined.Email`, `KeyboardType.Email`, `ImeAction.Done` (submits). Pre-filled with the Login email (D-07) |
 | 4 | Submit | `AsyncSaveButton(title = "Send Reset Code", savedTitle = "Code Sent!")`, `lg` gap above (the field's `md` margin plus `sm`) |
 | 5 | Info text | "The reset code will be sent to the email associated with your account. Check your inbox and enter the code on the next screen to reset your password." `bodyLarge`, `onSurfaceMuted`, centered, line height 24sp, horizontal padding `md`, `lg` top gap |
-| 6 | Back to Login | Centered `TextButton`: `ArrowBack` 20dp + `xs`... gap `sm` + "Back to Login" (`labelLarge`, `onSurface`), min 48dp. `xl` top gap, `xl` bottom padding |
+| 6 | Back to Login | Centered `TextButton`: `ArrowBack` 20dp + `sm` gap + "Back to Login" (`labelLarge`, `onSurface`), min 48dp. `xl` top gap, `xl` bottom padding |
 
 **Focal point and hierarchy.** The email field and the "Send Reset Code" button form the focal cluster; the button is the single filled accent. Emphasis: field label and field first, then the button, then the muted description and info text, then the Back to Login link.
 
@@ -301,7 +301,7 @@ All strings go into `res/values/strings_*.xml` (English only); nothing is hard-c
 | Primary CTA, Sign Up placeholder | "Back to Login" |
 | Login tagline | "Welcome back! Please enter your details." |
 | Login links | "Forgot Password?", "Don't have an account?", "Sign Up" |
-| Screen titles | "Reset Password", "Set New Password", "Sign Up" (Android; iOS has no title on the sign-up route here) |
+| Screen titles | "Reset Password", "Set New Password", "Sign Up" (Android) |
 | Field placeholders | "Email", "Password", "Enter 6-digit code", "Enter your new password", "Confirm your new password" |
 | Field labels | "Email", "Verification Code", "New Password", "Confirm New Password" |
 | Forgot description | "Enter your email to receive a password reset code" |
