@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gallery_heading_avatar" translatable="false">Avatar</string>
+    <string name="gallery_heading_glow" translatable="false">GreenGlowBlobLayer</string>
+    <string name="gallery_heading_custom_tab" translatable="false">Custom Tab launcher</string>
+    <string name="gallery_sample_open_privacy" translatable="false">Open privacy policy</string>
+    <string name="gallery_sample_open_blocked" translatable="false">Open a blocked link</string>
+    <string name="gallery_caption_fallback" translatable="false">Fallback (no photo)</string>
+    <string name="gallery_caption_topbar" translatable="false">Top bar button (48dp target)</string>
+    <string name="gallery_caption_glow" translatable="false">Glow layer on surface</string>
+    <string name="gallery_caption_sizes" translatable="false">32 / 40 / 56 / 96 dp</string>
+</resources>
