@@ -21,4 +21,9 @@
     <string name="password_strength_fair">Fair</string>
     <string name="password_strength_strong">Strong</string>
     <string name="a11y_password_strength">Password strength: %1$s</string>
+
+    <!-- Shared auth error dialog and confirm-match badge. -->
+    <string name="auth_dialog_title">Something went wrong</string>
+    <string name="auth_dialog_ok">OK</string>
+    <string name="a11y_passwords_match">Passwords match</string>
 </resources>
