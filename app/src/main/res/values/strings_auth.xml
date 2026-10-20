@@ -14,4 +14,11 @@
     <string name="error_confirm_mismatch">Passwords do not match</string>
     <string name="error_code_expired">Invalid or expired code. Please request a new one.</string>
     <string name="error_reset_missing_email">Missing account email. Please start the reset flow again from the login screen.</string>
+
+    <!-- Password strength meter (D-08). -->
+    <string name="password_strength_caption">Strength:</string>
+    <string name="password_strength_weak">Weak</string>
+    <string name="password_strength_fair">Fair</string>
+    <string name="password_strength_strong">Strong</string>
+    <string name="a11y_password_strength">Password strength: %1$s</string>
 </resources>
