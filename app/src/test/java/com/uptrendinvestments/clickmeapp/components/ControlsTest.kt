@@ -12,15 +12,20 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.buttons.AsyncSaveButton
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.screens.debug.GalleryControlsSection
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -35,6 +40,88 @@ class ControlsTest {
 
     private fun hasStateDescription(value: String) =
         SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
+
+    // ValidatedField
+
+    @Test
+    fun validatedField_withError_exposesErrorSemanticsAndText() {
+        rule.setContent {
+            ClickMeTheme {
+                ValidatedField(
+                    value = "x",
+                    onValueChange = {},
+                    placeholder = "Email",
+                    leadingIcon = Icons.Outlined.Info,
+                    error = "Enter a valid email address.",
+                )
+            }
+        }
+        rule.onNodeWithText("Enter a valid email address.").assertIsDisplayed()
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)).assertExists()
+    }
+
+    @Test
+    fun validatedField_withoutError_hasNoErrorText() {
+        rule.setContent {
+            ClickMeTheme {
+                ValidatedField(
+                    value = "x",
+                    onValueChange = {},
+                    placeholder = "Email",
+                    leadingIcon = Icons.Outlined.Info,
+                    error = null,
+                )
+            }
+        }
+        rule.onAllNodesWithText("Enter a valid email address.").assertCountEquals(0)
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error)).assertCountEquals(0)
+    }
+
+    @Test
+    fun validatedField_secure_togglesPasswordVisibilityLabel() {
+        rule.setContent {
+            ClickMeTheme {
+                ValidatedField(
+                    value = "secret",
+                    onValueChange = {},
+                    placeholder = "Password",
+                    leadingIcon = Icons.Outlined.Info,
+                    error = null,
+                    isSecure = true,
+                )
+            }
+        }
+        rule.onNodeWithContentDescription("Show password").performClick()
+        rule.onNodeWithContentDescription("Hide password").assertExists()
+        rule.onAllNodesWithContentDescription("Show password").assertCountEquals(0)
+    }
+
+    @Test
+    fun validatedField_typing_invokesOnValueChange() {
+        var latest = ""
+        rule.setContent {
+            ClickMeTheme {
+                ValidatedField(
+                    value = "",
+                    onValueChange = { latest = it },
+                    placeholder = "Email",
+                    leadingIcon = Icons.Outlined.Info,
+                    error = null,
+                )
+            }
+        }
+        rule.onNode(hasSetTextAction()).performTextInput("abc")
+        assertEquals("abc", latest)
+    }
+
+    @Test
+    fun galleryControlsSection_rendersAllHeadings() {
+        rule.setContent { ClickMeTheme { GalleryControlsSection() } }
+        rule.onNodeWithText("PressScaleButton").assertExists()
+        rule.onNodeWithText("AsyncSaveButton").assertExists()
+        rule.onNodeWithText("ValidatedField").assertExists()
+        rule.onNodeWithText("EmptyState").assertExists()
+    }
 
     // AsyncSaveButton
 
