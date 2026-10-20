@@ -1,0 +1,13 @@
+{
+  "source_path": "/Users/LeonChen/Documents/ClickMe_Android/CLAUDE.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ClickMe Android — port from iOS",
+  "summary": "Project instructions locking the Android port's architecture stack, iOS-to-Android platform swaps, file organization mirroring iOS, and shared backend REST contract.",
+  "scope": ["Jetpack Compose", "Material 3", "MVVM", "Kotlin coroutines", "Hilt", "Retrofit", "Moshi", "EncryptedSharedPreferences", "JWT storage", "Firebase Messaging", "Agora Android SDK", "Stripe PaymentSheet", "SDK levels", "platform swaps", "file organization", "backend REST contract"],
+  "cross_refs": ["ios-reference/", "backend-reference/", "backend-reference/docs/ios/"],
+  "locked": true,
+  "precedence": 0,
+  "notes": "Type set by manifest; orchestrator states stack and platform-swap choices are locked decisions. Cross-refs are external references, not ingest targets. Filename hash is placeholder 00000000: SHA-256 could not be computed (no shell tool available)."
+}

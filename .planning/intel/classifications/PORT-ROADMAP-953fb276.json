@@ -1,0 +1,13 @@
+{
+  "source_path": "/Users/LeonChen/Documents/ClickMe_Android/docs/PORT_ROADMAP.md",
+  "type": "PRD",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ClickMe Android — MVP Port Roadmap",
+  "summary": "Eight-week MVP roadmap for porting the ClickMe iOS app to Android: scope, weekly build order with acceptance checkpoints, deferred items, iOS behaviors not to port, and risks.",
+  "scope": ["Android MVP port", "Play Store org account", "networking core", "token refresh", "UserManager session", "design system", "app shell navigation", "Stripe PaymentSheet", "Agora voice call", "push notifications", "chat", "payouts", "account deletion", "report/block"],
+  "cross_refs": ["ios-reference/", "backend-reference/docs/ios/", "Network/NetworkService.swift", "APIRequestURLs.swift", "Managers/UserManager.swift", "Theme/Brand.swift"],
+  "locked": false,
+  "precedence": 1,
+  "notes": "Type set by manifest. Filename hash suffix replaced with 'nosha256' because no hashing tool was available to compute SHA-256 of the source path."
+}

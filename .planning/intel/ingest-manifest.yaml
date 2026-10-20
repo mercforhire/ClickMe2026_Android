@@ -1,0 +1,7 @@
+docs:
+  - path: CLAUDE.md
+    type: ADR
+    precedence: 0
+  - path: docs/PORT_ROADMAP.md
+    type: PRD
+    precedence: 1
