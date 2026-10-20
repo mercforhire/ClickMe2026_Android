@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug design-system gallery only; never shown to end users. -->
+    <string name="gallery_heading_typography" translatable="false">Typography</string>
+    <string name="gallery_heading_colors" translatable="false">Color tokens</string>
+    <string name="gallery_type_sample" translatable="false">Book time with the best minds.</string>
+</resources>
