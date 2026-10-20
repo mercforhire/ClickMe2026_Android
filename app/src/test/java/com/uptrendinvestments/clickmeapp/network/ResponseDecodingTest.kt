@@ -131,10 +131,14 @@ class ResponseDecodingTest {
     @Test
     fun minMinorUnitsUppercasesAndFallsBack() {
         val min =
-            moshi.adapter(MeData::class.java).fromJson(
-                """{"id":"u","email":"e","roles":[],"pricing_limits":{"min_session_amount":""" +
-                    """{"by_currency":{"USD":75},"default_minor_units":50,"default_currency":"CAD"}}}""",
-            )!!.pricingLimits!!.minSessionAmount
+            moshi
+                .adapter(MeData::class.java)
+                .fromJson(
+                    """{"id":"u","email":"e","roles":[],"pricing_limits":{"min_session_amount":""" +
+                        """{"by_currency":{"USD":75},"default_minor_units":50,"default_currency":"CAD"}}}""",
+                )!!
+                .pricingLimits!!
+                .minSessionAmount
         assertEquals(75, min.minMinorUnits("usd"))
         assertEquals(50, min.minMinorUnits("XYZ"))
     }
@@ -215,8 +219,10 @@ class ResponseDecodingTest {
 
     @Test
     fun paginationMetaPrefersServerFlag() {
-        val meta = moshi.adapter(PaginationMeta::class.java)
-            .fromJson("""{"current_page":1,"total_pages":3,"has_more":false}""")!!
+        val meta =
+            moshi
+                .adapter(PaginationMeta::class.java)
+                .fromJson("""{"current_page":1,"total_pages":3,"has_more":false}""")!!
         assertFalse(meta.hasMoreOrDerived)
     }
 }

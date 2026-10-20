@@ -7,7 +7,9 @@ package com.uptrendinvestments.clickmeapp.model.enums
  * fields, which R8 can rename; unknown roles then never fail decoding. Map through
  * [fromWire] instead.
  */
-enum class UserRole(val wire: String) {
+enum class UserRole(
+    val wire: String,
+) {
     Client("client"),
     Expert("expert"),
     ;

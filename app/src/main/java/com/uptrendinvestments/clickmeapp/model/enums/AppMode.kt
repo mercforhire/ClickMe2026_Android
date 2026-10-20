@@ -6,7 +6,9 @@ package com.uptrendinvestments.clickmeapp.model.enums
  *
  * Looked up through [fromWire] rather than a reflection-based enum adapter (R8-safe).
  */
-enum class AppMode(val wire: String) {
+enum class AppMode(
+    val wire: String,
+) {
     Client("client"),
     Expert("expert"),
     ;
