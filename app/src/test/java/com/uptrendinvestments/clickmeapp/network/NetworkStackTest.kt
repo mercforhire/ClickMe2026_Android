@@ -6,7 +6,9 @@ import com.uptrendinvestments.clickmeapp.managers.SessionEvent
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
 import com.uptrendinvestments.clickmeapp.managers.TokenPair
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -78,6 +80,9 @@ class NetworkStackTest {
                         "/api/v1/me" -> meResponse(request)
                         "/api/v1/auth/refresh" -> refreshResponse()
                         "/api/v1/auth/login" -> loginOk()
+                        "/api/v1/auth/password/forgot" -> json(200, """{"status":"success","message":"sent"}""")
+                        "/api/v1/auth/password/reset" ->
+                            json(200, """{"status":"success","message":"done","data":{"redirect_to":"/login"}}""")
                         else -> json(404, "{}")
                     }
                 }
@@ -132,6 +137,23 @@ class NetworkStackTest {
             assertEquals("t", response.data.token)
             val request = recorded.single { it.url.encodedPath == "/api/v1/auth/login" }
             assertNull(request.headers["Authorization"])
+            assertEquals("old", store.accessToken)
+        }
+
+    @Test
+    fun passwordRecoveryNeverCarriesBearerEvenWithStoredToken() =
+        runTest {
+            startStack(old)
+
+            val forgot = api.forgotPassword(ForgotPasswordRequest("a@b.co"))
+            val reset = api.resetPassword(ResetPasswordRequest("a@b.co", "123456", "Passw0rd!", "Passw0rd!"))
+
+            assertEquals("sent", forgot.message)
+            assertEquals("done", reset.message)
+            val forgotRequest = recorded.single { it.url.encodedPath == "/api/v1/auth/password/forgot" }
+            val resetRequest = recorded.single { it.url.encodedPath == "/api/v1/auth/password/reset" }
+            assertNull(forgotRequest.headers["Authorization"])
+            assertNull(resetRequest.headers["Authorization"])
             assertEquals("old", store.accessToken)
         }
 

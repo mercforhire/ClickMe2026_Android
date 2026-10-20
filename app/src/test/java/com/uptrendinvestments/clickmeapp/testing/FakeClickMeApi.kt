@@ -1,11 +1,14 @@
 package com.uptrendinvestments.clickmeapp.testing
 
+import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
+import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
 import okhttp3.MediaType.Companion.toMediaType
@@ -20,12 +23,20 @@ import retrofit2.Response
  */
 class FakeClickMeApi : ClickMeApi {
     var loginHandler: suspend (LoginRequest) -> LoginData = { notStubbed() }
+    var forgotPasswordHandler: suspend (ForgotPasswordRequest) -> SuccessMessageResponse = { notStubbed() }
+    var resetPasswordHandler: suspend (ResetPasswordRequest) -> SuccessMessageResponse = { notStubbed() }
     var meHandler: suspend () -> MeData = { notStubbed() }
     var userProfileHandler: suspend () -> UserProfileData = { notStubbed() }
     var expertProfileHandler: suspend () -> ExpertProfileData = { notStubbed() }
     var topicsHandler: suspend () -> MyExpertTopicsPayload = { notStubbed() }
 
     @Volatile var loginCalls = 0
+        private set
+
+    @Volatile var forgotPasswordCalls = 0
+        private set
+
+    @Volatile var resetPasswordCalls = 0
         private set
 
     @Volatile var meCalls = 0
@@ -43,6 +54,16 @@ class FakeClickMeApi : ClickMeApi {
     override suspend fun login(body: LoginRequest): SuccessDataResponse<LoginData> {
         loginCalls++
         return ok(loginHandler(body))
+    }
+
+    override suspend fun forgotPassword(body: ForgotPasswordRequest): SuccessMessageResponse {
+        forgotPasswordCalls++
+        return forgotPasswordHandler(body)
+    }
+
+    override suspend fun resetPassword(body: ResetPasswordRequest): SuccessMessageResponse {
+        resetPasswordCalls++
+        return resetPasswordHandler(body)
     }
 
     override suspend fun getMe(): SuccessDataResponse<MeData> {
