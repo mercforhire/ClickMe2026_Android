@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The corporation's D-U-N-S number is confirmed or requested, and the Play Console organization account is created and submitted for Google's verification. The outside wait is logged in STATE.md.
 
 **Planning notes:** The Play account steps are non-code tasks for the user. Start them on day one, because a new D-U-N-S number can take weeks. Don't port `PreviewNavHarness` or the iOS debug logging; use OkHttp's logging interceptor in debug builds only.
-**Plans:** 1/9 plans executed
+**Plans:** 3/9 plans executed
 Plans:
 **Wave 1**
 
@@ -56,8 +56,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-03-PLAN.md — Dark M3 design system: palette, extras, Nunito typography, shapes, spacing, motion, gallery theme section (Wave 2)
-- [ ] 01-04-PLAN.md — Launcher icon and splash artwork from the SplashLogo mark, window/splash themes, manifest wiring, AppRoute + AppViewModel (Wave 2)
+- [x] 01-03-PLAN.md — Dark M3 design system: palette, extras, Nunito typography, shapes, spacing, motion, gallery theme section (Wave 2)
+- [x] 01-04-PLAN.md — Launcher icon and splash artwork from the SplashLogo mark, window/splash themes, manifest wiring, AppRoute + AppViewModel (Wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -345,7 +345,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 1/9 | In Progress|  |
+| 1. Foundation, App Shell & Play Account | 3/9 | In Progress|  |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
