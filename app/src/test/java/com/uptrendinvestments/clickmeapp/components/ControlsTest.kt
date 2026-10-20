@@ -33,7 +33,8 @@ class ControlsTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private fun hasStateDescription(value: String) = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
+    private fun hasStateDescription(value: String) =
+        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
 
     // AsyncSaveButton
 
