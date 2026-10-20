@@ -21,7 +21,7 @@ if [ -n "$hits" ]; then
     fail=1
 fi
 
-hits=$(grep -rnE '(sk_live|sk_test|rk_live|rk_test)_[A-Za-z0-9]+' app gradle ./*.kts 2>/dev/null || true)
+hits=$(grep -rnE '(sk_live|sk_test|rk_live|rk_test)_[A-Za-z0-9]+' app spikes gradle ./*.kts 2>/dev/null || true)
 if [ -n "$hits" ]; then
     echo "Stripe secret key pattern:"
     echo "$hits"
