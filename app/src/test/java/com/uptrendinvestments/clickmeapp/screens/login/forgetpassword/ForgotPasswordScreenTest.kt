@@ -41,14 +41,20 @@ class ForgotPasswordScreenTest {
 
     @Test
     fun rendersAllCopy() {
-        show(ForgotPasswordUiState(email = "a@b.co"))
+        show(ForgotPasswordUiState())
         rule.onNodeWithText("Reset Password").assertExists()
         rule.onNodeWithText("Enter your email to receive a password reset code").assertExists()
+        // The visible "Email" label is hidden from TalkBack (clearAndSetSemantics), so this is the field placeholder.
         rule.onNodeWithText("Email").assertExists()
-        rule.onNodeWithText("a@b.co").assertExists()
         rule.onNodeWithText("Send Reset Code").assertExists()
         rule.onNodeWithText("Check your inbox", substring = true).assertExists()
         rule.onNodeWithText("Back to Login").assertExists()
+    }
+
+    @Test
+    fun prefilledEmailIsShown() {
+        show(ForgotPasswordUiState(email = "a@b.co"))
+        rule.onNodeWithText("a@b.co").assertExists()
     }
 
     @Test
