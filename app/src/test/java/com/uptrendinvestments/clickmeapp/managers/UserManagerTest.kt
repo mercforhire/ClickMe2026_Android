@@ -20,7 +20,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -112,7 +112,7 @@ class UserManagerTest {
             h.api.userProfileHandler = { sampleProfile }
 
             val user = h.manager.login("a@b.co", "pw")
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("u1", user.id)
             assertEquals(TokenPair("new-access", "new-refresh", 1_900_000_100L).accessToken, h.tokens.accessToken)
@@ -132,11 +132,11 @@ class UserManagerTest {
             h.api.loginHandler = { sampleLogin }
             h.api.userProfileHandler = { sampleProfile }
             h.events.emit(SessionEvent.Suspended)
-            advanceUntilIdle()
+            runCurrent()
             assertTrue(h.manager.wasSuspended.value)
 
             h.manager.login("a@b.co", "pw")
-            advanceUntilIdle()
+            runCurrent()
 
             assertFalse(h.manager.wasSuspended.value)
             assertTrue(h.manager.isLoggedIn.value)
@@ -183,7 +183,7 @@ class UserManagerTest {
             h.api.meHandler = { me("client") }
             h.api.userProfileHandler = { sampleProfile }
             h.manager.restore()
-            advanceUntilIdle()
+            runCurrent()
             h.manager.setMode(AppMode.Expert)
             h.manager.markOnboardingShown()
             assertEquals(sampleProfile, h.manager.profile.value)
@@ -240,7 +240,7 @@ class UserManagerTest {
             h.sessionStore.setCachedProfile(sampleProfile)
             h.manager.restore()
             h.events.emit(SessionEvent.Rejected)
-            advanceUntilIdle()
+            runCurrent()
 
             assertFalse(h.manager.isLoggedIn.value)
             assertNull(h.sessionStore.storedMode())
@@ -255,7 +255,7 @@ class UserManagerTest {
             h.sessionStore.setMode(AppMode.Expert)
 
             h.events.emit(SessionEvent.Suspended)
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue(h.manager.wasSuspended.value)
             assertFalse(h.manager.isLoggedIn.value)
@@ -263,7 +263,7 @@ class UserManagerTest {
             assertNull(h.sessionStore.storedMode())
 
             h.events.emit(SessionEvent.Suspended)
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals("a second Suspended must be ignored", 1, h.tokens.clearCount)
             assertEquals(1, h.registrar.calls)
@@ -280,10 +280,10 @@ class UserManagerTest {
             h.api.userProfileHandler = { gate.await() }
 
             val refresh = backgroundScope.launch { runCatching { h.manager.refreshProfile() } }
-            advanceUntilIdle()
+            runCurrent()
             h.manager.logout()
             gate.complete(sampleProfile)
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue(refresh.isCompleted)
             assertNull(h.sessionStore.cachedProfile())
@@ -325,7 +325,7 @@ class UserManagerTest {
             h.api.userProfileHandler = { sampleProfile }
 
             assertEquals(LaunchDestination.Home(AppMode.Client), h.manager.restore())
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(AppMode.Client, h.sessionStore.storedMode())
             assertTrue(h.manager.isLoggedIn.value)
@@ -469,7 +469,7 @@ class UserManagerTest {
             h.api.meHandler = { throw h.api.httpError(401, """{"message":"Unauthorized"}""") }
 
             assertEquals(LaunchDestination.Home(AppMode.Expert), h.manager.restore())
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue("tokens still present after a /me 401", h.tokens.hasSession())
             assertEquals(authedPair.accessToken, h.tokens.accessToken)
@@ -492,7 +492,7 @@ class UserManagerTest {
             }
 
             assertEquals(LaunchDestination.Login, h.manager.restore())
-            advanceUntilIdle()
+            runCurrent()
 
             assertFalse(h.manager.isLoggedIn.value)
             assertNull(h.sessionStore.storedMode())
@@ -512,7 +512,7 @@ class UserManagerTest {
             }
 
             assertEquals(LaunchDestination.Login, h.manager.restore())
-            advanceUntilIdle()
+            runCurrent()
 
             assertTrue(h.manager.wasSuspended.value)
             assertFalse(h.manager.isLoggedIn.value)
