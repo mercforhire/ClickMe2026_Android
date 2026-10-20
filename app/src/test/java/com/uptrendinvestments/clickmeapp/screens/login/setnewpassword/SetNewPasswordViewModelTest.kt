@@ -31,9 +31,7 @@ class SetNewPasswordViewModelTest {
 
     private val ok = SuccessMessageResponse(status = "success", message = "done")
 
-    private fun harness(
-        saved: SavedStateHandle = SavedStateHandle(),
-    ): Pair<FakeClickMeApi, SetNewPasswordViewModel> {
+    private fun harness(saved: SavedStateHandle = SavedStateHandle()): Pair<FakeClickMeApi, SetNewPasswordViewModel> {
         val api = FakeClickMeApi()
         return api to SetNewPasswordViewModel(api, saved)
     }
