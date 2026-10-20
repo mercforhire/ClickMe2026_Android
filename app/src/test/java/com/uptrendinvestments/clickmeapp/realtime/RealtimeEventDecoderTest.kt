@@ -62,7 +62,11 @@ class RealtimeEventDecoderTest {
     @Test
     fun `decodes user status online and offline`() {
         val online = decoder.decode("user.status", """{"user_id":"u2","status":"online"}""") as RealtimeEvent.UserStatus
-        val offline = decoder.decode("user.status", """{"user_id":"u2","status":"offline"}""") as RealtimeEvent.UserStatus
+        val offline =
+            decoder.decode(
+                "user.status",
+                """{"user_id":"u2","status":"offline"}""",
+            ) as RealtimeEvent.UserStatus
         assertEquals("u2", online.userId)
         assertTrue(online.isOnline)
         assertFalse(offline.isOnline)

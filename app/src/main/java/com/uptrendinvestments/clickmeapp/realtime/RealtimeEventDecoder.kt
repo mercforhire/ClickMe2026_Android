@@ -14,13 +14,12 @@ import javax.inject.Inject
 open class RealtimeEventDecoder
     @Inject
     constructor() {
-        private val moshi = MoshiProvider.moshi
-        private val messageNew: JsonAdapter<RealtimeEvent.MessageNew> = moshi.adapter(RealtimeEvent.MessageNew::class.java)
-        private val messageRead: JsonAdapter<RealtimeEvent.MessageRead> = moshi.adapter(RealtimeEvent.MessageRead::class.java)
-        private val userStatus: JsonAdapter<RealtimeEvent.UserStatus> = moshi.adapter(RealtimeEvent.UserStatus::class.java)
-        private val typing: JsonAdapter<TypingPayload> = moshi.adapter(TypingPayload::class.java)
-        private val bookingUpdate: JsonAdapter<RealtimeEvent.BookingUpdate> = moshi.adapter(RealtimeEvent.BookingUpdate::class.java)
-        private val callEnded: JsonAdapter<RealtimeEvent.CallEnded> = moshi.adapter(RealtimeEvent.CallEnded::class.java)
+        private val messageNew = adapter<RealtimeEvent.MessageNew>()
+        private val messageRead = adapter<RealtimeEvent.MessageRead>()
+        private val userStatus = adapter<RealtimeEvent.UserStatus>()
+        private val typing = adapter<TypingPayload>()
+        private val bookingUpdate = adapter<RealtimeEvent.BookingUpdate>()
+        private val callEnded = adapter<RealtimeEvent.CallEnded>()
 
         open fun decode(
             event: String,
@@ -31,8 +30,8 @@ open class RealtimeEventDecoder
                     RealtimeEventNames.MESSAGE_NEW -> messageNew.fromJson(json)
                     RealtimeEventNames.MESSAGE_READ -> messageRead.fromJson(json)
                     RealtimeEventNames.USER_STATUS -> userStatus.fromJson(json)
-                    RealtimeEventNames.TYPING_START -> typing.fromJson(json)?.let { RealtimeEvent.TypingStart(it.threadId, it.senderId) }
-                    RealtimeEventNames.TYPING_STOP -> typing.fromJson(json)?.let { RealtimeEvent.TypingStop(it.threadId, it.senderId) }
+                    RealtimeEventNames.TYPING_START -> typing.fromJson(json)?.toStart()
+                    RealtimeEventNames.TYPING_STOP -> typing.fromJson(json)?.toStop()
                     RealtimeEventNames.BOOKING_UPDATE -> bookingUpdate.fromJson(json)
                     RealtimeEventNames.CALL_ENDED -> callEnded.fromJson(json)
                     else -> null
@@ -41,4 +40,12 @@ open class RealtimeEventDecoder
                 // JsonDataException, JsonEncodingException, IOException, DateTimeParseException: drop the event.
                 null
             }
+
+        private fun TypingPayload.toStart() = RealtimeEvent.TypingStart(threadId, senderId)
+
+        private fun TypingPayload.toStop() = RealtimeEvent.TypingStop(threadId, senderId)
+
+        private companion object {
+            inline fun <reified T> adapter(): JsonAdapter<T> = MoshiProvider.moshi.adapter(T::class.java)
+        }
     }
