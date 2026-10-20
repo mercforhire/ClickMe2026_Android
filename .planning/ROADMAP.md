@@ -145,7 +145,7 @@ Plans:
   3. After login the socket connects. Events triggered from the iOS app (a message, typing, a booking update) appear in the `SharedFlow` logs. (PRD Week 2 checkpoint, part 2)
   4. After a token refresh or a network drop, the socket reconnects within about 2 seconds with the current token and keeps receiving events.
 
-**Plans:** 9/12 plans executed
+**Plans:** 11/12 plans executed
 Plans:
 **Wave 1**
 
@@ -164,8 +164,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-10-PLAN.md — Auth back stack under AppRoute.Login (AuthNavHost/AuthNavigator), D-10/D-11 return to Login, ClickMeApp wiring (AUTH-01, AUTH-02)
-- [ ] 03-11-PLAN.md — RealtimeModule, Application start, debug-only "Realtime" Logcat collector, R8 release build (RT-01, RT-02, RT-03)
+- [x] 03-10-PLAN.md — Auth back stack under AppRoute.Login (AuthNavHost/AuthNavigator), D-10/D-11 return to Login, ClickMeApp wiring (AUTH-01, AUTH-02)
+- [x] 03-11-PLAN.md — RealtimeModule, Application start, debug-only "Realtime" Logcat collector, R8 release build (RT-01, RT-02, RT-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -412,7 +412,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
-| 3. Login, Password Recovery & Realtime | 9/12 | In Progress|  |
+| 3. Login, Password Recovery & Realtime | 11/12 | In Progress|  |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
