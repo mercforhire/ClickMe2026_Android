@@ -64,8 +64,8 @@ class NetworkStackTest {
     private fun loginOk() =
         json(
             200,
-            """{"status":"success","data":{"token":"t","refresh_token":"r","expires_at":1792513029,"expires_in":900,""" +
-                """"user":{"id":"u1","first_name":"Ada","last_name":"L","roles":["client"]}}}""",
+            """{"status":"success","data":{"token":"t","refresh_token":"r","expires_at":1792513029,""" +
+                """"expires_in":900,"user":{"id":"u1","first_name":"Ada","last_name":"L","roles":["client"]}}}""",
         )
 
     private fun startStack(initial: TokenPair?) {
