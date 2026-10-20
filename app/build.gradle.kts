@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +8,17 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ktlint)
 }
+
+// Release signing is local only (D-15): CI has no keystore.properties and builds unsigned debug variants.
+// The upload key is separate from the Google-generated Play App Signing key (D-16).
+// Read through providers.fileContents so the configuration cache tracks the file appearing or changing.
+// Never print property values.
+val keystorePropsText =
+    providers.fileContents(rootProject.layout.projectDirectory.file("keystore.properties")).asText
+val keystoreProps =
+    Properties().apply {
+        keystorePropsText.orNull?.let { load(it.reader()) }
+    }
 
 android {
     namespace = "com.uptrendinvestments.clickmeapp"
@@ -49,8 +62,20 @@ android {
         }
     }
 
+    signingConfigs {
+        if (!keystoreProps.isEmpty) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (!keystoreProps.isEmpty) signingConfig = signingConfigs.getByName("release")
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
