@@ -90,7 +90,7 @@ Plans:
   5. A signed release bundle of `com.uptrendinvestments.clickmeapp` builds. If org verification has cleared, the bundle is uploaded to the internal track, which registers the package name. If not, the upload is logged as an open blocker in STATE.md.
 
 **Planning notes:** Port only the API groups this phase needs (auth, `/me`). Other groups come with their features. Token storage is locked to EncryptedSharedPreferences, which is deprecated upstream; keep it.
-**Plans:** 1/16 plans executed
+**Plans:** 5/16 plans executed
 Plans:
 **Wave 1**
 
@@ -98,10 +98,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Moshi provider, ISO-8601 Instant adapter, {data} wrapper, PaginationMeta, auth/me/full UserProfileData DTOs (FND-03)
-- [ ] 02-03-PLAN.md — 65-case ErrorCode, lenient error envelope, ApiException/ApiErrorParser/apiCall, needAuthToken path table (FND-04, FND-05)
-- [ ] 02-04-PLAN.md — :spikes:stripe and :spikes:agora modules, CI + design-rules coverage, Stripe SetupIntent save + PaymentLauncher 3DS flow (FND-13 code)
-- [ ] 02-05-PLAN.md — Conditional release signing, upload keystore (user), signed prodRelease AAB verified (REL-03 build, user checkpoint)
+- [x] 02-02-PLAN.md — Moshi provider, ISO-8601 Instant adapter, {data} wrapper, PaginationMeta, auth/me/full UserProfileData DTOs (FND-03)
+- [x] 02-03-PLAN.md — 65-case ErrorCode, lenient error envelope, ApiException/ApiErrorParser/apiCall, needAuthToken path table (FND-04, FND-05)
+- [x] 02-04-PLAN.md — :spikes:stripe and :spikes:agora modules, CI + design-rules coverage, Stripe SetupIntent save + PaymentLauncher 3DS flow (FND-13 code)
+- [x] 02-05-PLAN.md — Conditional release signing, upload keystore (user), signed prodRelease AAB verified (REL-03 build, user checkpoint)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -386,7 +386,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
-| 2. Networking, Session & SDK Spikes | 1/16 | In Progress|  |
+| 2. Networking, Session & SDK Spikes | 5/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |

@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Networking, Session & SDK Spikes) — EXECUTING
-Plan: 2 of 16
+Plan: 6 of 16
 Status: Ready to execute
-Last activity: 2026-10-20 -- Phase 2 execution started
+Last activity: 2026-10-20 -- Phase 2 wave 2 merged (02-02..02-05)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -79,6 +79,7 @@ Recent decisions affecting current work:
 - [Phase 2]: EncryptedSharedPreferences is deprecated upstream. The decision is locked and stands. Revisit on purpose, not by accident.
 - Schedule risks to watch: Make a Booking + Stripe (Phases 6–7), call service and overlay (Phase 9), push deep links into per-tab back stacks (Phase 13). If the schedule slips, cut in this order: payouts down to the onboarding link only, then the notifications list, then Write Review.
 - Spike inputs file (~/.clickme/spike-inputs.properties) deferred — needed before 02-09 and 02-12; manual testing deferred by user
+- [Phase 2] DEFERRED (human): upload keystore `~/keys/clickme-upload.jks` + `keystore.properties` (02-05 Task 2), then signed `bundleProdRelease` + `jarsigner -verify` check (02-05 Task 3). Needed before 02-15/02-16.
 
 ## Deferred Items
 
