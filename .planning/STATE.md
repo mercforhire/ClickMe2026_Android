@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 2 (Networking, Session & SDK Spikes) — EXECUTING
-Plan: 14 of 16
-Status: Ready to execute
-Last activity: 2026-10-20 -- Phase 2 wave 5 done (02-13 login/logout UI)
+Plan: 15 of 16
+Status: Code complete; awaiting deferred human/device plans (02-09, 02-12, 02-15, 02-16)
+Last activity: 2026-10-20 -- Phase 2 wave 6 done (02-14 app root wiring); waves 7-8 deferred (device/keystore)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -82,6 +82,7 @@ Recent decisions affecting current work:
 - [Phase 2] DEFERRED (human): upload keystore `~/keys/clickme-upload.jks` + `keystore.properties` (02-05 Task 2), then signed `bundleProdRelease` + `jarsigner -verify` check (02-05 Task 3). Needed before 02-15/02-16.
 - [Phase 2] DEFERRED (human): 02-09 Stripe spike device run (SetupIntent card save + PaymentLauncher 3DS on connected account) — needs spike inputs file; plan not executed.
 - [Phase 2] DEFERRED (human): 02-12 Agora spike device run with a live iOS/simulator peer, 5+ min backgrounded, dumpsys/logcat evidence — needs spike inputs file (confirmed booking); plan not executed.
+- [Phase 2] DEFERRED (human): 02-15 device end-to-end (login, relaunch auto-login, forced refresh, logout; ESP round-trip) + signed release APK R8 cold start, and 02-16 release smoke + Play internal-track upload (REL-03). Need keystore + Samsung device. Unsigned R8 `assembleProdRelease` builds clean (2026-10-20). Phase 2 cannot close until 02-09, 02-12, 02-15, 02-16 run.
 
 ## Deferred Items
 
