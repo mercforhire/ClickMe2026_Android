@@ -30,7 +30,7 @@ below).
 ## File organization
 Mirror the iOS folder tree. Example:
 `ClickMe2026/Views/Screens/Signup Flow/Initial/SignupInitialView.swift`
-→ `app/src/main/java/com/example/clickme_android/screens/signup/initial/SignupInitialScreen.kt`
+→ `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/signup/initial/SignupInitialScreen.kt`
 + `SignupInitialViewModel.kt`
 
 ## Backend

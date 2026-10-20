@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.clickme_android"
+    namespace = "com.uptrendinvestments.clickmeapp"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.clickme_android"
+        applicationId = "com.uptrendinvestments.clickmeapp"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

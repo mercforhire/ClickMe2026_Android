@@ -300,7 +300,7 @@ Cut in this order while staying in the MVP:
 Don't cut Delete account, report/block, or the Stripe and call paths.
 
 ## Deferred (post-MVP), in suggested order
-1. Client-initiated **Reschedule**, both client and expert sides. It's the riskiest flow; until then, users can cancel and book again.
+1. **Starting a reschedule**, for clients and experts (the Reschedule screens with the slot picker). It's the riskiest flow; until then, users can cancel and book again. Accepting or declining a reschedule the other side proposed is **not** deferred: it's in Week 4 (client) and Week 5 (expert).
 2. Search tab with filters and sort.
 3. Favorites, the full Reviews list, Booking Notes (both sides), Client Profile (expert side).
 4. Client payment history (`/client/transactions`; a page past the end returns a 500, so treat it as end of list) and the expert transactions list.

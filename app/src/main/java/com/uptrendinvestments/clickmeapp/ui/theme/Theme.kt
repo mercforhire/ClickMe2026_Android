@@ -1,4 +1,4 @@
-package com.example.clickme_android.ui.theme
+package com.uptrendinvestments.clickmeapp.ui.theme
 
 import android.app.Activity
 import android.os.Build

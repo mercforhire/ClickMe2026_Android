@@ -1,4 +1,4 @@
-package com.example.clickme_android
+package com.uptrendinvestments.clickmeapp
 
 import org.junit.Test
 

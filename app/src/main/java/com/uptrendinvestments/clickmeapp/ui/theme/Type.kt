@@ -1,4 +1,4 @@
-package com.example.clickme_android.ui.theme
+package com.uptrendinvestments.clickmeapp.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
