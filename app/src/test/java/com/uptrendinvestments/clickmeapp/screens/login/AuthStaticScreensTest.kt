@@ -6,9 +6,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.uptrendinvestments.clickmeapp.screens.login.passwordchanged.PasswordChangedScreen
+import com.uptrendinvestments.clickmeapp.screens.signup.SignUpPlaceholderScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -20,11 +22,32 @@ import org.robolectric.RobolectricTestRunner
 private const val HEADLINE = "Password\nUpdated!"
 private const val BODY = "Your password has been successfully updated. You can now use your new password to log in."
 private const val ENTRANCE_DONE_MS = 1_500L
+private const val SIGN_UP_BODY =
+    "Account creation isn't available in this version yet. You can log in if you already have an account."
 
 @RunWith(RobolectricTestRunner::class)
 class AuthStaticScreensTest {
     @get:Rule
     val rule = createComposeRule()
+
+    @Test
+    fun signUpPlaceholder_rendersTitleHeadingBodyAndAction() {
+        rule.setContent { ClickMeTheme { SignUpPlaceholderScreen(onBack = {}) } }
+        rule.onNodeWithText("Sign Up").assertIsDisplayed()
+        rule.onNodeWithText("Sign up is coming soon").assertIsDisplayed()
+        rule.onNodeWithText(SIGN_UP_BODY).assertIsDisplayed()
+        rule.onNodeWithText("Back to Login").assertIsDisplayed()
+    }
+
+    @Test
+    fun signUpPlaceholder_backToLoginAndTopBarBack_eachCallOnBackOnce() {
+        var backs = 0
+        rule.setContent { ClickMeTheme { SignUpPlaceholderScreen(onBack = { backs++ }) } }
+        rule.onNodeWithText("Back to Login").performClick()
+        assertEquals(1, backs)
+        rule.onNodeWithContentDescription("Back").performClick()
+        assertEquals(2, backs)
+    }
 
     @Test
     fun passwordChanged_rendersHeadlineBodyAndButton() {
