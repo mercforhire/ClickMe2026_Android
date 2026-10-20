@@ -145,7 +145,7 @@ Plans:
   3. After login the socket connects. Events triggered from the iOS app (a message, typing, a booking update) appear in the `SharedFlow` logs. (PRD Week 2 checkpoint, part 2)
   4. After a token refresh or a network drop, the socket reconnects within about 2 seconds with the current token and keeps receiving events.
 
-**Plans:** 3/12 plans executed
+**Plans:** 9/12 plans executed
 Plans:
 **Wave 1**
 
@@ -155,12 +155,12 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-04-PLAN.md — Real Login screen and ViewModel: D-01..D-07 validation timing, inline/dialog error split, Forgot and Sign Up entries (AUTH-01)
-- [ ] 03-05-PLAN.md — Forgot Password ("Reset Password") screen and ViewModel with 600 ms Code Sent hold (AUTH-02)
-- [ ] 03-06-PLAN.md — Set New Password screen and ViewModel: code, strength meter, confirm, 400/422 mapping (AUTH-02)
-- [ ] 03-07-PLAN.md — Password Changed screen (one-shot entrance) and Sign Up coming-soon placeholder (AUTH-01, AUTH-02)
-- [ ] 03-08-PLAN.md — RealtimeService: forceNew socket per connection, auth {token}, 2 s reconnect, SharedFlow, MockWebServer protocol tests (RT-01, RT-03)
-- [ ] 03-09-PLAN.md — RealtimeConnectionManager + ProcessForeground: login/foreground/refresh policy, one /me probe per rejected token, capped retry (RT-01, RT-02)
+- [x] 03-04-PLAN.md — Real Login screen and ViewModel: D-01..D-07 validation timing, inline/dialog error split, Forgot and Sign Up entries (AUTH-01)
+- [x] 03-05-PLAN.md — Forgot Password ("Reset Password") screen and ViewModel with 600 ms Code Sent hold (AUTH-02)
+- [x] 03-06-PLAN.md — Set New Password screen and ViewModel: code, strength meter, confirm, 400/422 mapping (AUTH-02)
+- [x] 03-07-PLAN.md — Password Changed screen (one-shot entrance) and Sign Up coming-soon placeholder (AUTH-01, AUTH-02)
+- [x] 03-08-PLAN.md — RealtimeService: forceNew socket per connection, auth {token}, 2 s reconnect, SharedFlow, MockWebServer protocol tests (RT-01, RT-03)
+- [x] 03-09-PLAN.md — RealtimeConnectionManager + ProcessForeground: login/foreground/refresh policy, one /me probe per rejected token, capped retry (RT-01, RT-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -412,7 +412,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
-| 3. Login, Password Recovery & Realtime | 3/12 | In Progress|  |
+| 3. Login, Password Recovery & Realtime | 9/12 | In Progress|  |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
