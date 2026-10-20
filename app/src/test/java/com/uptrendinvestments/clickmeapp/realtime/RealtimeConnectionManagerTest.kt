@@ -8,8 +8,10 @@ import com.uptrendinvestments.clickmeapp.managers.SessionEvents
 import com.uptrendinvestments.clickmeapp.managers.SessionStore
 import com.uptrendinvestments.clickmeapp.managers.TokenPair
 import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
+import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeProcessForeground
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
@@ -27,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
 
 class RealtimeConnectionManagerTest {
     @get:Rule
@@ -75,7 +78,7 @@ class RealtimeConnectionManagerTest {
 
         init {
             api.loginHandler = { loginData() }
-            api.userProfileHandler = { throw java.io.IOException("not needed") }
+            api.userProfileHandler = { throw IOException("not needed") }
         }
 
         /** Starts the manager and logs in with token "access" (stubbed login). */
@@ -229,5 +232,259 @@ class RealtimeConnectionManagerTest {
             runCurrent()
 
             assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    // ---- Task 2: handshake rejection policy (D-15) ----
+
+    private val me = MeData(id = "u1", email = "a@b.co", roles = listOf("client"))
+
+    private fun failure(
+        reason: HandshakeFailureReason,
+        token: String = "access",
+    ) = HandshakeFailure(reason, token)
+
+    private suspend fun TestScope.advanceBy(ms: Long) {
+        advanceTimeBy(ms)
+        runCurrent()
+    }
+
+    @Test
+    fun missingTokenDisconnectsWithoutProbeOrRetry() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            val before = h.connection.disconnectCalls
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.MissingToken))
+            runCurrent()
+            advanceBy(60_000)
+
+            assertEquals(before + 1, h.connection.disconnectCalls)
+            assertEquals(0, h.api.meCalls)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun invalidTokenProbesOnceThenRetriesAfterTwoSeconds() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = { me }
+            h.startAndLogin()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            assertEquals(1, h.api.meCalls)
+            advanceBy(1_900)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+            advanceBy(200)
+            assertEquals(listOf("access", "access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun repeatedRejectionOfSameTokenNeverProbesAgainAndBacksOffToCap() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = { me }
+            h.startAndLogin()
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            advanceBy(2_001)
+            var connects = h.connection.connectCalls.size
+
+            for (delayMs in listOf(4_000L, 8_000L, 16_000L, 30_000L, 30_000L)) {
+                h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+                runCurrent()
+                advanceBy(delayMs - 1)
+                assertEquals("no connect before $delayMs", connects, h.connection.connectCalls.size)
+                advanceBy(2)
+                connects++
+                assertEquals("connect at $delayMs", connects, h.connection.connectCalls.size)
+            }
+            assertEquals(1, h.api.meCalls)
+        }
+
+    @Test
+    fun invalidTokenAlreadyRotatedReconnectsImmediatelyWithoutProbe() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            h.tokens.save(TokenPair("access-2", "refresh-2", 1_900_000_100L))
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken, token = "old"))
+            runCurrent()
+
+            assertEquals(listOf("access", "access-2"), h.connection.connectCalls)
+            assertEquals(0, h.api.meCalls)
+        }
+
+    @Test
+    fun probeThatRefreshesReconnectsWithNewTokenOnly() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = {
+                h.tokens.save(TokenPair("access-2", "refresh-2", 1_900_000_100L))
+                h.events.emit(SessionEvent.Refreshed)
+                me
+            }
+            h.startAndLogin()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            advanceBy(30_000)
+
+            assertEquals(1, h.api.meCalls)
+            assertTrue(
+                h.connection.connectCalls
+                    .drop(1)
+                    .all { it == "access-2" },
+            )
+            assertEquals("access-2", h.connection.connectCalls.last())
+        }
+
+    @Test
+    fun probeWithRejectedRefreshLogsOutAndDisconnects() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = {
+                h.tokens.clear()
+                h.events.emit(SessionEvent.Rejected)
+                throw h.api.httpError(401, """{"code":"TOKEN_EXPIRED"}""")
+            }
+            h.startAndLogin()
+            val before = h.connection.disconnectCalls
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            advanceBy(60_000)
+
+            assertFalse(h.userManager.isLoggedIn.value)
+            assertTrue(h.connection.disconnectCalls > before)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun accountSuspendedProbeTripsSuspensionAndDisconnects() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = {
+                h.tokens.clear()
+                h.events.emit(SessionEvent.Suspended)
+                throw h.api.httpError(403, """{"code":"${ErrorCode.AccountSuspended.wire}"}""")
+            }
+            h.startAndLogin()
+            val before = h.connection.disconnectCalls
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.AccountSuspended))
+            runCurrent()
+            advanceBy(60_000)
+
+            assertEquals(1, h.api.meCalls)
+            assertTrue(h.userManager.wasSuspended.value)
+            assertFalse(h.userManager.isLoggedIn.value)
+            assertTrue(h.connection.disconnectCalls > before)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun softProbeFailureRetriesWithSameToken() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = { throw IOException("offline") }
+            h.startAndLogin()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            assertEquals(1, h.api.meCalls)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+            advanceBy(2_001)
+
+            assertEquals(listOf("access", "access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun serverDisconnectedRetriesWithoutProbe() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.ServerDisconnected))
+            runCurrent()
+            advanceBy(1_900)
+            assertEquals(1, h.connection.connectCalls.size)
+            advanceBy(200)
+
+            assertEquals(2, h.connection.connectCalls.size)
+            assertEquals(0, h.api.meCalls)
+        }
+
+    @Test
+    fun otherFailureRetriesWithoutProbe() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.Other))
+            runCurrent()
+            advanceBy(2_001)
+
+            assertEquals(2, h.connection.connectCalls.size)
+            assertEquals(0, h.api.meCalls)
+        }
+
+    @Test
+    fun connectedStateResetsBackoff() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            h.connection.emitFailure(failure(HandshakeFailureReason.ServerDisconnected))
+            runCurrent()
+            advanceBy(2_001)
+            h.connection.emitFailure(failure(HandshakeFailureReason.ServerDisconnected))
+            runCurrent()
+            advanceBy(4_001)
+            assertEquals(3, h.connection.connectCalls.size)
+
+            h.connection.setState(ConnectionState.Connected)
+            runCurrent()
+            h.connection.emitFailure(failure(HandshakeFailureReason.ServerDisconnected))
+            runCurrent()
+            advanceBy(2_001)
+
+            assertEquals(4, h.connection.connectCalls.size)
+        }
+
+    @Test
+    fun backgroundCancelsPendingRetry() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            h.connection.emitFailure(failure(HandshakeFailureReason.ServerDisconnected))
+            runCurrent()
+
+            h.foreground.isForeground.value = false
+            runCurrent()
+            advanceBy(60_000)
+
+            assertEquals(1, h.connection.connectCalls.size)
+        }
+
+    @Test
+    fun logoutAndFreshLoginWithSameTokenProbesAgain() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = { me }
+            h.startAndLogin()
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            assertEquals(1, h.api.meCalls)
+
+            h.userManager.logout()
+            runCurrent()
+            h.userManager.login("a@b.co", "pw")
+            runCurrent()
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+
+            assertEquals(2, h.api.meCalls)
         }
 }
