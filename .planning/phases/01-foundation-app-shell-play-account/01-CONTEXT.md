@@ -61,10 +61,11 @@ Not in scope:
 
 ### App identity & Play
 - **D-10:** The app's display name is **"ClickMe"**, the same as the iOS `CFBundleDisplayName`.
-- **D-11:** **Launcher icon derived from the iOS assets:**
-  - The adaptive icon uses the logo from `ios-reference/ClickMe2026/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` as the foreground on a solid background. The UI-SPEC/theme decides the background color.
-  - The themed (monochrome) icon comes from `AppIcon-1024-Tinted.png`.
+- **D-11:** **Launcher icon derived from the iOS assets** (revised 2026-10-19 after research — `AppIcon-1024.png` has its background baked in and `AppIcon-1024-Tinted.png` is solid white, so neither is usable):
+  - The adaptive icon foreground AND the themed (monochrome) layer are both built from the transparent mark in `ios-reference/ClickMe2026/Assets.xcassets/SplashLogo.imageset`, on a solid background. The UI-SPEC/theme decides the background color.
   - The splash mark comes from `SplashLogo.imageset` (per UI-SPEC: mark only, on `#131313`).
+- **D-14:** **Kotlin 2.4.21 + KSP 2.3.12** (user-approved 2026-10-19). Kotlin 2.2.10 from the template fails to build against current Hilt/OkHttp/Retrofit/coroutines (they pull kotlin-stdlib 2.4.x). This supersedes the "Kotlin 2.2" wording in Claude's Discretion below.
+- **D-15:** Navigation 3 (D-01) supersedes the Navigation Compose 2 *mechanism* wording in the UI-SPEC and FND-01; the UI-SPEC's tab *behavior* rules (per-tab stacks, back-to-home, re-tap-to-root) still apply.
 - **D-12:** **The corporation already has a D-U-N-S number** (REL-01 is effectively satisfied once it's confirmed).
 - **D-13:** **The user does the Play Console steps personally.** The plan must include an exact, ordered checklist for:
   - Creating the org account with the D-U-N-S number
