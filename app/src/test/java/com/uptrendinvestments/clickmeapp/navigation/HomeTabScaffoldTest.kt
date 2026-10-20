@@ -38,12 +38,13 @@ class HomeTabScaffoldTest {
 
     private var navigator: Navigator? = null
 
-    private fun entry(key: NavKey): NavEntry<NavKey> = NavEntry(
-        key = key,
-        metadata = if (key == HiddenBarScreen) BottomBar.hidden() else emptyMap(),
-    ) {
-        Text("screen:$key")
-    }
+    private fun entry(key: NavKey): NavEntry<NavKey> =
+        NavEntry(
+            key = key,
+            metadata = if (key == HiddenBarScreen) BottomBar.hidden() else emptyMap(),
+        ) {
+            Text("screen:$key")
+        }
 
     private fun setClientContent() {
         composeRule.setContent {
