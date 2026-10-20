@@ -28,15 +28,17 @@ private data object B : NavKey
 
 class NavigatorTest {
     private fun newNavigator(): Navigator {
-        val state = NavigationState(
-            startRoute = Explore,
-            topLevelRoute = mutableStateOf<NavKey>(Explore),
-            backStacks = mapOf(
-                Explore to NavBackStack<NavKey>(Explore),
-                Bookings to NavBackStack<NavKey>(Bookings),
-                Chats to NavBackStack<NavKey>(Chats),
-            ),
-        )
+        val state =
+            NavigationState(
+                startRoute = Explore,
+                topLevelRoute = mutableStateOf<NavKey>(Explore),
+                backStacks =
+                    mapOf(
+                        Explore to NavBackStack<NavKey>(Explore),
+                        Bookings to NavBackStack<NavKey>(Bookings),
+                        Chats to NavBackStack<NavKey>(Chats),
+                    ),
+            )
         return Navigator(state)
     }
 
