@@ -345,7 +345,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 9/9 | Complete   | 2026-10-20 |
+| 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |

@@ -4,6 +4,7 @@
 **Core Value:** The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. Android users can sign up, book and pay, accept requests, hold the voice session, chat and get paid, and they interoperate fully with the finished iOS app on the same backend.
 
 **Sources:**
+
 - `docs/PORT_ROADMAP.md` (PRD). The requirements below break the PRD's 37 week-level items into atomic, testable requirements. Each category names the PRD items it comes from.
 - `CLAUDE.md` (locked ADR), which constrains every requirement. See PROJECT.md Key Decisions.
 
@@ -17,18 +18,18 @@ Requirements for the v1.0 MVP. Each maps to exactly one roadmap phase.
 
 From the PRD's Week 1 items: project scaffolding, networking core, session/UserManager, design system, app shell, SDK spikes.
 
-- [ ] **FND-01**: The project builds with Hilt, Retrofit + Moshi, OkHttp, coroutines, Coil and Navigation Compose. The dev and prod flavors both point at the production backend (`https://clickme-backend-production.up.railway.app/api/v1`). The Stripe publishable key and Agora App ID come from build config.
-- [ ] **FND-02**: Lint and a baseline CI pipeline run on every push.
+- [x] **FND-01**: The project builds with Hilt, Retrofit + Moshi, OkHttp, coroutines, Coil and Navigation Compose. The dev and prod flavors both point at the production backend (`https://clickme-backend-production.up.railway.app/api/v1`). The Stripe publishable key and Agora App ID come from build config.
+- [x] **FND-02**: Lint and a baseline CI pipeline run on every push.
 - [ ] **FND-03**: The networking layer decodes snake_case JSON, ISO-8601 dates with microseconds, `{data: …}` response wrappers and page-based `PaginationMeta`.
 - [ ] **FND-04**: API errors in the `{status, code?, message}` envelope, the `errors[]` shape or the status-only shape are parsed into an `ErrorCode` enum of about 65 codes. Unknown codes map to null.
 - [ ] **FND-05**: Only authed paths carry the access token (port of `needAuthToken`). On expiry, a single-flight refresh runs (an OkHttp `Authenticator` guarded by a Mutex, so a refresh token is never reused), the request is retried once, and a failed refresh logs the user out.
 - [ ] **FND-06**: Any `403 ACCOUNT_SUSPENDED` response logs the user out and shows an explanatory message.
 - [ ] **FND-07**: Tokens persist in EncryptedSharedPreferences. The cached profile, `currentMode` and `hasSeenOnboarding` persist in DataStore. A returning user is auto-logged in on launch.
 - [ ] **FND-08**: User can log out. Logout clears the tokens, the cached profile and the onboarding flag.
-- [ ] **FND-09**: The app uses a dark Material 3 color scheme (surface `#131313`, primary `#44f697`, primary container `#00d97e`, etc.) with a bundled rounded font (e.g. Nunito). The ~40 per-screen iOS `*Brand.swift` color sets are merged into this theme, not copied.
-- [ ] **FND-10**: Screens can use these shared components: press-scale button, async save button, validated text field, avatar, glow background, Custom Tab launcher.
-- [ ] **FND-11**: The app starts with the Android 12+ SplashScreen API (no fixed 3-second delay) and routes through `AppRoute`: splash → login | signupSetup | clientHome | expertHome.
-- [ ] **FND-12**: Client mode has a 5-tab scaffold (Explore, Search placeholder, Bookings, Chats, Profile). Expert mode has a 5-tab scaffold (Dashboard, Bookings, Topics, Chats, Profile). Each tab keeps its own saved back stack.
+- [x] **FND-09**: The app uses a dark Material 3 color scheme (surface `#131313`, primary `#44f697`, primary container `#00d97e`, etc.) with a bundled rounded font (e.g. Nunito). The ~40 per-screen iOS `*Brand.swift` color sets are merged into this theme, not copied.
+- [x] **FND-10**: Screens can use these shared components: press-scale button, async save button, validated text field, avatar, glow background, Custom Tab launcher.
+- [x] **FND-11**: The app starts with the Android 12+ SplashScreen API (no fixed 3-second delay) and routes through `AppRoute`: splash → login | signupSetup | clientHome | expertHome.
+- [x] **FND-12**: Client mode has a 5-tab scaffold (Explore, Search placeholder, Bookings, Chats, Profile). Expert mode has a 5-tab scaffold (Dashboard, Bookings, Topics, Chats, Profile). Each tab keeps its own saved back stack.
 - [ ] **FND-13**: A throwaway spike app adds a card with Stripe PaymentSheet in SetupIntent mode and completes a `PaymentLauncher` 3DS challenge on a connected account.
 - [ ] **FND-14**: A throwaway spike app joins an Agora audio channel from inside a `microphone`-type foreground service, and audio keeps running while the app is in the background.
 
@@ -199,8 +200,8 @@ From the PRD's Week 8 QA and cross-platform matrix.
 
 From the PRD's Play Store account (Week 1), Start internal testing (Week 6), and Play Console submission and production release (Week 8).
 
-- [ ] **REL-01**: The corporation's D-U-N-S number is confirmed, or a new one is requested.
-- [ ] **REL-02**: A Play Console organization developer account is created under the corporation and submitted for Google's organization verification.
+- [x] **REL-01**: The corporation's D-U-N-S number is confirmed, or a new one is requested.
+- [x] **REL-02**: A Play Console organization developer account is created under the corporation and submitted for Google's organization verification.
 - [ ] **REL-03**: The package `com.uptrendinvestments.clickmeapp` is registered in Play Console by uploading a first signed internal build as soon as org verification allows.
 - [ ] **REL-04**: The store listing, data safety form and foreground-service (microphone) declaration are drafted in Play Console ahead of release, so policy review isn't on the critical path.
 - [ ] **REL-05**: A build is on the internal testing track with a few real users on a mix of devices.
@@ -253,18 +254,18 @@ Which phase covers each requirement. Filled in during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 1 | Pending |
-| FND-02 | Phase 1 | Pending |
+| FND-01 | Phase 1 | Complete |
+| FND-02 | Phase 1 | Complete |
 | FND-03 | Phase 2 | Pending |
 | FND-04 | Phase 2 | Pending |
 | FND-05 | Phase 2 | Pending |
 | FND-06 | Phase 2 | Pending |
 | FND-07 | Phase 2 | Pending |
 | FND-08 | Phase 2 | Pending |
-| FND-09 | Phase 1 | Pending |
-| FND-10 | Phase 1 | Pending |
-| FND-11 | Phase 1 | Pending |
-| FND-12 | Phase 1 | Pending |
+| FND-09 | Phase 1 | Complete |
+| FND-10 | Phase 1 | Complete |
+| FND-11 | Phase 1 | Complete |
+| FND-12 | Phase 1 | Complete |
 | FND-13 | Phase 2 | Pending |
 | FND-14 | Phase 2 | Pending |
 | AUTH-01 | Phase 3 | Pending |
@@ -345,8 +346,8 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | QA-01 | Phase 16 | Pending |
 | QA-02 | Phase 16 | Pending |
 | QA-03 | Phase 16 | Pending |
-| REL-01 | Phase 1 | Pending |
-| REL-02 | Phase 1 | Pending |
+| REL-01 | Phase 1 | Complete |
+| REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 2 | Pending |
 | REL-04 | Phase 13 | Pending |
 | REL-05 | Phase 13 | Pending |
@@ -354,6 +355,7 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | REL-07 | Phase 17 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 99 total
 - Mapped to phases: 99
 - Unmapped: 0
