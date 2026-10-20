@@ -87,7 +87,10 @@ class TokenAuthenticatorTest {
                             refreshResponse()
                         }
                         path.endsWith("/auth/login") ->
-                            json(401, """{"status":"error","code":"INVALID_CREDENTIALS","message":"Bad credentials."}""")
+                            json(
+                                401,
+                                """{"status":"error","code":"INVALID_CREDENTIALS","message":"Bad credentials."}""",
+                            )
                         path.endsWith("/user/account") ->
                             if (bearer == "Bearer new") {
                                 json(401, """{"status":"error","message":"Invalid password."}""")
