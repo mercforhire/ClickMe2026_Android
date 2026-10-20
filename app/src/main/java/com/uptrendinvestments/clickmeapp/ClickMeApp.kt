@@ -9,9 +9,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uptrendinvestments.clickmeapp.navigation.AuthNavHost
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertScreen
-import com.uptrendinvestments.clickmeapp.screens.login.LoginScreen
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
 import com.uptrendinvestments.clickmeapp.screens.signup.SignupSetupPlaceholder
@@ -32,13 +32,7 @@ fun ClickMeApp(
         // The OS splash covers Splash.
         AppRoute.Splash -> EmptySurface(modifier)
 
-        // Plan 03-10 replaces this branch with AuthNavHost (Forgot Password and Sign Up navigation).
-        AppRoute.Login ->
-            LoginScreen(
-                onLoggedIn = appViewModel::onLoggedIn,
-                onForgotPassword = {},
-                onSignUp = {},
-            )
+        AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 
         // Placeholder until Phase 4 builds the signup flow (D-05).
         AppRoute.SignupSetup -> SignupSetupPlaceholder(onLogout = appViewModel::logout)
