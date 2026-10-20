@@ -90,7 +90,7 @@ Plans:
   5. A signed release bundle of `com.uptrendinvestments.clickmeapp` builds. If org verification has cleared, the bundle is uploaded to the internal track, which registers the package name. If not, the upload is logged as an open blocker in STATE.md.
 
 **Planning notes:** Port only the API groups this phase needs (auth, `/me`). Other groups come with their features. Token storage is locked to EncryptedSharedPreferences, which is deprecated upstream; keep it.
-**Plans:** 5/16 plans executed
+**Plans:** 8/16 plans executed
 Plans:
 **Wave 1**
 
@@ -105,9 +105,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-06-PLAN.md — SecureTokenStore/EncryptedSharedPreferences, SessionEvents, bearer interceptor, ACCOUNT_SUSPENDED trap, single-flight TokenAuthenticator (FND-05, FND-06)
-- [ ] 02-07-PLAN.md — Retrofit ClickMeApi (auth, /me, /user/profile, expert lookups), DataStore SessionStore, session Hilt module (FND-03, FND-07)
-- [ ] 02-08-PLAN.md — Agora spike: microphone foreground service + join via POST /bookings/:id/join (FND-14 code)
+- [x] 02-06-PLAN.md — SecureTokenStore/EncryptedSharedPreferences, SessionEvents, bearer interceptor, ACCOUNT_SUSPENDED trap, single-flight TokenAuthenticator (FND-05, FND-06)
+- [x] 02-07-PLAN.md — Retrofit ClickMeApi (auth, /me, /user/profile, expert lookups), DataStore SessionStore, session Hilt module (FND-03, FND-07)
+- [x] 02-08-PLAN.md — Agora spike: microphone foreground service + join via POST /bookings/:id/join (FND-14 code)
 - [ ] 02-09-PLAN.md — Stripe spike device run with the user and Phase 7 findings (FND-13, user checkpoint)
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -386,7 +386,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
-| 2. Networking, Session & SDK Spikes | 5/16 | In Progress|  |
+| 2. Networking, Session & SDK Spikes | 8/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
