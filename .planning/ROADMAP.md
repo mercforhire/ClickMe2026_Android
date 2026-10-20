@@ -90,11 +90,11 @@ Plans:
   5. A signed release bundle of `com.uptrendinvestments.clickmeapp` builds. If org verification has cleared, the bundle is uploaded to the internal track, which registers the package name. If not, the upload is logged as an open blocker in STATE.md.
 
 **Planning notes:** Port only the API groups this phase needs (auth, `/me`). Other groups come with their features. Token storage is locked to EncryptedSharedPreferences, which is deprecated upstream; keep it.
-**Plans:** 16 plans
+**Plans:** 1/16 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Package legitimacy gate, :app dependencies (Moshi codegen, DataStore, security-crypto, MockWebServer), INTERNET permission, versionName 0.1.0, spike inputs checkpoint (Wave 1, user checkpoints)
+- [x] 02-01-PLAN.md — Package legitimacy gate, :app dependencies (Moshi codegen, DataStore, security-crypto, MockWebServer), INTERNET permission, versionName 0.1.0, spike inputs checkpoint (Wave 1, user checkpoints)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -386,7 +386,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
-| 2. Networking, Session & SDK Spikes | 0/16 | Planned | - |
+| 2. Networking, Session & SDK Spikes | 1/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |

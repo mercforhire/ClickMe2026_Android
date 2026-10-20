@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-10-20T18:26:20.042Z"
-last_activity: 2026-10-20 -- Phase 2 planning complete
+last_updated: "2026-10-20T18:54:41.512Z"
+last_activity: 2026-10-20 -- Phase 2 execution started
 progress:
   total_phases: 17
   completed_phases: 1
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 25
+  completed_plans: 10
   percent: 6
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 1 — foundation-app-shell-play-account
+**Current focus:** Phase 2 — Networking, Session & SDK Spikes
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 2 (Networking, Session & SDK Spikes) — EXECUTING
+Plan: 2 of 16
 Status: Ready to execute
-Last activity: 2026-10-20 -- Phase 2 planning complete
+Last activity: 2026-10-20 -- Phase 2 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -78,6 +78,7 @@ Recent decisions affecting current work:
 - [Phase 8]: OPEN ITEM. Decide whether Android collects and sends the cancellation comment; iOS collects it but never sends it. Check the `cancelClientBooking` contract during Phase 8 planning.
 - [Phase 2]: EncryptedSharedPreferences is deprecated upstream. The decision is locked and stands. Revisit on purpose, not by accident.
 - Schedule risks to watch: Make a Booking + Stripe (Phases 6–7), call service and overlay (Phase 9), push deep links into per-tab back stacks (Phase 13). If the schedule slips, cut in this order: payouts down to the onboarding link only, then the notifications list, then Write Review.
+- Spike inputs file (~/.clickme/spike-inputs.properties) deferred — needed before 02-09 and 02-12; manual testing deferred by user
 
 ## Deferred Items
 
@@ -89,6 +90,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-20T16:17:09.631Z
+Last session: 2026-10-20T18:54:28.417Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-networking-session-sdk-spikes/02-CONTEXT.md
