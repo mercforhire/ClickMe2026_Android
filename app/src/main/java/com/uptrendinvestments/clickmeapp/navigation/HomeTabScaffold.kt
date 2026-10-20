@@ -4,8 +4,6 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
@@ -19,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -36,14 +33,6 @@ object BottomBar {
 private fun fadeThrough(): ContentTransform =
     fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
         fadeOut(tween(Motion.TAB_FADE_OUT_MS))
-
-private fun slide(forward: Boolean): ContentTransform {
-    val spec = tween<Float>(Motion.PUSH_POP_DURATION_MS, easing = Motion.pushPopEasing)
-    val offsetSpec = tween<IntOffset>(Motion.PUSH_POP_DURATION_MS, easing = Motion.pushPopEasing)
-    val direction = if (forward) 1 else -1
-    return (slideInHorizontally(offsetSpec) { it * direction } + fadeIn(spec)) togetherWith
-        (slideOutHorizontally(offsetSpec) { -it * direction } + fadeOut(spec))
-}
 
 /**
  * Shared tab shell for the client and expert homes: a NavigationBar over a NavDisplay that renders
@@ -110,19 +99,19 @@ fun HomeTabScaffold(
             transitionSpec = {
                 when (navigationState.lastTransition) {
                     NavTransition.TabSwitch -> fadeThrough()
-                    else -> slide(forward = true)
+                    else -> slideTransition(forward = true)
                 }
             },
             popTransitionSpec = {
                 when (navigationState.lastTransition) {
                     NavTransition.TabSwitch -> fadeThrough()
-                    else -> slide(forward = false)
+                    else -> slideTransition(forward = false)
                 }
             },
             predictivePopTransitionSpec = {
                 when (navigationState.lastTransition) {
                     NavTransition.TabSwitch -> fadeThrough()
-                    else -> slide(forward = false)
+                    else -> slideTransition(forward = false)
                 }
             },
         )

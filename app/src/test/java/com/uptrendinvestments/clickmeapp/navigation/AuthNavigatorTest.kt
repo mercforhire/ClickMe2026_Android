@@ -18,7 +18,10 @@ class AuthNavigatorTest {
         return AuthNavigator(Navigator(state))
     }
 
-    private fun AuthNavigator.stack(): List<NavKey> = navigator.state.backStacks.getValue(LoginKey).toList()
+    private fun AuthNavigator.stack(): List<NavKey> {
+        val loginStack = navigator.state.backStacks.getValue(LoginKey)
+        return loginStack.toList()
+    }
 
     @Test
     fun openForgotPasswordPushesKeyCarryingEmail() {
