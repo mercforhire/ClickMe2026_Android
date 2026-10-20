@@ -678,20 +678,25 @@ object RealtimeDebugLogger {
 | A8 | Password fields should survive configuration change via the ViewModel but not be written to saved instance state (process death clears them; code and email survive via NavKey/saved state). UI-SPEC says "Field text survives via rememberSaveable / saved state". | Open Question 3 | If the user wants literal saved-state persistence of passwords, remove the exclusion; the security cost is plaintext passwords in the saved-state Bundle. |
 | A9 | Retry back-off values for a repeated same-token `INVALID_TOKEN` (2 s doubling to 30 s) and the `GET /me` probe are the discretionary details of D-15. | Pattern 3 | None functionally; tune freely. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **D-15 wording versus the code.**
    - What we know: `TokenRefresher` is a plain blocking HTTP call; the mutex, "token already rotated" check and single-flight are in `TokenAuthenticator`.
    - What's unclear: whether the user meant "reuse the refresh machinery" (what this research does) or literally `TokenRefresher`.
    - Recommendation: implement as "authenticated `GET /me` probe". If the user prefers a dedicated method, add `suspend fun refreshIfStale(rejectedToken)` to the authenticator package rather than calling `TokenRefresher` directly. Flag in the plan summary.
+   - **RESOLVED (orchestrator, 2026-10-20):** one authenticated `GET /me` probe per rejected token; never call `TokenRefresher` directly (plan 03-09).
 
 2. **`call.ended` payload.** CONTEXT D-17 lists only `{bookingId}` (iOS), but the server sends `{booking_id, end_reason}`. Recommend an optional `endReason: String?` on `CallEnded` (Phase 9 may use it).
+   - **RESOLVED:** optional `endReason` on `CallEnded` (plan 03-03).
 
 3. **Persisting passwords in saved state.** See A8. Recommend the ViewModel-only approach; confirm or override.
+   - **RESOLVED:** passwords are ViewModel-only (plans 03-04..03-06).
 
 4. **Where does the connection manager start?** Recommendation is `Application.onCreate`. Note FCM-triggered process starts (Phase 13) will also run it, but with the process not STARTED the `desired` flag stays false, so nothing connects.
+   - **RESOLVED:** `Application.onCreate` (plan 03-11).
 
 5. **iOS `rescheduled` status.** The contract lists `rescheduled` and the iOS `BookingStatus` enum has no such case, so iOS drops that event today. Android keeps raw strings so it is not dropped; confirm with the iOS side whether that is a bug there (add to the iOS-issues todo list).
+   - **RESOLVED:** Android keeps raw status strings; iOS gap added to the iOS-issues todo (plan 03-12).
 
 ## Environment Availability
 
