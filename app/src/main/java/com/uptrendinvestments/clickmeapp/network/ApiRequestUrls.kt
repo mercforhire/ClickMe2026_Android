@@ -8,6 +8,8 @@ package com.uptrendinvestments.clickmeapp.network
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
     const val REFRESH = "auth/refresh"
+    const val FORGOT_PASSWORD = "auth/password/forgot"
+    const val RESET_PASSWORD = "auth/password/reset"
     const val ME = "me"
     const val USER_PROFILE = "user/profile"
     const val EXPERT_PROFILE = "expert/profile"
