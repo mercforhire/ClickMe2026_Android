@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation, App Shell & Play Account** - Scaffolding, Material 3 theme, splash and two 5-tab scaffolds; D-U-N-S and Play org account started (Week 1) (completed 2026-10-20)
 - [ ] **Phase 2: Networking, Session & SDK Spikes** - Networking core, single-flight token refresh, session storage, Stripe and Agora spikes (Week 1)
-- [ ] **Phase 3: Login, Password Recovery & Realtime** - Real login, OTP password reset, authenticated socket with event SharedFlow (Week 2)
+- [x] **Phase 3: Login, Password Recovery & Realtime** - Real login, OTP password reset, authenticated socket with event SharedFlow (Week 2) (completed 2026-10-20)
 - [ ] **Phase 4: Signup, Onboarding & Mode Switch** - Signup Initial → Overview hub → Review/Publish, resume, onboarding carousel, mode switch (Week 2)
 - [ ] **Phase 5: Explore & Expert Profile** - Client Explore home with category cache and the Expert Profile screen (Week 3)
 - [ ] **Phase 6: Booking Flow & Free Bookings** - Topic/calendar/slot picker with timezone regrouping, free booking, Request Sent (Week 3)
@@ -145,7 +145,7 @@ Plans:
   3. After login the socket connects. Events triggered from the iOS app (a message, typing, a booking update) appear in the `SharedFlow` logs. (PRD Week 2 checkpoint, part 2)
   4. After a token refresh or a network drop, the socket reconnects within about 2 seconds with the current token and keeps receiving events.
 
-**Plans:** 11/12 plans executed
+**Plans:** 12/12 plans complete
 Plans:
 **Wave 1**
 
@@ -169,7 +169,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03-12-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred non-blocking device checklist in STATE.md (all)
+- [x] 03-12-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred non-blocking device checklist in STATE.md (all)
 
 **UI hint**: yes
 
@@ -412,7 +412,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
-| 3. Login, Password Recovery & Realtime | 11/12 | In Progress|  |
+| 3. Login, Password Recovery & Realtime | 12/12 | Complete   | 2026-10-20 |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |

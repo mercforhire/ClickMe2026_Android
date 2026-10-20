@@ -37,8 +37,8 @@ From the PRD's Week 1 items: project scaffolding, networking core, session/UserM
 
 From the PRD's login flow (Week 2).
 
-- [ ] **AUTH-01**: User can log in with email and password and lands in the right destination for their account state and mode.
-- [ ] **AUTH-02**: A user who forgot their password can request an OTP, verify it, set a new password, see the password-changed confirmation, and log in with the new password.
+- [x] **AUTH-01**: User can log in with email and password and lands in the right destination for their account state and mode.
+- [x] **AUTH-02**: A user who forgot their password can request an OTP, verify it, set a new password, see the password-changed confirmation, and log in with the new password.
 
 ### Signup
 
@@ -61,9 +61,9 @@ From the PRD's onboarding and mode switch (Week 2).
 
 From the PRD's realtime service (Week 2; iOS `Realtime/RealtimeService.swift`). Infrastructure only.
 
-- [ ] **RT-01**: While logged in, the app holds a socket.io connection (socket.io-client-java v2+, websocket transport) authenticated with the JWT in `auth: {token}`, and it reconnects every 2 seconds when the connection drops.
+- [x] **RT-01**: While logged in, the app holds a socket.io connection (socket.io-client-java v2+, websocket transport) authenticated with the JWT in `auth: {token}`, and it reconnects every 2 seconds when the connection drops.
 - [x] **RT-02**: After each token refresh, the socket reconnects with the new token.
-- [ ] **RT-03**: The `message.*`, `typing.*`, `user.status`, `booking.update` and `call.ended` events are exposed to the app as a `SharedFlow`.
+- [x] **RT-03**: The `message.*`, `typing.*`, `user.status`, `booking.update` and `call.ended` events are exposed to the app as a `SharedFlow`.
 
 ### Discovery
 
@@ -268,8 +268,8 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | FND-12 | Phase 1 | Complete |
 | FND-13 | Phase 2 | Pending |
 | FND-14 | Phase 2 | Pending |
-| AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 3 | Pending |
+| AUTH-01 | Phase 3 | Complete |
+| AUTH-02 | Phase 3 | Complete |
 | SIGN-01 | Phase 4 | Pending |
 | SIGN-02 | Phase 4 | Pending |
 | SIGN-03 | Phase 4 | Pending |
@@ -277,9 +277,9 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | SIGN-05 | Phase 4 | Pending |
 | ONB-01 | Phase 4 | Pending |
 | ONB-02 | Phase 4 | Pending |
-| RT-01 | Phase 3 | Pending |
+| RT-01 | Phase 3 | Complete |
 | RT-02 | Phase 3 | Complete |
-| RT-03 | Phase 3 | Pending |
+| RT-03 | Phase 3 | Complete |
 | DISC-01 | Phase 5 | Pending |
 | DISC-02 | Phase 5 | Pending |
 | DISC-03 | Phase 5 | Pending |
