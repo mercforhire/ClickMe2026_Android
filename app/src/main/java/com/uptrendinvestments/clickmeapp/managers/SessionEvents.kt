@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 /** Session-level happenings raised by the transport layer. */
 sealed interface SessionEvent {
-    /** A refresh succeeded; Phase 3's socket reconnects with the new token. */
+    /** A refresh succeeded; RealtimeConnectionManager reconnects the socket with the new token (RT-02). */
     data object Refreshed : SessionEvent
 
     /** The server rejected the session (refresh refused, or a token-coded 401 after a refresh). */
