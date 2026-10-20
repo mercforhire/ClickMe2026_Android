@@ -43,10 +43,19 @@ class ApiRequestUrlsTest {
     fun pathConstants_areRelative() {
         assertEquals("auth/login", ApiRequestUrls.LOGIN)
         assertEquals("auth/refresh", ApiRequestUrls.REFRESH)
+        assertEquals("auth/password/forgot", ApiRequestUrls.FORGOT_PASSWORD)
+        assertEquals("auth/password/reset", ApiRequestUrls.RESET_PASSWORD)
         assertEquals("me", ApiRequestUrls.ME)
         assertEquals("user/profile", ApiRequestUrls.USER_PROFILE)
         assertEquals("expert/profile", ApiRequestUrls.EXPERT_PROFILE)
         assertEquals("expert/topics", ApiRequestUrls.EXPERT_TOPICS)
+    }
+
+    @Test
+    fun recoveryConstants_arePublic() {
+        listOf(ApiRequestUrls.FORGOT_PASSWORD, ApiRequestUrls.RESET_PASSWORD).forEach { constant ->
+            assertFalse(constant, ApiRequestUrls.needAuthToken("/api/v1/$constant"))
+        }
     }
 
     @Test
