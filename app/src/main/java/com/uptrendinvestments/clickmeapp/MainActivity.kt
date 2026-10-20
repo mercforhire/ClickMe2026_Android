@@ -7,8 +7,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 /** Single activity: splash hold, edge-to-edge, and the [ClickMeApp] route switch. */
 @AndroidEntryPoint
@@ -28,6 +32,10 @@ class MainActivity : ComponentActivity() {
             ClickMeTheme {
                 ClickMeApp(appViewModel)
             }
+        }
+        // Each return to the foreground retries /me if the launch took the cached path (D-01).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) { appViewModel.onAppForegrounded() }
         }
     }
 }
