@@ -3,8 +3,15 @@ package com.uptrendinvestments.clickmeapp.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontListFontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.ResourceFont
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.uptrendinvestments.clickmeapp.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThemeTest {
@@ -83,6 +90,79 @@ class ThemeTest {
         assertEquals(32.dp, Spacing.xl)
         assertEquals(48.dp, Spacing.xxl)
         assertEquals(64.dp, Spacing.xxxl)
+    }
+
+    @Test
+    fun nunitoFamilyDeclaresRegularAndSemiBoldFromOneResource() {
+        val family = NunitoFamily as FontListFontFamily
+        assertEquals(listOf(FontWeight.Normal, FontWeight.SemiBold), family.fonts.map { it.weight })
+        assertEquals(listOf(R.font.nunito, R.font.nunito), family.fonts.map { (it as ResourceFont).resId })
+    }
+
+    @Test
+    fun everyTypographySlotUsesNunitoWithFourSizesAndTwoWeights() {
+        val allowedSizes = setOf(12.sp, 16.sp, 20.sp, 28.sp)
+        val allowedWeights = setOf(FontWeight.Normal, FontWeight.SemiBold)
+        val slots = typographySlots()
+        assertEquals(15, slots.size)
+        slots.forEach { (name, style) ->
+            assertEquals("$name family", NunitoFamily, style.fontFamily)
+            assertTrue("$name size ${style.fontSize}", style.fontSize in allowedSizes)
+            assertTrue("$name weight ${style.fontWeight}", style.fontWeight in allowedWeights)
+            assertEquals("$name letterSpacing", 0.sp, style.letterSpacing)
+        }
+    }
+
+    @Test
+    fun typographySlotsMatchUiSpecMapping() {
+        val t = ClickMeTypography
+        assertSlot(t.bodyLarge, 16, 24, FontWeight.Normal)
+        assertSlot(t.bodyMedium, 16, 24, FontWeight.Normal)
+        assertSlot(t.bodySmall, 12, 16, FontWeight.Normal)
+        assertSlot(t.labelLarge, 16, 24, FontWeight.SemiBold)
+        assertSlot(t.labelMedium, 12, 16, FontWeight.SemiBold)
+        assertSlot(t.labelSmall, 12, 16, FontWeight.Normal)
+        assertSlot(t.titleLarge, 20, 24, FontWeight.SemiBold)
+        assertSlot(t.titleMedium, 16, 24, FontWeight.SemiBold)
+        assertSlot(t.titleSmall, 16, 24, FontWeight.SemiBold)
+        assertSlot(t.headlineLarge, 28, 34, FontWeight.SemiBold)
+        assertSlot(t.headlineMedium, 20, 24, FontWeight.SemiBold)
+        assertSlot(t.headlineSmall, 20, 24, FontWeight.SemiBold)
+        assertSlot(t.displayLarge, 28, 34, FontWeight.SemiBold)
+        assertSlot(t.displayMedium, 28, 34, FontWeight.SemiBold)
+        assertSlot(t.displaySmall, 28, 34, FontWeight.SemiBold)
+    }
+
+    private fun assertSlot(
+        style: TextStyle,
+        size: Int,
+        lineHeight: Int,
+        weight: FontWeight,
+    ) {
+        assertEquals(size.sp, style.fontSize)
+        assertEquals(lineHeight.sp, style.lineHeight)
+        assertEquals(weight, style.fontWeight)
+    }
+
+    private fun typographySlots(): List<Pair<String, TextStyle>> {
+        val t = ClickMeTypography
+        return listOf(
+            "displayLarge" to t.displayLarge,
+            "displayMedium" to t.displayMedium,
+            "displaySmall" to t.displaySmall,
+            "headlineLarge" to t.headlineLarge,
+            "headlineMedium" to t.headlineMedium,
+            "headlineSmall" to t.headlineSmall,
+            "titleLarge" to t.titleLarge,
+            "titleMedium" to t.titleMedium,
+            "titleSmall" to t.titleSmall,
+            "bodyLarge" to t.bodyLarge,
+            "bodyMedium" to t.bodyMedium,
+            "bodySmall" to t.bodySmall,
+            "labelLarge" to t.labelLarge,
+            "labelMedium" to t.labelMedium,
+            "labelSmall" to t.labelSmall,
+        )
     }
 
     @Test
