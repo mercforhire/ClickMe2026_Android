@@ -90,7 +90,7 @@ class UserManager
             when (event) {
                 SessionEvent.Rejected -> logout()
                 SessionEvent.Suspended -> handleAccountSuspended()
-                // Phase 3 reconnects the realtime socket with the new token.
+                // RealtimeConnectionManager reconnects the realtime socket with the new token (RT-02).
                 SessionEvent.Refreshed -> Unit
             }
         }
