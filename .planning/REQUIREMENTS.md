@@ -62,7 +62,7 @@ From the PRD's onboarding and mode switch (Week 2).
 From the PRD's realtime service (Week 2; iOS `Realtime/RealtimeService.swift`). Infrastructure only.
 
 - [ ] **RT-01**: While logged in, the app holds a socket.io connection (socket.io-client-java v2+, websocket transport) authenticated with the JWT in `auth: {token}`, and it reconnects every 2 seconds when the connection drops.
-- [ ] **RT-02**: After each token refresh, the socket reconnects with the new token.
+- [x] **RT-02**: After each token refresh, the socket reconnects with the new token.
 - [ ] **RT-03**: The `message.*`, `typing.*`, `user.status`, `booking.update` and `call.ended` events are exposed to the app as a `SharedFlow`.
 
 ### Discovery
@@ -278,7 +278,7 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | ONB-01 | Phase 4 | Pending |
 | ONB-02 | Phase 4 | Pending |
 | RT-01 | Phase 3 | Pending |
-| RT-02 | Phase 3 | Pending |
+| RT-02 | Phase 3 | Complete |
 | RT-03 | Phase 3 | Pending |
 | DISC-01 | Phase 5 | Pending |
 | DISC-02 | Phase 5 | Pending |
