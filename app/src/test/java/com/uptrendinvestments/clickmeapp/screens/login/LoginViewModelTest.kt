@@ -2,6 +2,8 @@
 
 package com.uptrendinvestments.clickmeapp.screens.login
 
+import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
@@ -48,6 +50,7 @@ class LoginViewModelTest {
 
     private inner class Harness(
         scope: TestScope,
+        handle: SavedStateHandle = SavedStateHandle(),
     ) {
         val api = FakeClickMeApi()
         val tokens = FakeSecureTokenStore(null)
@@ -62,7 +65,7 @@ class LoginViewModelTest {
                 scope.backgroundScope,
                 dispatcherRule.testDispatcher,
             )
-        val viewModel = LoginViewModel(manager)
+        val viewModel = LoginViewModel(manager, handle)
 
         init {
             // Background profile refresh after login is best-effort; fail it quietly.
@@ -71,24 +74,82 @@ class LoginViewModelTest {
 
         fun fill(
             email: String = "a@b.co",
-            password: String = "pw",
+            password: String = "password1",
         ) {
             viewModel.onEmailChange(email)
             viewModel.onPasswordChange(password)
         }
+
+        fun loginOk(vararg roles: String = arrayOf("client")) {
+            api.loginHandler = { loginData(*roles) }
+        }
+
+        fun wrongCredentials() {
+            api.loginHandler = {
+                throw api.httpError(401, """{"status":"error","message":"Invalid email or password"}""")
+            }
+        }
     }
 
     @Test
-    fun blankFieldsSetMissingFieldsAndMakeNoApiCall() =
+    fun typingInvalidEmailBeforeFirstSubmitShowsNoError() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
-            h.fill(email = "  ", password = "")
+
+            h.viewModel.onEmailChange("bad")
+            h.viewModel.onPasswordChange("x")
+
+            assertNull(h.viewModel.uiState.value.emailError)
+            assertNull(h.viewModel.uiState.value.passwordError)
+        }
+
+    @Test
+    fun emptySubmitSetsRequiredErrorsFocusesEmailAndMakesNoApiCall() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
 
             h.viewModel.submit()
             runCurrent()
 
-            assertEquals(LoginError.MissingFields, h.viewModel.uiState.value.error)
+            val state = h.viewModel.uiState.value
+            assertEquals(FieldError.Res(R.string.error_email_required), state.emailError)
+            assertEquals(FieldError.Res(R.string.error_password_required), state.passwordError)
+            assertTrue(state.didAttemptSubmit)
+            assertEquals(LoginField.Email, h.viewModel.focusRequest.value)
             assertEquals(0, h.api.loginCalls)
+            h.viewModel.onFocusRequestConsumed()
+            assertNull(h.viewModel.focusRequest.value)
+        }
+
+    @Test
+    fun invalidPasswordOnlyFocusesPassword() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            h.fill(password = "short")
+
+            h.viewModel.submit()
+            runCurrent()
+
+            assertNull(h.viewModel.uiState.value.emailError)
+            assertEquals(FieldError.Res(R.string.error_password_too_short), h.viewModel.uiState.value.passwordError)
+            assertEquals(LoginField.Password, h.viewModel.focusRequest.value)
+        }
+
+    @Test
+    fun afterFailedSubmitFieldsRevalidateLiveAsTheUserTypes() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            h.viewModel.submit()
+            runCurrent()
+
+            h.viewModel.onEmailChange("bad")
+            assertEquals(FieldError.Res(R.string.error_email_invalid), h.viewModel.uiState.value.emailError)
+            h.viewModel.onEmailChange("a@b.co")
+            assertNull(h.viewModel.uiState.value.emailError)
+            h.viewModel.onPasswordChange("short")
+            assertEquals(FieldError.Res(R.string.error_password_too_short), h.viewModel.uiState.value.passwordError)
+            h.viewModel.onPasswordChange("password1")
+            assertNull(h.viewModel.uiState.value.passwordError)
         }
 
     @Test
@@ -100,26 +161,26 @@ class LoginViewModelTest {
                 sent = it.email to it.password
                 loginData("client")
             }
-            h.fill(email = "  a@b.co ", password = " pw ")
+            h.fill(email = "  a@b.co ", password = "password1")
 
             h.viewModel.submit()
             runCurrent()
 
-            assertEquals("a@b.co" to " pw ", sent)
+            assertEquals("a@b.co" to "password1", sent)
         }
 
     @Test
     fun clientSuccessSetsHomeClientDestination() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
-            h.api.loginHandler = { loginData("client") }
+            h.loginOk()
             h.fill()
 
             h.viewModel.submit()
             runCurrent()
 
             assertEquals(LaunchDestination.Home(AppMode.Client), h.viewModel.destination.value)
-            assertNull(h.viewModel.uiState.value.error)
+            assertNull(h.viewModel.uiState.value.passwordError)
             assertFalse(h.viewModel.uiState.value.isSubmitting)
         }
 
@@ -127,7 +188,7 @@ class LoginViewModelTest {
     fun expertWithIncompleteSetupRoutesToSignupSetup() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
-            h.api.loginHandler = { loginData("client", "expert") }
+            h.loginOk("client", "expert")
             h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
             h.fill()
 
@@ -141,7 +202,7 @@ class LoginViewModelTest {
     fun expertWithTopicsRoutesToExpertHome() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
-            h.api.loginHandler = { loginData("client", "expert") }
+            h.loginOk("client", "expert")
             h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
             h.api.topicsHandler = { MyExpertTopicsPayload(listOf(mapOf("id" to "t1"))) }
             h.fill()
@@ -153,30 +214,59 @@ class LoginViewModelTest {
         }
 
     @Test
-    fun wrongCredentialsShowServerMessageAndNoDestination() =
+    fun wrongCredentialsShowServerMessageUnderPasswordOnly() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
-            h.api.loginHandler = {
-                throw h.api.httpError(401, """{"status":"error","message":"Invalid email or password"}""")
-            }
+            h.wrongCredentials()
             h.fill()
 
             h.viewModel.submit()
             runCurrent()
 
-            assertEquals(LoginError.Server("Invalid email or password"), h.viewModel.uiState.value.error)
+            val state = h.viewModel.uiState.value
+            assertEquals(FieldError.Text("Invalid email or password"), state.passwordError)
+            assertNull(state.emailError)
+            assertNull(state.dialogError)
             assertNull(h.viewModel.destination.value)
-            assertFalse(h.viewModel.uiState.value.isSubmitting)
+            assertFalse(state.isSubmitting)
         }
 
     @Test
-    fun fieldErrorFor422ShowsFieldMessage() =
+    fun serverPasswordErrorClearsOnNextEmailEdit() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            h.wrongCredentials()
+            h.fill()
+            h.viewModel.submit()
+            runCurrent()
+
+            h.viewModel.onEmailChange("other@b.co")
+
+            assertNull(h.viewModel.uiState.value.passwordError)
+        }
+
+    @Test
+    fun serverPasswordErrorClearsOnNextPasswordEdit() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            h.wrongCredentials()
+            h.fill()
+            h.viewModel.submit()
+            runCurrent()
+
+            h.viewModel.onPasswordChange("password2")
+
+            assertNull(h.viewModel.uiState.value.passwordError)
+        }
+
+    @Test
+    fun unprocessableEmailFieldErrorShowsUnderEmailWithoutDialog() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
             h.api.loginHandler = {
                 throw h.api.httpError(
                     422,
-                    """{"status":"error","errors":[{"field":"email","message":"Email is invalid"}]}""",
+                    """{"status":"error","errors":[{"field":"email","message":"The email must be valid."}]}""",
                 )
             }
             h.fill()
@@ -184,11 +274,29 @@ class LoginViewModelTest {
             h.viewModel.submit()
             runCurrent()
 
-            assertEquals(LoginError.Server("Email is invalid"), h.viewModel.uiState.value.error)
+            val state = h.viewModel.uiState.value
+            assertEquals(FieldError.Text("The email must be valid."), state.emailError)
+            assertNull(state.dialogError)
         }
 
     @Test
-    fun ioExceptionMapsToNetworkError() =
+    fun serverErrorOpensDialogAndDismissClearsIt() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            h.api.loginHandler = { throw h.api.httpError(500, """{"message":"Server unavailable"}""") }
+            h.fill()
+
+            h.viewModel.submit()
+            runCurrent()
+
+            assertEquals(FieldError.Text("Server unavailable"), h.viewModel.uiState.value.dialogError)
+            assertNull(h.viewModel.uiState.value.passwordError)
+            h.viewModel.dismissDialog()
+            assertNull(h.viewModel.uiState.value.dialogError)
+        }
+
+    @Test
+    fun ioExceptionOpensNetworkDialog() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
             h.api.loginHandler = { throw IOException("offline") }
@@ -197,24 +305,11 @@ class LoginViewModelTest {
             h.viewModel.submit()
             runCurrent()
 
-            assertEquals(LoginError.Network, h.viewModel.uiState.value.error)
+            assertEquals(FieldError.Res(R.string.login_error_network), h.viewModel.uiState.value.dialogError)
         }
 
     @Test
-    fun decodingFailureMapsToUnknownError() =
-        runTest(dispatcherRule.testDispatcher) {
-            val h = Harness(this)
-            h.api.loginHandler = { throw IllegalStateException("bad json") }
-            h.fill()
-
-            h.viewModel.submit()
-            runCurrent()
-
-            assertEquals(LoginError.Unknown, h.viewModel.uiState.value.error)
-        }
-
-    @Test
-    fun suspendedAccountShowsNoInlineErrorAndNoDestination() =
+    fun suspendedAccountShowsNoErrorOfAnyKind() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
             h.api.loginHandler = {
@@ -228,9 +323,12 @@ class LoginViewModelTest {
             h.viewModel.submit()
             runCurrent()
 
-            assertNull(h.viewModel.uiState.value.error)
+            val state = h.viewModel.uiState.value
+            assertNull(state.emailError)
+            assertNull(state.passwordError)
+            assertNull(state.dialogError)
             assertNull(h.viewModel.destination.value)
-            assertFalse(h.viewModel.uiState.value.isSubmitting)
+            assertFalse(state.isSubmitting)
         }
 
     @Test
@@ -257,28 +355,43 @@ class LoginViewModelTest {
         }
 
     @Test
-    fun editingFieldsClearsTheError() =
+    fun prefillSetsEmailAndClearsPasswordAndErrors() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
+            h.viewModel.onPasswordChange("password1")
             h.viewModel.submit()
             runCurrent()
-            assertEquals(LoginError.MissingFields, h.viewModel.uiState.value.error)
 
-            h.viewModel.onEmailChange("a")
-            assertNull(h.viewModel.uiState.value.error)
+            h.viewModel.prefill("x@y.co")
 
-            h.viewModel.submit()
-            runCurrent()
-            assertEquals(LoginError.MissingFields, h.viewModel.uiState.value.error)
-            h.viewModel.onPasswordChange("p")
-            assertNull(h.viewModel.uiState.value.error)
+            val state = h.viewModel.uiState.value
+            assertEquals("x@y.co", state.email)
+            assertEquals("", state.password)
+            assertNull(state.emailError)
+            assertNull(state.passwordError)
+            assertNull(state.dialogError)
+            assertFalse(state.didAttemptSubmit)
+        }
+
+    @Test
+    fun emailIsRestoredFromSavedStateAndPasswordIsNotStored() =
+        runTest(dispatcherRule.testDispatcher) {
+            val handle = SavedStateHandle(mapOf("login_email" to "kept@b.co"))
+            val h = Harness(this, handle)
+            assertEquals("kept@b.co", h.viewModel.uiState.value.email)
+
+            h.viewModel.onEmailChange("new@b.co")
+            h.viewModel.onPasswordChange("password1")
+
+            assertEquals("new@b.co", handle.get<String>("login_email"))
+            assertEquals(setOf("login_email"), handle.keys())
         }
 
     @Test
     fun onDestinationConsumedClearsDestination() =
         runTest(dispatcherRule.testDispatcher) {
             val h = Harness(this)
-            h.api.loginHandler = { loginData("client") }
+            h.loginOk()
             h.fill()
             h.viewModel.submit()
             runCurrent()

@@ -32,8 +32,13 @@ fun ClickMeApp(
         // The OS splash covers Splash.
         AppRoute.Splash -> EmptySurface(modifier)
 
-        // Temporary login screen (D-07); Phase 3 (AUTH-01) replaces it.
-        AppRoute.Login -> LoginScreen(onLoggedIn = appViewModel::onLoggedIn)
+        // Plan 03-10 replaces this branch with AuthNavHost (Forgot Password and Sign Up navigation).
+        AppRoute.Login ->
+            LoginScreen(
+                onLoggedIn = appViewModel::onLoggedIn,
+                onForgotPassword = {},
+                onSignUp = {},
+            )
 
         // Placeholder until Phase 4 builds the signup flow (D-05).
         AppRoute.SignupSetup -> SignupSetupPlaceholder(onLogout = appViewModel::logout)
