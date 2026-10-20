@@ -48,7 +48,7 @@ Requirement → test mapping from RESEARCH.md. Statuses recorded by plan 01-09 (
 | FND-11 | Stub resolver yields ClientHome; destinationResolved true | unit (coroutines-test) | `--tests "*AppViewModelTest"` | ✅ | ✅ green; emulator cold start OK (see below); white-flash check pending human |
 | FND-12 | Per-tab stacks retained; Back at non-home root → home; re-tap pops to root | JVM unit | `--tests "*NavigatorTest"` | ✅ | ✅ green; on-device scroll retention pending human check |
 | FND-12 | Client/expert tab labels; selected state exposed | Robolectric Compose | `--tests "*HomeTabScaffoldTest"` / `*HomeShellsTest` | ✅ | ✅ green |
-| REL-01/02 | Play Console steps logged | human-action gate | `grep -n "Play Console" .planning/STATE.md` | n/a | ⬜ pending (plan 01-02, human, outside wait; not part of this plan) |
+| REL-01/02 | Play Console steps logged | human-action gate | `grep -n "Play Console" .planning/STATE.md` | n/a | ✅ green (01-02: org account verified 2026-10-20) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -134,4 +134,4 @@ All pending the user's end-of-phase review. Full step lists are in the 01-09 pla
 - [x] Feedback latency < 60s
 - [x] Nyquist compliance flag set in frontmatter
 
-**Approval:** automated checks signed off 2026-10-20; manual device checks and REL-01/02 (plan 01-02) remain open.
+**Approval:** automated checks signed off 2026-10-20; REL-01/02 done 2026-10-20 (plan 01-02); manual device checks remain open.

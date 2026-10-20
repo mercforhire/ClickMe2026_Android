@@ -13,7 +13,7 @@ This roadmap ports the finished ClickMe iOS app to Android as the v1.0 MVP. It r
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation, App Shell & Play Account** - Scaffolding, Material 3 theme, splash and two 5-tab scaffolds; D-U-N-S and Play org account started (Week 1)
+- [x] **Phase 1: Foundation, App Shell & Play Account** - Scaffolding, Material 3 theme, splash and two 5-tab scaffolds; D-U-N-S and Play org account started (Week 1) (completed 2026-10-20)
 - [ ] **Phase 2: Networking, Session & SDK Spikes** - Networking core, single-flight token refresh, session storage, Stripe and Agora spikes (Week 1)
 - [ ] **Phase 3: Login, Password Recovery & Realtime** - Real login, OTP password reset, authenticated socket with event SharedFlow (Week 2)
 - [ ] **Phase 4: Signup, Onboarding & Mode Switch** - Signup Initial → Overview hub → Review/Publish, resume, onboarding carousel, mode switch (Week 2)
@@ -47,12 +47,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The corporation's D-U-N-S number is confirmed or requested, and the Play Console organization account is created and submitted for Google's verification. The outside wait is logged in STATE.md.
 
 **Planning notes:** The Play account steps are non-code tasks for the user. Start them on day one, because a new D-U-N-S number can take weeks. Don't port `PreviewNavHarness` or the iOS debug logging; use OkHttp's logging interceptor in debug builds only.
-**Plans:** 7/9 plans executed
+**Plans:** 9/9 plans complete
 Plans:
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Toolchain (Kotlin 2.4.21), locked dependency set, dev/prod flavors with BuildConfig keys, Hilt app, shared strings, ktlint, design-rules script, GitHub Actions CI (Wave 1)
-- [ ] 01-02-PLAN.md — Play Console org account: confirm D-U-N-S, create account, pay fee, submit verification, log the outside wait in STATE.md (Wave 1, user checkpoints)
+- [x] 01-02-PLAN.md — Play Console org account: confirm D-U-N-S, create account, pay fee, submit verification, log the outside wait in STATE.md (Wave 1, user checkpoints)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -71,7 +71,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 01-09-PLAN.md — Full suite + release build, push and green CI on GitHub, emulator smoke, device checklist (Wave 5)
+- [x] 01-09-PLAN.md — Full suite + release build, push and green CI on GitHub, emulator smoke, device checklist (Wave 5)
 
 **UI hint**: yes
 
@@ -345,7 +345,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 7/9 | In Progress|  |
+| 1. Foundation, App Shell & Play Account | 9/9 | Complete   | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
