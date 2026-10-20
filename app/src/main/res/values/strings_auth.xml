@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Validation copy (D-01, D-08); iOS verbatim. -->
+    <string name="error_email_required">Email is required</string>
+    <string name="error_email_invalid">Invalid email format</string>
+    <string name="error_password_required">Password is required</string>
+    <string name="error_password_too_short">Password must be at least 8 characters</string>
+    <string name="error_forgot_email_required">Please enter your email</string>
+    <string name="error_code_required">Please enter the 6-digit code</string>
+    <string name="error_code_invalid">Code must be 6 digits</string>
+    <string name="error_new_password_required">Please enter a new password</string>
+    <string name="error_new_password_rules">Password must include a number and a symbol</string>
+    <string name="error_confirm_required">Please confirm your password</string>
+    <string name="error_confirm_mismatch">Passwords do not match</string>
+    <string name="error_code_expired">Invalid or expired code. Please request a new one.</string>
+    <string name="error_reset_missing_email">Missing account email. Please start the reset flow again from the login screen.</string>
+</resources>
