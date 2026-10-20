@@ -90,7 +90,47 @@ Plans:
   5. A signed release bundle of `com.uptrendinvestments.clickmeapp` builds. If org verification has cleared, the bundle is uploaded to the internal track, which registers the package name. If not, the upload is logged as an open blocker in STATE.md.
 
 **Planning notes:** Port only the API groups this phase needs (auth, `/me`). Other groups come with their features. Token storage is locked to EncryptedSharedPreferences, which is deprecated upstream; keep it.
-**Plans:** TBD
+**Plans:** 16 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Package legitimacy gate, :app dependencies (Moshi codegen, DataStore, security-crypto, MockWebServer), INTERNET permission, versionName 0.1.0, spike inputs checkpoint (Wave 1, user checkpoints)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Moshi provider, ISO-8601 Instant adapter, {data} wrapper, PaginationMeta, auth/me/full UserProfileData DTOs (FND-03)
+- [ ] 02-03-PLAN.md — 65-case ErrorCode, lenient error envelope, ApiException/ApiErrorParser/apiCall, needAuthToken path table (FND-04, FND-05)
+- [ ] 02-04-PLAN.md — :spikes:stripe and :spikes:agora modules, CI + design-rules coverage, Stripe SetupIntent save + PaymentLauncher 3DS flow (FND-13 code)
+- [ ] 02-05-PLAN.md — Conditional release signing, upload keystore (user), signed prodRelease AAB verified (REL-03 build, user checkpoint)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-06-PLAN.md — SecureTokenStore/EncryptedSharedPreferences, SessionEvents, bearer interceptor, ACCOUNT_SUSPENDED trap, single-flight TokenAuthenticator (FND-05, FND-06)
+- [ ] 02-07-PLAN.md — Retrofit ClickMeApi (auth, /me, /user/profile, expert lookups), DataStore SessionStore, session Hilt module (FND-03, FND-07)
+- [ ] 02-08-PLAN.md — Agora spike: microphone foreground service + join via POST /bookings/:id/join (FND-14 code)
+- [ ] 02-09-PLAN.md — Stripe spike device run with the user and Phase 7 findings (FND-13, user checkpoint)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-10-PLAN.md — NetworkFactory, debug-only BASIC logging, Hilt NetworkModule, full-stack MockWebServer test (FND-05, FND-06)
+- [ ] 02-11-PLAN.md — UserManager: login, restore matrix (D-01/D-03/D-05), logout, suspension flag, stale /me retry (FND-06, FND-07, FND-08)
+- [ ] 02-12-PLAN.md — Agora spike device run with the iOS expert, 5+ min background audio evidence (FND-14, user checkpoint)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-13-PLAN.md — Temporary login screen (D-07), Log out on both Profile tabs (D-09), debug force-refresh action
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 02-14-PLAN.md — AppViewModel auto-login with 5 s splash cap, logout/suspension routing, suspension dialog, SignupSetup placeholder, foreground /me retry
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 02-15-PLAN.md — Device E2E on devDebug (login, relaunch, refresh, offline, logout), final signed release artifacts, R8 cold start (user checkpoint)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 02-16-PLAN.md — Release smoke, Play Console internal-track upload registering the package, STATE.md outcome (REL-03, user checkpoints)
 
 ### Phase 3: Login, Password Recovery & Realtime
 
@@ -346,7 +386,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
-| 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
+| 2. Networking, Session & SDK Spikes | 0/16 | Planned | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
