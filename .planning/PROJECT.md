@@ -15,7 +15,8 @@ The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. An
 
 ### Validated
 
-(None yet. Ship to validate.)
+- FND-01, FND-02, FND-09, FND-10, FND-11, FND-12: build flavors and CI, Material 3 dark theme with Nunito, shared components, splash and launcher icon, two 5-tab shells with per-tab back stacks. Validated in Phase 1: Foundation, App Shell & Play Account (2026-10-20; CI green, device UAT approved).
+- REL-01, REL-02: D-U-N-S confirmed; Play Console organization account created and verified (2026-10-20). Validated in Phase 1.
 
 ### Active
 
@@ -156,4 +157,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-19 after initialization (ingest of CLAUDE.md + docs/PORT_ROADMAP.md)*
+*Last updated: 2026-10-20 after Phase 1 completion*
