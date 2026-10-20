@@ -9,6 +9,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,13 +37,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -56,6 +57,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import androidx.compose.ui.semantics.contentType as semanticsContentType
 
 private val FieldMinHeight = 56.dp
 private val FocusedBorder = 2.dp
@@ -68,6 +70,11 @@ private const val DISABLED_ALPHA = 0.38f
  * Pill text field with a leading icon, an animated error message and an optional password reveal toggle
  * (iOS ValidatedField). The border is 1 dp outline at rest, 2 dp primary when focused and 2 dp destructive on error.
  * Stateless: the caller owns [value]; only the password reveal flag is local UI state.
+ *
+ * [trailingBadge] is an optional composable (for example a "passwords match" check) shown in the trailing slot,
+ * before the reveal toggle when [isSecure]. [contentType] sets the autofill content type (for example
+ * `ContentType.SmsOtpCode` or `ContentType.EmailAddress`); when null, secure fields default to
+ * `ContentType.Password` and other fields set none.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +89,8 @@ fun ValidatedField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     enabled: Boolean = true,
+    trailingBadge: (@Composable () -> Unit)? = null,
+    contentType: ContentType? = null,
 ) {
     val hasError = error != null
     val extras = MaterialTheme.extras
@@ -140,7 +149,9 @@ fun ValidatedField(
                     .fillMaxWidth()
                     .heightIn(min = FieldMinHeight)
                     .semantics {
-                        if (isSecure) contentType = ContentType.Password
+                        if (contentType != null || isSecure) {
+                            semanticsContentType = contentType ?: ContentType.Password
+                        }
                         if (error != null) error(error)
                     },
             enabled = enabled,
@@ -170,19 +181,29 @@ fun ValidatedField(
                     )
                 },
                 trailingIcon =
-                    if (isSecure) {
+                    if (isSecure || trailingBadge != null) {
                         {
-                            val toggleIcon = if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility
-                            IconButton(onClick = { revealed = !revealed }) {
-                                Icon(
-                                    imageVector = toggleIcon,
-                                    contentDescription =
-                                        stringResource(
-                                            if (revealed) R.string.a11y_hide_password else R.string.a11y_show_password,
-                                        ),
-                                    modifier = Modifier.size(ToggleIconSize),
-                                    tint = extras.onSurfaceMuted,
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                trailingBadge?.invoke()
+                                if (isSecure) {
+                                    val toggleIcon =
+                                        if (revealed) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility
+                                    IconButton(onClick = { revealed = !revealed }) {
+                                        Icon(
+                                            imageVector = toggleIcon,
+                                            contentDescription =
+                                                stringResource(
+                                                    if (revealed) {
+                                                        R.string.a11y_hide_password
+                                                    } else {
+                                                        R.string.a11y_show_password
+                                                    },
+                                                ),
+                                            modifier = Modifier.size(ToggleIconSize),
+                                            tint = extras.onSurfaceMuted,
+                                        )
+                                    }
+                                }
                             }
                         }
                     } else {

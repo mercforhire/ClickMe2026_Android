@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Validation copy (D-01, D-08); iOS verbatim. -->
+    <string name="error_email_required">Email is required</string>
+    <string name="error_email_invalid">Invalid email format</string>
+    <string name="error_password_required">Password is required</string>
+    <string name="error_password_too_short">Password must be at least 8 characters</string>
+    <string name="error_forgot_email_required">Please enter your email</string>
+    <string name="error_code_required">Please enter the 6-digit code</string>
+    <string name="error_code_invalid">Code must be 6 digits</string>
+    <string name="error_new_password_required">Please enter a new password</string>
+    <string name="error_new_password_rules">Password must include a number and a symbol</string>
+    <string name="error_confirm_required">Please confirm your password</string>
+    <string name="error_confirm_mismatch">Passwords do not match</string>
+    <string name="error_code_expired">Invalid or expired code. Please request a new one.</string>
+    <string name="error_reset_missing_email">Missing account email. Please start the reset flow again from the login screen.</string>
+
+    <!-- Password strength meter (D-08). -->
+    <string name="password_strength_caption">Strength:</string>
+    <string name="password_strength_weak">Weak</string>
+    <string name="password_strength_fair">Fair</string>
+    <string name="password_strength_strong">Strong</string>
+    <string name="a11y_password_strength">Password strength: %1$s</string>
+
+    <!-- Shared auth error dialog and confirm-match badge. -->
+    <string name="auth_dialog_title">Something went wrong</string>
+    <string name="auth_dialog_ok">OK</string>
+    <string name="a11y_passwords_match">Passwords match</string>
+</resources>

@@ -14,6 +14,15 @@ object Motion {
     const val TAB_FADE_OUT_MS = 90
     const val PUSH_POP_DURATION_MS = 300
 
+    /** How long the "saved" confirmation stays visible before the flow advances. */
+    const val SAVED_CONFIRMATION_HOLD_MS = 600
+
+    /** Fade and expand duration when the password strength meter appears or disappears. */
+    const val STRENGTH_METER_VISIBILITY_MS = 200
+
+    /** Duration of a strength meter segment color change. */
+    const val STRENGTH_SEGMENT_COLOR_MS = 300
+
     val pressEasing: Easing = EaseInOut
     val pushPopEasing: Easing = FastOutSlowInEasing
 }
