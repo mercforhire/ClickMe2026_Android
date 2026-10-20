@@ -71,6 +71,7 @@ Recent decisions affecting current work:
 - The backend/iOS owners should rotate the hard-coded JWT in `Debug/PreviewSecrets.swift`. This is outside the Android code.
 - Confirm on the iOS side: Environments.plist has Current = Production (pk_live) while the backend Stripe account is in test mode (Phase 1 D-05). Android dev flavor uses pk_test for day-to-day testing.
 - Before release (Phase 13): verify against the current Google Play Payments policy that paying for live 1-on-1 expert calls via Stripe (not Play Billing) is permitted. Play Console "earning money" answer was payments for services outside Google Play.
+- Report to the iOS side: RealtimeEvents BookingStatus has no `rescheduled` case, so iOS drops booking.update events with that status (Android keeps raw strings).
 
 ### Blockers/Concerns
 
@@ -83,6 +84,14 @@ Recent decisions affecting current work:
 - [Phase 2] DEFERRED (human): 02-09 Stripe spike device run (SetupIntent card save + PaymentLauncher 3DS on connected account) — needs spike inputs file; plan not executed.
 - [Phase 2] DEFERRED (human): 02-12 Agora spike device run with a live iOS/simulator peer, 5+ min backgrounded, dumpsys/logcat evidence — needs spike inputs file (confirmed booking); plan not executed.
 - [Phase 2] DEFERRED (human): 02-15 device end-to-end (login, relaunch auto-login, forced refresh, logout; ESP round-trip) + signed release APK R8 cold start, and 02-16 release smoke + Play internal-track upload (REL-03). Need keystore + Samsung device. Unsigned R8 `assembleProdRelease` builds clean (2026-10-20). Phase 2 cannot close until 02-09, 02-12, 02-15, 02-16 run.
+- [Phase 3] DEFERRED (human): non-blocking (D-20, user defers manual testing). Automated gate is green (421 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F with the devDebug build against production, with the iOS app signed in as a second account. Backend limits: login 10, forgot 5, reset 10 per 15 min per IP. Phase 13 internal testing re-runs these. Note: D-15 was implemented as a GET /me probe through TokenAuthenticator, not a direct TokenRefresher call (orchestrator resolution 1).
+  - [ ] SC-1 Login: wrong password shows the server message under the password field only (no dialog); correct credentials land in the right home for the account's mode; airplane mode shows the dialog "Check your connection and try again."
+  - [ ] SC-2 Recovery: Login -> "Forgot Password?" (email pre-filled) -> Send Reset Code -> enter the emailed 6-digit code -> new password (strength meter, match check) -> Password Updated -> Password Changed -> "Go to Login" shows Login with the email pre-filled and an empty password -> log in with the new password. Repeat and press system Back on Password Changed: same result, and Back from Login never reaches the OTP form. Also check SMS/OTP autofill on the code field and focus moving to the first failing field on submit (FocusRequester on the ValidatedField outer Column, no unit test), PasswordChanged glow and TalkBack order.
+  - [ ] Rotation on Forgot and Set New Password keeps the typed email, code and passwords (entry-scoped Hilt ViewModels, RESEARCH A3); all five screens at 200% font scale with the keyboard open wrap rather than clip. Also the Login visual layout, IME Next/Done and autofill.
+  - [ ] SC-3 Events: `adb logcat -s Realtime` shows state=Connecting then state=Connected after login; sending a message, typing, and accepting or declining a booking from iOS logs MessageNew / TypingStart / TypingStop / BookingUpdate lines with ids only (no message text, no token).
+  - [ ] SC-4 Reconnect: airplane mode on for 10 s then off: state returns to Connected within about 2 s of the network coming back and events flow again. If a silent drop takes much longer (A2: ping timeout up to ~45 s; the harness also showed a graceful server close frame is only noticed after that timeout), log it and consider a ConnectivityManager network-available nudge as a follow-up. Debug "Force token refresh" on the Profile tab: a SessionEvent Refreshed is followed by a reconnect (state cycles to Connected) with the new token.
+  - [ ] Lifecycle: backgrounding the app logs state=Disconnected about 1 s later; returning logs state=Connected. Logging out logs state=Disconnected.
+  - [ ] Release smoke (needs the deferred Phase 2 keystore): the signed prodRelease APK logs in and the socket connects (R8, RESEARCH A6, T-03-44/T-03-45).
 
 ## Deferred Items
 
