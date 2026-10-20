@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The corporation's D-U-N-S number is confirmed or requested, and the Play Console organization account is created and submitted for Google's verification. The outside wait is logged in STATE.md.
 
 **Planning notes:** The Play account steps are non-code tasks for the user. Start them on day one, because a new D-U-N-S number can take weeks. Don't port `PreviewNavHarness` or the iOS debug logging; use OkHttp's logging interceptor in debug builds only.
-**Plans:** 3/9 plans executed
+**Plans:** 6/9 plans executed
 Plans:
 **Wave 1**
 
@@ -61,9 +61,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-05-PLAN.md — Navigation 3 per-tab back stacks, Navigator (Back rule, re-tap, cross-tab), tab definitions, HomeTabScaffold (Wave 3)
-- [ ] 01-06-PLAN.md — PressScaleButton, AsyncSaveButton, ValidatedField, EmptyState/ErrorState, PlaceholderTabContent, gallery controls section (Wave 3)
-- [ ] 01-07-PLAN.md — Avatar, TopBarAvatarButton, GreenGlowBlobLayer, Custom Tab launcher, gallery media section (Wave 3)
+- [x] 01-05-PLAN.md — Navigation 3 per-tab back stacks, Navigator (Back rule, re-tap, cross-tab), tab definitions, HomeTabScaffold (Wave 3)
+- [x] 01-06-PLAN.md — PressScaleButton, AsyncSaveButton, ValidatedField, EmptyState/ErrorState, PlaceholderTabContent, gallery controls section (Wave 3)
+- [x] 01-07-PLAN.md — Avatar, TopBarAvatarButton, GreenGlowBlobLayer, Custom Tab launcher, gallery media section (Wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -345,7 +345,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, App Shell & Play Account | 3/9 | In Progress|  |
+| 1. Foundation, App Shell & Play Account | 6/9 | In Progress|  |
 | 2. Networking, Session & SDK Spikes | 0/TBD | Not started | - |
 | 3. Login, Password Recovery & Realtime | 0/TBD | Not started | - |
 | 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
