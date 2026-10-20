@@ -145,7 +145,31 @@ Plans:
   3. After login the socket connects. Events triggered from the iOS app (a message, typing, a booking update) appear in the `SharedFlow` logs. (PRD Week 2 checkpoint, part 2)
   4. After a token refresh or a network drop, the socket reconnects within about 2 seconds with the current token and keeps receiving events.
 
-**Plans:** TBD
+**Plans:** 12 plans
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Public forgot/reset endpoints, DTOs, FakeClickMeApi handlers, no-bearer tests (AUTH-02)
+- [ ] 03-02-PLAN.md — FieldError, iOS validators, PasswordStrength + meter, ValidatedField badge/contentType, AuthErrorDialog, AuthTopAppBar (AUTH-01, AUTH-02)
+- [ ] 03-03-PLAN.md — socket.io-client 2.1.2 + lifecycle-process deps, RealtimeConnection seam, socket URL, sealed events + decoder, emit payloads (RT-01, RT-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-04-PLAN.md — Real Login screen and ViewModel: D-01..D-07 validation timing, inline/dialog error split, Forgot and Sign Up entries (AUTH-01)
+- [ ] 03-05-PLAN.md — Forgot Password ("Reset Password") screen and ViewModel with 600 ms Code Sent hold (AUTH-02)
+- [ ] 03-06-PLAN.md — Set New Password screen and ViewModel: code, strength meter, confirm, 400/422 mapping (AUTH-02)
+- [ ] 03-07-PLAN.md — Password Changed screen (one-shot entrance) and Sign Up coming-soon placeholder (AUTH-01, AUTH-02)
+- [ ] 03-08-PLAN.md — RealtimeService: forceNew socket per connection, auth {token}, 2 s reconnect, SharedFlow, MockWebServer protocol tests (RT-01, RT-03)
+- [ ] 03-09-PLAN.md — RealtimeConnectionManager + ProcessForeground: login/foreground/refresh policy, one /me probe per rejected token, capped retry (RT-01, RT-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-10-PLAN.md — Auth back stack under AppRoute.Login (AuthNavHost/AuthNavigator), D-10/D-11 return to Login, ClickMeApp wiring (AUTH-01, AUTH-02)
+- [ ] 03-11-PLAN.md — RealtimeModule, Application start, debug-only "Realtime" Logcat collector, R8 release build (RT-01, RT-02, RT-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-12-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred non-blocking device checklist in STATE.md (all)
 **UI hint**: yes
 
 ### Phase 4: Signup, Onboarding & Mode Switch
