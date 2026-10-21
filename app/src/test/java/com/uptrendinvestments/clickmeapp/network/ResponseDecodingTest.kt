@@ -5,13 +5,20 @@ import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.UserRole
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RefreshTokenRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
+import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaginationMeta
 import com.uptrendinvestments.clickmeapp.model.responses.RefreshTokenData
+import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import org.junit.Assert.assertEquals
@@ -224,5 +231,120 @@ class ResponseDecodingTest {
                 .adapter(PaginationMeta::class.java)
                 .fromJson("""{"current_page":1,"total_pages":3,"has_more":false}""")!!
         assertFalse(meta.hasMoreOrDerived)
+    }
+
+    @Test
+    fun fullExpertProfileDecodesEveryField() {
+        val json =
+            """
+            {"status":"success","data":{"profile_id":"p1","avatar_url":"https://x/a.jpg",
+            "personal_info":{"first_name":"Ada","last_name":"","email":"ada@b.co","bio":null},
+            "professional_details":{"job_title":null},
+            "location_details":{"city":"Toronto","state_province":"ON","country_code":"CAN",
+            "timezone":"America/Toronto"},
+            "languages":[{"id":"en","label":"English"},{"id":null,"label":"Klingon"}],
+            "expertise_tags":[{"id":"t1","label":"Tax","category_id":"c1","is_primary":true}],
+            "setup_completed":false}}
+            """.trimIndent()
+        val data = envelope(ExpertProfileData::class.java).fromJson(json)!!.data
+        assertEquals("p1", data.profileId)
+        assertEquals("https://x/a.jpg", data.avatarUrl)
+        assertEquals("Ada", data.personalInfo!!.firstName)
+        assertEquals("", data.personalInfo!!.lastName)
+        assertEquals("ada@b.co", data.personalInfo!!.email)
+        assertNull(data.personalInfo!!.bio)
+        assertEquals("Toronto", data.locationDetails!!.city)
+        assertEquals("ON", data.locationDetails!!.stateProvince)
+        assertEquals("CAN", data.locationDetails!!.countryCode)
+        assertEquals("America/Toronto", data.locationDetails!!.timezone)
+        assertEquals("en", data.languages!![0].id)
+        assertNull(data.languages!![1].id)
+        assertEquals("Klingon", data.languages!![1].label)
+        assertEquals("Tax", data.expertiseTags!!.single().label)
+        assertTrue(data.expertiseTags!!.single().isPrimary)
+        assertFalse(data.setupCompleted)
+    }
+
+    @Test
+    fun setupCompletedOnlyExpertProfileStillDecodes() {
+        val json = """{"status":"success","data":{"setup_completed":true}}"""
+        val data = envelope(ExpertProfileData::class.java).fromJson(json)!!.data
+        assertTrue(data.setupCompleted)
+        assertNull(data.profileId)
+        assertNull(data.avatarUrl)
+        assertNull(data.personalInfo)
+        assertNull(data.locationDetails)
+        assertNull(data.languages)
+        assertNull(data.expertiseTags)
+    }
+
+    @Test
+    fun signupDataDecodesAndRedactsTokens() {
+        val json =
+            """
+            {"status":"success","data":{"token":"secret-jwt","refresh_token":"secret-rt","expires_at":1792513029,
+            "expires_in":900,"email_verified":false,
+            "user":{"id":"u1","first_name":"","last_name":"","roles":["expert"]}}}
+            """.trimIndent()
+        val data = envelope(SignupData::class.java).fromJson(json)!!.data
+        assertEquals("secret-jwt", data.token)
+        assertEquals("secret-rt", data.refreshToken)
+        assertEquals(1_792_513_029L, data.expiresAt)
+        assertEquals(900L, data.expiresIn)
+        assertFalse(data.emailVerified)
+        assertEquals("", data.user.firstName)
+        assertFalse(data.toString().contains("secret-jwt"))
+        assertFalse(data.toString().contains("secret-rt"))
+    }
+
+    @Test
+    fun signupDataWithoutEmailVerifiedDefaultsToFalse() {
+        val json =
+            """
+            {"token":"t","refresh_token":"r","expires_at":1,"expires_in":2,
+            "user":{"id":"u1","first_name":"A","last_name":"B","roles":["expert"]}}
+            """.trimIndent()
+        assertFalse(moshi.adapter(SignupData::class.java).fromJson(json)!!.emailVerified)
+    }
+
+    @Test
+    fun signupRequestToStringRedactsCredentials() {
+        val text = SignupRequest("a@b.co", "abcdefg1").toString()
+        assertFalse(text.contains("a@b.co"))
+        assertFalse(text.contains("abcdefg1"))
+    }
+
+    @Test
+    fun setupExpertProfileDataDecodes() {
+        val json =
+            """
+            {"profile_id":"p1","completion_percentage":70,"missing_fields":["profile_image_url"],
+            "next_recommended_step":"photo","setup_completed":false}
+            """.trimIndent()
+        val data = moshi.adapter(SetupExpertProfileData::class.java).fromJson(json)!!
+        assertEquals("p1", data.profileId)
+        assertEquals(70, data.completionPercentage)
+        assertEquals(listOf("profile_image_url"), data.missingFields)
+        assertEquals("photo", data.nextRecommendedStep)
+        assertEquals(false, data.setupCompleted)
+    }
+
+    @Test
+    fun smallPayloadsDecode() {
+        assertTrue(moshi.adapter(EmailStatusData::class.java).fromJson("""{"verified":true}""")!!.verified)
+        assertEquals(
+            "https://x/a.jpg",
+            moshi.adapter(AvatarUploadData::class.java).fromJson("""{"avatar_url":"https://x/a.jpg"}""")!!.avatarUrl,
+        )
+        val languages =
+            moshi
+                .adapter(LanguagesPayload::class.java)
+                .fromJson("""{"languages":[{"id":"en","label":"English"}]}""")!!
+        assertEquals("English", languages.languages.single().label)
+        val tags =
+            moshi
+                .adapter(ExpertiseTagsPayload::class.java)
+                .fromJson("""{"tags":[{"id":"u1","label":"Tax","category_id":"c1"}]}""")!!
+        assertEquals("u1", tags.tags.single().id)
     }
 }
