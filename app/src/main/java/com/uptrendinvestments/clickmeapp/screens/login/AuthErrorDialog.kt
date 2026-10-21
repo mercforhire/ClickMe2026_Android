@@ -9,13 +9,15 @@ import androidx.compose.ui.res.stringResource
 import com.uptrendinvestments.clickmeapp.R
 
 /**
- * Shared "Something went wrong" dialog for auth failures (iOS alert, CLAUDE.md swap to Material AlertDialog).
- * The scrim tap, Back and OK all call [onDismiss].
+ * Shared error dialog for auth failures (iOS alert, CLAUDE.md swap to Material AlertDialog).
+ * [title] defaults to "Something went wrong"; callers may pass the UI-SPEC titles such as
+ * "Couldn't create account" or "Couldn't save". The scrim tap, Back and OK all call [onDismiss].
  */
 @Composable
 fun AuthErrorDialog(
     message: String,
     onDismiss: () -> Unit,
+    title: String = stringResource(R.string.auth_dialog_title),
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -23,7 +25,7 @@ fun AuthErrorDialog(
         shape = MaterialTheme.shapes.extraLarge,
         title = {
             Text(
-                text = stringResource(R.string.auth_dialog_title),
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
             )
         },

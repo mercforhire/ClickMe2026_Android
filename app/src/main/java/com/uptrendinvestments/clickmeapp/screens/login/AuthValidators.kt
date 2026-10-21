@@ -2,10 +2,14 @@ package com.uptrendinvestments.clickmeapp.screens.login
 
 import com.uptrendinvestments.clickmeapp.R
 
-/** Client-side validators ported from the iOS login, forgot-password and reset-password view models (D-01, D-08). */
+/**
+ * Client-side validators ported from the iOS login, forgot-password and reset-password view models (D-01, D-08),
+ * plus the signup rules, which follow the server schema rather than iOS (D-02).
+ */
 object AuthValidators {
     val EMAIL_REGEX = Regex("""^[^@\s]+@[^@\s]+\.[^@\s]+$""")
     private val DIGIT = Regex("[0-9]")
+    private val LETTER = Regex("[A-Za-z]")
     private val SYMBOL = Regex("[^A-Za-z0-9]")
     private val SIX_DIGITS = Regex("""^\d{6}$""")
 
@@ -18,6 +22,19 @@ object AuthValidators {
         when {
             password.isEmpty() -> FieldError.Res(R.string.error_password_required)
             password.length < MIN_PASSWORD_LENGTH -> FieldError.Res(R.string.error_password_too_short)
+            else -> null
+        }
+
+    /** Signup email: same regex and messages as login (D-02). */
+    fun signupEmail(raw: String): FieldError? = emailError(raw, R.string.error_email_required)
+
+    /** Signup password: the server rule, min 8 characters with at least one letter and one digit (D-02). */
+    fun signupPassword(password: String): FieldError? =
+        when {
+            password.isEmpty() -> FieldError.Res(R.string.error_password_required)
+            password.length < MIN_PASSWORD_LENGTH -> FieldError.Res(R.string.error_password_too_short)
+            !LETTER.containsMatchIn(password) -> FieldError.Res(R.string.error_signup_password_letter)
+            !DIGIT.containsMatchIn(password) -> FieldError.Res(R.string.error_signup_password_number)
             else -> null
         }
 

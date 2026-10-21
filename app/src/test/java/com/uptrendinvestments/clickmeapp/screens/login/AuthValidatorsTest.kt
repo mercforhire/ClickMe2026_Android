@@ -70,6 +70,25 @@ class AuthValidatorsTest {
     }
 
     @Test
+    fun signupEmail_rules() {
+        assertEquals(res(R.string.error_email_required), AuthValidators.signupEmail(""))
+        assertEquals(res(R.string.error_email_required), AuthValidators.signupEmail("  "))
+        assertEquals(res(R.string.error_email_invalid), AuthValidators.signupEmail("nope"))
+        assertNull(AuthValidators.signupEmail(" a@b.co "))
+    }
+
+    @Test
+    fun signupPassword_rules() {
+        assertEquals(res(R.string.error_password_required), AuthValidators.signupPassword(""))
+        assertEquals(res(R.string.error_password_too_short), AuthValidators.signupPassword("abc1"))
+        assertEquals(res(R.string.error_signup_password_letter), AuthValidators.signupPassword("12345678"))
+        assertEquals(res(R.string.error_signup_password_number), AuthValidators.signupPassword("abcdefgh"))
+        assertEquals(res(R.string.error_signup_password_number), AuthValidators.signupPassword("abcdefg!"))
+        assertNull(AuthValidators.signupPassword("abcdefg1"))
+        assertNull(AuthValidators.signupPassword("ABCDEFG1"))
+    }
+
+    @Test
     fun sanitizeCode_keepsAsciiDigitsMaxSix() {
         assertEquals("123456", AuthValidators.sanitizeCode("12a3 4-5678"))
         assertEquals("", AuthValidators.sanitizeCode("١٢٣"))
