@@ -75,6 +75,7 @@ Recent decisions affecting current work:
 - Before release (Phase 13): verify against the current Google Play Payments policy that paying for live 1-on-1 expert calls via Stripe (not Play Billing) is permitted. Play Console "earning money" answer was payments for services outside Google Play.
 - Report to the iOS side: RealtimeEvents BookingStatus has no `rescheduled` case, so iOS drops booking.update events with that status (Android keeps raw strings).
 - Report to the iOS side (found while porting Phase 4): publishing without a photo always fails (server requires avatar), province is required on iOS but optional on the server, the verified-email state is lost on resume, tags/languages are sent alphabetically so the primary tag is accidental (and language order is not stored server-side at all), country_code is not normalized on publish, the photo zoom slider does nothing.
+- [Phase 2 UAT, 2026-10-21] OPEN, must fix before Phase 7: Stripe spike Add card shows PaymentSheet briefly then closes, and paying fails with "client secret does not match any associated SetupIntent on this account". Likely cause: `pk_test_51Tha0r...` (Android dev flavor, spike, iOS dev/staging) belongs to a different Stripe account than the production backend's secret key (iOS prod uses `pk_live_51U8OTJ...`). Confirm the backend's account and use that account's test publishable key. See 02-UAT.md gaps (tests 7-8).
 
 ### Blockers/Concerns
 
