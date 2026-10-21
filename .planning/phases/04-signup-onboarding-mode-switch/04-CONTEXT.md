@@ -119,6 +119,7 @@ Carried forward (not re-opened):
 - **D-23: Accept the server converting a client-only account to expert on the first `/expert/*` call.** The D-17 setup-status check calls `GET /expert/profile`, and `ensureExpert` permanently converts a client-only account (backend EXP-01, by design). No role pre-gate is needed. (RESEARCH A9)
 - **D-24: Drop the languages helper line "The first language you pick is your primary language."** The server stores no language order. Keep the tag "first is primary" line, since tags do get `is_primary`. (RESEARCH A8)
 - **D-25: Empty-array rule for list fields (refines D-04).** Omit `languages` and `expertise_tags` when they are untouched. Send `[]` only when the user empties a list that was previously non-empty on the server. (RESEARCH Pitfall 2)
+- **D-27 (2026-10-21, from code review CR-01, user-confirmed): A converted client can always leave setup.** When the user also holds the client role, the setup hub shows an exit action (close / "Not now") that returns to client mode via `AppViewModel`. Launch and login force setup only for pure-expert accounts, meaning the expert role without the client role. This refines D-17 and D-23, and D-17's "switching to client is always allowed" holds.
 - **D-26: Bundle the mode-switch images (D-19) as the original PNGs, unconverted.** No WebP encoder is available. The onboarding carousel images are also copied from the iOS asset catalog in their original format.
 
 ### Claude's Discretion
