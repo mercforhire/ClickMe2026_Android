@@ -120,7 +120,10 @@ class SignupTagsViewModelTest {
             assertFalse(vm.uiState.value.noMatch)
 
             vm.onQueryChange("zz")
-            assertTrue(vm.uiState.value.suggested.isEmpty())
+            assertTrue(
+                vm.uiState.value.suggested
+                    .isEmpty(),
+            )
             assertTrue(vm.uiState.value.noMatch)
 
             vm.onQueryChange("")
@@ -139,7 +142,12 @@ class SignupTagsViewModelTest {
             vm.save()
             runCurrent()
 
-            assertEquals(listOf("t2", "t1"), h.api.setupProfileRequests.single().expertiseTags)
+            assertEquals(
+                listOf("t2", "t1"),
+                h.api.setupProfileRequests
+                    .single()
+                    .expertiseTags,
+            )
             assertEquals(SaveState.Saved, vm.uiState.value.saveState)
             assertFalse(vm.saved.value)
 
@@ -166,7 +174,12 @@ class SignupTagsViewModelTest {
             vm.save()
             advanceUntilIdle()
 
-            assertEquals(emptyList<String>(), h.api.setupProfileRequests.single().expertiseTags)
+            assertEquals(
+                emptyList<String>(),
+                h.api.setupProfileRequests
+                    .single()
+                    .expertiseTags,
+            )
             assertTrue(vm.saved.value)
         }
 
@@ -231,7 +244,10 @@ class SignupTagsViewModelTest {
             val edited = viewModel(h)
             advanceUntilIdle()
             edited.select(audit)
-            assertTrue(untouched.uiState.value.selected.isEmpty())
+            assertTrue(
+                untouched.uiState.value.selected
+                    .isEmpty(),
+            )
 
             hydrateWithTags(h, ExpertTag("t1", "Tax"), ExpertTag("t2", "Law"))
             advanceUntilIdle()
