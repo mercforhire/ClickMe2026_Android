@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.initial
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -115,6 +116,10 @@ fun SignupInitialContent(
         }
         onFocusRequestConsumed()
     }
+
+    // WR-05: system and predictive Back are swallowed while the account is being created, like the top-bar arrow.
+    // Popping the entry would cancel the signup after the server may already have created the account.
+    BackHandler(enabled = state.isSubmitting) {}
 
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         GreenGlowBlobLayer(Modifier.matchParentSize())

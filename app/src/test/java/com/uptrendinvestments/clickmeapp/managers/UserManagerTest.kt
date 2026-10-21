@@ -21,7 +21,9 @@ import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -1027,6 +1029,45 @@ class UserManagerTest {
 
             assertNull(h.sessionStore.storedMode())
             assertEquals(0, h.api.userProfileCalls)
+        }
+
+    // ---- WR-05: a caller cancelled after the server answered still gets a whole session ----
+
+    @Test
+    fun signupCancelledAfterTheServerAnsweredStillStoresTheSession() =
+        runTest {
+            val h = Harness(this)
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.signupHandler = {
+                // The screen is popped while the response is in hand.
+                currentCoroutineContext().job.cancel()
+                sampleSignup
+            }
+
+            val job = backgroundScope.launch { h.manager.signup("a@b.co", "abcdefg1") }
+            runCurrent()
+
+            assertTrue(job.isCancelled)
+            assertEquals("s-access", h.tokens.accessToken)
+            assertTrue(h.manager.isLoggedIn.value)
+            assertEquals(sampleSignup.user, h.manager.authUser.value)
+        }
+
+    @Test
+    fun loginCancelledAfterTheServerAnsweredStillMarksLoggedIn() =
+        runTest {
+            val h = Harness(this)
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.loginHandler = {
+                currentCoroutineContext().job.cancel()
+                sampleLogin
+            }
+
+            backgroundScope.launch { h.manager.login("a@b.co", "pw") }
+            runCurrent()
+
+            assertTrue(h.tokens.hasSession())
+            assertTrue(h.manager.isLoggedIn.value)
         }
 
     // ---- CR-03: session-local files ----

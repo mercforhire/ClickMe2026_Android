@@ -133,14 +133,7 @@ class UserManager
         ): AuthUser {
             clearSessionData()
             val data = apiCall { api.login(LoginRequest(email, password)) }.data
-            withContext(io) { tokens.save(TokenPair(data.token, data.refreshToken, data.expiresAt)) }
-            _authUser.value = data.user
-            _isLoggedIn.value = true
-            _wasSuspended.value = false
-            meStale = false
-            // appScope, not the caller's scope: leaving the login screen must not cancel the refresh.
-            setupCheckPending = false
-            appScope.launch { bestEffort { refreshProfile() } }
+            startSession(TokenPair(data.token, data.refreshToken, data.expiresAt), data.user)
             return data.user
         }
 
@@ -154,14 +147,29 @@ class UserManager
         ): SignupData {
             clearSessionData()
             val data = apiCall { api.signup(SignupRequest(email, password)) }.data
-            withContext(io) { tokens.save(TokenPair(data.token, data.refreshToken, data.expiresAt)) }
-            _authUser.value = data.user
-            _isLoggedIn.value = true
-            _wasSuspended.value = false
-            meStale = false
-            setupCheckPending = false
-            appScope.launch { bestEffort { refreshProfile() } }
+            startSession(TokenPair(data.token, data.refreshToken, data.expiresAt), data.user)
             return data
+        }
+
+        /**
+         * Stores the tokens and marks the user logged in after a successful login or signup. Non-cancellable
+         * (WR-05): once the server has answered, a caller leaving (for example system Back during the submit) must
+         * not leave the tokens saved without [isLoggedIn], or the account created without its tokens.
+         */
+        private suspend fun startSession(
+            pair: TokenPair,
+            user: AuthUser,
+        ) {
+            withContext(NonCancellable) {
+                withContext(io) { tokens.save(pair) }
+                _authUser.value = user
+                _isLoggedIn.value = true
+                _wasSuspended.value = false
+                meStale = false
+                setupCheckPending = false
+                // appScope, not the caller's scope: leaving the login screen must not cancel the refresh.
+                appScope.launch { bestEffort { refreshProfile() } }
+            }
         }
 
         /**

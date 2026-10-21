@@ -1,5 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.initial
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -127,5 +130,38 @@ class SignupInitialScreenTest {
         rule.onNodeWithText("Server unavailable").assertExists()
         rule.onNodeWithText("OK").performClick()
         assertEquals(1, dismissCount)
+    }
+
+    /** Renders the form under an outer Back handler, like NavDisplay's, and returns how often it fired (WR-05). */
+    private fun systemBackReachesNavigation(state: SignupInitialUiState): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                SignupInitialContent(
+                    state = state,
+                    onEmailChange = {},
+                    onPasswordChange = {},
+                    onSubmit = {},
+                    onBack = {},
+                    onDismissDialog = {},
+                )
+            }
+        }
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+        return navBacks
+    }
+
+    @Test
+    fun systemBackWhileIdleReachesNavigation() {
+        assertEquals(1, systemBackReachesNavigation(SignupInitialUiState()))
+    }
+
+    @Test
+    fun systemBackWhileSubmittingIsSwallowed() {
+        assertEquals(0, systemBackReachesNavigation(SignupInitialUiState(isSubmitting = true)))
     }
 }
