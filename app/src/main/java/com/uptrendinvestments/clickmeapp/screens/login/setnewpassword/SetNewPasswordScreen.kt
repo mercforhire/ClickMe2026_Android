@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.login.setnewpassword
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -121,11 +122,16 @@ fun SetNewPasswordContent(
     }
 
     val editable = state.saveState == SaveState.Idle
+    // Leaving while the reset is in flight or in the "Saved" hold would cancel viewModelScope and drop the
+    // success: the password is changed and the code used, but Password Changed never shows. Swallow Back.
+    BackHandler(enabled = !editable) {}
 
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AuthTopAppBar(title = stringResource(R.string.reset_title), onBack = onBack) },
+        topBar = {
+            AuthTopAppBar(title = stringResource(R.string.reset_title), onBack = onBack, backEnabled = editable)
+        },
     ) { innerPadding ->
         Column(
             modifier =

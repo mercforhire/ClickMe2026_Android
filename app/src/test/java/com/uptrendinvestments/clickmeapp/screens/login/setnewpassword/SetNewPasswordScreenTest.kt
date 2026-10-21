@@ -1,7 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.login.setnewpassword
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescriptionExactly
 import androidx.compose.ui.test.hasText
@@ -116,6 +121,62 @@ class SetNewPasswordScreenTest {
         show(onBack = { backs++ })
         rule.onNode(hasContentDescriptionExactly("Back")).performClick()
         assertEquals(1, backs)
+    }
+
+    @Test
+    fun topBarBack_isDisabledWhileSaving() {
+        var backs = 0
+        show(SetNewPasswordUiState(saveState = SaveState.Saving), onBack = { backs++ })
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsNotEnabled().performClick()
+        assertEquals(0, backs)
+    }
+
+    @Test
+    fun topBarBack_isDisabledDuringSavedHold() {
+        var backs = 0
+        show(SetNewPasswordUiState(saveState = SaveState.Saved), onBack = { backs++ })
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsNotEnabled().performClick()
+        assertEquals(0, backs)
+    }
+
+    /** Renders the form under an outer Back handler, like NavDisplay's, and returns how often it fired. */
+    private fun systemBackReachesNavigation(saveState: SaveState): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                SetNewPasswordContent(
+                    state = SetNewPasswordUiState(saveState = saveState),
+                    onCodeChange = {},
+                    onNewPasswordChange = {},
+                    onConfirmChange = {},
+                    onSubmit = {},
+                    onBack = {},
+                    onDismissDialog = {},
+                )
+            }
+        }
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+        return navBacks
+    }
+
+    @Test
+    fun systemBack_whileIdle_reachesNavigation() {
+        assertEquals(1, systemBackReachesNavigation(SaveState.Idle))
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsEnabled()
+    }
+
+    @Test
+    fun systemBack_whileSaving_isSwallowed() {
+        assertEquals(0, systemBackReachesNavigation(SaveState.Saving))
+    }
+
+    @Test
+    fun systemBack_duringSavedHold_isSwallowed() {
+        assertEquals(0, systemBackReachesNavigation(SaveState.Saved))
     }
 
     @Test

@@ -14,19 +14,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.uptrendinvestments.clickmeapp.R
 
-/** Top app bar with a back arrow for the pushed auth screens (CLAUDE.md swap: iOS back chevron). */
+/**
+ * Top app bar with a back arrow for the pushed auth screens (CLAUDE.md swap: iOS back chevron).
+ * [backEnabled] = false disables the arrow, e.g. while a submit that must not be abandoned is running.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthTopAppBar(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    backEnabled: Boolean = true,
 ) {
     TopAppBar(
         modifier = modifier,
         title = { Text(text = title, style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, enabled = backEnabled) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.a11y_back),
