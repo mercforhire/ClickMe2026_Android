@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared picker components (PickerSheet, PickerField); used by Personal Details, Timezone and Expertise Tags. -->
+    <string name="picker_clear_search">Clear search</string>
+    <string name="picker_cancel">Cancel</string>
+    <string name="picker_done">Done</string>
+    <string name="picker_retry">Retry</string>
+    <string name="picker_load_error_body">Check your connection and try again.</string>
+</resources>
