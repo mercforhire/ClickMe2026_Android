@@ -1,5 +1,12 @@
 package com.uptrendinvestments.clickmeapp
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +22,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertScree
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
 import com.uptrendinvestments.clickmeapp.screens.signup.SignupSetupPlaceholder
+import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
 /**
  * Root switch on [AppRoute]. The route is app state owned by [AppViewModel], not a navigation
@@ -28,20 +36,32 @@ fun ClickMeApp(
     val route by appViewModel.route.collectAsStateWithLifecycle()
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    when (route) {
-        // The OS splash covers Splash.
-        AppRoute.Splash -> EmptySurface(modifier)
+    // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
+    AnimatedContent(
+        targetState = route,
+        transitionSpec = {
+            if (initialState in HOMES && targetState in HOMES) {
+                fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
+                    fadeOut(tween(Motion.TAB_FADE_OUT_MS))
+            } else {
+                EnterTransition.None togetherWith ExitTransition.None
+            }
+        },
+        label = "root-route",
+    ) { targetRoute ->
+        when (targetRoute) {
+            // The OS splash covers Splash.
+            AppRoute.Splash -> EmptySurface(modifier)
 
-        AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
+            AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 
-        // Placeholder until Phase 4 builds the signup flow (D-05).
-        AppRoute.SignupSetup -> SignupSetupPlaceholder(onLogout = appViewModel::logout)
+            // Replaced by the real signup setup hub in plan 04-19.
+            AppRoute.SignupSetup -> SignupSetupPlaceholder(onLogout = appViewModel::logout)
 
-        AppRoute.ClientHome ->
-            HomeClientScreen(onDebugSwitchScaffold = appViewModel::debugSwitchScaffold)
+            AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
 
-        AppRoute.ExpertHome ->
-            HomeExpertScreen(onDebugSwitchScaffold = appViewModel::debugSwitchScaffold)
+            AppRoute.ExpertHome -> HomeExpertScreen(onSwitchMode = appViewModel::switchMode)
+        }
     }
 
     if (showSuspendedDialog) {
@@ -55,6 +75,8 @@ fun ClickMeApp(
         )
     }
 }
+
+private val HOMES = setOf(AppRoute.ClientHome, AppRoute.ExpertHome)
 
 @Composable
 private fun EmptySurface(modifier: Modifier) {

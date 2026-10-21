@@ -19,6 +19,8 @@ import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.PlaceholderTabContent
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
@@ -31,12 +33,14 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.Expert
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.TopicsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.expertStartTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.expertTabs
+import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
+import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Hilt-aware entry for the expert shell: supplies the avatar URL, session actions and the debug gate. */
 @Composable
 fun HomeExpertScreen(
-    onDebugSwitchScaffold: () -> Unit,
+    onSwitchMode: (AppMode) -> Unit,
     viewModel: HomeExpertViewModel = hiltViewModel(),
 ) {
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
@@ -44,12 +48,10 @@ fun HomeExpertScreen(
     HomeExpertShell(
         avatarUrl = avatarUrl,
         showDebugAffordances = BuildConfig.DEBUG,
-        onDebugSwitchScaffold = onDebugSwitchScaffold,
+        onSwitchMode = onSwitchMode,
         onLogout = viewModel::logout,
         onDebugForceRefresh = viewModel::debugForceRefresh,
         debugRefreshStatus = debugRefreshStatus,
-        // Phase 1: the avatar does nothing yet; Phase 4 wires it to the mode switch.
-        onAvatarClick = {},
     )
 }
 
@@ -61,8 +63,7 @@ fun HomeExpertScreen(
 fun HomeExpertShell(
     avatarUrl: String?,
     showDebugAffordances: Boolean,
-    onDebugSwitchScaffold: () -> Unit,
-    onAvatarClick: () -> Unit,
+    onSwitchMode: (AppMode) -> Unit,
     onLogout: () -> Unit,
     onDebugForceRefresh: () -> Unit,
     debugRefreshStatus: String?,
@@ -81,7 +82,7 @@ fun HomeExpertShell(
                 entry<DashboardRoot> {
                     ExpertTabRoot(
                         key = DashboardRoot,
-                        actions = { TopBarAvatarButton(avatarUrl, onAvatarClick) },
+                        actions = { TopBarAvatarButton(avatarUrl, onClick = { navigator.navigate(ModeSwitchKey) }) },
                     )
                 }
                 entry<ExpertBookingsRoot> { ExpertTabRoot(ExpertBookingsRoot) }
@@ -96,10 +97,6 @@ fun HomeExpertShell(
                             }
                             Spacer(Modifier.height(Spacing.sm))
                             if (showDebugAffordances) {
-                                OutlinedButton(onClick = onDebugSwitchScaffold) {
-                                    Text(stringResource(R.string.debug_switch_to_client))
-                                }
-                                Spacer(Modifier.height(Spacing.sm))
                                 OutlinedButton(onClick = { navigator.navigate(DesignSystemGalleryKey) }) {
                                     Text(stringResource(R.string.debug_design_system_gallery))
                                 }
@@ -112,6 +109,13 @@ fun HomeExpertShell(
                                 }
                             }
                         },
+                    )
+                }
+                entry<ModeSwitchKey>(metadata = BottomBar.hidden()) {
+                    ModeSwitchScreen(
+                        currentMode = AppMode.Expert,
+                        onSwitchMode = onSwitchMode,
+                        onBack = navigator::goBack,
                     )
                 }
                 entry<DesignSystemGalleryKey> {

@@ -23,7 +23,5 @@
     <string name="a11y_state_saving">Saving</string>
     <string name="a11y_state_saved">Saved</string>
 
-    <string name="debug_switch_to_expert" translatable="false">Switch to expert scaffold</string>
-    <string name="debug_switch_to_client" translatable="false">Switch to client scaffold</string>
     <string name="debug_design_system_gallery" translatable="false">Design system gallery</string>
 </resources>

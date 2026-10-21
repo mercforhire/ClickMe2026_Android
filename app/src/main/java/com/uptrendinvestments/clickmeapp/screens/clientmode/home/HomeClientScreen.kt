@@ -1,5 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +24,8 @@ import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.PlaceholderTabContent
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
@@ -31,27 +38,58 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.clientTabs
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
+import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
+import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
+import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Hilt-aware entry for the client shell: supplies the avatar URL, session actions and the debug gate. */
 @Composable
 fun HomeClientScreen(
-    onDebugSwitchScaffold: () -> Unit,
+    onSwitchMode: (AppMode) -> Unit,
     viewModel: HomeClientViewModel = hiltViewModel(),
 ) {
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
     val debugRefreshStatus by viewModel.debugRefreshStatus.collectAsStateWithLifecycle()
-    HomeClientShell(
-        avatarUrl = avatarUrl,
-        showDebugAffordances = BuildConfig.DEBUG,
-        onDebugSwitchScaffold = onDebugSwitchScaffold,
-        onLogout = viewModel::logout,
-        onDebugForceRefresh = viewModel::debugForceRefresh,
-        debugRefreshStatus = debugRefreshStatus,
-        // Phase 1: the avatar does nothing yet; Phase 4 wires it to the mode switch.
-        onAvatarClick = {},
+    val hasSeenOnboarding by viewModel.hasSeenOnboarding.collectAsStateWithLifecycle()
+    ClientHomeGate(
+        showOnboarding = !hasSeenOnboarding,
+        onboarding = { OnboardingContent(onFinish = viewModel::markOnboardingShown) },
+        home = {
+            HomeClientShell(
+                avatarUrl = avatarUrl,
+                showDebugAffordances = BuildConfig.DEBUG,
+                onSwitchMode = onSwitchMode,
+                onLogout = viewModel::logout,
+                onDebugForceRefresh = viewModel::debugForceRefresh,
+                debugRefreshStatus = debugRefreshStatus,
+            )
+        },
     )
 }
+
+/**
+ * Shows the onboarding carousel while [showOnboarding] is true, else the client home (D-21). A plain
+ * composable in the same window (no separate window), so the exit is a 200 ms cross-fade (UI-SPEC).
+ */
+@Composable
+fun ClientHomeGate(
+    showOnboarding: Boolean,
+    onboarding: @Composable () -> Unit,
+    home: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedContent(
+        targetState = showOnboarding,
+        modifier = modifier,
+        transitionSpec = { fadeIn(tween(ONBOARDING_FADE_MS)) togetherWith fadeOut(tween(ONBOARDING_FADE_MS)) },
+        label = "client-home-gate",
+    ) { showing ->
+        if (showing) onboarding() else home()
+    }
+}
+
+private const val ONBOARDING_FADE_MS = 200
 
 /**
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
@@ -61,8 +99,7 @@ fun HomeClientScreen(
 fun HomeClientShell(
     avatarUrl: String?,
     showDebugAffordances: Boolean,
-    onDebugSwitchScaffold: () -> Unit,
-    onAvatarClick: () -> Unit,
+    onSwitchMode: (AppMode) -> Unit,
     onLogout: () -> Unit,
     onDebugForceRefresh: () -> Unit,
     debugRefreshStatus: String?,
@@ -81,7 +118,7 @@ fun HomeClientShell(
                 entry<ExploreRoot> {
                     ClientTabRoot(
                         key = ExploreRoot,
-                        actions = { TopBarAvatarButton(avatarUrl, onAvatarClick) },
+                        actions = { TopBarAvatarButton(avatarUrl, onClick = { navigator.navigate(ModeSwitchKey) }) },
                     )
                 }
                 entry<SearchRoot> { ClientTabRoot(SearchRoot) }
@@ -96,10 +133,6 @@ fun HomeClientShell(
                             }
                             Spacer(Modifier.height(Spacing.sm))
                             if (showDebugAffordances) {
-                                OutlinedButton(onClick = onDebugSwitchScaffold) {
-                                    Text(stringResource(R.string.debug_switch_to_expert))
-                                }
-                                Spacer(Modifier.height(Spacing.sm))
                                 OutlinedButton(onClick = { navigator.navigate(DesignSystemGalleryKey) }) {
                                     Text(stringResource(R.string.debug_design_system_gallery))
                                 }
@@ -112,6 +145,13 @@ fun HomeClientShell(
                                 }
                             }
                         },
+                    )
+                }
+                entry<ModeSwitchKey>(metadata = BottomBar.hidden()) {
+                    ModeSwitchScreen(
+                        currentMode = AppMode.Client,
+                        onSwitchMode = onSwitchMode,
+                        onBack = navigator::goBack,
                     )
                 }
                 entry<DesignSystemGalleryKey> {
