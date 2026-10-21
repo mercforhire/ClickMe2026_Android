@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens
 
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -8,6 +9,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -22,7 +25,7 @@ class HomeShellsTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private var switchCount = 0
+    private val switched = mutableListOf<AppMode>()
     private var logoutCount = 0
     private var refreshCount = 0
 
@@ -35,8 +38,7 @@ class HomeShellsTest {
                 HomeClientShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
-                    onDebugSwitchScaffold = { switchCount++ },
-                    onAvatarClick = {},
+                    onSwitchMode = { switched += it },
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
@@ -54,8 +56,7 @@ class HomeShellsTest {
                 HomeExpertShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
-                    onDebugSwitchScaffold = { switchCount++ },
-                    onAvatarClick = {},
+                    onSwitchMode = { switched += it },
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
@@ -87,12 +88,79 @@ class HomeShellsTest {
     }
 
     @Test
-    fun profileTabOffersDebugSwitchAndGalleryAndSwitchInvokesCallback() {
+    fun profileTabOffersGalleryAndNoLongerOffersScaffoldSwitch() {
         setClient(showDebug = true)
         tapTab("Profile")
         composeRule.onNodeWithText("Design system gallery").assertExists()
-        composeRule.onNodeWithText("Switch to expert scaffold").performClick()
-        assertEquals(1, switchCount)
+        composeRule.onNodeWithText("Switch to expert scaffold").assertDoesNotExist()
+    }
+
+    @Test
+    fun clientAvatarOpensModeSwitcherWithoutBottomBarAndClientActive() {
+        setClient(showDebug = false)
+        composeRule.onNodeWithContentDescription("Your profile").performClick()
+        composeRule.onNodeWithText("Mode Switcher").assertExists()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+        composeRule.onNode(hasText("Client Mode") and hasText("Active")).assertExists()
+        composeRule.onNode(hasText("Expert Mode") and hasText("Active")).assertDoesNotExist()
+    }
+
+    @Test
+    fun clientChoosingExpertModeInvokesCallbackOnceAndReturnsToExploreWithBar() {
+        setClient(showDebug = false)
+        composeRule.onNodeWithContentDescription("Your profile").performClick()
+        composeRule.onNode(hasText("Expert Mode")).performClick()
+        assertEquals(listOf(AppMode.Expert), switched)
+        composeRule.onNodeWithText("Mode Switcher").assertDoesNotExist()
+        composeRule.onNode(tab("Explore")).assertIsSelected()
+    }
+
+    @Test
+    fun expertAvatarOpensModeSwitcherWithExpertActive() {
+        setExpert(showDebug = false)
+        composeRule.onNodeWithContentDescription("Your profile").performClick()
+        composeRule.onNodeWithText("Mode Switcher").assertExists()
+        composeRule.onNode(tab("Dashboard")).assertDoesNotExist()
+        composeRule.onNode(hasText("Expert Mode") and hasText("Active")).assertExists()
+    }
+
+    @Test
+    fun expertChoosingClientModeInvokesCallback() {
+        setExpert(showDebug = false)
+        composeRule.onNodeWithContentDescription("Your profile").performClick()
+        composeRule.onNode(hasText("Client Mode")).performClick()
+        assertEquals(listOf(AppMode.Client), switched)
+        composeRule.onNode(tab("Dashboard")).assertIsSelected()
+    }
+
+    @Test
+    fun gateShowsCarouselWithoutHomeWhenOnboardingIsPending() {
+        composeRule.setContent {
+            ClickMeTheme {
+                ClientHomeGate(
+                    showOnboarding = true,
+                    onboarding = { Text("Welcome to ClickMe") },
+                    home = { Text("HOME") },
+                )
+            }
+        }
+        composeRule.onNodeWithText("Welcome to ClickMe").assertExists()
+        composeRule.onNodeWithText("HOME").assertDoesNotExist()
+    }
+
+    @Test
+    fun gateShowsHomeWithoutCarouselOnceSeen() {
+        composeRule.setContent {
+            ClickMeTheme {
+                ClientHomeGate(
+                    showOnboarding = false,
+                    onboarding = { Text("Welcome to ClickMe") },
+                    home = { Text("HOME") },
+                )
+            }
+        }
+        composeRule.onNodeWithText("HOME").assertExists()
+        composeRule.onNodeWithText("Welcome to ClickMe").assertDoesNotExist()
     }
 
     @Test
@@ -120,7 +188,7 @@ class HomeShellsTest {
         openGalleryFromProfile()
         tapTab("Profile")
         composeRule.onNodeWithContentDescription("Back").assertDoesNotExist()
-        composeRule.onNodeWithText("Switch to expert scaffold").assertExists()
+        composeRule.onNodeWithText("Design system gallery").assertExists()
     }
 
     @Test
@@ -129,7 +197,7 @@ class HomeShellsTest {
         openGalleryFromProfile()
         composeRule.onNodeWithContentDescription("Back").performClick()
         composeRule.onNodeWithContentDescription("Back").assertDoesNotExist()
-        composeRule.onNodeWithText("Switch to expert scaffold").assertExists()
+        composeRule.onNodeWithText("Design system gallery").assertExists()
     }
 
     @Test
@@ -137,11 +205,10 @@ class HomeShellsTest {
         setClient(showDebug = false)
         tapTab("Profile")
         composeRule.onNodeWithText("Design system gallery").assertDoesNotExist()
-        composeRule.onNodeWithText("Switch to expert scaffold").assertDoesNotExist()
     }
 
     @Test
-    fun expertShellShowsFiveTabsWithDashboardSelectedAndSwitchToClient() {
+    fun expertShellShowsFiveTabsWithDashboardSelectedAndAvatarButton() {
         setExpert(showDebug = true)
         listOf("Dashboard", "Bookings", "Topics", "Chats", "Profile").forEach {
             composeRule.onNode(tab(it)).assertExists()
@@ -149,7 +216,6 @@ class HomeShellsTest {
         composeRule.onNode(tab("Dashboard")).assertIsSelected()
         composeRule.onNodeWithContentDescription("Your profile").assertExists()
         tapTab("Profile")
-        composeRule.onNodeWithText("Switch to client scaffold").assertExists()
         composeRule.onNodeWithText("Design system gallery").assertExists()
     }
 
@@ -157,7 +223,6 @@ class HomeShellsTest {
     fun expertDebugAffordancesAbsentWhenGateIsOff() {
         setExpert(showDebug = false)
         tapTab("Profile")
-        composeRule.onNodeWithText("Switch to client scaffold").assertDoesNotExist()
         composeRule.onNodeWithText("Design system gallery").assertDoesNotExist()
     }
 

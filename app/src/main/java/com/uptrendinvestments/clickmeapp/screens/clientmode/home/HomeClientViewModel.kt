@@ -29,8 +29,15 @@ class HomeClientViewModel
                 .map { it?.personalDetails?.avatarUrl }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+        /** Mirrors [UserManager.hasSeenOnboarding]; the carousel shows while this is false (D-21). */
+        val hasSeenOnboarding: StateFlow<Boolean> = userManager.hasSeenOnboarding
+
         private val _debugRefreshStatus = MutableStateFlow<String?>(null)
         val debugRefreshStatus: StateFlow<String?> = _debugRefreshStatus.asStateFlow()
+
+        fun markOnboardingShown() {
+            viewModelScope.launch { userManager.markOnboardingShown() }
+        }
 
         /** UserManager runs the logout non-cancellable, so the route change cannot interrupt it. */
         fun logout() {
