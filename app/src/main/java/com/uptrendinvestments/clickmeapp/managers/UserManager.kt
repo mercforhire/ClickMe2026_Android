@@ -51,6 +51,7 @@ class UserManager
         private val pushTokenRegistrar: PushTokenRegistrar,
         @ApplicationScope private val appScope: CoroutineScope,
         @IoDispatcher private val io: CoroutineDispatcher,
+        private val sessionDataCleaners: Set<@JvmSuppressWildcards SessionDataCleaner> = emptySet(),
     ) {
         private val _isLoggedIn = MutableStateFlow(false)
         val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
@@ -121,6 +122,7 @@ class UserManager
             email: String,
             password: String,
         ): AuthUser {
+            clearSessionData()
             val data = apiCall { api.login(LoginRequest(email, password)) }.data
             withContext(io) { tokens.save(TokenPair(data.token, data.refreshToken, data.expiresAt)) }
             _authUser.value = data.user
@@ -141,6 +143,7 @@ class UserManager
             email: String,
             password: String,
         ): SignupData {
+            clearSessionData()
             val data = apiCall { api.signup(SignupRequest(email, password)) }.data
             withContext(io) { tokens.save(TokenPair(data.token, data.refreshToken, data.expiresAt)) }
             _authUser.value = data.user
@@ -154,7 +157,7 @@ class UserManager
 
         /**
          * The single logout path (FND-08, D-09): clears tokens, cached profile, mode and onboarding flag,
-         * and resets in-memory state. No backend call: iOS has no logout endpoint. Runs non-cancellable so
+         * session-local files ([SessionDataCleaner]) and resets in-memory state. No backend call: iOS has no logout endpoint. Runs non-cancellable so
          * a screen leaving composition cannot interrupt it half way.
          *
          * [_isLoggedIn] flips before the in-memory mode and onboarding flag are reset, so nothing reacting to
@@ -166,6 +169,7 @@ class UserManager
                 // Called first so the future push-token DELETE still has a bearer token (iOS order).
                 runCatching { pushTokenRegistrar.unregister() }
                 tokens.clear()
+                clearSessionData()
                 _authUser.value = null
                 _me.value = null
                 _profile.value = null
@@ -176,6 +180,16 @@ class UserManager
                 _isLoggedIn.value = false
                 _currentMode.value = AppMode.Client
                 _hasSeenOnboarding.value = false
+            }
+        }
+
+        /**
+         * Runs every [SessionDataCleaner] (CR-03, T-04-18): on logout, and before login or signup so nothing a
+         * previous session left on disk (for example after process death) can reach the next account. Best effort.
+         */
+        private suspend fun clearSessionData() {
+            withContext(io) {
+                sessionDataCleaners.forEach { cleaner -> bestEffort { cleaner.clearSessionData() } }
             }
         }
 

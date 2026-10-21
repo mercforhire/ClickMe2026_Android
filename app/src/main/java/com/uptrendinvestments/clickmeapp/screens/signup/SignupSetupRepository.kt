@@ -68,7 +68,9 @@ internal fun listFieldFor(
  * App-scoped accumulator for the expert signup setup, ported from iOS `SignupAccumulator`. The hub, the five steps
  * and Review are separate navigation entries with entry-scoped ViewModels, so they share state through this
  * singleton. It is cleared when the session ends (logout) and on [reset] after publishing, so no draft, send state
- * or photo file reaches a later signup (T-04-18).
+ * or photo file reaches a later signup (T-04-18). The photo files are also wiped by `UserManager` through
+ * `PhotoWorkingFilesCleaner` on every logout, login and signup, because this lazily created singleton (and so its
+ * logout observer) may not exist in the process where the session ends (CR-03).
  *
  * Saves send only the fields the user filled (D-04) and update the draft only when the request succeeded. This class
  * never logs draft contents (T-04-21).

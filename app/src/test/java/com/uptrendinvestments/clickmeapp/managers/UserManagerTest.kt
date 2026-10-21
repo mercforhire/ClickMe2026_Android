@@ -14,7 +14,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.screens.signup.profilephoto.PhotoWorkingFilesCleaner
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakePhotoProcessor
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
 import kotlinx.coroutines.CompletableDeferred
@@ -84,6 +86,21 @@ class UserManagerTest {
         }
     }
 
+    /** Cleaner that records each call and whether a session was stored at that moment. */
+    private class RecordingCleaner(
+        private val tokens: SecureTokenStore,
+    ) : SessionDataCleaner {
+        var calls = 0
+        val sessionPresentAtCall = mutableListOf<Boolean>()
+        var failWith: Exception? = null
+
+        override suspend fun clearSessionData() {
+            calls++
+            sessionPresentAtCall += tokens.hasSession()
+            failWith?.let { throw it }
+        }
+    }
+
     private inner class Harness(
         scope: TestScope,
         initial: TokenPair? = null,
@@ -93,6 +110,7 @@ class UserManagerTest {
         val sessionStore = SessionStore(testPreferencesDataStore(scope.backgroundScope, tmp))
         val events = SessionEvents()
         val registrar = RecordingRegistrar(tokens)
+        val cleaner = RecordingCleaner(tokens)
         val manager =
             UserManager(
                 api,
@@ -102,6 +120,7 @@ class UserManagerTest {
                 registrar,
                 scope.backgroundScope,
                 UnconfinedTestDispatcher(scope.testScheduler),
+                setOf(cleaner),
             )
     }
 
@@ -916,6 +935,92 @@ class UserManagerTest {
 
             assertFalse(pairs.contains(true to AppMode.Client))
             assertEquals(false to AppMode.Client, pairs.last())
+        }
+
+    // ---- CR-03: session-local files ----
+
+    @Test
+    fun logoutClearsSessionDataAfterTheTokens() =
+        runTest {
+            val h = Harness(this, authedPair)
+
+            h.manager.logout()
+
+            assertEquals(1, h.cleaner.calls)
+            assertEquals(listOf(false), h.cleaner.sessionPresentAtCall)
+        }
+
+    @Test
+    fun rejectedSessionDuringRestoreClearsSessionData() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = {
+                h.tokens.clear()
+                throw h.api.httpError(401, """{"code":"TOKEN_EXPIRED"}""")
+            }
+
+            assertEquals(LaunchDestination.Login, h.manager.restore())
+
+            assertEquals(1, h.cleaner.calls)
+        }
+
+    @Test
+    fun loginAndSignupClearSessionDataBeforeStoringTokens() =
+        runTest {
+            val h = Harness(this)
+            h.api.loginHandler = { sampleLogin }
+            h.api.signupHandler = { sampleSignup }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.login("a@b.co", "pw")
+            h.tokens.clear()
+            h.manager.signup("b@b.co", "abcdefg1")
+
+            assertEquals(2, h.cleaner.calls)
+            assertEquals(listOf(false, false), h.cleaner.sessionPresentAtCall)
+        }
+
+    @Test
+    fun logoutWithNoSetupRepositoryInTheProcessStillDeletesPhotoWorkingFiles() =
+        runTest {
+            val photo = FakePhotoProcessor()
+            photo.cropped = byteArrayOf(1, 2, 3)
+            photo.hasSourceValue = true
+            val tokens = FakeSecureTokenStore(authedPair)
+            val manager =
+                UserManager(
+                    FakeClickMeApi(),
+                    tokens,
+                    SessionStore(testPreferencesDataStore(backgroundScope, tmp)),
+                    SessionEvents(),
+                    PushTokenRegistrar(),
+                    backgroundScope,
+                    UnconfinedTestDispatcher(testScheduler),
+                    setOf(PhotoWorkingFilesCleaner(photo)),
+                )
+
+            manager.logout()
+
+            assertEquals(1, photo.clearCalls)
+            assertNull(photo.croppedJpeg())
+            assertFalse(photo.hasSource())
+        }
+
+    @Test
+    fun failingCleanerDoesNotBreakLogoutOrLogin() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.cleaner.failWith = IOException("disk")
+            h.api.loginHandler = { sampleLogin }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.logout()
+            assertFalse(h.manager.isLoggedIn.value)
+            assertFalse(h.tokens.hasSession())
+
+            h.manager.login("a@b.co", "pw")
+            assertTrue(h.manager.isLoggedIn.value)
+            assertEquals(2, h.cleaner.calls)
         }
 
     @Test
