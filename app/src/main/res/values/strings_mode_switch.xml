@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_switch_title">Mode Switcher</string>
+    <string name="mode_switch_client_title">Client Mode</string>
+    <string name="mode_switch_client_subtitle">Find and book experts</string>
+    <string name="mode_switch_client_description">Browse a wide range of experts and book sessions that fit your needs.</string>
+    <string name="mode_switch_expert_title">Expert Mode</string>
+    <string name="mode_switch_expert_subtitle">Manage bookings and profile</string>
+    <string name="mode_switch_expert_description">Manage your bookings, update your profile, and connect with clients.</string>
+    <string name="mode_switch_active">Active</string>
+    <string name="mode_switch_card_a11y">%1$s. %2$s.</string>
+    <string name="mode_switch_card_a11y_active">%1$s. %2$s. Active.</string>
+</resources>
