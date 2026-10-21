@@ -33,7 +33,7 @@ reviewed_at: 2026-10-20
 | Font | Nunito 400 / 600 (inherited). No new font files |
 | Theme | `ClickMeTheme`, dark only (inherited) |
 | New dependencies for UI | none. The crop is custom Compose code (D-12). Coil 3 already loads remote avatars |
-| New bundled assets | `res/drawable-nodpi/mode_client.webp`, `mode_expert.webp` (D-19, exported once from the `ModeSwitchView.swift` `imageURL`s, 264 x 264 px); `onboarding_welcome.webp`, `onboarding_discover.webp`, `onboarding_booking.webp`, `onboarding_communication.webp` (copied from iOS `Assets.xcassets/{welcome,discover,booking,communication}.imageset`, downscaled to at most 1080 px wide, WebP quality 85) |
+| New bundled assets | `res/drawable-nodpi/mode_client.png`, `mode_expert.png` (D-19/D-26, exported once from the `ModeSwitchView.swift` `imageURL`s as the original 512 x 512 PNGs, not converted); `onboarding_welcome`, `onboarding_discover`, `onboarding_booking`, `onboarding_communication` (D-26, copied from iOS `Assets.xcassets/{welcome,discover,booking,communication}.imageset` in their original format, downscaled to at most 1080 px wide if larger) |
 
 ### Shared-component changes this phase needs (all optional and backward-compatible)
 
@@ -243,7 +243,7 @@ Tips (iOS verbatim):
 | 3 | City | `ValidatedField`, placeholder "City", icon `Outlined.LocationCity`, `Words`, `Next` |
 | 4 | Province/State | `ValidatedField`, placeholder "Province/State (optional)", icon `Outlined.Public`, `Words`, `Next`. Full width (the iOS side-by-side layout does not fit at 200% font scale) |
 | 5 | Country | `PickerField`, placeholder "Country", icon `Outlined.Flag`; value = localized country name. Opens `PickerSheet` "Select Country" over the static 50-country list, searchable, row = country name `bodyLarge`, selected row has the accent check |
-| 6 | Languages | Label "Spoken Languages" `titleMedium`, `sm` gap. `SelectableChip` flow of selected languages in tap order (English pre-selected, D-16), each removable with its close icon (contentDescription "Remove {language}"). Below, helper "The first language you pick is your primary language." `bodySmall` `onSurfaceMuted`. Below that, an "Add language..." row: `surfaceContainer`, `CircleShape`, 56dp, `Outlined.Language` + "Add language..." + trailing chevron; opens the Language `PickerSheet` |
+| 6 | Languages | Label "Spoken Languages" `titleMedium`, `sm` gap. `SelectableChip` flow of selected languages in tap order (English pre-selected, D-16), each removable with its close icon (contentDescription "Remove {language}"). Below, an "Add language..." row: `surfaceContainer`, `CircleShape`, 56dp, `Outlined.Language` + "Add language..." + trailing chevron; opens the Language `PickerSheet` |
 
 Language `PickerSheet` (iOS verbatim): title "Select Spoken Languages"; search placeholder "Search languages..."; rows are multi-select (accent check on selected, label `bodyLarge`); footer has "Cancel" (tonal `PressScaleButton`) and "Done" (filled accent). Loading: centered `CircularProgressIndicator` (`primary`, 48dp) and "Loading languages…". Error: `Outlined.ErrorOutline` 48dp `onSurfaceMuted`, "Couldn't load languages", body "Check your connection and try again.", button "Retry". Selection order is preserved and sent as `languages` (D-14).
 
@@ -444,7 +444,7 @@ All strings go into per-feature `res/values/strings_signup_*.xml`, `strings_onbo
 | Screen titles | "Profile Setup" (Android), "Personal Details", "Timezone", "Profile Photo" (Android), "Verify Email" (Android), "Expertise Tags", "Profile Review", "Mode Switcher" |
 | Initial | Headline "Create Account"; subtitle "Start your journey with us."; placeholders "Email", "Password"; hint "At least 8 characters, with a letter and a number." (Android) |
 | Hub | "Complete Your Profile!", "A complete profile helps you get more bookings.", "Profile Completion", "{done} of 5", rows "Personal details", "Confirm timezone", "Add profile picture", "Verify email", "Add expertise", "Tips for a Great Profile" plus the three tips above |
-| Personal Details | "Tell us a bit about yourself.", "First Name", "City", "Province/State (optional)" (Android), "Country", "Spoken Languages", "Add language...", "Select Spoken Languages", "Search languages...", "Select Country" (Android), "Cancel", "Done", "The first language you pick is your primary language." (Android) |
+| Personal Details | "Tell us a bit about yourself.", "First Name", "City", "Province/State (optional)" (Android), "Country", "Spoken Languages", "Add language...", "Select Spoken Languages", "Search languages...", "Select Country" (Android), "Cancel", "Done" |
 | Timezone | "Confirm your timezone", "We auto-detected this from your device.\nChange it if it's wrong.", "Auto-detect from device", "Select Timezone" (Android), "We use this to convert booking times to your local time and to align payouts with your day." |
 | Profile Photo | "Add a Profile Photo", "Choose a clear photo so clients can recognize you.", "Upload Photo", "Choose Another Photo" (Android), "Adjust Crop" (Android), "Remove Photo", crop hint "Pinch to zoom and drag to reposition." (Android) |
 | Verify Email | "Verify Your Email Address"; message before/after send (see screen 6); placeholder "Enter 6-digit code"; "Email Verified" / "Your email address is confirmed." (Android) |

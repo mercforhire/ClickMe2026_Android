@@ -115,6 +115,12 @@ Carried forward (not re-opened):
   - Skip and Get Started both mark it shown. Logout clears the flag (already done in Phase 2).
 - **D-22: After publishing, set mode to client and open client home, where the carousel appears (iOS parity).**
 
+### Post-research decisions (2026-10-20, confirmed by user during plan-phase)
+- **D-23: Accept the server converting a client-only account to expert on the first `/expert/*` call.** The D-17 setup-status check calls `GET /expert/profile`, and `ensureExpert` permanently converts a client-only account (backend EXP-01, by design). No role pre-gate is needed. (RESEARCH A9)
+- **D-24: Drop the languages helper line "The first language you pick is your primary language."** The server stores no language order. Keep the tag "first is primary" line, since tags do get `is_primary`. (RESEARCH A8)
+- **D-25: Empty-array rule for list fields (refines D-04).** Omit `languages` and `expertise_tags` when they are untouched. Send `[]` only when the user empties a list that was previously non-empty on the server. (RESEARCH Pitfall 2)
+- **D-26: Bundle the mode-switch images (D-19) as the original PNGs, unconverted.** No WebP encoder is available. The onboarding carousel images are also copied from the iOS asset catalog in their original format.
+
 ### Claude's Discretion
 - Hub layout details: rows with check states, a done/5 progress bar, a tips card and a bottom "Next" bar, adapted to Material 3.
 - The Review screen layout: cards with Edit buttons, plus a Timezone card. iOS omits timezone; adding it is fine.
