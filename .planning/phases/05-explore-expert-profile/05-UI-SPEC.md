@@ -1,10 +1,11 @@
 ---
 phase: 5
 slug: explore-expert-profile
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-10-21
+reviewed_at: 2026-10-21
 ---
 
 # Phase 5 — UI Design Contract
@@ -249,7 +250,7 @@ Tap behavior (D-09): tapping an unselected card sets the selection to exactly th
 | Semantics | Merged: "{name}. {title}. Rated {r} out of 5 from {n} reviews. {tags}", button |
 
 **States (D-16, D-17).**
-- Loading (first load and refresh with no data): Trending Categories shows 5 skeleton cards (112 x 104, `medium`); Recommended Experts shows 3 skeleton cards (full width, 126dp tall: 96 avatar plus `md` padding twice, with a circle block and three text bars). Featured Topics and Today's Sessions show nothing while loading (iOS). Skeleton groups carry one `contentDescription` "Loading".
+- Loading (first load and refresh with no data): Trending Categories shows 5 skeleton cards (112 x 104, `medium`); Recommended Experts shows 3 skeleton cards (full width, 128dp tall: 96 avatar plus `md` padding twice, with a circle block and three text bars). Featured Topics and Today's Sessions show nothing while loading (iOS). Skeleton groups carry one `contentDescription` "Loading".
 - Home failure: each of Trending Categories, Featured Topics and Recommended Experts keeps its heading and shows a `SectionError` beneath it. Message: the server message, else "Check your connection and try again." Every Retry calls the same `/client/home` request (D-16). Today's Sessions is not affected by this error.
 - Refreshing with data on screen: keep the content; only the pull indicator shows. A failed refresh keeps the old data and shows a `Snackbar` "Couldn't refresh. Pull down to try again." (Android).
 - No experts (D-17): under the Recommended Experts heading, centered `bodyLarge` `onSurfaceMuted` "No experts in this category yet" when a filter is active, with a `TextButton` "Clear filter" (`labelLarge`, `onSurface`, underlined, 48dp) below it that clears the selection and re-fetches. With no filter active the line reads "No experts available yet" and has no action (Android, discretion).
