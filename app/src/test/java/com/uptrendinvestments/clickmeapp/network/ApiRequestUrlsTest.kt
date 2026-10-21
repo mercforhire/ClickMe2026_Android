@@ -25,6 +25,11 @@ class ApiRequestUrlsTest {
         listOf(
             "/api/v1/auth/email/resend",
             "/api/v1/auth/email/verify",
+            "/api/v1/auth/email/status",
+            "/api/v1/expert/profile/setup",
+            "/api/v1/meta/languages",
+            "/api/v1/meta/expertise-tags",
+            "/api/v1/user/profile/avatar",
             "/api/v1/me",
             "/api/v1/user/profile",
             "/api/v1/expert/topics",
@@ -49,6 +54,18 @@ class ApiRequestUrlsTest {
         assertEquals("user/profile", ApiRequestUrls.USER_PROFILE)
         assertEquals("expert/profile", ApiRequestUrls.EXPERT_PROFILE)
         assertEquals("expert/topics", ApiRequestUrls.EXPERT_TOPICS)
+    }
+
+    @Test
+    fun phaseFourConstants_haveExactRelativeValues() {
+        assertEquals("auth/signup", ApiRequestUrls.SIGNUP)
+        assertEquals("auth/email/resend", ApiRequestUrls.EMAIL_RESEND)
+        assertEquals("auth/email/verify", ApiRequestUrls.EMAIL_VERIFY)
+        assertEquals("auth/email/status", ApiRequestUrls.EMAIL_STATUS)
+        assertEquals("expert/profile/setup", ApiRequestUrls.EXPERT_PROFILE_SETUP)
+        assertEquals("meta/languages", ApiRequestUrls.META_LANGUAGES)
+        assertEquals("meta/expertise-tags", ApiRequestUrls.META_EXPERTISE_TAGS)
+        assertEquals("user/profile/avatar", ApiRequestUrls.USER_AVATAR)
     }
 
     @Test
