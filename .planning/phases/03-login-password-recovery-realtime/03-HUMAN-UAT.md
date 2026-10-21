@@ -32,12 +32,16 @@ result: [pending]
 expected: Screens survive rotation and 200% font scale; socket disconnects on background and reconnects on foreground; a signed prodRelease (R8) build logs in and connects.
 result: [pending]
 
+### 6. Back behavior after review fixes (WR-03, WR-04)
+expected: On Password Changed, the predictive back preview shows Login (not Set New Password). On Set New Password, system Back, the predictive gesture and the top-bar arrow do nothing while "Saving…" and during "Password Updated!".
+result: [pending]
+
 ## Summary
 
-total: 5
+total: 6
 passed: 0
 issues: 0
-pending: 5
+pending: 6
 skipped: 0
 blocked: 0
 
