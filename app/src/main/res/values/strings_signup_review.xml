@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Signup Review and Publish (04-UI-SPEC screen 8). -->
+    <string name="signup_review_title">Profile Review</string>
+    <string name="signup_review_card_personal">Personal Details</string>
+    <string name="signup_review_card_timezone">Timezone</string>
+    <string name="signup_review_card_photo">Profile Photo</string>
+    <string name="signup_review_card_expertise">Expertise</string>
+    <string name="signup_review_label_first_name">First Name</string>
+    <string name="signup_review_label_location">Location</string>
+    <string name="signup_review_label_languages">Spoken Languages</string>
+    <string name="signup_review_label_timezone">Timezone</string>
+    <string name="signup_review_label_skills">Skills</string>
+    <string name="signup_review_required">Required</string>
+    <string name="signup_review_still_needed">Still needed: %1$s.</string>
+    <string name="signup_review_publish">Publish Profile</string>
+    <string name="signup_review_published">Published!</string>
+    <string name="signup_review_edit_a11y">Edit %1$s</string>
+    <string name="signup_review_error_title">Couldn\'t publish profile</string>
+    <string name="signup_review_missing_body">Finish these steps first: %1$s.</string>
+    <string name="signup_review_missing_ok">OK</string>
+</resources>
