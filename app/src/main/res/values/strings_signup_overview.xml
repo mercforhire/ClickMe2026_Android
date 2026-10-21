@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Signup Overview hub (04-UI-SPEC screen 2). Tips are iOS verbatim. -->
+    <string name="signup_overview_title">Profile Setup</string>
+    <string name="signup_overview_headline">Complete Your Profile!</string>
+    <string name="signup_overview_subtitle">A complete profile helps you get more bookings.</string>
+    <string name="signup_overview_progress_label">Profile Completion</string>
+    <string name="signup_overview_progress_value">%1$d of 5</string>
+    <string name="signup_overview_progress_a11y">Profile completion, %1$d of 5 steps</string>
+    <string name="signup_overview_state_completed">Completed</string>
+    <string name="signup_overview_state_not_completed">Not completed</string>
+    <string name="signup_overview_tips_title">Tips for a Great Profile</string>
+    <string name="signup_overview_tip_bio_title">Craft a Compelling Bio</string>
+    <string name="signup_overview_tip_bio_detail">Lead with the problem you solve. Keep it to 2–3 sentences and write the way you\'d talk to a client.</string>
+    <string name="signup_overview_tip_photo_title">Choose a Professional Picture</string>
+    <string name="signup_overview_tip_photo_detail">A clear, well-lit headshot with a simple background builds instant trust.</string>
+    <string name="signup_overview_tip_expertise_title">Clearly Define Your Expertise</string>
+    <string name="signup_overview_tip_expertise_detail">Pick focused tags over broad ones — specificity helps the right clients find you.</string>
+    <string name="signup_overview_next">Next</string>
+    <string name="signup_overview_more_options">More options</string>
+    <string name="signup_overview_log_out">Log out</string>
+    <string name="signup_overview_logout_title">Log out?</string>
+    <string name="signup_overview_logout_body">You\'ll need to log in again to finish setting up your profile. Your saved progress is kept.</string>
+    <string name="signup_overview_logout_cancel">Cancel</string>
+    <string name="signup_overview_refresh_failed">Couldn\'t refresh your profile. Pull down to retry.</string>
+    <string name="signup_overview_retry">Retry</string>
+</resources>
