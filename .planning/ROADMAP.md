@@ -187,7 +187,7 @@ Plans:
   4. After publishing, the user can log out and log in again. The onboarding carousel appears only on the first launch into client home. The user can switch between client and expert modes, and the mode is kept across relaunches. (PRD Week 2 checkpoint, part 1)
 
 **Planning notes:** Profile Photo uses `PickVisualMedia` (platform swap). Each step saves through `PATCH /expert/profile/setup`.
-**Plans:** 9/20 plans executed
+**Plans:** 18/20 plans executed
 Plans:
 **Wave 1**
 
@@ -206,15 +206,15 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-10-PLAN.md — Signup Initial screen and ViewModel; replaces the Sign Up placeholder in the auth stack (SIGN-01)
-- [ ] 04-11-PLAN.md — Overview hub: five steps, progress, refresh, always-enabled Next, Log out overflow (SIGN-02, SIGN-05)
-- [ ] 04-12-PLAN.md — Personal Details step with country and language pickers (SIGN-02)
-- [ ] 04-13-PLAN.md — Timezone step (SIGN-02)
-- [ ] 04-14-PLAN.md — Expertise Tags step (SIGN-02)
-- [ ] 04-15-PLAN.md — Verify Email step: send on tap, 30 s cooldown that survives re-entry, 429 handling (SIGN-03)
-- [ ] 04-16-PLAN.md — Profile Photo step: picker, crop handoff, upload, remove (SIGN-02)
-- [ ] 04-17-PLAN.md — Review and Publish: required markers, gated Publish, missing_fields dialog (SIGN-04)
-- [ ] 04-18-PLAN.md — Home wiring: avatar -> Mode Switcher, carousel gate, root fade-through, debug switch removed (ONB-01, ONB-02)
+- [x] 04-10-PLAN.md — Signup Initial screen and ViewModel; replaces the Sign Up placeholder in the auth stack (SIGN-01)
+- [x] 04-11-PLAN.md — Overview hub: five steps, progress, refresh, always-enabled Next, Log out overflow (SIGN-02, SIGN-05)
+- [x] 04-12-PLAN.md — Personal Details step with country and language pickers (SIGN-02)
+- [x] 04-13-PLAN.md — Timezone step (SIGN-02)
+- [x] 04-14-PLAN.md — Expertise Tags step (SIGN-02)
+- [x] 04-15-PLAN.md — Verify Email step: send on tap, 30 s cooldown that survives re-entry, 429 handling (SIGN-03)
+- [x] 04-16-PLAN.md — Profile Photo step: picker, crop handoff, upload, remove (SIGN-02)
+- [x] 04-17-PLAN.md — Review and Publish: required markers, gated Publish, missing_fields dialog (SIGN-04)
+- [x] 04-18-PLAN.md — Home wiring: avatar -> Mode Switcher, carousel gate, root fade-through, debug switch removed (ONB-01, ONB-02)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -449,7 +449,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
-| 4. Signup, Onboarding & Mode Switch | 9/20 | In Progress|  |
+| 4. Signup, Onboarding & Mode Switch | 18/20 | In Progress|  |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
