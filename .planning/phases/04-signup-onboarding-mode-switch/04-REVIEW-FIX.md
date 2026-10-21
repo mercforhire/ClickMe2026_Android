@@ -1,30 +1,68 @@
 ---
 phase: 04-signup-onboarding-mode-switch
-fixed_at: 2026-10-21T19:50:21Z
+fixed_at: 2026-10-21T20:03:22Z
 review_path: .planning/phases/04-signup-onboarding-mode-switch/04-REVIEW.md
 iteration: 1
 findings_in_scope: 11
-fixed: 10
-skipped: 1
-status: partial
+fixed: 11
+skipped: 0
+status: all_fixed
 ---
 
 # Phase 4: Code Review Fix Report
 
-**Fixed at:** 2026-10-21T19:50:21Z
+**Fixed at:** 2026-10-21T20:03:22Z
 **Source review:** .planning/phases/04-signup-onboarding-mode-switch/04-REVIEW.md
 **Iteration:** 1
 
 **Summary:**
 - Findings in scope: 11 (CR-01..CR-03, WR-01..WR-08; the Info items are out of scope)
-- Fixed: 10
-- Skipped: 1 (CR-01. Its decision, D-27, conflicts with the backend role model and needs the user to decide again. See below.)
+- Fixed: 11
+- Skipped: 0. CR-01 was first skipped because the original D-27 keyed on a role split the backend does not make. It was fixed after the user revised D-27 to "exit + remember" (ff814e9).
 
-**Verification:** `./gradlew testDevDebugUnitTest ktlintCheck lintDevDebug assembleDevDebug` passes, and so does `bash scripts/check-design-rules.sh`. There are 861 unit tests (baseline 809, plus 52 new) with 0 failures.
+**Verification:** `./gradlew testDevDebugUnitTest ktlintCheck lintDevDebug assembleDevDebug` passes, and so does `bash scripts/check-design-rules.sh`. There are 876 unit tests (baseline 809, plus 67 new) with 0 failures.
 
 **Process note:** The orchestrator said to work on the main checkout, so no isolated worktree or recovery sentinel was used. Every commit staged explicit paths only. The user's `.idea/` changes and the untracked `.planning/config.json` / `.idea/appInsightsSettings.xml` were not touched.
 
 ## Fixed Issues
+
+### CR-01: Switching a client-only user to Expert traps them in the setup hub permanently
+
+**Files modified:** `app/src/main/java/com/uptrendinvestments/clickmeapp/managers/SessionStore.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/managers/UserManager.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/AppViewModel.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/ClickMeApp.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/navigation/SignupSetupNavHost.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/signup/overview/SignupOverviewScreen.kt`, `app/src/main/res/values/strings_signup_overview.xml`, `app/src/test/java/com/uptrendinvestments/clickmeapp/managers/SessionStoreTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/managers/UserManagerTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/AppViewModelTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/signup/overview/SignupOverviewScreenTest.kt`
+**Commit:** 3d3a8af
+**Applied fix (revised D-27, "exit + remember"):**
+- **UI choice:** "Not now" is a `TextButton` action in the hub's `TopAppBar`, before the "More options" overflow. The string is `signup_overview_not_now` in `strings_signup_overview.xml`. I chose a low-emphasis app-bar text action over a second bottom button for two reasons:
+  - "Next" stays the hub's single primary CTA (UI-SPEC color rule 1).
+  - The hub stays a stack root with no navigation icon (UI-SPEC navigation table).
+- **Exit path:** `SignupOverviewScreen(onNotNow)` → `SignupSetupNavHost(onNotNow)` → `AppViewModel.onSetupDeferred()`. That calls `UserManager.deferSetup()`, which:
+  - sets mode Client through the session-guarded `setModeForSession` (WR-01);
+  - persists `SessionStore.setSetupDeferred(true)` and mirrors it in memory;
+  - clears `setupCheckPending`.
+
+  The route then becomes ClientHome, but only while the user is still logged in.
+- **While the flag is set:**
+  - `resolvePostAuthDestination` (launch restore and login) skips the setup lookup entirely, with no `GET /expert/profile`;
+  - `recheckSetupIfPending` (the D-11 foreground re-check) clears the pending flag with no request.
+
+  The flag is loaded with the other persisted state in `loadPersistedState` (restore and the cap path).
+- **What clears the flag:**
+  - `requestModeSwitch(Expert)`, which still opens setup when setup is incomplete (D-17);
+  - `completeSetup()` (publish);
+  - `logout()`, whose `sessionStore.clear()` wipes the key and resets the in-memory value. The next login therefore resumes into setup (SIGN-05).
+
+**Tests:** these use the backend's `['client','expert']` roles.
+- `AppViewModelTest`:
+  - "Not now" routes to ClientHome and persists the flag;
+  - relaunch while deferred goes to ClientHome with no setup lookup;
+  - the foreground re-check is skipped while deferred, after a cached-path relaunch;
+  - switching to Expert reopens setup, clears the flag, and setup is forced again on relaunch;
+  - logout then login resumes into SignupSetup;
+  - "Not now" after the session ended stays on Login.
+- `UserManagerTest`: the same cases at manager level, plus publish clearing the flag and `deferSetup` writing nothing after logout.
+- `SessionStoreTest`: the flag round-trips and is removed by `clear()`.
+- `SignupOverviewScreenTest`: the "Not now" action calls the exit.
+
+**Status:** fixed: requires human verification (routing and state logic; a device check of the app-bar action's fit at 200% font scale is also worth doing)
 
 ### CR-02: The D-06 publish-blocked marker survives the fix, so Publish stays disabled
 
@@ -149,30 +187,8 @@ Tests cover system Back while idle and while submitting, and signup and login wh
 
 Test configuration (`sourceBitmap`, `sourcePixelSize`, `previewBitmap`, `cropBytes`) is kept separate, with `givenSource()`/`givenCrop()` setup helpers. I added a contract test for the fake and three photo-step tests that depend on the corrected behaviour: a new pick drops the old preview, a removed pick stays gone, and a saved crop is not offered again.
 
-## Skipped Issues
-
-### CR-01: Switching a client-only user to Expert traps them in the setup hub permanently
-
-**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/managers/UserManager.kt:255-257, 326-332` (plus `SignupOverviewScreen.kt`, `SignupSetupNavHost.kt`, `AppViewModel.kt`)
-**Reason:** I could not apply D-27 as written. It relies on a role distinction the backend does not make.
-- D-27 forces setup only for "pure-expert accounts: the expert role without the client role", and shows the hub exit whenever the user holds the client role.
-- The backend never creates an expert without the client role:
-  - `backend-reference/src/controllers/auth.controller.js:562` assigns `const roles = role === 'expert' ? ['client', 'expert'] : ['client'];`. The Android signup always sends `role: "expert"`, so every signup account has `['client','expert']`.
-  - `backend-reference/src/middleware/ensureExpert.js` (step b/c) converts a client-only account to exactly the same `['client','expert']`, and sets the scalar `role` to `'expert'` in both cases.
-- So a converted client and a fresh expert signup cannot be told apart by roles. Under D-27 as written, no real account is "pure expert". The forced resume into the hub at launch and login (SIGN-05, D-10), and the D-11 foreground re-check, would never fire again. The new exit would also appear on every unfinished signup's hub.
-- Our test fixtures use `roles = ["expert"]`. That is why this conflict does not show up in the unit tests.
-
-I made no changes for CR-01, so the trap described in the review still exists.
-
-**Options for the user (pick one, then re-run the fixer):**
-1. **The exit for everyone, with resume kept.** Every unfinished setup hub gets a "Not now" / close action that goes to client mode through an `AppViewModel` method. Launch and login still open the hub while setup is incomplete, and the user can leave every time. This needs no role test. It changes UX for real expert signups, who also get "Not now".
-2. **A different signal for "converted client".** For example, a persisted local flag "setup entered by a mode switch". It is set in `requestModeSwitch` and lost on logout or on another device. Another option is a backend field such as a signup-origin or converted-at marker on `/me` or `/expert/profile`. Then force setup only when that flag is absent.
-3. **D-27 exactly as written.** Accept that, with this backend, no account is forced into setup at launch or login. SIGN-05's "an unfinished signup resumes into the hub at splash or login" then no longer holds.
-
-**Original issue:** `requestModeSwitch(Expert)` converts a client-only account (D-23) and routes to a hub that has no exit. Every later launch and login then routes back to the hub, so the user can never use client mode again until they publish an expert profile.
-
 ---
 
-_Fixed: 2026-10-21T19:50:21Z_
+_Fixed: 2026-10-21T20:03:22Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
