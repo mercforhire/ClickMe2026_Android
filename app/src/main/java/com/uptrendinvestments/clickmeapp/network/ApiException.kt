@@ -23,6 +23,7 @@ sealed class ApiException(
         val serverMessage: String?,
         val fieldErrors: List<FieldErrorDto>,
         val detail: Map<String, Any?>?,
+        val missingFields: List<String> = emptyList(),
     ) : ApiException("HTTP $status ${rawCode ?: ""}".trimEnd(), null) {
         override val userMessage: String? get() = serverMessage ?: fieldErrors.firstOrNull()?.message
     }

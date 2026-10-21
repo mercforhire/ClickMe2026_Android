@@ -36,6 +36,7 @@ object ApiErrorParser {
             serverMessage = envelope?.message,
             fieldErrors = envelope?.errors.orEmpty(),
             detail = envelope?.detail,
+            missingFields = envelope?.missingFields.orEmpty(),
         )
     }
 

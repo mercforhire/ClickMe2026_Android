@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.model.responses
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
@@ -14,6 +15,8 @@ data class ApiErrorEnvelope(
     val message: String? = null,
     val errors: List<FieldErrorDto>? = null,
     val detail: Map<String, Any?>? = null,
+    /** Top-level list on the expert publish 422, outside `errors[]` (D-06). */
+    @Json(name = "missing_fields") val missingFields: List<String>? = null,
 )
 
 @JsonClass(generateAdapter = true)

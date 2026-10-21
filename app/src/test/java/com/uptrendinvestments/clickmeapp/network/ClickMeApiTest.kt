@@ -3,10 +3,17 @@ package com.uptrendinvestments.clickmeapp.network
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SetupLocation
+import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -231,5 +238,163 @@ class ClickMeApiTest {
                 assertEquals("email", http.fieldErrors.single().field)
                 assertEquals("Email is invalid", http.userMessage)
             }
+        }
+
+    @Test
+    fun signupPostsExactBodyAndDecodesTokens() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"token":"jwt","refresh_token":"rt","expires_at":1792513029,
+                 "expires_in":900,"email_verified":false,
+                 "user":{"id":"u1","first_name":"","last_name":"","roles":["expert"]}}}
+                """.trimIndent(),
+            )
+
+            val data = api.signup(SignupRequest("a@b.co", "abcdefg1")).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/auth/signup", request.url.encodedPath)
+            assertEquals("""{"email":"a@b.co","password":"abcdefg1","role":"expert"}""", request.body?.utf8())
+            assertEquals("jwt", data.token)
+            assertEquals("rt", data.refreshToken)
+            assertEquals(false, data.emailVerified)
+        }
+
+    @Test
+    fun setupExpertProfileSendsOnlyTheKeysThatWereSet() =
+        runTest {
+            val body = """{"status":"success","data":{"profile_id":"p1","setup_completed":false}}"""
+            repeat(3) { enqueue(200, body) }
+
+            api.setupExpertProfile(SetupExpertProfileRequest(firstName = "Ada"))
+            val first = server.takeRequest()
+            assertEquals("PATCH", first.method)
+            assertEquals("/api/v1/expert/profile/setup", first.url.encodedPath)
+            assertEquals("""{"first_name":"Ada"}""", first.body?.utf8())
+
+            api.setupExpertProfile(SetupExpertProfileRequest(location = SetupLocation(city = "Toronto")))
+            assertEquals("""{"location":{"city":"Toronto"}}""", server.takeRequest().body?.utf8())
+
+            api.setupExpertProfile(SetupExpertProfileRequest(expertiseTags = emptyList()))
+            assertEquals("""{"expertise_tags":[]}""", server.takeRequest().body?.utf8())
+        }
+
+    @Test
+    fun setupExpertProfileFullRequestKeepsListOrder() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"setup_completed":true}}""")
+
+            api.setupExpertProfile(
+                SetupExpertProfileRequest(
+                    firstName = "Ada",
+                    location = SetupLocation(city = "Toronto", provinceState = "ON", countryCode = "CAN"),
+                    timezone = "America/Toronto",
+                    languages = listOf("fr", "en"),
+                    expertiseTags = listOf("t2", "t1"),
+                    setupCompleted = true,
+                ),
+            )
+
+            assertEquals(
+                """{"first_name":"Ada","location":{"city":"Toronto","province_state":"ON","country_code":"CAN"},""" +
+                    """"timezone":"America/Toronto","languages":["fr","en"],"expertise_tags":["t2","t1"],""" +
+                    """"setup_completed":true}""",
+                server.takeRequest().body?.utf8(),
+            )
+        }
+
+    @Test
+    fun uploadAvatarSendsMultipartImagePartAndDecodesUrl() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"avatar_url":"https://x/a.jpg"}}""")
+            val part =
+                MultipartBody.Part.createFormData(
+                    "image",
+                    "avatar.jpg",
+                    byteArrayOf(1, 2, 3).toRequestBody("image/jpeg".toMediaType()),
+                )
+
+            val data = api.uploadAvatar(part).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/user/profile/avatar", request.url.encodedPath)
+            assertTrue(request.headers["Content-Type"].orEmpty().startsWith("multipart/form-data"))
+            val text = request.body?.utf8().orEmpty()
+            assertTrue(text, text.contains("""name="image""""))
+            assertTrue(text, text.contains("""filename="avatar.jpg""""))
+            assertTrue(text, text.contains("Content-Type: image/jpeg"))
+            assertEquals("https://x/a.jpg", data.avatarUrl)
+        }
+
+    @Test
+    fun deleteAvatarIssuesDelete() =
+        runTest {
+            enqueue(200, """{"status":"success","message":"Avatar removed"}""")
+
+            api.deleteAvatar()
+
+            val request = server.takeRequest()
+            assertEquals("DELETE", request.method)
+            assertEquals("/api/v1/user/profile/avatar", request.url.encodedPath)
+        }
+
+    @Test
+    fun emailEndpointsUseTheirVerbsAndBodies() =
+        runTest {
+            enqueue(200, """{"status":"success","message":"sent"}""")
+            enqueue(200, """{"status":"success","message":"verified"}""")
+            enqueue(200, """{"status":"success","data":{"verified":true}}""")
+
+            api.resendVerificationEmail()
+            val resend = server.takeRequest()
+            assertEquals("POST", resend.method)
+            assertEquals("/api/v1/auth/email/resend", resend.url.encodedPath)
+
+            api.verifyEmailCode(VerifyEmailCodeRequest("123456"))
+            val verify = server.takeRequest()
+            assertEquals("POST", verify.method)
+            assertEquals("/api/v1/auth/email/verify", verify.url.encodedPath)
+            assertEquals("""{"code":"123456"}""", verify.body?.utf8())
+
+            val status = api.getEmailStatus().data
+            val statusRequest = server.takeRequest()
+            assertEquals("GET", statusRequest.method)
+            assertEquals("/api/v1/auth/email/status", statusRequest.url.encodedPath)
+            assertTrue(status.verified)
+        }
+
+    @Test
+    fun metaEndpointsAreGets() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"languages":[{"id":"en","label":"English"}]}}""")
+            enqueue(200, """{"status":"success","data":{"tags":[{"id":"u1","label":"Tax"}]}}""")
+
+            assertEquals(
+                "en",
+                api
+                    .getLanguages()
+                    .data.languages
+                    .single()
+                    .id,
+            )
+            val languages = server.takeRequest()
+            assertEquals("GET", languages.method)
+            assertEquals("/api/v1/meta/languages", languages.url.encodedPath)
+
+            assertEquals(
+                "u1",
+                api
+                    .getExpertiseTags()
+                    .data.tags
+                    .single()
+                    .id,
+            )
+            val tags = server.takeRequest()
+            assertEquals("GET", tags.method)
+            assertEquals("/api/v1/meta/expertise-tags", tags.url.encodedPath)
         }
 }

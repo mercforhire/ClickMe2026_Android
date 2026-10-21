@@ -276,4 +276,40 @@ class ApiErrorParserTest {
         runTest {
             assertEquals(7, apiCall { 7 })
         }
+
+    @Test
+    fun httpError_exposesTopLevelMissingFields() {
+        val body =
+            """
+            {"status":"error","code":"VALIDATION_ERROR",
+            "message":"Profile is incomplete; missing: profile_image_url, expertise_tags",
+            "missing_fields":["profile_image_url","expertise_tags"]}
+            """.trimIndent()
+        val http = ApiErrorParser.httpError(422, body)
+        assertEquals(listOf("profile_image_url", "expertise_tags"), http.missingFields)
+        assertEquals(ErrorCode.ValidationError, http.code)
+        assertTrue(http.fieldErrors.isEmpty())
+    }
+
+    @Test
+    fun httpError_mapsRateLimitCodes() {
+        val tooMany =
+            ApiErrorParser.httpError(
+                429,
+                """
+                {"status":"error","code":"TOO_MANY_REQUESTS",
+                "message":"Too many attempts. Please try again in 15 minutes."}
+                """.trimIndent(),
+            )
+        assertEquals(ErrorCode.TooManyRequests, tooMany.code)
+        assertEquals("Too many attempts. Please try again in 15 minutes.", tooMany.serverMessage)
+        val limited = ApiErrorParser.httpError(429, """{"status":"error","code":"RATE_LIMITED","message":"x"}""")
+        assertEquals(ErrorCode.RateLimited, limited.code)
+    }
+
+    @Test
+    fun httpError_missingFieldsEmptyWhenAbsent() {
+        assertTrue(ApiErrorParser.httpError(422, """{"status":"error","message":"x"}""").missingFields.isEmpty())
+        assertTrue(ApiErrorParser.httpError(500, null).missingFields.isEmpty())
+    }
 }
