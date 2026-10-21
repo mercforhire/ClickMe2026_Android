@@ -42,7 +42,7 @@ Task-level map (final, plan 04-20) followed by the requirement-level map (from R
 
 ### Task map
 
-All commands are `./gradlew :app:testDevDebugUnitTest --tests <pattern>` with the JDK prefix from Test Infrastructure. Every test class was confirmed to exist under `app/src/test`. The whole suite ran green on both flavors in 04-20 (809 tests per flavor).
+All commands are `./gradlew :app:testDevDebugUnitTest --tests <pattern>` with the JDK prefix from Test Infrastructure. Every test class was confirmed to exist under `app/src/test`. The whole suite ran green on both flavors in 04-20 (809 tests per flavor), and again after the review fixes (876 per flavor, re-confirmed in the 2026-10-21 audit).
 
 | Task ID | Plan | Wave | Requirement | Automated Command (test patterns) | File Exists | Status |
 |---------|------|------|-------------|-----------------------------------|-------------|--------|
@@ -84,6 +84,24 @@ All commands are `./gradlew :app:testDevDebugUnitTest --tests <pattern>` with th
 | 04-18-T2 | 18 | 3 | ONB-01, ONB-02 | `*AppViewModelTest` `*HomeShellsTest` `*RootScreensTest` + ktlintCheck, lintDevDebug, assembleDevDebug, check-design-rules | yes | green |
 | 04-19-T1 | 19 | 4 | SIGN-02, SIGN-04, SIGN-05 | `*SignupSetupNavigatorTest` | yes | green |
 | 04-19-T2 | 19 | 4 | SIGN-02, SIGN-04, SIGN-05 | `*SignupSetupNav*` `*RootScreensTest` `*AppViewModelTest` + ktlintCheck, lintDevDebug, assembleDevDebug, check-design-rules | yes | green |
+| 04-20-T1 | 20 | 5 | All | Full suite: ktlintCheck lintDevDebug lintProdDebug testDevDebugUnitTest testProdDebugUnitTest assemble* + check-design-rules | yes | green |
+| 04-20-T2 | 20 | 5 | All (docs) | `grep -c '[Phase 4] DEFERRED (human)'` and `grep -c 'Report to the iOS side'` in STATE.md | yes | green |
+
+### Post-review fixes (04-REVIEW-FIX, 11 findings, +67 tests)
+
+| Finding | Requirement | Test patterns | Status |
+|---------|-------------|---------------|--------|
+| CR-01 (D-27 "Not now", setup deferral) | SIGN-05, ONB-02 | `*AppViewModelTest` `*UserManagerTest` `*SessionStoreTest` `*SignupOverviewScreenTest` | green |
+| CR-02 (per-step publish-block lift) | SIGN-04 | `*SignupSetupRepositoryTest` | green |
+| CR-03 (photo working files cleared per session) | SIGN-02 | `*UserManagerTest` | green |
+| WR-01 (session-guarded mode writes) | ONB-02, SIGN-05 | `*UserManagerTest` `*AppViewModelTest` | green |
+| WR-02 (stale hydrate vs newer save) | SIGN-02 | `*SignupSetupRepositoryTest` | green |
+| WR-03 (English default vs server languages) | SIGN-02 | `*SignupSetupRepositoryTest` `*SignupBasicInfoViewModelTest` | green |
+| WR-04 (clearing city/province) | SIGN-02 | `*SignupSetupRepositoryTest` `*SignupBasicInfoViewModelTest` | green |
+| WR-05 (Back during signup submit) | SIGN-01 | `*UserManagerTest` `*SignupInitialScreenTest` | green |
+| WR-06 (Back mid-save on Basic Info / Timezone) | SIGN-02 | `*SignupBasicInfoScreenTest` `*SignupTimezoneScreenTest` | green |
+| WR-07 (custom id-less languages kept) | SIGN-02, SIGN-04 | `*SignupSetupRepositoryTest` `*SignupDraftTest` `*SignupReviewViewModelTest` `*SignupBasicInfoViewModelTest` | green |
+| WR-08 (FakePhotoProcessor fidelity) | SIGN-02 | `*FakePhotoProcessorTest` `*SignupProfilePhotoViewModelTest` `*PhotoCropViewModelTest` | green |
 
 ### Requirement-level map
 
@@ -108,6 +126,7 @@ All commands are `./gradlew :app:testDevDebugUnitTest --tests <pattern>` with th
 | SIGN-04 | Publish gated on the D-03 items; "Still needed" list; province optional | unit + Compose | `--tests '*SignupReviewViewModelTest' --tests '*SignupReviewScreenTest'` | ❌ W0 | ✅ green |
 | SIGN-04 | Publish payload; 422 top-level `missing_fields` mapped to step names; success sets mode Client and routes to ClientHome | unit + MockWebServer | same + `--tests '*ApiErrorParserTest' --tests '*SignupSetupRepositoryTest' --tests '*UserManagerTest' --tests '*AppViewModelTest'` | extend / ❌ W0 | ✅ green |
 | SIGN-05 | Post-auth destination; launch resume; the foreground re-check routes `Home` to `SignupSetup` after a failed setup lookup, a failed `/me` launch, or the 5 s splash cap; client-only accounts make no `GET /expert/profile` | unit | `--tests '*UserManagerTest' --tests '*AppViewModelTest'` (04-06) | extend | ✅ green |
+| SIGN-05 | D-27 "Not now": hub exits to ClientHome and remembers the deferral (survives relaunch, skips the setup lookup and the foreground re-check); switching to Expert, publishing or logging out clears it | unit + Compose | `--tests '*AppViewModelTest' --tests '*UserManagerTest' --tests '*SessionStoreTest' --tests '*SignupOverviewScreenTest'` (CR-01) | extend | ✅ green |
 | SIGN-05 | Logout from the hub goes to Login and clears the draft | unit | `--tests '*AppViewModelTest' --tests '*SignupSetupRepositoryTest'` | extend / ❌ W0 | ✅ green |
 | ONB-01 | Carousel shows once; Skip and Get Started call onFinish; Back on page 1 does not; the client-home gate shows it while the flag is false; marking it shown persists to `SessionStore` (survives relaunch); no flash on the cap path | unit + Compose | `--tests '*OnboardingScreenTest' --tests '*HomeShellsTest' --tests '*HomeClientViewModelTest' --tests '*UserManagerTest' --tests '*AppViewModelTest'` (04-08, 04-18, 04-06) | ❌ W0 / extend | ✅ green |
 | ONB-02 | `switchMode` gate (D-17, D-23); `currentMode` collector ignores Login and Splash | unit | `--tests '*AppViewModelTest'` | extend | ✅ green |
@@ -143,6 +162,7 @@ Deferred per project policy: log these as open items and do not block waves.
 | Mode persists across relaunch | ONB-02 | Process kill on a device | Switch mode, force-stop, relaunch | deferred (non-blocking) |
 | Keyboard with `ModalBottomSheet` | SIGN-02 | IME behavior | Search in the language and tag pickers | deferred (non-blocking) |
 | 200% font scale on new screens | All | Visual | System font size at max | deferred (non-blocking) |
+| "Not now" app-bar action fit at 200% font scale | SIGN-05 | Visual (CR-01) | Open the setup hub at max font size; check "Not now" and the overflow both fit | deferred (non-blocking) |
 
 ---
 
@@ -156,3 +176,16 @@ Deferred per project policy: log these as open items and do not block waves.
 - [x] Nyquist compliance flag set in frontmatter
 
 **Approval:** approved 2026-10-21 (automated gate green; manual rows deferred, non-blocking)
+
+---
+
+## Validation Audit 2026-10-21
+
+All 47 referenced test classes exist. `testDevDebugUnitTest` and `testProdDebugUnitTest` each ran 876 tests with 0 failures; `check-design-rules.sh` passes. The audit found no coverage gaps, only map drift: the 04-20 rows and the 04-REVIEW-FIX tests were missing from the map and are now added.
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Map rows added | 2 tasks + 11 review fixes + 1 requirement row + 1 manual row |
