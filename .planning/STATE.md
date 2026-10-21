@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 ## Current Position
 
-Phase: 04 (signup-onboarding-mode-switch) — EXECUTING
-Plan: 1 of 20
-Status: Executing Phase 04
-Last activity: 2026-10-21 -- Phase 04 execution started
+Phase: 04 (signup-onboarding-mode-switch) — EXECUTION COMPLETE (pending deferred device checks)
+Plan: 20 of 20
+Status: Phase 04 plans complete; automated gate green; device checks logged under Blockers/Concerns (Phase 4 deferred block)
+Last activity: 2026-10-21 -- Phase 04 plan 20 (phase gate) complete
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -73,6 +73,7 @@ Recent decisions affecting current work:
 - Confirm on the iOS side: Environments.plist has Current = Production (pk_live) while the backend Stripe account is in test mode (Phase 1 D-05). Android dev flavor uses pk_test for day-to-day testing.
 - Before release (Phase 13): verify against the current Google Play Payments policy that paying for live 1-on-1 expert calls via Stripe (not Play Billing) is permitted. Play Console "earning money" answer was payments for services outside Google Play.
 - Report to the iOS side: RealtimeEvents BookingStatus has no `rescheduled` case, so iOS drops booking.update events with that status (Android keeps raw strings).
+- Report to the iOS side (found while porting Phase 4): publishing without a photo always fails (server requires avatar), province is required on iOS but optional on the server, the verified-email state is lost on resume, tags/languages are sent alphabetically so the primary tag is accidental (and language order is not stored server-side at all), country_code is not normalized on publish, the photo zoom slider does nothing.
 
 ### Blockers/Concerns
 
@@ -93,6 +94,13 @@ Recent decisions affecting current work:
   - [ ] SC-4 Reconnect: airplane mode on for 10 s then off: state returns to Connected within about 2 s of the network coming back and events flow again. If a silent drop takes much longer (A2: ping timeout up to ~45 s; the harness also showed a graceful server close frame is only noticed after that timeout), log it and consider a ConnectivityManager network-available nudge as a follow-up. Debug "Force token refresh" on the Profile tab: a SessionEvent Refreshed is followed by a reconnect (state cycles to Connected) with the new token.
   - [ ] Lifecycle: backgrounding the app logs state=Disconnected about 1 s later; returning logs state=Connected. Logging out logs state=Disconnected.
   - [ ] Release smoke (needs the deferred Phase 2 keystore): the signed prodRelease APK logs in and the socket connects (R8, RESEARCH A6, T-03-44/T-03-45).
+- [Phase 4] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (809 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F with the devDebug build against production.
+  - [ ] SC-1 Signup: Login -> Sign Up -> Create Account with a new email (no username/phone) -> hub; complete Personal details (country search, language multi-select, English pre-selected), Timezone (device zone preselected), Profile Photo (pick, pinch/pan/double-tap crop, spring-back, Use Photo, Save), Verify Email (real emailed code), Add expertise (search, tap order) in any order; Review shows everything; Publish -> client home with the carousel.
+  - [ ] SC-2 Verify Email: opening the step sends nothing; Send emails a code; Resend stays disabled for 30 s with the countdown; a second Send inside 30 s is treated as sent; a wrong code shows the inline error.
+  - [ ] SC-3 Resume: quit mid-setup (force-stop), relaunch -> hub with completed steps checked; log out from the hub overflow, log in again -> hub; airplane mode at launch for an incomplete expert -> home, then back online and foreground -> hub (D-11).
+  - [ ] SC-4 After publish: log out and log in -> carousel shows once on client home (Skip and Get Started both mark it; Back on page 1 leaves the app without marking it); avatar -> Mode Switcher -> Expert Mode -> expert home; force-stop and relaunch keeps expert mode; Client Mode switches back.
+  - [ ] Photo picker on API 26-32 (no AVD available); 200% font scale and keyboard-open checks on all 12 surfaces; ModalBottomSheet search with the IME; TalkBack crop custom actions.
+  - [ ] Consequence to watch (D-17, D-23): a client-only account that taps Expert Mode is converted to expert by the server and then resumes into setup on every launch until it publishes or logs out (iOS has the same relaunch behavior). Raise in Phase 16 QA if testers find it surprising.
 
 ## Deferred Items
 
@@ -105,5 +113,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-10-21T02:02:38.582Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-signup-onboarding-mode-switch/04-UI-SPEC.md
+Stopped at: Phase 4 execution complete pending deferred device checks (04-20 gate green)
+Resume file: .planning/phases/04-signup-onboarding-mode-switch/04-20-SUMMARY.md
