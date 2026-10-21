@@ -5,11 +5,13 @@ package com.uptrendinvestments.clickmeapp.managers
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.enums.UserRole
+import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -17,6 +19,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -574,5 +577,356 @@ class UserManagerTest {
             assertEquals(LaunchDestination.Home(AppMode.Client), destination)
             assertEquals(AppMode.Client, h.sessionStore.storedMode())
             assertEquals(AppMode.Client, h.manager.currentMode.value)
+        }
+
+    // ---- Phase 4: signup, mode switch, setup re-check ----
+
+    private val sampleSignup =
+        SignupData(
+            token = "s-access",
+            user = AuthUser(id = "u2", firstName = "Bo", lastName = "Ng", roles = listOf("expert")),
+            refreshToken = "s-refresh",
+            expiresAt = 1_900_000_200L,
+            expiresIn = 3600L,
+            emailVerified = true,
+        )
+
+    private fun expertLogin() = sampleLogin.copy(user = sampleLogin.user.copy(roles = listOf("expert")))
+
+    @Test
+    fun signupStoresTokensAndMarksLoggedIn() =
+        runTest {
+            val h = Harness(this)
+            h.api.signupHandler = { sampleSignup }
+            h.api.userProfileHandler = { sampleProfile }
+
+            val data = h.manager.signup("a@b.co", "abcdefg1")
+            runCurrent()
+
+            assertEquals(sampleSignup, data)
+            assertTrue(data.emailVerified)
+            assertEquals(1, h.api.signupCalls)
+            assertEquals("s-access", h.tokens.accessToken)
+            assertEquals("s-refresh", h.tokens.refreshToken)
+            assertEquals(1_900_000_200L, h.tokens.expiresAt)
+            assertEquals(sampleSignup.user, h.manager.authUser.value)
+            assertTrue(h.manager.isLoggedIn.value)
+            assertFalse(h.manager.wasSuspended.value)
+        }
+
+    @Test
+    fun signupSendsExpertRole() =
+        runTest {
+            val h = Harness(this)
+            var sent: SignupRequest? = null
+            h.api.signupHandler = {
+                sent = it
+                sampleSignup
+            }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.signup("a@b.co", "abcdefg1")
+
+            assertEquals("a@b.co", sent?.email)
+            assertEquals("abcdefg1", sent?.password)
+            assertEquals("expert", sent?.role)
+        }
+
+    @Test
+    fun signupEmailTakenThrowsHttp409AndStoresNothing() =
+        runTest {
+            val h = Harness(this)
+            h.api.signupHandler = { throw h.api.httpError(409, """{"code":"EMAIL_TAKEN"}""") }
+
+            try {
+                h.manager.signup("a@b.co", "abcdefg1")
+                fail("expected ApiException.Http")
+            } catch (e: ApiException.Http) {
+                assertEquals(409, e.status)
+            }
+
+            assertFalse(h.tokens.hasSession())
+            assertFalse(h.manager.isLoggedIn.value)
+        }
+
+    @Test
+    fun requestModeSwitchClientPersistsWithoutServerCall() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.manager.setMode(AppMode.Expert)
+
+            val destination = h.manager.requestModeSwitch(AppMode.Client)
+
+            assertEquals(LaunchDestination.Home(AppMode.Client), destination)
+            assertEquals(AppMode.Client, h.sessionStore.storedMode())
+            assertEquals(0, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun requestModeSwitchExpertWithCompleteSetupPersistsExpert() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
+
+            val destination = h.manager.requestModeSwitch(AppMode.Expert)
+
+            assertEquals(LaunchDestination.Home(AppMode.Expert), destination)
+            assertEquals(AppMode.Expert, h.sessionStore.storedMode())
+            assertEquals(AppMode.Expert, h.manager.currentMode.value)
+        }
+
+    @Test
+    fun requestModeSwitchExpertWithIncompleteSetupDoesNotPersistExpert() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.manager.setMode(AppMode.Client)
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+
+            val destination = h.manager.requestModeSwitch(AppMode.Expert)
+
+            assertEquals(LaunchDestination.SignupSetup, destination)
+            assertEquals(AppMode.Client, h.sessionStore.storedMode())
+            assertEquals(AppMode.Client, h.manager.currentMode.value)
+        }
+
+    @Test
+    fun requestModeSwitchExpertWithFailedLookupCountsAsCompleteAndMarksPending() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.expertProfileHandler = { throw IOException("offline") }
+
+            val destination = h.manager.requestModeSwitch(AppMode.Expert)
+
+            assertEquals(LaunchDestination.Home(AppMode.Expert), destination)
+            assertEquals(AppMode.Expert, h.sessionStore.storedMode())
+            // Pending is observable through the re-check once the roles are known.
+            h.api.meHandler = { me("client") }
+            h.manager.refreshMe()
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+            assertEquals(LaunchDestination.SignupSetup, h.manager.recheckSetupIfPending())
+        }
+
+    @Test
+    fun recheckWithNothingPendingMakesNoCall() =
+        runTest {
+            val h = Harness(this, authedPair)
+
+            assertNull(h.manager.recheckSetupIfPending())
+
+            assertEquals(0, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun recheckAfterFailedLoginLookupFindsIncompleteSetup() =
+        runTest {
+            val h = Harness(this)
+            h.api.loginHandler = { expertLogin() }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            h.api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+            val user = h.manager.login("a@b.co", "pw")
+            assertEquals(
+                LaunchDestination.Home(AppMode.Client),
+                h.manager.resolvePostAuthDestination(user.userRoles),
+            )
+            assertEquals(1, h.api.expertProfileCalls)
+
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+            assertEquals(LaunchDestination.SignupSetup, h.manager.recheckSetupIfPending())
+            assertEquals(2, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun recheckWithCompleteSetupClearsPending() =
+        runTest {
+            val h = Harness(this)
+            h.api.loginHandler = { expertLogin() }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            h.api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+            val user = h.manager.login("a@b.co", "pw")
+            h.manager.resolvePostAuthDestination(user.userRoles)
+
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
+            assertNull(h.manager.recheckSetupIfPending())
+            assertEquals(2, h.api.expertProfileCalls)
+            assertNull(h.manager.recheckSetupIfPending())
+            assertEquals(2, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun recheckThatKeepsFailingStaysPending() =
+        runTest {
+            val h = Harness(this)
+            h.api.loginHandler = { expertLogin() }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            h.api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+            val user = h.manager.login("a@b.co", "pw")
+            h.manager.resolvePostAuthDestination(user.userRoles)
+
+            assertNull(h.manager.recheckSetupIfPending())
+            assertEquals(2, h.api.expertProfileCalls)
+
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+            assertEquals(LaunchDestination.SignupSetup, h.manager.recheckSetupIfPending())
+        }
+
+    @Test
+    fun meFailureMarksPendingAndRecheckWaitsForRoles() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = { throw IOException("offline") }
+
+            assertEquals(LaunchDestination.Home(AppMode.Client), h.manager.restore())
+            assertNull(h.manager.recheckSetupIfPending())
+            assertEquals(0, h.api.expertProfileCalls)
+
+            h.api.meHandler = { me("expert") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+            h.manager.refreshIfStale()
+
+            assertEquals(LaunchDestination.SignupSetup, h.manager.recheckSetupIfPending())
+        }
+
+    @Test
+    fun recheckRoleGuardSkipsClientOnlyAccountAndClearsFlag() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = { throw IOException("offline") }
+            h.manager.restore()
+            h.api.meHandler = { me("client") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.manager.refreshIfStale()
+
+            assertNull(h.manager.recheckSetupIfPending())
+            assertNull(h.manager.recheckSetupIfPending())
+
+            assertEquals(0, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun capPathLateSignupSetupResultKeepsFlagForRecheck() =
+        runTest {
+            val h = Harness(this, authedPair)
+            val gate = CompletableDeferred<Unit>()
+            h.sessionStore.setHasSeenOnboarding(true)
+            h.api.meHandler = {
+                gate.await()
+                me("expert")
+            }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+            var restored: LaunchDestination? = null
+            backgroundScope.launch { restored = h.manager.restore() }
+            runCurrent()
+
+            assertEquals(LaunchDestination.Home(AppMode.Client), h.manager.offlineDestination())
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(LaunchDestination.SignupSetup, restored)
+            val before = h.api.expertProfileCalls
+            assertEquals(LaunchDestination.SignupSetup, h.manager.recheckSetupIfPending())
+            assertEquals(before + 1, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun recheckAfterExpertSwitchWithFailedLookupPassesRoleGuardForClientRoles() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = { me("client") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.manager.restore()
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            assertEquals(LaunchDestination.Home(AppMode.Expert), h.manager.requestModeSwitch(AppMode.Expert))
+            assertEquals(AppMode.Expert, h.sessionStore.storedMode())
+            val before = h.api.expertProfileCalls
+
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+            assertEquals(LaunchDestination.SignupSetup, h.manager.recheckSetupIfPending())
+
+            assertEquals(before + 1, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun completeSetupPersistsClientAndClearsPending() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.meHandler = { me("expert") }
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            h.manager.refreshMe()
+            h.manager.requestModeSwitch(AppMode.Expert)
+
+            h.manager.completeSetup()
+            runCurrent()
+
+            assertEquals(AppMode.Client, h.sessionStore.storedMode())
+            assertEquals(AppMode.Client, h.manager.currentMode.value)
+            val before = h.api.expertProfileCalls
+            assertNull(h.manager.recheckSetupIfPending())
+            assertEquals(before, h.api.expertProfileCalls)
+            assertEquals(sampleProfile, h.manager.profile.value)
+        }
+
+    @Test
+    fun logoutClearsPending() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = { me("expert") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            h.manager.refreshMe()
+            h.manager.requestModeSwitch(AppMode.Expert)
+            h.manager.logout()
+
+            h.tokens.save(authedPair)
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
+            h.api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+            h.manager.restore()
+            val before = h.api.expertProfileCalls
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+
+            assertNull(h.manager.recheckSetupIfPending())
+            assertEquals(before, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun logoutFlipsLoggedInBeforeModeReset() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = { me("expert") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
+            h.api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+            h.manager.restore()
+            h.manager.setMode(AppMode.Expert)
+            h.manager.markOnboardingShown()
+            val pairs = mutableListOf<Pair<Boolean, AppMode>>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                combine(h.manager.isLoggedIn, h.manager.currentMode) { l, m -> l to m }.collect { pairs += it }
+            }
+            runCurrent()
+            assertEquals(true to AppMode.Expert, pairs.last())
+
+            h.manager.logout()
+            runCurrent()
+
+            assertFalse(pairs.contains(true to AppMode.Client))
+            assertEquals(false to AppMode.Client, pairs.last())
+        }
+
+    @Test
+    fun offlineDestinationLoadsPersistedOnboardingFlag() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.sessionStore.setHasSeenOnboarding(true)
+            assertFalse(h.manager.hasSeenOnboarding.value)
+
+            h.manager.offlineDestination()
+
+            assertTrue(h.manager.hasSeenOnboarding.value)
         }
 }

@@ -6,8 +6,10 @@ import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.enums.UserRole
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
+import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -75,6 +77,20 @@ class UserManager
         @Volatile
         private var meStale = false
 
+        /**
+         * True when a home route was chosen without a setup answer (D-11): the expert-profile lookup failed,
+         * `/me` failed at launch, or the splash cap fired. Cleared only by a successful lookup inside
+         * [recheckSetupIfPending], by the role guard there, and by login, signup, [completeSetup] and logout.
+         * A lookup that succeeds during launch, login or a switch leaves it unchanged, so the late restore on
+         * the cap path (whose SignupSetup result AppViewModel discards) cannot clear it.
+         */
+        @Volatile
+        private var setupCheckPending = false
+
+        /** True once [loadPersistedState] has run, so [offlineDestination] can load it when restore has not. */
+        @Volatile
+        private var persistedStateLoaded = false
+
         /** Bumped by every logout so an in-flight profile fetch can tell its session is gone. */
         @Volatile
         private var sessionGeneration = 0
@@ -112,14 +128,37 @@ class UserManager
             _wasSuspended.value = false
             meStale = false
             // appScope, not the caller's scope: leaving the login screen must not cancel the refresh.
+            setupCheckPending = false
             appScope.launch { bestEffort { refreshProfile() } }
             return data.user
+        }
+
+        /**
+         * `POST /auth/signup` (D-01). Stores the token pair exactly as [login] does and marks the user logged
+         * in, so the realtime manager picks up the session. Email trimming is the caller's job, as with login.
+         */
+        suspend fun signup(
+            email: String,
+            password: String,
+        ): SignupData {
+            val data = apiCall { api.signup(SignupRequest(email, password)) }.data
+            withContext(io) { tokens.save(TokenPair(data.token, data.refreshToken, data.expiresAt)) }
+            _authUser.value = data.user
+            _isLoggedIn.value = true
+            _wasSuspended.value = false
+            meStale = false
+            setupCheckPending = false
+            appScope.launch { bestEffort { refreshProfile() } }
+            return data
         }
 
         /**
          * The single logout path (FND-08, D-09): clears tokens, cached profile, mode and onboarding flag,
          * and resets in-memory state. No backend call: iOS has no logout endpoint. Runs non-cancellable so
          * a screen leaving composition cannot interrupt it half way.
+         *
+         * [_isLoggedIn] flips before the in-memory mode and onboarding flag are reset, so nothing reacting to
+         * those can show client home or the carousel for a frame while the session is ending.
          */
         suspend fun logout() {
             withContext(NonCancellable + io) {
@@ -130,12 +169,13 @@ class UserManager
                 _authUser.value = null
                 _me.value = null
                 _profile.value = null
-                _currentMode.value = AppMode.Client
-                _hasSeenOnboarding.value = false
                 meStale = false
+                setupCheckPending = false
                 sessionStore.clear()
                 // AppViewModel maps this flip to the Login route (iOS onChange(of: isLoggedIn)).
                 _isLoggedIn.value = false
+                _currentMode.value = AppMode.Client
+                _hasSeenOnboarding.value = false
             }
         }
 
@@ -186,6 +226,7 @@ class UserManager
             _currentMode.value = sessionStore.storedMode() ?: AppMode.Client
             _hasSeenOnboarding.value = sessionStore.hasSeenOnboarding()
             _profile.value = sessionStore.cachedProfile()
+            persistedStateLoaded = true
         }
 
         /**
@@ -202,6 +243,7 @@ class UserManager
                 return LaunchDestination.Login
             }
             meStale = true
+            setupCheckPending = true
             return LaunchDestination.Home(_currentMode.value)
         }
 
@@ -220,13 +262,26 @@ class UserManager
             return LaunchDestination.Home(mode)
         }
 
-        /** iOS: a failed lookup counts as complete, so a transient error never pushes users back into signup. */
-        private suspend fun isExpertProfileIncomplete(): Boolean =
+        /** `GET /expert/profile` `setup_completed`, or null when the lookup failed. */
+        private suspend fun fetchSetupCompleted(): Boolean? =
             try {
-                !apiCall { api.getExpertProfile() }.data.setupCompleted
+                apiCall { api.getExpertProfile() }.data.setupCompleted
             } catch (e: ApiException) {
-                false
+                null
             }
+
+        /**
+         * iOS: a failed lookup counts as complete, so a transient error never pushes users back into signup.
+         * The failure marks the check pending so the next foreground retries it (D-11).
+         */
+        private suspend fun isExpertProfileIncomplete(): Boolean {
+            val completed = fetchSetupCompleted()
+            if (completed == null) {
+                setupCheckPending = true
+                return false
+            }
+            return !completed
+        }
 
         private suspend fun expertHasTopics(): Boolean =
             try {
@@ -241,11 +296,70 @@ class UserManager
          */
         suspend fun offlineDestination(): LaunchDestination =
             if (withContext(io) { tokens.hasSession() }) {
+                // The cap can fire before restore loaded the persisted state; without it a returning user would
+                // see the onboarding carousel flash (RESEARCH Pitfall 11).
+                if (!persistedStateLoaded) loadPersistedState()
                 meStale = true
+                setupCheckPending = true
                 LaunchDestination.Home(_currentMode.value)
             } else {
                 LaunchDestination.Login
             }
+
+        // ---- mode switch and setup gate ----
+
+        /**
+         * Mode switch (D-17). Client is always allowed and local only. Expert asks `GET /expert/profile`: an
+         * incomplete setup returns [LaunchDestination.SignupSetup] without persisting Expert (a stored Expert
+         * plus an incomplete profile would mislead the next launch); otherwise Expert is persisted. A failed
+         * lookup counts as complete and marks the check pending.
+         *
+         * The GET goes through the backend's `ensureExpert` and permanently converts a client-only account to
+         * expert. D-23 accepts this as the "become an expert" path, so there is no role pre-gate here.
+         */
+        suspend fun requestModeSwitch(target: AppMode): LaunchDestination =
+            when (target) {
+                AppMode.Client -> {
+                    setMode(AppMode.Client)
+                    LaunchDestination.Home(AppMode.Client)
+                }
+                AppMode.Expert ->
+                    if (isExpertProfileIncomplete()) {
+                        LaunchDestination.SignupSetup
+                    } else {
+                        setMode(AppMode.Expert)
+                        LaunchDestination.Home(AppMode.Expert)
+                    }
+            }
+
+        /**
+         * Re-checks a setup check that could not run or whose answer was not applied (D-11). Order:
+         * (a) nothing unless a check is pending and a session exists; (b) the roles must be known, from `/me`
+         * else the login or signup user, otherwise stay pending (after an offline launch `/me` is loaded by
+         * `refreshIfStale` on a later foreground); (c) role guard: without the expert role and outside Expert
+         * mode there is nothing to check, so clear the flag with no request, because a background GET must
+         * never trigger D-23's `ensureExpert` conversion for a client-only account (mode Expert means the
+         * user explicitly switched, which D-23 accepts); (d) a failed lookup stays pending; (e) otherwise clear
+         * the flag and report [LaunchDestination.SignupSetup] when setup is incomplete, else null.
+         */
+        suspend fun recheckSetupIfPending(): LaunchDestination? {
+            if (!setupCheckPending || !withContext(io) { tokens.hasSession() }) return null
+            val roles = _me.value?.userRoles ?: _authUser.value?.userRoles ?: return null
+            if (UserRole.Expert !in roles && _currentMode.value != AppMode.Expert) {
+                setupCheckPending = false
+                return null
+            }
+            val completed = fetchSetupCompleted() ?: return null
+            setupCheckPending = false
+            return if (completed) null else LaunchDestination.SignupSetup
+        }
+
+        /** Signup setup was published (D-22): land in Client mode and refresh the cached profile (new avatar). */
+        suspend fun completeSetup() {
+            setMode(AppMode.Client)
+            setupCheckPending = false
+            appScope.launch { bestEffort { refreshProfile() } }
+        }
 
         /** Re-fetches `/me` and the profile only after a cached-path launch (D-01 retry). */
         suspend fun refreshIfStale() {
