@@ -113,7 +113,9 @@ class SignupBasicInfoViewModelTest {
             vm.openCountrySheet()
             assertTrue(vm.uiState.value.showCountrySheet)
             vm.onCountryQueryChange("can")
-            val names = vm.uiState.value.visibleCountries.map { it.name }
+            val names =
+                vm.uiState.value.visibleCountries
+                    .map { it.name }
             assertTrue(names.isNotEmpty())
             assertTrue(names.all { it.contains("can", ignoreCase = true) })
             assertTrue("Canada" in names)
@@ -133,11 +135,16 @@ class SignupBasicInfoViewModelTest {
             val vm = viewModel(h)
 
             vm.openLanguageSheet()
-            assertEquals(LanguageCatalog.Loading, vm.uiState.value.languageSheet?.catalog)
+            assertEquals(
+                LanguageCatalog.Loading,
+                vm.uiState.value.languageSheet
+                    ?.catalog,
+            )
             advanceUntilIdle()
             assertEquals(
                 LanguageCatalog.Loaded(listOf(english, french, german)),
-                vm.uiState.value.languageSheet?.catalog,
+                vm.uiState.value.languageSheet
+                    ?.catalog,
             )
             vm.dismissLanguageSheet()
             vm.openLanguageSheet()
@@ -154,13 +161,21 @@ class SignupBasicInfoViewModelTest {
 
             vm.openLanguageSheet()
             advanceUntilIdle()
-            assertEquals(LanguageCatalog.Failed, vm.uiState.value.languageSheet?.catalog)
+            assertEquals(
+                LanguageCatalog.Failed,
+                vm.uiState.value.languageSheet
+                    ?.catalog,
+            )
 
             h.api.languagesHandler = { LanguagesPayload(listOf(english)) }
             vm.retryLanguages()
             advanceUntilIdle()
 
-            assertEquals(LanguageCatalog.Loaded(listOf(english)), vm.uiState.value.languageSheet?.catalog)
+            assertEquals(
+                LanguageCatalog.Loaded(listOf(english)),
+                vm.uiState.value.languageSheet
+                    ?.catalog,
+            )
             assertEquals(2, h.api.languagesCalls)
         }
 
@@ -173,11 +188,19 @@ class SignupBasicInfoViewModelTest {
 
             vm.toggleLanguage(french)
             vm.toggleLanguage(german)
-            assertEquals(listOf(english, french, german), vm.uiState.value.languageSheet?.selection)
+            assertEquals(
+                listOf(english, french, german),
+                vm.uiState.value.languageSheet
+                    ?.selection,
+            )
             assertEquals(listOf(english), vm.uiState.value.languages)
 
             vm.toggleLanguage(english)
-            assertEquals(listOf(french, german), vm.uiState.value.languageSheet?.selection)
+            assertEquals(
+                listOf(french, german),
+                vm.uiState.value.languageSheet
+                    ?.selection,
+            )
             vm.toggleLanguage(english)
             vm.confirmLanguageSheet()
 
@@ -193,7 +216,11 @@ class SignupBasicInfoViewModelTest {
             advanceUntilIdle()
 
             vm.onLanguageQueryChange("FR")
-            assertEquals(listOf(french), vm.uiState.value.languageSheet?.visibleItems)
+            assertEquals(
+                listOf(french),
+                vm.uiState.value.languageSheet
+                    ?.visibleItems,
+            )
 
             vm.toggleLanguage(french)
             vm.dismissLanguageSheet()

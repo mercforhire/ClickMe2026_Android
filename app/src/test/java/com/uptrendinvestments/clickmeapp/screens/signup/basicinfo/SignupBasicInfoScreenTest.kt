@@ -1,7 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.basicinfo
 
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
