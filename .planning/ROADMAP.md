@@ -187,7 +187,7 @@ Plans:
   4. After publishing, the user can log out and log in again. The onboarding carousel appears only on the first launch into client home. The user can switch between client and expert modes, and the mode is kept across relaunches. (PRD Week 2 checkpoint, part 1)
 
 **Planning notes:** Profile Photo uses `PickVisualMedia` (platform swap). Each step saves through `PATCH /expert/profile/setup`.
-**Plans:** 5/20 plans executed
+**Plans:** 9/20 plans executed
 Plans:
 **Wave 1**
 
@@ -199,10 +199,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-06-PLAN.md — UserManager signup, gated mode switch, D-11 foreground re-check (failed lookup, failed /me, splash cap; experts only), completeSetup; AppViewModel follows mode (SIGN-01, SIGN-05, ONB-01, ONB-02)
-- [ ] 04-07-PLAN.md — SignupSetupRepository accumulator (incl. verify-email cooldown state), SignupDraft publish rules, SetupStep, shared strings, SignupTestHarness (SIGN-02..05)
-- [ ] 04-08-PLAN.md — Mode Switch page and onboarding carousel (stateless screens) (ONB-01, ONB-02)
-- [ ] 04-09-PLAN.md — Full-screen photo crop screen: gestures, spring-back, accessibility actions (SIGN-02)
+- [x] 04-06-PLAN.md — UserManager signup, gated mode switch, D-11 foreground re-check (failed lookup, failed /me, splash cap; experts only), completeSetup; AppViewModel follows mode (SIGN-01, SIGN-05, ONB-01, ONB-02)
+- [x] 04-07-PLAN.md — SignupSetupRepository accumulator (incl. verify-email cooldown state), SignupDraft publish rules, SetupStep, shared strings, SignupTestHarness (SIGN-02..05)
+- [x] 04-08-PLAN.md — Mode Switch page and onboarding carousel (stateless screens) (ONB-01, ONB-02)
+- [x] 04-09-PLAN.md — Full-screen photo crop screen: gestures, spring-back, accessibility actions (SIGN-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -449,7 +449,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
-| 4. Signup, Onboarding & Mode Switch | 5/20 | In Progress|  |
+| 4. Signup, Onboarding & Mode Switch | 9/20 | In Progress|  |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
