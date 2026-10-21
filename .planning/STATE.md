@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 execution complete pending deferred device checks (04-20 gate green)
+status: ready_to_plan
+stopped_at: Phase 4 complete; next is Phase 5 (Explore & Expert Profile)
 last_updated: "2026-10-21T20:08:09.202Z"
 last_activity: 2026-10-21
 progress:
   total_phases: 17
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 57
   completed_plans: 53
   percent: 18
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 04 — signup-onboarding-mode-switch
+**Current focus:** Phase 05 — explore-&-expert-profile
 
 ## Current Position
 
 Phase: 5
 Plan: Not started
-Status: Phase 04 plans complete; automated gate green; device checks logged under Blockers/Concerns (Phase 4 deferred block)
+Status: Phase 04 complete (verified; 6 device checks deferred in 04-HUMAN-UAT.md). Phase 05 not yet discussed/planned.
 Last activity: 2026-10-21
 
 Progress: [░░░░░░░░░░] 0%
