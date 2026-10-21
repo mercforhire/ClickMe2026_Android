@@ -527,22 +527,26 @@ suspend fun load(id: String): ProfileLoad = coroutineScope {
 | A4 | `Money.format` outputs `CA$50.00` for CAD under `Locale.US` and a "JP¥" prefix under `en_CA` | Code Examples | Low. Only the exact expected strings in tests change. |
 | A5 | The deployed backend matches `backend-reference` (migration `20261016000100` is the live `home_feed`) | Summary, DTOs | Medium. If the live `featured_topics` lacks `is_free`, D-21 cannot be met from home data. The DTO is nullable, so nothing crashes. Verify with one real response during execution. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Own card in Recommended Experts (multi-role tester)**
    - What we know: `home_feed` filters `p.role = 'expert'` and never excludes `p_user_id`. iOS has no handling. `CANNOT_BOOK_SELF` is a 422 at booking time. [VERIFIED: migration source and `ErrorCode.CannotBookSelf`]
    - What's unclear: whether the product wants the card hidden or the Book button disabled client-side.
    - Recommendation: no change in Phase 5 (iOS parity). Add `CANNOT_BOOK_SELF` handling to the Phase 6 plan. Hiding self would also need the current user id in the Explore ViewModel, so defer unless the user asks.
+   - RESOLVED: iOS parity in Phase 5; `CANNOT_BOOK_SELF` mapping recorded as a Phase 6 hand-off (05-11).
 
 2. **`featured_topics[].rating` is available but D-15/UI-SPEC pass `rating = null` from featured cards**
    - What we know: the server sends a rating (0.0 when there are no reviews, so it cannot tell "no reviews" from "unrated") but no review count.
    - Recommendation: keep the UI-SPEC behavior (null seed, skeleton until the reviews summary arrives). Do not decode `rating` into the key. It is ambiguous without a count.
+   - RESOLVED: featured-topic entry passes a null rating seed (05-06/05-07).
 
 3. **`GET /experts/{id}` (full public profile) already returns header rating, review total, avatar and `expertise` tags**
    - What we know: it would make the Featured-Topic entry richer. D-15 locks `/details` plus `/reviews`, and CONTEXT explicitly accepts the sparser hero.
    - Recommendation: do not use it in Phase 5. Not re-opened.
+   - RESOLVED: Phase 5 uses only `/details` + `/reviews` per D-15.
 
 4. **Manual device checks** (pull-to-refresh feel, sheet search with IME, 200% font scale, skeleton transitions on a slow network) are deferred per the project preference. Log them as open items in the plan's UAT file, as in Phase 4.
+   - RESOLVED: logged as `[Phase 5] DEFERRED (human)` checklist items in STATE.md by 05-11.
 
 ## Environment Availability
 
