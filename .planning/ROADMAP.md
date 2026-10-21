@@ -239,7 +239,34 @@ Plans:
   3. Tapping an expert card opens Expert Profile with the hero, stats, about, topics and reviews preview. Its Book button takes the client into the booking flow.
 
 **Planning notes:** If time runs short, simplify the hero and visuals. The Chat button and report/block on Expert Profile come in Phase 12.
-**Plans:** TBD
+**Plans:** 11 plans
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — Discovery network contract: home, client bookings, categories, expert details/reviews DTOs + endpoints, FakeClickMeApi handlers, wire-format tests (DISC-01, DISC-02, DISC-03)
+- [ ] 05-02-PLAN.md — Money formatter (minor units, device locale, full decimals), PriceDisplay/PriceText (Free in green), CategoryIconMap, wall Clock + MutableClock (DISC-01, DISC-03)
+- [ ] 05-03-PLAN.md — Shared components: RatingStars, ExpertTagChip, SkeletonBlock/Group, SectionHeader, SectionError; PickerRow icon + checkbox role (DISC-01, DISC-02, DISC-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-04-PLAN.md — CategoryStore: 7-day TTL on its own logout-proof DataStore, fetch/refresh, single-flight (DISC-02)
+- [ ] 05-05-PLAN.md — ClientBookingsRepository + Today's Sessions filter, ExploreRepository, ExploreViewModel (sections, shared selection, latest-wins, refresh) (DISC-01)
+- [ ] 05-06-PLAN.md — ExpertProfileKey/BookingKey, assisted ExpertProfileViewModel (preview, parallel loads, 404 unavailable), booking stub screen (DISC-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-07-PLAN.md — Explore sections: hero, Today's Sessions (disabled Join Call), Trending Categories, Featured Topics, Recommended Experts with states (DISC-01)
+- [ ] 05-08-PLAN.md — All Categories sheet: CategoryStore catalog, search, multi-select draft, Clear/Apply, Retry -> refresh (DISC-02)
+- [ ] 05-09-PLAN.md — Expert Profile screen: hero, stats, Book Session, About, Expertise, Topics, Reviews, skeleton/unavailable/error states (DISC-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 05-10-PLAN.md — Explore screen assembly (pull-to-refresh, sheet wiring) and client-shell slots/routes for Explore, Expert Profile and BookingKey (DISC-01, DISC-02, DISC-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 05-11-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred device checklist, Phase 6/8/9 hand-offs and iOS follow-ups in STATE.md (all)
+
 **UI hint**: yes
 
 ### Phase 6: Booking Flow & Free Bookings
@@ -450,7 +477,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
-| 5. Explore & Expert Profile | 0/TBD | Not started | - |
+| 5. Explore & Expert Profile | 0/11 | Planned | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
