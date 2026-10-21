@@ -101,6 +101,12 @@ class SignupSetupRepository
         @Volatile
         private var generation = 0
 
+        /**
+         * Bumped (under [lock]) by every successful step write, so a hydrate whose snapshot was read before a save
+         * landed refetches instead of reverting the save (WR-02).
+         */
+        private var writes = 0
+
         init {
             // Reset only on a session end, never for the initial value (Pitfall 5).
             appScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -146,27 +152,47 @@ class SignupSetupRepository
             if (_hydration.value == HydrationState.Idle) hydrate()
         }
 
+        /**
+         * Fetches and merges. The server snapshot wins over the draft, so a snapshot read before a step save landed
+         * would revert that save: when [writes] moved during the fetch the result is dropped and fetched again (the
+         * new snapshot includes the save). If saves keep landing for [MAX_HYDRATE_ATTEMPTS] fetches, the newer draft is
+         * kept and the run reports failure so the hub offers a retry. The generation check and the writes happen
+         * together under [lock], so a [reset] can never be overwritten (WR-02).
+         */
         private suspend fun runHydrate(): Boolean {
             val startGeneration = generation
             _hydration.value = HydrationState.Loading
-            val (profile, status) =
-                coroutineScope {
-                    val profileCall = async { attempt { api.getExpertProfile().data } }
-                    val statusCall = async { attempt { api.getEmailStatus().data } }
-                    profileCall.await() to statusCall.await()
-                }
-            if (startGeneration != generation) return false
-            if (profile != null || status != null) {
-                _draft.update { current ->
-                    var merged = current
-                    if (profile != null) merged = merged.mergeProfile(profile).copy(publishBlockedSteps = emptySet())
-                    if (status != null) merged = merged.mergeStatus(status)
-                    merged
+            repeat(MAX_HYDRATE_ATTEMPTS) {
+                val startWrites = synchronized(lock) { writes }
+                val (profile, status) =
+                    coroutineScope {
+                        val profileCall = async { attempt { api.getExpertProfile().data } }
+                        val statusCall = async { attempt { api.getEmailStatus().data } }
+                        profileCall.await() to statusCall.await()
+                    }
+                synchronized(lock) {
+                    if (startGeneration != generation) return false
+                    if (startWrites == writes) {
+                        if (profile != null || status != null) {
+                            _draft.update { current ->
+                                var merged = current
+                                if (profile != null) {
+                                    merged = merged.mergeProfile(profile).copy(publishBlockedSteps = emptySet())
+                                }
+                                if (status != null) merged = merged.mergeStatus(status)
+                                merged
+                            }
+                        }
+                        val ok = profile != null && status != null
+                        _hydration.value = if (ok) HydrationState.Loaded else HydrationState.Failed
+                        return ok
+                    }
                 }
             }
-            val ok = profile != null && status != null
-            _hydration.value = if (ok) HydrationState.Loaded else HydrationState.Failed
-            return ok
+            synchronized(lock) {
+                if (startGeneration == generation) _hydration.value = HydrationState.Failed
+            }
+            return false
         }
 
         private suspend fun <T> attempt(block: suspend () -> T): T? =
@@ -240,7 +266,19 @@ class SignupSetupRepository
             if (!request.hasAnyField()) return
             val startGeneration = generation
             apiCall { api.setupExpertProfile(request) }
-            if (startGeneration == generation) _draft.update { apply(it).unblock(step) }
+            applyWrite(startGeneration) { apply(it).unblock(step) }
+        }
+
+        /** Applies a successful step write to the draft unless the session ended, and counts it for [runHydrate]. */
+        private fun applyWrite(
+            startGeneration: Int,
+            transform: (SignupDraft) -> SignupDraft,
+        ) {
+            synchronized(lock) {
+                if (startGeneration != generation) return
+                writes++
+                _draft.update(transform)
+            }
         }
 
         // ---- avatar ----
@@ -251,16 +289,14 @@ class SignupSetupRepository
             val body = jpeg.toRequestBody("image/jpeg".toMediaType())
             val part = MultipartBody.Part.createFormData("image", "avatar.jpg", body)
             val url = apiCall { api.uploadAvatar(part) }.data.avatarUrl
-            if (startGeneration == generation) {
-                _draft.update { it.copy(avatarUrl = url).unblock(SetupStep.ProfilePhoto) }
-            }
+            applyWrite(startGeneration) { it.copy(avatarUrl = url).unblock(SetupStep.ProfilePhoto) }
             return url
         }
 
         suspend fun removeAvatar() {
             val startGeneration = generation
             apiCall { api.deleteAvatar() }
-            if (startGeneration == generation) _draft.update { it.copy(avatarUrl = null) }
+            applyWrite(startGeneration) { it.copy(avatarUrl = null) }
         }
 
         // ---- email verification (D-07) ----
@@ -272,9 +308,7 @@ class SignupSetupRepository
         suspend fun verifyCode(code: String) {
             val startGeneration = generation
             apiCall { api.verifyEmailCode(VerifyEmailCodeRequest(code)) }
-            if (startGeneration == generation) {
-                _draft.update { it.copy(emailVerified = true).unblock(SetupStep.VerifyEmail) }
-            }
+            applyWrite(startGeneration) { it.copy(emailVerified = true).unblock(SetupStep.VerifyEmail) }
         }
 
         /**
@@ -370,6 +404,9 @@ class SignupSetupRepository
 
         private companion object {
             const val UNPROCESSABLE = 422
+
+            /** Fetches a hydrate makes before giving up on a snapshot that no save raced (WR-02). */
+            const val MAX_HYDRATE_ATTEMPTS = 3
 
             /** The device zone is the Timezone step's default, so a fresh draft already counts it (D-09). */
             fun freshDraft() = SignupDraft(timezone = Timezones.detected().id)

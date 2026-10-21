@@ -184,6 +184,81 @@ class SignupSetupRepositoryTest {
             assertEquals(HydrationState.Loaded, h.repository.hydration.value)
         }
 
+    // ---- WR-02: a hydrate never reverts a save that landed while it was in flight ----
+
+    @Test
+    fun saveLandingDuringHydrateIsKeptAndTheHydrateRefetches() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val gate = CompletableDeferred<Unit>()
+            var serverTimezone = "America/Toronto"
+            h.api.expertProfileHandler = {
+                val snapshot = h.fullProfile(timezone = serverTimezone)
+                if (h.api.expertProfileCalls == 1) gate.await()
+                snapshot
+            }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.api.setupProfileHandler = {
+                serverTimezone = it.timezone ?: serverTimezone
+                SetupExpertProfileData()
+            }
+            val pending = async { h.repository.hydrate() }
+            runCurrent()
+
+            h.repository.saveTimezone("Asia/Kolkata")
+            gate.complete(Unit)
+
+            assertTrue(pending.await())
+            assertEquals("Asia/Kolkata", h.repository.draft.value.timezone)
+            assertEquals("Ada", h.repository.draft.value.firstName)
+            assertEquals(2, h.api.expertProfileCalls)
+            assertEquals(HydrationState.Loaded, h.repository.hydration.value)
+        }
+
+    @Test
+    fun avatarUploadedDuringHydrateIsNotNulledByTheStaleSnapshot() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val gate = CompletableDeferred<Unit>()
+            var serverAvatar: String? = null
+            h.api.expertProfileHandler = {
+                val snapshot = h.fullProfile(avatarUrl = serverAvatar)
+                if (h.api.expertProfileCalls == 1) gate.await()
+                snapshot
+            }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.api.uploadAvatarHandler = {
+                serverAvatar = "https://cdn.example/new.jpg"
+                AvatarUploadData("https://cdn.example/new.jpg")
+            }
+            val pending = async { h.repository.hydrate() }
+            runCurrent()
+
+            h.repository.uploadAvatar(byteArrayOf(1))
+            gate.complete(Unit)
+            pending.await()
+
+            assertEquals("https://cdn.example/new.jpg", h.repository.draft.value.avatarUrl)
+        }
+
+    @Test
+    fun hydrateRacedByASaveOnEveryAttemptKeepsTheDraftAndReportsFailure() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = {
+                h.repository.saveTimezone("Asia/Kolkata")
+                h.fullProfile()
+            }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+
+            assertFalse(h.repository.hydrate())
+
+            assertEquals(3, h.api.expertProfileCalls)
+            assertEquals(HydrationState.Failed, h.repository.hydration.value)
+            assertEquals("Asia/Kolkata", h.repository.draft.value.timezone)
+            assertEquals("", h.repository.draft.value.firstName)
+        }
+
     // ---- per-step saves ----
 
     @Test
