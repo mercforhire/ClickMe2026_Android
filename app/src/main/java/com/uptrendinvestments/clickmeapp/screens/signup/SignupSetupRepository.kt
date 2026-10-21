@@ -1,0 +1,361 @@
+package com.uptrendinvestments.clickmeapp.screens.signup
+
+import com.uptrendinvestments.clickmeapp.constants.Countries
+import com.uptrendinvestments.clickmeapp.constants.Timezones
+import com.uptrendinvestments.clickmeapp.di.ApplicationScope
+import com.uptrendinvestments.clickmeapp.di.IoDispatcher
+import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SetupLocation
+import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
+import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
+import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.network.ClickMeApi
+import com.uptrendinvestments.clickmeapp.network.apiCall
+import com.uptrendinvestments.clickmeapp.screens.signup.profilephoto.PhotoProcessor
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
+
+/**
+ * The Verify Email send state that must survive leaving and re-entering the step (success criterion 2).
+ * [cooldownEndsAt] is an absolute end time on the caller's monotonic clock; this class never reads a clock.
+ */
+data class VerificationSendState(
+    val codeSent: Boolean = false,
+    val cooldownEndsAt: Long = 0L,
+)
+
+/**
+ * D-25 / D-14 rule for the `languages` and `expertise_tags` PATCH fields. A non-empty selection is sent in tap order;
+ * an empty selection sends `[]` only when it empties a list that was non-empty in the draft (the server replaces the
+ * whole array); otherwise the field is omitted (null) so an untouched list is never cleared.
+ */
+internal fun listFieldFor(
+    selectedIds: List<String>,
+    savedIds: List<String>,
+): List<String>? =
+    when {
+        selectedIds.isNotEmpty() -> selectedIds
+        savedIds.isNotEmpty() -> emptyList()
+        else -> null
+    }
+
+/**
+ * App-scoped accumulator for the expert signup setup, ported from iOS `SignupAccumulator`. The hub, the five steps
+ * and Review are separate navigation entries with entry-scoped ViewModels, so they share state through this
+ * singleton. It is cleared when the session ends (logout) and on [reset] after publishing, so no draft, send state
+ * or photo file reaches a later signup (T-04-18).
+ *
+ * Saves send only the fields the user filled (D-04) and update the draft only when the request succeeded. This class
+ * never logs draft contents (T-04-21).
+ */
+@Singleton
+class SignupSetupRepository
+    @Inject
+    constructor(
+        private val api: ClickMeApi,
+        userManager: UserManager,
+        private val photoProcessor: PhotoProcessor,
+        @ApplicationScope private val appScope: CoroutineScope,
+        @IoDispatcher private val io: CoroutineDispatcher,
+    ) {
+        private val _draft = MutableStateFlow(freshDraft())
+        val draft: StateFlow<SignupDraft> = _draft.asStateFlow()
+
+        private val _hydration = MutableStateFlow(HydrationState.Idle)
+        val hydration: StateFlow<HydrationState> = _hydration.asStateFlow()
+
+        private val _verificationSend = MutableStateFlow(VerificationSendState())
+        val verificationSend: StateFlow<VerificationSendState> = _verificationSend.asStateFlow()
+
+        private val lock = Any()
+        private var hydrateInFlight: Deferred<Boolean>? = null
+
+        /** Bumped by every [reset] so a response from the previous session never lands in the new draft. */
+        @Volatile
+        private var generation = 0
+
+        init {
+            // Reset only on a session end, never for the initial value (Pitfall 5).
+            appScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                userManager.isLoggedIn
+                    .drop(1)
+                    .filter { !it }
+                    .collect { reset() }
+            }
+        }
+
+        /** Seeds the draft right after account creation. English is deliberately not seeded (Pitfall 6). */
+        fun seedFromSignup(
+            email: String,
+            emailVerified: Boolean,
+        ) {
+            _draft.update { it.copy(email = email, emailVerified = emailVerified) }
+        }
+
+        // ---- hydration (D-09, D-10) ----
+
+        /**
+         * Loads `GET /expert/profile` and `GET /auth/email/status` concurrently and merges them into the draft.
+         * Single-flight: concurrent callers share one run, which lives in the app scope so a screen leaving
+         * composition does not cancel it. Returns true only when both requests succeeded.
+         */
+        suspend fun hydrate(): Boolean {
+            val run =
+                synchronized(lock) {
+                    hydrateInFlight?.takeIf { it.isActive }
+                        ?: appScope.async { runHydrate() }.also { hydrateInFlight = it }
+                }
+            return try {
+                run.await()
+            } catch (e: CancellationException) {
+                // A reset cancelled the shared run; only rethrow when the caller itself was cancelled.
+                currentCoroutineContext().ensureActive()
+                false
+            }
+        }
+
+        /** Hydrates once: only from [HydrationState.Idle]. */
+        suspend fun ensureHydrated() {
+            if (_hydration.value == HydrationState.Idle) hydrate()
+        }
+
+        private suspend fun runHydrate(): Boolean {
+            val startGeneration = generation
+            _hydration.value = HydrationState.Loading
+            val (profile, status) =
+                coroutineScope {
+                    val profileCall = async { attempt { api.getExpertProfile().data } }
+                    val statusCall = async { attempt { api.getEmailStatus().data } }
+                    profileCall.await() to statusCall.await()
+                }
+            if (startGeneration != generation) return false
+            if (profile != null || status != null) {
+                _draft.update { current ->
+                    var merged = current
+                    if (profile != null) merged = merged.mergeProfile(profile).copy(publishBlockedSteps = emptySet())
+                    if (status != null) merged = merged.mergeStatus(status)
+                    merged
+                }
+            }
+            val ok = profile != null && status != null
+            _hydration.value = if (ok) HydrationState.Loaded else HydrationState.Failed
+            return ok
+        }
+
+        private suspend fun <T> attempt(block: suspend () -> T): T? =
+            try {
+                apiCall(block)
+            } catch (e: ApiException) {
+                null
+            }
+
+        /** Re-reads the verified flag. Errors propagate to the caller. */
+        suspend fun refreshEmailStatus() {
+            val startGeneration = generation
+            val status = apiCall { api.getEmailStatus() }.data
+            if (startGeneration == generation) _draft.update { it.mergeStatus(status) }
+        }
+
+        // ---- per-step saves (D-04, D-14, D-25) ----
+
+        suspend fun saveBasicInfo(
+            firstName: String,
+            city: String,
+            provinceState: String,
+            countryCode: String,
+            languages: List<LanguageItem>,
+        ) {
+            val current = _draft.value
+            val name = firstName.trim().ifBlank { null }
+            val cityValue = city.trim().ifBlank { null }
+            val provinceValue = provinceState.trim().ifBlank { null }
+            val country = Countries.normalize(countryCode)
+            val location =
+                if (cityValue == null && provinceValue == null && country == null) {
+                    null
+                } else {
+                    SetupLocation(city = cityValue, provinceState = provinceValue, countryCode = country)
+                }
+            val languageIds = listFieldFor(languages.map { it.id }, current.languages.map { it.id })
+            val request = SetupExpertProfileRequest(firstName = name, location = location, languages = languageIds)
+            patch(request) { draft ->
+                draft.copy(
+                    firstName = name ?: draft.firstName,
+                    city = cityValue ?: draft.city,
+                    provinceState = provinceValue ?: draft.provinceState,
+                    countryCode = country ?: draft.countryCode,
+                    languages = if (languageIds != null) languages else draft.languages,
+                )
+            }
+        }
+
+        suspend fun saveTimezone(timezone: String) {
+            patch(SetupExpertProfileRequest(timezone = timezone)) { it.copy(timezone = timezone) }
+        }
+
+        suspend fun saveTags(tags: List<ExpertiseTagItem>) {
+            val tagIds = listFieldFor(tags.map { it.id }, _draft.value.expertiseTags.map { it.id })
+            patch(SetupExpertProfileRequest(expertiseTags = tagIds)) { draft ->
+                if (tagIds != null) draft.copy(expertiseTags = tags) else draft
+            }
+        }
+
+        /** Sends [request] when it carries any field, then applies [apply] to the draft unless the session ended. */
+        private suspend fun patch(
+            request: SetupExpertProfileRequest,
+            apply: (SignupDraft) -> SignupDraft,
+        ) {
+            if (!request.hasAnyField()) return
+            val startGeneration = generation
+            apiCall { api.setupExpertProfile(request) }
+            if (startGeneration == generation) _draft.update(apply)
+        }
+
+        // ---- avatar ----
+
+        /** Uploads the cropped JPEG as multipart field `image` (D-12) and returns the stored avatar URL. */
+        suspend fun uploadAvatar(jpeg: ByteArray): String {
+            val startGeneration = generation
+            val body = jpeg.toRequestBody("image/jpeg".toMediaType())
+            val part = MultipartBody.Part.createFormData("image", "avatar.jpg", body)
+            val url = apiCall { api.uploadAvatar(part) }.data.avatarUrl
+            if (startGeneration == generation) _draft.update { it.copy(avatarUrl = url) }
+            return url
+        }
+
+        suspend fun removeAvatar() {
+            val startGeneration = generation
+            apiCall { api.deleteAvatar() }
+            if (startGeneration == generation) _draft.update { it.copy(avatarUrl = null) }
+        }
+
+        // ---- email verification (D-07) ----
+
+        suspend fun sendVerificationCode() {
+            apiCall { api.resendVerificationEmail() }
+        }
+
+        suspend fun verifyCode(code: String) {
+            val startGeneration = generation
+            apiCall { api.verifyEmailCode(VerifyEmailCodeRequest(code)) }
+            if (startGeneration == generation) _draft.update { it.copy(emailVerified = true) }
+        }
+
+        /**
+         * Records a code send (or a 429 rate limit) so the resend cooldown survives leaving the step.
+         * [cooldownEndsAt] is stored as given, on the caller's monotonic clock.
+         */
+        fun recordCodeSent(cooldownEndsAt: Long) {
+            _verificationSend.value = VerificationSendState(codeSent = true, cooldownEndsAt = cooldownEndsAt)
+        }
+
+        // ---- publish (D-05, D-06) ----
+
+        /**
+         * Re-sends the full payload with `setup_completed = true` and a normalized `country_code`. A 422 carrying
+         * `missing_fields` marks the matching steps blocked until the next hydrate, then rethrows.
+         */
+        suspend fun publish() {
+            val startGeneration = generation
+            val current = _draft.value
+            val request =
+                SetupExpertProfileRequest(
+                    firstName = current.firstName.trim(),
+                    location =
+                        SetupLocation(
+                            city = current.city.trim(),
+                            provinceState = current.provinceState.trim().ifBlank { null },
+                            countryCode = Countries.normalize(current.countryCode),
+                        ),
+                    timezone = current.timezone,
+                    languages = current.languages.map { it.id },
+                    expertiseTags = current.expertiseTags.map { it.id },
+                    setupCompleted = true,
+                )
+            try {
+                apiCall { api.setupExpertProfile(request) }
+            } catch (e: ApiException.Http) {
+                if (e.status == UNPROCESSABLE && e.missingFields.isNotEmpty() && startGeneration == generation) {
+                    val blocked = e.missingFields.mapNotNull(SetupStep::fromMissingField).toSet()
+                    _draft.update { it.copy(publishBlockedSteps = blocked) }
+                }
+                throw e
+            }
+        }
+
+        // ---- reset (T-04-13, T-04-18) ----
+
+        /** Clears the draft, hydration and verification state, and deletes the photo working files. */
+        suspend fun reset() {
+            synchronized(lock) {
+                generation++
+                hydrateInFlight?.cancel()
+                hydrateInFlight = null
+            }
+            _draft.value = freshDraft()
+            _hydration.value = HydrationState.Idle
+            _verificationSend.value = VerificationSendState()
+            withContext(NonCancellable + io) { photoProcessor.clearWorkingFiles() }
+        }
+
+        private fun SignupDraft.mergeStatus(status: EmailStatusData): SignupDraft =
+            copy(emailVerified = status.verified)
+
+        private fun SignupDraft.mergeProfile(profile: ExpertProfileData): SignupDraft {
+            val info = profile.personalInfo
+            val location = profile.locationDetails
+            return copy(
+                email = info?.email.takeUnless { it.isNullOrBlank() } ?: email,
+                firstName = info?.firstName.takeUnless { it.isNullOrBlank() } ?: firstName,
+                city = location?.city.takeUnless { it.isNullOrBlank() } ?: city,
+                provinceState = location?.stateProvince.takeUnless { it.isNullOrBlank() } ?: provinceState,
+                countryCode = location?.countryCode.takeUnless { it.isNullOrBlank() } ?: countryCode,
+                timezone = location?.timezone.takeUnless { it.isNullOrBlank() } ?: timezone,
+                avatarUrl = profile.avatarUrl,
+                languages =
+                    profile.languages?.mapNotNull { lang -> lang.id?.let { LanguageItem(it, lang.label ?: it) } }
+                        ?: languages,
+                expertiseTags = profile.expertiseTags?.map { ExpertiseTagItem(it.id, it.label) } ?: expertiseTags,
+            )
+        }
+
+        private fun SetupExpertProfileRequest.hasAnyField(): Boolean =
+            firstName != null ||
+                location != null ||
+                timezone != null ||
+                languages != null ||
+                expertiseTags != null ||
+                setupCompleted != null
+
+        private companion object {
+            const val UNPROCESSABLE = 422
+
+            /** The device zone is the Timezone step's default, so a fresh draft already counts it (D-09). */
+            fun freshDraft() = SignupDraft(timezone = Timezones.detected().id)
+        }
+    }
