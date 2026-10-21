@@ -1117,8 +1117,7 @@ class UserManagerTest {
     fun logoutWithNoSetupRepositoryInTheProcessStillDeletesPhotoWorkingFiles() =
         runTest {
             val photo = FakePhotoProcessor()
-            photo.cropped = byteArrayOf(1, 2, 3)
-            photo.hasSourceValue = true
+            photo.givenCrop()
             val tokens = FakeSecureTokenStore(authedPair)
             val manager =
                 UserManager(

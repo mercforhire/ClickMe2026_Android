@@ -30,10 +30,7 @@ class PhotoCropViewModelTest {
     val dispatcherRule = MainDispatcherRule()
 
     private val fake =
-        FakePhotoProcessor().apply {
-            source = ImageBitmap(400, 300)
-            size = IntSize(400, 300)
-        }
+        FakePhotoProcessor().apply { givenSource(ImageBitmap(400, 300), IntSize(400, 300)) }
 
     private val delta = 0.01f
 
@@ -54,7 +51,8 @@ class PhotoCropViewModelTest {
     @Test
     fun missingSourceFailsLoadWithOpenErrorBody() =
         runTest(dispatcherRule.testDispatcher) {
-            fake.source = null
+            // No working copy on disk (for example cleared by a logout).
+            fake.clearWorkingFiles()
             val vm = viewModel()
             runCurrent()
             assertTrue(vm.uiState.value.loadFailed)

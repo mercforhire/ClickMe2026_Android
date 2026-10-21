@@ -62,9 +62,8 @@ class SignupProfilePhotoViewModelTest {
     }
 
     private fun Setup.withLocalCrop() {
-        h.photo.preview = ImageBitmap(1, 1)
-        h.photo.cropped = byteArrayOf(1, 2, 3)
-        h.photo.hasSourceValue = true
+        h.photo.previewBitmap = ImageBitmap(1, 1)
+        h.photo.givenCrop()
     }
 
     @Test
@@ -253,6 +252,60 @@ class SignupProfilePhotoViewModelTest {
             assertNull(s.vm.uiState.value.localPreview)
             assertEquals(1, s.h.photo.clearCalls)
             assertEquals(0, s.h.api.deleteAvatarCalls)
+        }
+
+    @Test
+    fun aNewPickDropsThePreviousCropPreview() =
+        runTest(main.testDispatcher) {
+            val s = setup(this)
+            s.withLocalCrop()
+            s.vm.onShown()
+            advanceUntilIdle()
+            assertNotNull(s.vm.uiState.value.localPreview)
+
+            s.vm.onPicked(Uri.parse("content://media/2"))
+            advanceUntilIdle()
+
+            assertNull(s.vm.uiState.value.localPreview)
+            assertFalse(s.vm.uiState.value.hasUnsavedPhoto)
+            assertTrue(s.vm.uiState.value.hasSource)
+            assertTrue(s.vm.openCrop.value)
+        }
+
+    @Test
+    fun aRemovedUnsavedPickStaysGoneOnTheNextEntry() =
+        runTest(main.testDispatcher) {
+            val s = setup(this)
+            s.withLocalCrop()
+            s.vm.onShown()
+            advanceUntilIdle()
+            s.vm.requestRemove()
+            advanceUntilIdle()
+
+            s.vm.onShown()
+            advanceUntilIdle()
+
+            assertNull(s.vm.uiState.value.localPreview)
+            assertFalse(s.vm.uiState.value.hasSource)
+        }
+
+    @Test
+    fun aSavedCropIsNotOfferedAgainOnTheNextEntry() =
+        runTest(main.testDispatcher) {
+            val s = setup(this)
+            s.h.api.uploadAvatarHandler = { AvatarUploadData("https://cdn.example/new.jpg") }
+            s.withLocalCrop()
+            s.vm.onShown()
+            advanceUntilIdle()
+            s.vm.save()
+            advanceUntilIdle()
+
+            s.vm.onShown()
+            advanceUntilIdle()
+
+            assertNull(s.vm.uiState.value.localPreview)
+            assertFalse(s.vm.uiState.value.hasUnsavedPhoto)
+            assertEquals("https://cdn.example/new.jpg", s.vm.uiState.value.avatarUrl)
         }
 
     @Test
