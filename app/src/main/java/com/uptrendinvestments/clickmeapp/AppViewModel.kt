@@ -6,6 +6,7 @@ import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,11 @@ import javax.inject.Inject
  * timeout the route comes from [UserManager.offlineDestination] (cached home or Login) and the restore
  * keeps running; its late result never changes the route, except that a session that ends afterwards
  * (rejection, suspension, logout) sends the app to Login through the [UserManager.isLoggedIn] collector.
+ * The cap path marks the setup check pending, so the next foreground applies a late "setup incomplete"
+ * answer (D-11, see [onAppForegrounded]).
+ *
+ * While on a home route the root route follows [UserManager.currentMode] (D-17): the mode switch, the
+ * post-publish landing and relaunch restore all flow through that one collector.
  *
  * [destinationResolved] feeds `setKeepOnScreenCondition` in MainActivity.
  */
@@ -34,6 +40,8 @@ class AppViewModel
         private val _route = MutableStateFlow(AppRoute.Splash)
         val route: StateFlow<AppRoute> = _route.asStateFlow()
 
+        private var switchJob: Job? = null
+
         private val _destinationResolved = MutableStateFlow(false)
         val destinationResolved: StateFlow<Boolean> = _destinationResolved.asStateFlow()
 
@@ -44,8 +52,18 @@ class AppViewModel
             // Mirrors iOS onChange(of: isLoggedIn): a session that ends while on a protected route goes to Login.
             viewModelScope.launch {
                 userManager.isLoggedIn.collect { loggedIn ->
+                    if (!loggedIn) switchJob?.cancel()
                     if (!loggedIn && _route.value in SESSION_ROUTES) {
                         _route.value = AppRoute.Login
+                    }
+                }
+            }
+            // D-17: follow the mode while on a home route. Splash, Login and SignupSetup are ignored because
+            // restore, login routing and logout also set the mode.
+            viewModelScope.launch {
+                userManager.currentMode.collect { mode ->
+                    if (userManager.isLoggedIn.value && _route.value in HOME_ROUTES) {
+                        _route.value = mode.homeRoute()
                     }
                 }
             }
@@ -77,9 +95,42 @@ class AppViewModel
             userManager.clearSuspensionFlag()
         }
 
-        /** Retries `/me` after a cached-path launch each time the app returns to the foreground (D-01). */
+        /**
+         * Runs on every STARTED (D-01, D-11). First retries `/me` after a cached-path launch (the re-check's
+         * role guard needs the roles), then, only while on a home route, re-checks a setup check that failed
+         * or never ran and moves to [AppRoute.SignupSetup] when setup turns out to be incomplete. A foreground
+         * during Splash or SignupSetup must not consume the pending flag.
+         */
         fun onAppForegrounded() {
-            viewModelScope.launch { userManager.refreshIfStale() }
+            viewModelScope.launch {
+                userManager.refreshIfStale()
+                if (_route.value !in HOME_ROUTES) return@launch
+                val destination = userManager.recheckSetupIfPending()
+                if (destination == LaunchDestination.SignupSetup && _route.value in HOME_ROUTES) {
+                    _route.value = AppRoute.SignupSetup
+                }
+            }
+        }
+
+        /**
+         * Switches mode (D-17). Cancels any in-flight switch so only the last request lands; the result is
+         * applied only while the route is still a home route (a lookup finishing after logout is dropped).
+         */
+        fun switchMode(target: AppMode) {
+            switchJob?.cancel()
+            switchJob =
+                viewModelScope.launch {
+                    val destination = userManager.requestModeSwitch(target)
+                    if (_route.value in HOME_ROUTES) _route.value = destination.toRoute()
+                }
+        }
+
+        /** Signup setup was published (D-22): mode becomes Client and the route client home. */
+        fun onSetupPublished() {
+            viewModelScope.launch {
+                userManager.completeSetup()
+                _route.value = AppRoute.ClientHome
+            }
         }
 
         /** Ends the session; the isLoggedIn collector then switches the route to Login (FND-08). */
@@ -104,16 +155,20 @@ class AppViewModel
             when (this) {
                 LaunchDestination.Login -> AppRoute.Login
                 LaunchDestination.SignupSetup -> AppRoute.SignupSetup
-                is LaunchDestination.Home ->
-                    when (mode) {
-                        AppMode.Client -> AppRoute.ClientHome
-                        AppMode.Expert -> AppRoute.ExpertHome
-                    }
+                is LaunchDestination.Home -> mode.homeRoute()
+            }
+
+        private fun AppMode.homeRoute(): AppRoute =
+            when (this) {
+                AppMode.Client -> AppRoute.ClientHome
+                AppMode.Expert -> AppRoute.ExpertHome
             }
 
         companion object {
             /** Upper bound on how long the splash waits for auto-login (D-02). */
             const val SPLASH_HOLD_CAP_MS = 5_000L
+
+            private val HOME_ROUTES = setOf(AppRoute.ClientHome, AppRoute.ExpertHome)
 
             private val SESSION_ROUTES = setOf(AppRoute.ClientHome, AppRoute.ExpertHome, AppRoute.SignupSetup)
         }
