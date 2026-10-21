@@ -16,7 +16,13 @@ class CountriesTest {
             assertTrue("bad code ${it.code}", pattern.matches(it.code))
             assertTrue("blank name for ${it.code}", it.name.isNotBlank())
         }
-        assertEquals(50, Countries.all.map { it.code }.toSet().size)
+        assertEquals(
+            50,
+            Countries.all
+                .map { it.code }
+                .toSet()
+                .size,
+        )
     }
 
     @Test
@@ -36,7 +42,12 @@ class CountriesTest {
     fun alpha2ToAlpha3_agreesWithJdkLocaleData() {
         assertEquals(50, Countries.alpha2ToAlpha3.size)
         Countries.alpha2ToAlpha3.forEach { (alpha2, alpha3) ->
-            val jdk = Locale.Builder().setRegion(alpha2).build().isO3Country
+            val jdk =
+                Locale
+                    .Builder()
+                    .setRegion(alpha2)
+                    .build()
+                    .isO3Country
             assertEquals("transcription error for $alpha2", jdk, alpha3)
         }
     }
