@@ -4,7 +4,7 @@ import androidx.navigation3.runtime.NavKey
 
 /**
  * Auth-flow navigation actions over [Navigator]. The auth stack is a single stack rooted at
- * [LoginKey]; recovery screens and the Sign Up placeholder are pushed on it.
+ * [LoginKey]; recovery screens and Signup Initial are pushed on it.
  */
 class AuthNavigator(
     val navigator: Navigator,

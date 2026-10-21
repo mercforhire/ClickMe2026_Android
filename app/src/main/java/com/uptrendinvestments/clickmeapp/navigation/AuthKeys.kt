@@ -29,6 +29,6 @@ data class PasswordChangedKey(
     val email: String,
 ) : NavKey
 
-/** Sign Up placeholder until Phase 4 builds the signup flow (D-05). */
+/** Signup Initial step (SIGN-01). */
 @Serializable
 data object SignUpKey : NavKey
