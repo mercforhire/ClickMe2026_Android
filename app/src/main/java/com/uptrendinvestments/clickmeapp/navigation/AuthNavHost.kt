@@ -16,11 +16,11 @@ import com.uptrendinvestments.clickmeapp.screens.login.LoginScreen
 import com.uptrendinvestments.clickmeapp.screens.login.forgetpassword.ForgotPasswordScreen
 import com.uptrendinvestments.clickmeapp.screens.login.passwordchanged.PasswordChangedScreen
 import com.uptrendinvestments.clickmeapp.screens.login.setnewpassword.SetNewPasswordScreen
-import com.uptrendinvestments.clickmeapp.screens.signup.SignUpPlaceholderScreen
+import com.uptrendinvestments.clickmeapp.screens.signup.initial.SignupInitialScreen
 
 /**
  * The auth back stack that lives under `AppRoute.Login`: Login at the root with Forgot Password,
- * Set New Password, Password Changed and the Sign Up placeholder pushed on it (never bottom
+ * Set New Password, Password Changed and the Signup Initial step pushed on it (never bottom
  * sheets). Login success leaves through [onLoggedIn] to AppViewModel, which swaps the root route.
  * Each pushed entry gets its own ViewModel scope from the NavEntry decorators.
  */
@@ -75,9 +75,10 @@ fun AuthNavHost(
                         },
                     )
                 }
-                // Phase 4 swaps in SignupInitialScreen (D-05).
+                // Signup Initial (SIGN-01). Success hands the root route to the setup hub via onLoggedIn,
+                // which replaces this whole stack, so Initial cannot be resubmitted.
                 entry<SignUpKey> {
-                    SignUpPlaceholderScreen(onBack = authNavigator::back)
+                    SignupInitialScreen(onSignedUp = onLoggedIn, onBack = authNavigator::back)
                 }
             },
     )
