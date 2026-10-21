@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation, App Shell & Play Account** - Scaffolding, Material 3 theme, splash and two 5-tab scaffolds; D-U-N-S and Play org account started (Week 1) (completed 2026-10-20)
 - [ ] **Phase 2: Networking, Session & SDK Spikes** - Networking core, single-flight token refresh, session storage, Stripe and Agora spikes (Week 1)
 - [x] **Phase 3: Login, Password Recovery & Realtime** - Real login, OTP password reset, authenticated socket with event SharedFlow (Week 2) (completed 2026-10-20)
-- [ ] **Phase 4: Signup, Onboarding & Mode Switch** - Signup Initial → Overview hub → Review/Publish, resume, onboarding carousel, mode switch (Week 2)
+- [x] **Phase 4: Signup, Onboarding & Mode Switch** - Signup Initial → Overview hub → Review/Publish, resume, onboarding carousel, mode switch (Week 2) (completed 2026-10-21)
 - [ ] **Phase 5: Explore & Expert Profile** - Client Explore home with category cache and the Expert Profile screen (Week 3)
 - [ ] **Phase 6: Booking Flow & Free Bookings** - Topic/calendar/slot picker with timezone regrouping, free booking, Request Sent (Week 3)
 - [ ] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3)
@@ -187,7 +187,7 @@ Plans:
   4. After publishing, the user can log out and log in again. The onboarding carousel appears only on the first launch into client home. The user can switch between client and expert modes, and the mode is kept across relaunches. (PRD Week 2 checkpoint, part 1)
 
 **Planning notes:** Profile Photo uses `PickVisualMedia` (platform swap). Each step saves through `PATCH /expert/profile/setup`.
-**Plans:** 19/20 plans executed
+**Plans:** 20/20 plans complete
 Plans:
 **Wave 1**
 
@@ -222,7 +222,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 04-20-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred device checklist and iOS follow-ups in STATE.md (all)
+- [x] 04-20-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred device checklist and iOS follow-ups in STATE.md (all)
 
 **UI hint**: yes
 
@@ -449,7 +449,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
-| 4. Signup, Onboarding & Mode Switch | 19/20 | In Progress|  |
+| 4. Signup, Onboarding & Mode Switch | 20/20 | Complete   | 2026-10-21 |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
