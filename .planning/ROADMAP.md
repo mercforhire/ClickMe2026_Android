@@ -187,15 +187,15 @@ Plans:
   4. After publishing, the user can log out and log in again. The onboarding carousel appears only on the first launch into client home. The user can switch between client and expert modes, and the mode is kept across relaunches. (PRD Week 2 checkpoint, part 1)
 
 **Planning notes:** Profile Photo uses `PickVisualMedia` (platform swap). Each step saves through `PATCH /expert/profile/setup`.
-**Plans:** 20 plans
+**Plans:** 5/20 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Network layer: signup/email/setup/meta/avatar endpoints, full ExpertProfileData, top-level missing_fields, FakeClickMeApi handlers, wire-format tests (SIGN-01..05)
-- [ ] 04-02-PLAN.md — Countries (50, alpha-3) and Timezones (10 + device zone) constants; onboarding PNGs bundled, pre-committed mode-switch PNGs verified (SIGN-02, ONB-01, ONB-02)
-- [ ] 04-03-PLAN.md — Signup validators; AuthErrorDialog title, AuthTopAppBar options, Avatar 160 dp + local image (SIGN-01, SIGN-02)
-- [ ] 04-04-PLAN.md — PickerField, SelectableChip, PickerSheet components (SIGN-02)
-- [ ] 04-05-PLAN.md — Crop geometry (CropMath) and photo pipeline (PhotoProcessor: bounded decode, EXIF, 1024 JPEG, cleanup) (SIGN-02)
+- [x] 04-01-PLAN.md — Network layer: signup/email/setup/meta/avatar endpoints, full ExpertProfileData, top-level missing_fields, FakeClickMeApi handlers, wire-format tests (SIGN-01..05)
+- [x] 04-02-PLAN.md — Countries (50, alpha-3) and Timezones (10 + device zone) constants; onboarding PNGs bundled, pre-committed mode-switch PNGs verified (SIGN-02, ONB-01, ONB-02)
+- [x] 04-03-PLAN.md — Signup validators; AuthErrorDialog title, AuthTopAppBar options, Avatar 160 dp + local image (SIGN-01, SIGN-02)
+- [x] 04-04-PLAN.md — PickerField, SelectableChip, PickerSheet components (SIGN-02)
+- [x] 04-05-PLAN.md — Crop geometry (CropMath) and photo pipeline (PhotoProcessor: bounded decode, EXIF, 1024 JPEG, cleanup) (SIGN-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -449,7 +449,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
-| 4. Signup, Onboarding & Mode Switch | 0/20 | Planned | - |
+| 4. Signup, Onboarding & Mode Switch | 5/20 | In Progress|  |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
