@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expertise Tags step (04-UI-SPEC screen 7). -->
+    <string name="signup_tags_title">Expertise Tags</string>
+    <string name="signup_tags_search">Search for tags</string>
+    <string name="signup_tags_selected">Selected Tags</string>
+    <string name="signup_tags_primary_hint">The first tag is your primary tag.</string>
+    <string name="signup_tags_suggested">Suggested Tags</string>
+    <string name="signup_tags_empty_hint">Pick at least one tag to publish.</string>
+    <string name="signup_tags_loading">Loading tags…</string>
+    <string name="signup_tags_error">Couldn\'t load tags</string>
+    <string name="signup_tags_no_match_title">No tags match “%1$s”</string>
+    <string name="signup_tags_no_match_body">Try a different search term.</string>
+    <string name="signup_tags_remove">Remove %1$s</string>
+</resources>
