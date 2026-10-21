@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Signup setup hub row titles (iOS SignupHubView checklist) and the "Still needed" labels (04-UI-SPEC). -->
+    <string name="signup_step_personal_details">Personal details</string>
+    <string name="signup_step_timezone">Confirm timezone</string>
+    <string name="signup_step_profile_photo">Add profile picture</string>
+    <string name="signup_step_verify_email">Verify email</string>
+    <string name="signup_step_expertise">Add expertise</string>
+    <string name="signup_needed_personal_details">personal details</string>
+    <string name="signup_needed_timezone">timezone</string>
+    <string name="signup_needed_profile_photo">profile picture</string>
+    <string name="signup_needed_verify_email">email verification</string>
+    <string name="signup_needed_expertise">expertise</string>
+    <string name="signup_save">Save</string>
+    <string name="signup_saved">Saved!</string>
+    <string name="signup_error_save_title">Couldn\'t save</string>
+</resources>
