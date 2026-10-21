@@ -319,7 +319,10 @@ class SignupSetupRepositoryTest {
                     .location,
             )
             assertEquals("", h.repository.draft.value.provinceState)
-            assertTrue(h.repository.draft.value.isComplete(SetupStep.PersonalDetails))
+            assertTrue(
+                h.repository.draft.value
+                    .isComplete(SetupStep.PersonalDetails),
+            )
         }
 
     @Test
@@ -337,7 +340,10 @@ class SignupSetupRepositoryTest {
                 h.api.setupProfileRequests.single(),
             )
             assertEquals("", h.repository.draft.value.city)
-            assertFalse(h.repository.draft.value.isComplete(SetupStep.PersonalDetails))
+            assertFalse(
+                h.repository.draft.value
+                    .isComplete(SetupStep.PersonalDetails),
+            )
         }
 
     @Test
@@ -747,7 +753,10 @@ class SignupSetupRepositoryTest {
             val h = harness(this)
             hydrateWithCustom(h, languages = listOf(ExpertLanguage(null, "Klingon")))
 
-            assertTrue(h.repository.draft.value.isComplete(SetupStep.PersonalDetails))
+            assertTrue(
+                h.repository.draft.value
+                    .isComplete(SetupStep.PersonalDetails),
+            )
             assertTrue(h.repository.draft.value.canPublish)
             h.repository.publish()
             assertNull(
