@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Signup Verify Email step (UI-SPEC screen 6). -->
+    <string name="signup_verify_title">Verify Email</string>
+    <string name="signup_verify_headline">Verify Your Email Address</string>
+    <string name="signup_verify_message_before">Tap the button below to send a 6-digit verification code to your email address.</string>
+    <string name="signup_verify_message_after">We\'ve sent a 6-digit code to your email address. Enter it below to verify.</string>
+    <string name="signup_verify_send">Send Verification Email</string>
+    <string name="signup_verify_sent">Email Sent!</string>
+    <string name="signup_verify_code_placeholder">Enter 6-digit code</string>
+    <string name="signup_verify_verify">Verify</string>
+    <string name="signup_verify_verified_saved">Verified!</string>
+    <string name="signup_verify_resend_in">Resend in %1$ds</string>
+    <string name="signup_verify_resend">Resend code</string>
+    <string name="signup_verify_resend_ready_a11y">You can resend the code</string>
+    <string name="signup_verify_done_headline">Email Verified</string>
+    <string name="signup_verify_done_message">Your email address is confirmed.</string>
+    <string name="signup_verify_done">Done</string>
+    <string name="signup_verify_error_send_title">Couldn\'t send code</string>
+    <string name="signup_verify_error_too_many">Too many attempts. Please try again in 15 minutes.</string>
+</resources>
