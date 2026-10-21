@@ -187,7 +187,43 @@ Plans:
   4. After publishing, the user can log out and log in again. The onboarding carousel appears only on the first launch into client home. The user can switch between client and expert modes, and the mode is kept across relaunches. (PRD Week 2 checkpoint, part 1)
 
 **Planning notes:** Profile Photo uses `PickVisualMedia` (platform swap). Each step saves through `PATCH /expert/profile/setup`.
-**Plans:** TBD
+**Plans:** 20 plans
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Network layer: signup/email/setup/meta/avatar endpoints, full ExpertProfileData, top-level missing_fields, FakeClickMeApi handlers, wire-format tests (SIGN-01..05)
+- [ ] 04-02-PLAN.md — Countries (50, alpha-3) and Timezones (10 + device zone) constants; onboarding PNGs bundled, pre-committed mode-switch PNGs verified (SIGN-02, ONB-01, ONB-02)
+- [ ] 04-03-PLAN.md — Signup validators; AuthErrorDialog title, AuthTopAppBar options, Avatar 160 dp + local image (SIGN-01, SIGN-02)
+- [ ] 04-04-PLAN.md — PickerField, SelectableChip, PickerSheet components (SIGN-02)
+- [ ] 04-05-PLAN.md — Crop geometry (CropMath) and photo pipeline (PhotoProcessor: bounded decode, EXIF, 1024 JPEG, cleanup) (SIGN-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-06-PLAN.md — UserManager signup, gated mode switch, D-11 foreground re-check (failed lookup, failed /me, splash cap; experts only), completeSetup; AppViewModel follows mode (SIGN-01, SIGN-05, ONB-01, ONB-02)
+- [ ] 04-07-PLAN.md — SignupSetupRepository accumulator (incl. verify-email cooldown state), SignupDraft publish rules, SetupStep, shared strings, SignupTestHarness (SIGN-02..05)
+- [ ] 04-08-PLAN.md — Mode Switch page and onboarding carousel (stateless screens) (ONB-01, ONB-02)
+- [ ] 04-09-PLAN.md — Full-screen photo crop screen: gestures, spring-back, accessibility actions (SIGN-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-10-PLAN.md — Signup Initial screen and ViewModel; replaces the Sign Up placeholder in the auth stack (SIGN-01)
+- [ ] 04-11-PLAN.md — Overview hub: five steps, progress, refresh, always-enabled Next, Log out overflow (SIGN-02, SIGN-05)
+- [ ] 04-12-PLAN.md — Personal Details step with country and language pickers (SIGN-02)
+- [ ] 04-13-PLAN.md — Timezone step (SIGN-02)
+- [ ] 04-14-PLAN.md — Expertise Tags step (SIGN-02)
+- [ ] 04-15-PLAN.md — Verify Email step: send on tap, 30 s cooldown that survives re-entry, 429 handling (SIGN-03)
+- [ ] 04-16-PLAN.md — Profile Photo step: picker, crop handoff, upload, remove (SIGN-02)
+- [ ] 04-17-PLAN.md — Review and Publish: required markers, gated Publish, missing_fields dialog (SIGN-04)
+- [ ] 04-18-PLAN.md — Home wiring: avatar -> Mode Switcher, carousel gate, root fade-through, debug switch removed (ONB-01, ONB-02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04-19-PLAN.md — Setup back stack under AppRoute.SignupSetup, placeholder removed, publish handoff (SIGN-02, SIGN-04, SIGN-05)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04-20-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred device checklist and iOS follow-ups in STATE.md (all)
+
 **UI hint**: yes
 
 ### Phase 5: Explore & Expert Profile
@@ -413,7 +449,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
-| 4. Signup, Onboarding & Mode Switch | 0/TBD | Not started | - |
+| 4. Signup, Onboarding & Mode Switch | 0/20 | Planned | - |
 | 5. Explore & Expert Profile | 0/TBD | Not started | - |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |

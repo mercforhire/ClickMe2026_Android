@@ -606,30 +606,38 @@ SetupExpertProfileRequest(
 | A8 | Recommendation to drop the languages "first is primary" helper line and to use the Pitfall 2 empty-array rule are product decisions the user has not confirmed | Pitfalls 1 and 2 | The user may prefer to keep the UI-SPEC copy. They need to confirm, since D-14 and D-04 are locked. |
 | A9 | A client-only account becoming expert via the D-17 setup-status read is acceptable product behavior | Pitfall 7 | If not, gate on roles first (a client-only account would route to the hub directly without calling the endpoint). |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Resolved 2026-10-20 during /gsd-plan-phase. User decisions are recorded as D-23..D-26 in 04-CONTEXT.md.
 
 1. **Language "primary" copy (D-14 versus server reality).**
    - What we know: tags honor order (`is_primary` = index 0). Languages persist no order. [VERIFIED: backend source]
    - What's unclear: whether to keep the approved helper line anyway.
    - Recommendation: drop the language line, keep the tag line, and note the deviation in the plan. Ask the user to confirm (A8).
+   - **RESOLVED:** D-24 (user-confirmed). The language helper line is dropped and the tag line is kept. UI-SPEC is updated, and plan 04-12 implements it.
 
 2. **Empty-array saves (D-04 versus the destructive `[]`).**
    - What we know: the server treats `[]` as clear and omission as untouched.
    - What's unclear: whether the user wants "emptied list clears the server list".
    - Recommendation: the rule in Pitfall 2 (send `[]` only when emptying a previously non-empty list), with a test.
+   - **RESOLVED:** D-25 (user-confirmed). Plans 04-01, 04-07, 04-12 and 04-14 implement it.
 
 3. **Verify-email 429 UX.**
    - What we know: 5 attempts per 15 min per user; wrong codes count.
    - What's unclear: the copy and whether the Verify button should lock.
    - Recommendation: inline server message under the code field; no extra lock UI; add the string. Treat as planner-added.
+   - **RESOLVED:** Claude's Discretion. The server message is shown inline with no lock and no auto-retry (plan 04-15).
 
 4. **Shared-component changes beyond UI-SPEC (`AuthErrorDialog` title, `AuthTopAppBar` container and actions, `Avatar` model).**
    - Recommendation: include as an early small plan, backward compatible, with the existing component tests kept green.
+   - **RESOLVED:** Claude's Discretion. Plan 04-03 makes these changes backward compatible.
 
 5. **Image asset format.** UI-SPEC specifies WebP, but no `cwebp`, ImageMagick or Pillow is installed here. Only `sips` (JPEG/PNG output) is available.
    - Recommendation: use JPEG via `sips` for the six images (all source images have no alpha channel), or use PNG if the user insists on lossless. WebP can be produced in Android Studio (Convert to WebP) as a manual step. Planner decision.
+   - **RESOLVED:** D-26 (user-confirmed). All six images stay PNG, with no JPEG or WebP conversion (plan 04-02).
 
 6. **Does the hub need `PullToRefreshBox` plus a Snackbar plus a progress bar** (UI-SPEC)? It is specified and straightforward. It requires a `SnackbarHost` in the hub `Scaffold`. No question, but it adds a hub ViewModel state machine (idle, loading, failed).
+   - **RESOLVED:** included per the approved UI-SPEC (plan 04-11).
 
 ## Environment Availability
 
