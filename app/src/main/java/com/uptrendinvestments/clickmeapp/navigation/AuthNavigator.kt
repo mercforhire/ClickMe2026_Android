@@ -20,7 +20,16 @@ class AuthNavigator(
 
     fun openSetNewPassword(email: String) = pushUnlessOnTop(SetNewPasswordKey(email))
 
-    fun openPasswordChanged(email: String) = pushUnlessOnTop(PasswordChangedKey(email))
+    /**
+     * Drops the recovery screens before pushing Password Changed, so the stack is `[Login, PasswordChanged]`.
+     * The used OTP form is then unreachable (D-10, D-11), its ViewModel and the in-memory passwords are
+     * released, and the predictive back preview shows Login, which is where Back really lands.
+     */
+    fun openPasswordChanged(email: String) {
+        if (top is PasswordChangedKey) return
+        returnToLogin()
+        navigator.navigate(PasswordChangedKey(email))
+    }
 
     fun openSignUp() = pushUnlessOnTop(SignUpKey)
 
@@ -31,7 +40,8 @@ class AuthNavigator(
 
     /**
      * System Back. On Password Changed it behaves like "Go to Login" (D-11): clear to Login and
-     * report the reset email through [onReturnToLogin]. Elsewhere it pops one entry; at the Login
+     * report the reset email through [onReturnToLogin]. [openPasswordChanged] already left Login
+     * directly underneath, so this is a single pop. Elsewhere it pops one entry; at the Login
      * root it is a no-op and NavDisplay lets the activity exit.
      */
     fun handleBack(onReturnToLogin: (String) -> Unit) {

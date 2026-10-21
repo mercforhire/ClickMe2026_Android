@@ -39,21 +39,44 @@ class AuthNavigatorTest {
     }
 
     @Test
-    fun recoveryFlowPushesEveryStep() {
+    fun recoveryFlowPushesForgotAndSetNewPassword() {
+        val auth = newAuthNavigator()
+        auth.openForgotPassword("a@b.co")
+        auth.openSetNewPassword("a@b.co")
+        assertEquals(
+            listOf<NavKey>(LoginKey, ForgotPasswordKey("a@b.co"), SetNewPasswordKey("a@b.co")),
+            auth.stack(),
+        )
+    }
+
+    @Test
+    fun passwordChangedReplacesRecoveryScreensSoLoginIsDirectlyBelow() {
         val auth = newAuthNavigator()
         auth.openForgotPassword("a@b.co")
         auth.openSetNewPassword("a@b.co")
         auth.openPasswordChanged("a@b.co")
-        assertEquals(
-            listOf<NavKey>(
-                LoginKey,
-                ForgotPasswordKey("a@b.co"),
-                SetNewPasswordKey("a@b.co"),
-                PasswordChangedKey("a@b.co"),
-            ),
-            auth.stack(),
-        )
+        assertEquals(listOf<NavKey>(LoginKey, PasswordChangedKey("a@b.co")), auth.stack())
         assertEquals(PasswordChangedKey("a@b.co"), auth.top)
+    }
+
+    @Test
+    fun openPasswordChangedTwiceIsDoubleTapGuarded() {
+        val auth = newAuthNavigator()
+        auth.openForgotPassword("a@b.co")
+        auth.openSetNewPassword("a@b.co")
+        auth.openPasswordChanged("a@b.co")
+        auth.openPasswordChanged("a@b.co")
+        assertEquals(listOf<NavKey>(LoginKey, PasswordChangedKey("a@b.co")), auth.stack())
+    }
+
+    @Test
+    fun plainPopOnPasswordChangedLandsOnLogin() {
+        val auth = newAuthNavigator()
+        auth.openForgotPassword("a@b.co")
+        auth.openSetNewPassword("a@b.co")
+        auth.openPasswordChanged("a@b.co")
+        auth.back()
+        assertEquals(listOf<NavKey>(LoginKey), auth.stack())
     }
 
     @Test

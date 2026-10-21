@@ -13,6 +13,7 @@ import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,6 +21,12 @@ import org.robolectric.RobolectricTestRunner
 
 private class CounterViewModel : ViewModel() {
     val id: Int = System.identityHashCode(this)
+}
+
+private class ClearTrackingViewModel(
+    private val onCleared: () -> Unit,
+) : ViewModel() {
+    override fun onCleared() = onCleared.invoke()
 }
 
 private class SavedHandleViewModel(
@@ -35,6 +42,7 @@ class AuthNavDisplayTest {
     private var prefill: String? = null
     private val forgotViewModelIds = mutableListOf<Int>()
     private var savedHandleSeen = false
+    private var setNewViewModelCleared = false
 
     private fun nav(): AuthNavigator = checkNotNull(authNavigator)
 
@@ -49,7 +57,10 @@ class AuthNavDisplayTest {
                     forgotViewModelIds += counter.id
                     Text("stub:forgot:${key.email}")
                 }
-                is SetNewPasswordKey -> Text("stub:setnew:${key.email}")
+                is SetNewPasswordKey -> {
+                    viewModel { ClearTrackingViewModel { setNewViewModelCleared = true } }
+                    Text("stub:setnew:${key.email}")
+                }
                 is PasswordChangedKey -> Text("stub:changed:${key.email}")
                 else -> Text("stub:other")
             }
@@ -114,6 +125,23 @@ class AuthNavDisplayTest {
         backLikeNavDisplay()
         composeRule.onNode(hasText("stub:login")).assertExists()
         assertEquals("a@b.co", prefill)
+    }
+
+    @Test
+    fun passwordChangedReleasesRecoveryScreensAndTheirViewModels() {
+        setContent()
+        composeRule.runOnIdle {
+            nav().openForgotPassword("a@b.co")
+            nav().openSetNewPassword("a@b.co")
+        }
+        composeRule.waitForIdle()
+        composeRule.onNode(hasText("stub:setnew:a@b.co")).assertExists()
+        composeRule.runOnIdle { nav().openPasswordChanged("a@b.co") }
+        composeRule.waitForIdle()
+        composeRule.onNode(hasText("stub:changed:a@b.co")).assertExists()
+        composeRule.onNode(hasText("stub:setnew:a@b.co")).assertDoesNotExist()
+        composeRule.onNode(hasText("stub:forgot:a@b.co")).assertDoesNotExist()
+        assertTrue("Set New Password ViewModel was not cleared", setNewViewModelCleared)
     }
 
     @Test
