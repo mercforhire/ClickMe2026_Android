@@ -17,6 +17,7 @@ The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. An
 
 - FND-01, FND-02, FND-09, FND-10, FND-11, FND-12: build flavors and CI, Material 3 dark theme with Nunito, shared components, splash and launcher icon, two 5-tab shells with per-tab back stacks. Validated in Phase 1: Foundation, App Shell & Play Account (2026-10-20; CI green, device UAT approved).
 - REL-01, REL-02: D-U-N-S confirmed; Play Console organization account created and verified (2026-10-20). Validated in Phase 1.
+- AUTH-01, AUTH-02, RT-01, RT-02, RT-03: real Login, OTP password recovery (Forgot → Set New Password → Password Changed), and an authenticated socket.io connection with 2 s reconnect, token-refresh reconnect and an event `SharedFlow`. Validated in Phase 3: Login, Password Recovery & Realtime (2026-10-21; automated gate green, 436 unit tests; code-review warnings fixed; 6 device checks deferred in 03-HUMAN-UAT.md).
 
 ### Active
 
@@ -24,7 +25,7 @@ Full checkable list with IDs: `.planning/REQUIREMENTS.md` (99 v1 requirements).
 
 - [ ] Foundation: scaffolding, networking core with single-flight token refresh, session storage, Material 3 design system, app shell with two 5-tab scaffolds, Stripe and Agora SDK spikes (FND-01 to FND-14)
 - [ ] Authentication, signup, onboarding and mode switch (AUTH-01 to AUTH-02, SIGN-01 to SIGN-05, ONB-01 to ONB-02)
-- [ ] Realtime socket plumbing (RT-01 to RT-03)
+- [x] Realtime socket plumbing (RT-01 to RT-03), Phase 3
 - [ ] Client discovery: Explore and Expert Profile (DISC-01 to DISC-03)
 - [ ] Client booking: calendar and slot picker, free booking, My Bookings, details, cancellation, responding to reschedules (BOOK-01 to BOOK-09)
 - [ ] Payments: saved cards, short-lead, long-lead and 3DS paid paths (PAY-01 to PAY-07)
@@ -157,4 +158,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-20 after Phase 1 completion*
+*Last updated: 2026-10-21 after Phase 3 completion*
