@@ -10,9 +10,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
-import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaginationMeta
@@ -250,18 +250,18 @@ class ResponseDecodingTest {
         assertEquals("p1", data.profileId)
         assertEquals("https://x/a.jpg", data.avatarUrl)
         assertEquals("Ada", data.personalInfo!!.firstName)
-        assertEquals("", data.personalInfo!!.lastName)
-        assertEquals("ada@b.co", data.personalInfo!!.email)
-        assertNull(data.personalInfo!!.bio)
+        assertEquals("", data.personalInfo.lastName)
+        assertEquals("ada@b.co", data.personalInfo.email)
+        assertNull(data.personalInfo.bio)
         assertEquals("Toronto", data.locationDetails!!.city)
-        assertEquals("ON", data.locationDetails!!.stateProvince)
-        assertEquals("CAN", data.locationDetails!!.countryCode)
-        assertEquals("America/Toronto", data.locationDetails!!.timezone)
+        assertEquals("ON", data.locationDetails.stateProvince)
+        assertEquals("CAN", data.locationDetails.countryCode)
+        assertEquals("America/Toronto", data.locationDetails.timezone)
         assertEquals("en", data.languages!![0].id)
-        assertNull(data.languages!![1].id)
-        assertEquals("Klingon", data.languages!![1].label)
+        assertNull(data.languages[1].id)
+        assertEquals("Klingon", data.languages[1].label)
         assertEquals("Tax", data.expertiseTags!!.single().label)
-        assertTrue(data.expertiseTags!!.single().isPrimary)
+        assertTrue(data.expertiseTags.single().isPrimary)
         assertFalse(data.setupCompleted)
     }
 
