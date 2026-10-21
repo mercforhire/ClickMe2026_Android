@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_welcome_title">Welcome to ClickMe</string>
+    <string name="onboarding_welcome_subtitle">Connect with top experts in your field for personalized advice and guidance.</string>
+    <string name="onboarding_discover_title">Discover Top Experts</string>
+    <string name="onboarding_discover_subtitle">Find the right professionals for your needs across dozens of specialized categories.</string>
+    <string name="onboarding_booking_title">Book &amp; Schedule Instantly</string>
+    <string name="onboarding_booking_subtitle">Secure your appointments and payments with ease through our integrated platform.</string>
+    <string name="onboarding_communication_title">Seamless Communication</string>
+    <string name="onboarding_communication_subtitle">Connect via chat, voice, or video calls directly within the app to get the advice you need.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_page_a11y">Page %1$d of %2$d</string>
+</resources>
