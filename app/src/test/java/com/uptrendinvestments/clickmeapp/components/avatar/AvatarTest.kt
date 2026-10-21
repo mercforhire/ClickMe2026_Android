@@ -2,13 +2,16 @@ package com.uptrendinvestments.clickmeapp.components.avatar
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -24,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 class AvatarTest {
@@ -54,6 +58,32 @@ class AvatarTest {
 
         rule.onNodeWithTag(AVATAR_IMAGE_TAG).assertExists()
         rule.onNodeWithTag(AVATAR_FALLBACK_TAG).assertExists()
+    }
+
+    @Test
+    fun size160_rendersA160dpNode() {
+        rule.setContent { ClickMeTheme { Avatar(url = null, contentDescription = "p", size = 160.dp) } }
+
+        rule.onNodeWithContentDescription("p").assertWidthIsEqualTo(160.dp).assertHeightIsEqualTo(160.dp)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun localImage_isShownInsteadOfRemoteImage() {
+        rule.setContent {
+            ClickMeTheme { Avatar(url = "https://x/y.png", contentDescription = null, image = ImageBitmap(4, 4)) }
+        }
+
+        rule.onNodeWithTag(AVATAR_LOCAL_IMAGE_TAG).assertExists()
+        rule.onAllNodesWithTag(AVATAR_IMAGE_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun nullImageAndNullUrl_showsFallbackWithoutLocalImage() {
+        rule.setContent { ClickMeTheme { Avatar(url = null, contentDescription = null, image = null) } }
+
+        rule.onNodeWithTag(AVATAR_FALLBACK_TAG).assertExists()
+        rule.onAllNodesWithTag(AVATAR_LOCAL_IMAGE_TAG).assertCountEquals(0)
     }
 
     @Test

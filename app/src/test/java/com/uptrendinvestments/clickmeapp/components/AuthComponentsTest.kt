@@ -2,14 +2,20 @@ package com.uptrendinvestments.clickmeapp.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -105,6 +111,53 @@ class AuthComponentsTest {
         rule.onNodeWithText("Reset Password").assertIsDisplayed()
         rule.onNodeWithContentDescription("Back").performClick()
         assertEquals(1, backs)
+    }
+
+    @Test
+    fun authErrorDialog_customTitle_replacesDefault() {
+        rule.setContent {
+            ClickMeTheme { AuthErrorDialog(message = "x", onDismiss = {}, title = "Couldn't save") }
+        }
+        rule.onNodeWithText("Couldn't save").assertIsDisplayed()
+        rule.onAllNodesWithText("Something went wrong").assertCountEquals(0)
+    }
+
+    @Test
+    fun authTopAppBar_nullOnBack_hidesBackArrow() {
+        rule.setContent {
+            ClickMeTheme { AuthTopAppBar(title = "T", onBack = null) }
+        }
+        rule.onNodeWithText("T").assertIsDisplayed()
+        rule.onAllNodesWithContentDescription("Back").assertCountEquals(0)
+    }
+
+    @Test
+    fun authTopAppBar_actionsSlot_isShownAndClickable() {
+        var clicks = 0
+        rule.setContent {
+            ClickMeTheme {
+                AuthTopAppBar(
+                    title = "T",
+                    onBack = null,
+                    containerColor = Color.Transparent,
+                    actions = {
+                        IconButton(onClick = { clicks++ }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                        }
+                    },
+                )
+            }
+        }
+        rule.onNodeWithContentDescription("More options").assertHasClickAction().performClick()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun authTopAppBar_backDisabled_disablesArrow() {
+        rule.setContent {
+            ClickMeTheme { AuthTopAppBar(title = "T", onBack = {}, backEnabled = false) }
+        }
+        rule.onNodeWithContentDescription("Back").assertIsNotEnabled()
     }
 
     @Test

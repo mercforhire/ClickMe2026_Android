@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.components.avatar
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -29,13 +31,16 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 
 const val AVATAR_FALLBACK_TAG = "avatar_fallback"
 const val AVATAR_IMAGE_TAG = "avatar_image"
+const val AVATAR_LOCAL_IMAGE_TAG = "avatar_local_image"
 
 /**
  * Circular user avatar. Shows a Person silhouette on a surfaceContainerLow disc when [url] is null
  * or blank, and while the remote image loads or if it fails (iOS parity).
  *
- * Allowed sizes per UI-SPEC: 32, 40, 56 and 96 dp. Pass a null [contentDescription] for decorative
- * avatars.
+ * A non-null [image] (for example the freshly cropped profile photo) is drawn instead of the remote [url].
+ *
+ * Allowed sizes per UI-SPEC: 32, 40, 56, 96 and 160 dp (Profile Photo preview). Pass a null
+ * [contentDescription] for decorative avatars.
  */
 @Composable
 fun Avatar(
@@ -43,6 +48,7 @@ fun Avatar(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
+    image: ImageBitmap? = null,
 ) {
     val semanticsModifier =
         if (contentDescription != null) {
@@ -66,7 +72,14 @@ fun Avatar(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (!url.isNullOrBlank()) {
+        if (image != null) {
+            Image(
+                bitmap = image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().testTag(AVATAR_LOCAL_IMAGE_TAG),
+            )
+        } else if (!url.isNullOrBlank()) {
             AsyncImage(
                 model =
                     ImageRequest
