@@ -30,6 +30,7 @@ import java.net.InetAddress
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.net.SocketFactory
 
 /**
@@ -359,6 +360,47 @@ class RealtimeServiceProtocolTest {
         while (received.isEmpty() && System.nanoTime() < deadline) Thread.sleep(10)
         Thread.sleep(300)
         collector.cancel()
+        assertEquals(listOf<RealtimeEvent>(RealtimeEvent.TypingStart("new", "new")), received.toList())
+        assertEquals(ConnectionState.Connected, service.state.value)
+    }
+
+    @Test
+    fun oldSocketListenerAlreadyRunningWhenTokenRotatesDoesNotEmit() {
+        service.disconnect()
+        val rotated = AtomicBoolean(false)
+        service =
+            newService(
+                object : RealtimeEventDecoder() {
+                    override fun decode(
+                        event: String,
+                        json: String,
+                    ): RealtimeEvent? {
+                        // The old socket's listener is mid-flight when connect(newToken) swaps the socket.
+                        if ("\"old\"" in json && rotated.compareAndSet(false, true)) {
+                            val swap = Thread { service.connect("good-2") }
+                            swap.start()
+                            swap.join(TIMEOUT_MS)
+                        }
+                        return super.decode(event, json)
+                    }
+                },
+            )
+        val first = enqueueConn()
+        val second = enqueueConn()
+        connectAndAwait("good-1")
+
+        val received = CopyOnWriteArrayList<RealtimeEvent>()
+        val collector = collectInBackground(service.events, received)
+        first.send(typingFrame("old", "old"))
+        awaitFrame(second, """40{"token":"good-2"}""")
+        awaitState(ConnectionState.Connected)
+        second.send(typingFrame("new", "new"))
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(TIMEOUT_MS)
+        while (received.isEmpty() && System.nanoTime() < deadline) Thread.sleep(10)
+        Thread.sleep(300)
+        collector.cancel()
+
+        assertTrue("decoder hook never ran", rotated.get())
         assertEquals(listOf<RealtimeEvent>(RealtimeEvent.TypingStart("new", "new")), received.toList())
         assertEquals(ConnectionState.Connected, service.state.value)
     }

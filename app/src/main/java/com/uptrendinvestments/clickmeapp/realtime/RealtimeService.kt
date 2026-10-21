@@ -153,10 +153,13 @@ class RealtimeService
             gen: Int,
             token: String,
         ) {
+            // The generation check and the side effect run under the same lock as connect()/disconnect(), so a
+            // listener of a superseded socket that is already running cannot write state or emit after the
+            // swap. Nothing holding the lock waits on the EventThread (connect/disconnect only post to it).
             fun guarded(block: (Array<Any?>) -> Unit) =
                 Emitter.Listener { args ->
                     try {
-                        if (gen == generation) block(args)
+                        synchronized(lock) { if (gen == generation) block(args) }
                     } catch (t: Throwable) {
                         Log.w(TAG, "listener failed: ${t.javaClass.simpleName}")
                     }
@@ -187,18 +190,20 @@ class RealtimeService
                 },
             )
             for (name in RealtimeEventNames.INBOUND) {
-                s.on(
-                    name,
-                    guarded { args ->
+                s.on(name) { args ->
+                    try {
+                        // Decode outside the lock; only the generation check and the emit are atomic.
                         val json = args.firstOrNull() as? JSONObject
                         val event = json?.let { decoder.decode(name, it.toString()) }
                         if (event != null) {
-                            _events.tryEmit(event)
+                            synchronized(lock) { if (gen == generation) _events.tryEmit(event) }
                         } else {
                             Log.d(TAG, "dropped $name")
                         }
-                    },
-                )
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "listener failed: ${t.javaClass.simpleName}")
+                    }
+                }
             }
         }
 
