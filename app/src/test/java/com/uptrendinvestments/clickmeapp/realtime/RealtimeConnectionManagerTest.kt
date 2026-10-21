@@ -3,6 +3,7 @@
 package com.uptrendinvestments.clickmeapp.realtime
 
 import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
+import com.uptrendinvestments.clickmeapp.managers.SecureTokenStore
 import com.uptrendinvestments.clickmeapp.managers.SessionEvent
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
 import com.uptrendinvestments.clickmeapp.managers.SessionStore
@@ -31,6 +32,26 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.IOException
 
+/**
+ * Lets a test run code inside the manager's token read, i.e. while the read has freed the serial view.
+ * The hook fires once and only for reads made by the manager (UserManager uses the delegate directly).
+ */
+private class HookedTokenStore(
+    private val delegate: FakeSecureTokenStore,
+) : SecureTokenStore by delegate {
+    @Volatile
+    var onNextAccessRead: (() -> Unit)? = null
+
+    override val accessToken: String?
+        get() {
+            onNextAccessRead?.let {
+                onNextAccessRead = null
+                it()
+            }
+            return delegate.accessToken
+        }
+}
+
 class RealtimeConnectionManagerTest {
     @get:Rule
     val tmp = TemporaryFolder()
@@ -51,6 +72,7 @@ class RealtimeConnectionManagerTest {
         private val dispatcher = StandardTestDispatcher(scope.testScheduler)
         val api = FakeClickMeApi()
         val tokens = FakeSecureTokenStore(null)
+        val managerTokens = HookedTokenStore(tokens)
         val events = SessionEvents()
         val connection = FakeRealtimeConnection()
         val foreground = FakeProcessForeground(foregroundInitially)
@@ -68,7 +90,7 @@ class RealtimeConnectionManagerTest {
             RealtimeConnectionManager(
                 connection,
                 userManager,
-                tokens,
+                managerTokens,
                 events,
                 foreground,
                 RealtimeConfig("http://localhost"),
@@ -204,6 +226,21 @@ class RealtimeConnectionManagerTest {
             runCurrent()
 
             assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun refreshedThatGoesToBackgroundDuringTokenReadDoesNotConnect() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            h.tokens.save(TokenPair("access-2", "refresh-2", 1_900_000_100L))
+            h.managerTokens.onNextAccessRead = { h.foreground.isForeground.value = false }
+
+            h.events.emit(SessionEvent.Refreshed)
+            runCurrent()
+
+            assertEquals(listOf("access"), h.connection.connectCalls)
+            assertEquals(ConnectionState.Disconnected, h.connection.state.value)
         }
 
     @Test
@@ -466,6 +503,72 @@ class RealtimeConnectionManagerTest {
             advanceBy(60_000)
 
             assertEquals(1, h.connection.connectCalls.size)
+        }
+
+    @Test
+    fun retryThatGoesToBackgroundDuringTokenReadDoesNotConnect() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            h.connection.emitFailure(failure(HandshakeFailureReason.ServerDisconnected))
+            runCurrent()
+            h.managerTokens.onNextAccessRead = { h.foreground.isForeground.value = false }
+
+            advanceBy(2_001)
+            advanceBy(60_000)
+
+            assertEquals(listOf("access"), h.connection.connectCalls)
+            assertEquals(ConnectionState.Disconnected, h.connection.state.value)
+        }
+
+    @Test
+    fun rotatedTokenRejectionQueuedBeforeBackgroundDoesNotReconnect() =
+        runTest {
+            val h = Harness(this)
+            h.startAndLogin()
+            h.tokens.save(TokenPair("access-2", "refresh-2", 1_900_000_100L))
+            h.foreground.isForeground.value = false
+            runCurrent()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken, token = "old"))
+            runCurrent()
+            advanceBy(60_000)
+
+            assertEquals(listOf("access"), h.connection.connectCalls)
+            assertEquals(ConnectionState.Disconnected, h.connection.state.value)
+        }
+
+    @Test
+    fun tokenRejectionQueuedBeforeBackgroundDoesNotProbe() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = { me }
+            h.startAndLogin()
+            h.foreground.isForeground.value = false
+            runCurrent()
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            advanceBy(60_000)
+
+            assertEquals(0, h.api.meCalls)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun tokenRejectionThatGoesToBackgroundDuringTokenReadDoesNotProbe() =
+        runTest {
+            val h = Harness(this)
+            h.api.meHandler = { me }
+            h.startAndLogin()
+            h.managerTokens.onNextAccessRead = { h.foreground.isForeground.value = false }
+
+            h.connection.emitFailure(failure(HandshakeFailureReason.InvalidToken))
+            runCurrent()
+            advanceBy(60_000)
+
+            assertEquals(0, h.api.meCalls)
+            assertEquals(listOf("access"), h.connection.connectCalls)
         }
 
     @Test

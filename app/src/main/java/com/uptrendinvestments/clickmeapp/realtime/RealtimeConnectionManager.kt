@@ -97,6 +97,8 @@ class RealtimeConnectionManager
         private suspend fun connectWithStoredToken() {
             cancelRetry()
             val token = withContext(io) { tokens.accessToken }
+            // The read frees serial: the policy may have flipped meanwhile; its collector owns the disconnect.
+            if (!isDesired()) return
             if (token == null) connection.disconnect() else connection.connect(token)
         }
 
@@ -121,7 +123,10 @@ class RealtimeConnectionManager
         }
 
         private suspend fun onTokenRejected(rejected: String) {
+            // A failure queued before a background/logout teardown must not probe or reconnect afterwards.
+            if (!isDesired()) return
             val stored = withContext(io) { tokens.accessToken }
+            if (!isDesired()) return
             when {
                 stored == null -> connection.disconnect()
                 stored != rejected -> connectWithStoredToken()
