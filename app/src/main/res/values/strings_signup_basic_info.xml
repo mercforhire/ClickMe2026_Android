@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Personal Details step (iOS SignupBasicInfoView copy; "Search countries..." and the optional province hint are Android additions). -->
+    <string name="signup_basic_info_title">Personal Details</string>
+    <string name="signup_basic_info_intro">Tell us a bit about yourself.</string>
+    <string name="signup_basic_info_first_name">First Name</string>
+    <string name="signup_basic_info_city">City</string>
+    <string name="signup_basic_info_province">Province/State (optional)</string>
+    <string name="signup_basic_info_country">Country</string>
+    <string name="signup_basic_info_country_sheet_title">Select Country</string>
+    <string name="signup_basic_info_country_search">Search countries...</string>
+    <string name="signup_basic_info_languages_label">Spoken Languages</string>
+    <string name="signup_basic_info_add_language">Add language...</string>
+    <string name="signup_basic_info_language_sheet_title">Select Spoken Languages</string>
+    <string name="signup_basic_info_language_search">Search languages...</string>
+    <string name="signup_basic_info_languages_loading">Loading languages…</string>
+    <string name="signup_basic_info_languages_error">Couldn\'t load languages</string>
+    <string name="signup_basic_info_remove_language">Remove %1$s</string>
+</resources>
