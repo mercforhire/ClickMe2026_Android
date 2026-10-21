@@ -214,6 +214,10 @@ class SignupSetupRepository
         /**
          * Basic Info save (D-04). [languages] is null when the user did not change the selection, so the field is
          * omitted and the server's list (which the PATCH would fully replace) is left alone (D-25, WR-03).
+         *
+         * A blank city or province is omitted, unless [clearCity] / [clearProvince] says the user emptied the field:
+         * then, if the draft still has a value, `""` is sent so the server clears it too and the step does not
+         * re-seed the old value (WR-04). The server accepts `""` for both; first name cannot be cleared (`min(1)`).
          */
         suspend fun saveBasicInfo(
             firstName: String,
@@ -221,11 +225,15 @@ class SignupSetupRepository
             provinceState: String,
             countryCode: String,
             languages: List<LanguageItem>?,
+            clearCity: Boolean = false,
+            clearProvince: Boolean = false,
         ) {
             val current = _draft.value
             val name = firstName.trim().ifBlank { null }
-            val cityValue = city.trim().ifBlank { null }
-            val provinceValue = provinceState.trim().ifBlank { null }
+            val cityValue = city.trim().ifBlank { null } ?: "".takeIf { clearCity && current.city.isNotBlank() }
+            val provinceValue =
+                provinceState.trim().ifBlank { null }
+                    ?: "".takeIf { clearProvince && current.provinceState.isNotBlank() }
             val country = Countries.normalize(countryCode)
             val location =
                 if (cityValue == null && provinceValue == null && country == null) {

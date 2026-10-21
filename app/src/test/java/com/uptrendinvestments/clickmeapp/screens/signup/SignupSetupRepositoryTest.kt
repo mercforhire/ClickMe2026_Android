@@ -302,6 +302,63 @@ class SignupSetupRepositoryTest {
         }
 
     @Test
+    fun clearingTheProvinceSendsAnEmptyStringAndClearsTheDraft() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+
+            h.repository.saveBasicInfo("Ada", "Toronto", "", "CAN", languages = null, clearProvince = true)
+
+            assertEquals(
+                SetupLocation(city = "Toronto", provinceState = "", countryCode = "CAN"),
+                h.api.setupProfileRequests
+                    .single()
+                    .location,
+            )
+            assertEquals("", h.repository.draft.value.provinceState)
+            assertTrue(h.repository.draft.value.isComplete(SetupStep.PersonalDetails))
+        }
+
+    @Test
+    fun clearingTheCityAloneStillSendsTheLocation() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+
+            h.repository.saveBasicInfo("", "", "", "", languages = null, clearCity = true)
+
+            assertEquals(
+                SetupExpertProfileRequest(location = SetupLocation(city = "")),
+                h.api.setupProfileRequests.single(),
+            )
+            assertEquals("", h.repository.draft.value.city)
+            assertFalse(h.repository.draft.value.isComplete(SetupStep.PersonalDetails))
+        }
+
+    @Test
+    fun aBlankFieldThatWasNotClearedIsStillOmitted() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+
+            // A clear on a field the draft never had sends nothing for it either.
+            h.repository.saveBasicInfo("Ada", "", "", "", languages = null, clearProvince = false)
+            h.repository.reset()
+            h.repository.saveBasicInfo("Ada", "", "", "", languages = null, clearProvince = true)
+
+            assertEquals(
+                listOf(SetupExpertProfileRequest(firstName = "Ada"), SetupExpertProfileRequest(firstName = "Ada")),
+                h.api.setupProfileRequests,
+            )
+        }
+
+    @Test
     fun saveBasicInfoWithNothingFilledMakesNoRequest() =
         runTest(main.testDispatcher) {
             val h = harness(this)

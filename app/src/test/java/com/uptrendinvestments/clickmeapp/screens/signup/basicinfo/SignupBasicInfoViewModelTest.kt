@@ -558,6 +558,51 @@ class SignupBasicInfoViewModelTest {
             assertEquals(listOf(french), s.languages)
         }
 
+    // ---- WR-04: a cleared optional field is cleared on the server ----
+
+    @Test
+    fun clearingTheProvinceSavesItAsEmptyAndItDoesNotComeBack() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateAda(h)
+            val vm = viewModel(h)
+            assertEquals("ON", vm.uiState.value.provinceState)
+
+            vm.onProvinceChange("")
+            vm.save()
+            runCurrent()
+
+            assertEquals(
+                "",
+                h.api.setupProfileRequests
+                    .single()
+                    .location
+                    ?.provinceState,
+            )
+            assertEquals("", viewModel(h).uiState.value.provinceState)
+        }
+
+    @Test
+    fun aCityTheUserNeverSawIsNotClearedByALateHydrate() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val vm = viewModel(h)
+            runCurrent()
+            vm.onFirstNameChange("Grace")
+            hydrateAda(h)
+            runCurrent()
+
+            vm.save()
+            runCurrent()
+
+            assertNull(
+                h.api.setupProfileRequests
+                    .single()
+                    .location,
+            )
+            assertEquals("Toronto", h.repository.draft.value.city)
+        }
+
     @Test
     fun editsAreMirroredToSavedState() =
         runTest(main.testDispatcher) {

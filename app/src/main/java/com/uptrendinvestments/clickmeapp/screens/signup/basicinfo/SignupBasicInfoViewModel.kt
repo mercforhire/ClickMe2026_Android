@@ -88,6 +88,8 @@ private const val KEY_LANGUAGE_IDS = "basic_language_ids"
 private const val KEY_LANGUAGE_LABELS = "basic_language_labels"
 private const val KEY_TOUCHED = "basic_touched"
 private const val KEY_LANGUAGES_TOUCHED = "basic_languages_touched"
+private const val KEY_CITY_EDITED = "basic_city_edited"
+private const val KEY_PROVINCE_EDITED = "basic_province_edited"
 private const val UNPROCESSABLE = 422
 
 /**
@@ -121,6 +123,10 @@ class SignupBasicInfoViewModel
 
         /** True while the languages shown are the English default rather than the draft's list. */
         private var languagesDefaulted = false
+
+        /** The user typed in these fields, so a blank value on Save is a deliberate clear (WR-04). */
+        private var cityEdited = savedStateHandle.get<Boolean>(KEY_CITY_EDITED) == true
+        private var provinceEdited = savedStateHandle.get<Boolean>(KEY_PROVINCE_EDITED) == true
         private var catalog: LanguageCatalog = LanguageCatalog.Loading
         private var catalogJob: Job? = null
 
@@ -215,9 +221,17 @@ class SignupBasicInfoViewModel
 
         fun onFirstNameChange(value: String) = edit { it.copy(firstName = value, firstNameError = null) }
 
-        fun onCityChange(value: String) = edit { it.copy(city = value, cityError = null) }
+        fun onCityChange(value: String) {
+            cityEdited = true
+            savedStateHandle[KEY_CITY_EDITED] = true
+            edit { it.copy(city = value, cityError = null) }
+        }
 
-        fun onProvinceChange(value: String) = edit { it.copy(provinceState = value, provinceError = null) }
+        fun onProvinceChange(value: String) {
+            provinceEdited = true
+            savedStateHandle[KEY_PROVINCE_EDITED] = true
+            edit { it.copy(provinceState = value, provinceError = null) }
+        }
 
         // ---- country sheet ----
 
@@ -318,6 +332,8 @@ class SignupBasicInfoViewModel
                         provinceState = current.provinceState,
                         countryCode = current.countryCode,
                         languages = if (sendLanguages) current.languages else null,
+                        clearCity = cityEdited && current.city.isBlank(),
+                        clearProvince = provinceEdited && current.provinceState.isBlank(),
                     )
                     _uiState.update { it.copy(saveState = SaveState.Saved) }
                     delay(Motion.SAVED_CONFIRMATION_HOLD_MS.toLong())
