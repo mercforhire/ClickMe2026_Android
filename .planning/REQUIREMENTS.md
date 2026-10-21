@@ -44,18 +44,18 @@ From the PRD's login flow (Week 2).
 
 From the PRD's signup flow (Week 2; iOS `SignupAccumulator.swift`).
 
-- [ ] **SIGN-01**: A new user can create an account on the signup Initial step. There are no username or phone fields (SIGNUP-USERNAME-OPTIONAL.md, PHONE-NUMBER-REMOVED.md).
-- [ ] **SIGN-02**: User can complete the Overview hub steps in any order: Basic Info + language picker, Timezone, Profile Photo, Verify Email, Tags. Each step saves through `PATCH /expert/profile/setup`.
-- [ ] **SIGN-03**: The email verification code is sent only when the user taps the button, never automatically, with a 30-second resend cooldown (EMAIL-VERIFICATION-ON-REQUEST.md).
-- [ ] **SIGN-04**: User can review their profile and publish it (Review → Publish).
-- [ ] **SIGN-05**: A user with an unfinished signup is resumed into setup at login or splash, and completed steps are kept.
+- [x] **SIGN-01**: A new user can create an account on the signup Initial step. There are no username or phone fields (SIGNUP-USERNAME-OPTIONAL.md, PHONE-NUMBER-REMOVED.md).
+- [x] **SIGN-02**: User can complete the Overview hub steps in any order: Basic Info + language picker, Timezone, Profile Photo, Verify Email, Tags. Each step saves through `PATCH /expert/profile/setup`.
+- [x] **SIGN-03**: The email verification code is sent only when the user taps the button, never automatically, with a 30-second resend cooldown (EMAIL-VERIFICATION-ON-REQUEST.md).
+- [x] **SIGN-04**: User can review their profile and publish it (Review → Publish).
+- [x] **SIGN-05**: A user with an unfinished signup is resumed into setup at login or splash, and completed steps are kept.
 
 ### Onboarding & Modes
 
 From the PRD's onboarding and mode switch (Week 2).
 
-- [ ] **ONB-01**: The onboarding carousel shows on the first launch into client home and not again until logout clears the flag.
-- [ ] **ONB-02**: User can switch between client and expert mode on the mode switch screen (local only; port of `ModeSwitchView`), and the mode persists across launches.
+- [x] **ONB-01**: The onboarding carousel shows on the first launch into client home and not again until logout clears the flag.
+- [x] **ONB-02**: User can switch between client and expert mode on the mode switch screen (local only; port of `ModeSwitchView`), and the mode persists across launches.
 
 ### Realtime
 
@@ -270,13 +270,13 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | FND-14 | Phase 2 | Pending |
 | AUTH-01 | Phase 3 | Complete |
 | AUTH-02 | Phase 3 | Complete |
-| SIGN-01 | Phase 4 | Pending |
-| SIGN-02 | Phase 4 | Pending |
-| SIGN-03 | Phase 4 | Pending |
-| SIGN-04 | Phase 4 | Pending |
-| SIGN-05 | Phase 4 | Pending |
-| ONB-01 | Phase 4 | Pending |
-| ONB-02 | Phase 4 | Pending |
+| SIGN-01 | Phase 4 | Complete |
+| SIGN-02 | Phase 4 | Complete |
+| SIGN-03 | Phase 4 | Complete |
+| SIGN-04 | Phase 4 | Complete |
+| SIGN-05 | Phase 4 | Complete |
+| ONB-01 | Phase 4 | Complete |
+| ONB-02 | Phase 4 | Complete |
 | RT-01 | Phase 3 | Complete |
 | RT-02 | Phase 3 | Complete |
 | RT-03 | Phase 3 | Complete |
