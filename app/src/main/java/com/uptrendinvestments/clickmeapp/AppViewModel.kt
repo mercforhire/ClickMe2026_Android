@@ -138,19 +138,6 @@ class AppViewModel
             viewModelScope.launch { userManager.logout() }
         }
 
-        /**
-         * Toggles between [AppRoute.ClientHome] and [AppRoute.ExpertHome]; other routes are unchanged.
-         * Called only from debug-gated UI; Phase 4 replaces it with the real mode switch (ONB-02).
-         */
-        fun debugSwitchScaffold() {
-            _route.value =
-                when (_route.value) {
-                    AppRoute.ClientHome -> AppRoute.ExpertHome
-                    AppRoute.ExpertHome -> AppRoute.ClientHome
-                    else -> _route.value
-                }
-        }
-
         private fun LaunchDestination.toRoute(): AppRoute =
             when (this) {
                 LaunchDestination.Login -> AppRoute.Login

@@ -348,23 +348,7 @@ class AppViewModelTest {
             assertEquals(1, h.api.meCalls)
         }
 
-    // ---- debug scaffold toggle and route order ----
-
-    @Test
-    fun debugSwitchScaffoldTogglesBetweenClientAndExpertHome() =
-        runTest(main.testDispatcher) {
-            val h = Harness(this)
-            h.clientLaunch()
-            val vm = h.viewModel()
-            runCurrent()
-            assertEquals(AppRoute.ClientHome, vm.route.value)
-
-            vm.debugSwitchScaffold()
-            assertEquals(AppRoute.ExpertHome, vm.route.value)
-
-            vm.debugSwitchScaffold()
-            assertEquals(AppRoute.ClientHome, vm.route.value)
-        }
+    // ---- route order ----
 
     @Test
     fun appRouteMirrorsIosRoutesInOrder() {
