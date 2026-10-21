@@ -5,6 +5,8 @@
     <string name="error_email_invalid">Invalid email format</string>
     <string name="error_password_required">Password is required</string>
     <string name="error_password_too_short">Password must be at least 8 characters</string>
+    <string name="error_signup_password_letter">Password must include a letter</string>
+    <string name="error_signup_password_number">Password must include a number</string>
     <string name="error_forgot_email_required">Please enter your email</string>
     <string name="error_code_required">Please enter the 6-digit code</string>
     <string name="error_code_invalid">Code must be 6 digits</string>
