@@ -211,12 +211,16 @@ class SignupSetupRepository
 
         // ---- per-step saves (D-04, D-14, D-25) ----
 
+        /**
+         * Basic Info save (D-04). [languages] is null when the user did not change the selection, so the field is
+         * omitted and the server's list (which the PATCH would fully replace) is left alone (D-25, WR-03).
+         */
         suspend fun saveBasicInfo(
             firstName: String,
             city: String,
             provinceState: String,
             countryCode: String,
-            languages: List<LanguageItem>,
+            languages: List<LanguageItem>?,
         ) {
             val current = _draft.value
             val name = firstName.trim().ifBlank { null }
@@ -229,7 +233,8 @@ class SignupSetupRepository
                 } else {
                     SetupLocation(city = cityValue, provinceState = provinceValue, countryCode = country)
                 }
-            val languageIds = listFieldFor(languages.map { it.id }, current.languages.map { it.id })
+            val languageIds =
+                languages?.let { selected -> listFieldFor(selected.map { it.id }, current.languages.map { it.id }) }
             val request = SetupExpertProfileRequest(firstName = name, location = location, languages = languageIds)
             patch(request, SetupStep.PersonalDetails) { draft ->
                 draft.copy(
@@ -237,7 +242,7 @@ class SignupSetupRepository
                     city = cityValue ?: draft.city,
                     provinceState = provinceValue ?: draft.provinceState,
                     countryCode = country ?: draft.countryCode,
-                    languages = if (languageIds != null) languages else draft.languages,
+                    languages = if (languageIds != null && languages != null) languages else draft.languages,
                 )
             }
         }

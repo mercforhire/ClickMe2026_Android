@@ -52,6 +52,13 @@ class SignupBasicInfoViewModelTest {
         handle: SavedStateHandle = SavedStateHandle(),
     ) = SignupBasicInfoViewModel(h.repository, h.api, handle)
 
+    /** A fresh signup: the hydrate succeeds and the server has no languages, so English is the default. */
+    private suspend fun hydrateEmpty(h: SignupTestHarness) {
+        h.api.expertProfileHandler = { h.emptyProfile() }
+        h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+        h.repository.hydrate()
+    }
+
     private suspend fun hydrateAda(h: SignupTestHarness) {
         h.api.expertProfileHandler = { h.fullProfile(languages = listOf(ExpertLanguage("fr", "French"))) }
         h.api.emailStatusHandler = { EmailStatusData(verified = false) }
@@ -61,7 +68,9 @@ class SignupBasicInfoViewModelTest {
     @Test
     fun emptyDraftStartsBlankWithEnglishSelected() =
         runTest(main.testDispatcher) {
-            val vm = viewModel(harness(this))
+            val h = harness(this)
+            hydrateEmpty(h)
+            val vm = viewModel(h)
 
             val s = vm.uiState.value
             assertEquals("", s.firstName)
@@ -182,7 +191,9 @@ class SignupBasicInfoViewModelTest {
     @Test
     fun languageSelectionKeepsTapOrderAndConfirmApplies() =
         runTest(main.testDispatcher) {
-            val vm = viewModel(harness(this))
+            val h = harness(this)
+            hydrateEmpty(h)
+            val vm = viewModel(h)
             vm.openLanguageSheet()
             advanceUntilIdle()
 
@@ -211,7 +222,9 @@ class SignupBasicInfoViewModelTest {
     @Test
     fun languageSearchFiltersAndDismissDiscardsSelection() =
         runTest(main.testDispatcher) {
-            val vm = viewModel(harness(this))
+            val h = harness(this)
+            hydrateEmpty(h)
+            val vm = viewModel(h)
             vm.openLanguageSheet()
             advanceUntilIdle()
 
@@ -232,7 +245,10 @@ class SignupBasicInfoViewModelTest {
     @Test
     fun removeLanguageDropsTheChip() =
         runTest(main.testDispatcher) {
-            val vm = viewModel(harness(this))
+            val h = harness(this)
+            hydrateEmpty(h)
+            val vm = viewModel(h)
+            assertEquals(listOf(english), vm.uiState.value.languages)
 
             vm.removeLanguage("en")
 
@@ -246,6 +262,7 @@ class SignupBasicInfoViewModelTest {
     fun savePatchesOnlyFilledFieldsAndHoldsSavedFor600ms() =
         runTest(main.testDispatcher) {
             val h = harness(this)
+            hydrateEmpty(h)
             val vm = viewModel(h)
             vm.onFirstNameChange("Ada")
             vm.selectCountry("CAN")
@@ -281,6 +298,8 @@ class SignupBasicInfoViewModelTest {
                         {"field":"location.city","message":"Bad city"}]}""",
                 )
             }
+            // English is the default after an empty hydrate, so Save has something to send.
+            hydrateEmpty(h)
             val vm = viewModel(h)
 
             vm.save()
@@ -301,6 +320,8 @@ class SignupBasicInfoViewModelTest {
             h.api.setupProfileHandler = {
                 throw h.api.httpError(422, """{"errors":[{"field":"location.country_code","message":"Bad country"}]}""")
             }
+            // English is the default after an empty hydrate, so Save has something to send.
+            hydrateEmpty(h)
             val vm = viewModel(h)
 
             vm.save()
@@ -317,6 +338,8 @@ class SignupBasicInfoViewModelTest {
             h.api.setupProfileHandler = {
                 throw h.api.httpError(422, """{"errors":[{"field":"surprise","message":"Odd"}]}""")
             }
+            // English is the default after an empty hydrate, so Save has something to send.
+            hydrateEmpty(h)
             val vm = viewModel(h)
 
             vm.save()
@@ -331,6 +354,8 @@ class SignupBasicInfoViewModelTest {
         runTest(main.testDispatcher) {
             val h = harness(this)
             h.api.setupProfileHandler = { throw IOException("offline") }
+            // English is the default after an empty hydrate, so Save has something to send.
+            hydrateEmpty(h)
             val vm = viewModel(h)
 
             vm.save()
@@ -349,6 +374,8 @@ class SignupBasicInfoViewModelTest {
             h.api.setupProfileHandler = {
                 throw h.api.httpError(422, """{"errors":[{"field":"location.city","message":"Bad city"}]}""")
             }
+            // English is the default after an empty hydrate, so Save has something to send.
+            hydrateEmpty(h)
             val vm = viewModel(h)
             vm.save()
             advanceUntilIdle()
@@ -367,6 +394,8 @@ class SignupBasicInfoViewModelTest {
                 gate.await()
                 SetupExpertProfileData()
             }
+            // English is the default after an empty hydrate, so Save has something to send.
+            hydrateEmpty(h)
             val vm = viewModel(h)
 
             vm.save()
@@ -392,6 +421,7 @@ class SignupBasicInfoViewModelTest {
                         "basic_language_ids" to arrayListOf("fr", "de"),
                         "basic_language_labels" to arrayListOf("French", "German"),
                         "basic_touched" to true,
+                        "basic_languages_touched" to true,
                     ),
                 )
 
@@ -402,6 +432,130 @@ class SignupBasicInfoViewModelTest {
             assertEquals("IDF", s.provinceState)
             assertEquals("FRA", s.countryCode)
             assertEquals(listOf(french, german), s.languages)
+        }
+
+    // ---- WR-03: an untouched server language list is never replaced ----
+
+    @Test
+    fun failedHydrateShowsNoEnglishAndSaveOmitsLanguages() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { throw IOException("offline") }
+            h.api.emailStatusHandler = { throw IOException("offline") }
+            h.repository.hydrate()
+            val vm = viewModel(h)
+            assertTrue(
+                vm.uiState.value.languages
+                    .isEmpty(),
+            )
+
+            vm.onFirstNameChange("Ada")
+            vm.save()
+            runCurrent()
+
+            val request = h.api.setupProfileRequests.single()
+            assertEquals("Ada", request.firstName)
+            assertNull(request.languages)
+        }
+
+    @Test
+    fun textEditBeforeALateHydrateStillShowsAndKeepsTheServerLanguages() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val vm = viewModel(h)
+            runCurrent()
+            vm.onFirstNameChange("Grace")
+
+            hydrateAda(h)
+            runCurrent()
+
+            assertEquals("Grace", vm.uiState.value.firstName)
+            assertEquals(listOf(french), vm.uiState.value.languages)
+
+            vm.save()
+            runCurrent()
+            val request = h.api.setupProfileRequests.single()
+            assertEquals("Grace", request.firstName)
+            assertNull(request.languages)
+            assertEquals(listOf(french), h.repository.draft.value.languages)
+        }
+
+    @Test
+    fun untouchedHydratedLanguagesAreOmittedFromSave() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateAda(h)
+            val vm = viewModel(h)
+
+            vm.save()
+            runCurrent()
+
+            assertNull(
+                h.api.setupProfileRequests
+                    .single()
+                    .languages,
+            )
+        }
+
+    @Test
+    fun changedLanguagesAreSentInTapOrder() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateAda(h)
+            val vm = viewModel(h)
+            vm.openLanguageSheet()
+            advanceUntilIdle()
+            vm.toggleLanguage(german)
+            vm.confirmLanguageSheet()
+
+            vm.save()
+            runCurrent()
+
+            assertEquals(
+                listOf("fr", "de"),
+                h.api.setupProfileRequests
+                    .single()
+                    .languages,
+            )
+        }
+
+    @Test
+    fun languageEditsSurviveALateHydrateButTextStillReseeds() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateEmpty(h)
+            val vm = viewModel(h)
+            vm.removeLanguage("en")
+
+            hydrateAda(h)
+            runCurrent()
+
+            assertEquals("Ada", vm.uiState.value.firstName)
+            assertTrue(
+                vm.uiState.value.languages
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun textOnlySavedStateReseedsTheLanguagesFromTheDraft() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateAda(h)
+            val handle =
+                SavedStateHandle(
+                    mapOf(
+                        "basic_first_name" to "Grace",
+                        "basic_language_ids" to arrayListOf("en"),
+                        "basic_language_labels" to arrayListOf("English"),
+                        "basic_touched" to true,
+                    ),
+                )
+
+            val s = viewModel(h, handle).uiState.value
+
+            assertEquals("Grace", s.firstName)
+            assertEquals(listOf(french), s.languages)
         }
 
     @Test

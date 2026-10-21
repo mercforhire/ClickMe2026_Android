@@ -12,6 +12,7 @@ import com.uptrendinvestments.clickmeapp.network.ClickMeApi
 import com.uptrendinvestments.clickmeapp.network.apiCall
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.toDialogError
+import com.uptrendinvestments.clickmeapp.screens.signup.HydrationState
 import com.uptrendinvestments.clickmeapp.screens.signup.SignupDraft
 import com.uptrendinvestments.clickmeapp.screens.signup.SignupSetupRepository
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -21,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -85,13 +87,20 @@ private const val KEY_COUNTRY = "basic_country"
 private const val KEY_LANGUAGE_IDS = "basic_language_ids"
 private const val KEY_LANGUAGE_LABELS = "basic_language_labels"
 private const val KEY_TOUCHED = "basic_touched"
+private const val KEY_LANGUAGES_TOUCHED = "basic_languages_touched"
 private const val UNPROCESSABLE = 422
 
 /**
  * Port of iOS `SignupBasicInfoViewModel` and the Language Selection sheet (D-16). The form is seeded from the shared
- * draft (English when the draft has no languages, Pitfall 6) until the first edit, and is mirrored to
- * [SavedStateHandle] so typed values survive rotation and process death. Save is always enabled and sends only the
- * filled fields (D-04); languages go out in tap order (D-14) with no primary-language helper (D-24).
+ * draft and is mirrored to [SavedStateHandle] so typed values survive rotation and process death. Save is always
+ * enabled and sends only the filled fields (D-04); languages go out in tap order (D-14) with no primary-language
+ * helper (D-24).
+ *
+ * The text fields and the languages are tracked separately (WR-03): the text fields re-seed from the draft until the
+ * first text edit, the languages until the first language edit. English is pre-selected (Pitfall 6) only once a
+ * successful hydrate has shown the server has no languages; while hydration is pending or failed the list shows the
+ * draft as is. Save sends `languages` only when the user changed them or accepted that English default, so a server
+ * list the user never touched is never replaced (D-25).
  */
 @HiltViewModel
 class SignupBasicInfoViewModel
@@ -108,50 +117,80 @@ class SignupBasicInfoViewModel
         val saved: StateFlow<Boolean> = _saved.asStateFlow()
 
         private var touched = savedStateHandle.get<Boolean>(KEY_TOUCHED) == true
+        private var languagesTouched = savedStateHandle.get<Boolean>(KEY_LANGUAGES_TOUCHED) == true
+
+        /** True while the languages shown are the English default rather than the draft's list. */
+        private var languagesDefaulted = false
         private var catalog: LanguageCatalog = LanguageCatalog.Loading
         private var catalogJob: Job? = null
 
         init {
-            if (touched) {
-                restoreFromSavedState()
-            } else {
-                seedFrom(repository.draft.value)
-                // A late hydrate (for example after process death) re-seeds until the user edits something.
-                viewModelScope.launch {
-                    repository.draft.collect { draft -> if (!touched) seedFrom(draft) }
+            if (touched) restoreTextFromSavedState()
+            if (languagesTouched) restoreLanguagesFromSavedState()
+            seedFrom(repository.draft.value, repository.hydration.value)
+            // A late hydrate (for example after process death) re-seeds whatever the user has not edited yet.
+            viewModelScope.launch {
+                combine(repository.draft, repository.hydration, ::Pair).collect { (draft, hydration) ->
+                    seedFrom(draft, hydration)
                 }
             }
         }
 
-        private fun seedFrom(draft: SignupDraft) {
-            _uiState.update {
-                it.copy(
-                    firstName = draft.firstName,
-                    city = draft.city,
-                    provinceState = draft.provinceState,
-                    countryCode = draft.countryCode,
-                    languages = draft.languages.ifEmpty { listOf(ENGLISH) },
-                )
+        private fun seedFrom(
+            draft: SignupDraft,
+            hydration: HydrationState,
+        ) {
+            if (!touched) {
+                _uiState.update {
+                    it.copy(
+                        firstName = draft.firstName,
+                        city = draft.city,
+                        provinceState = draft.provinceState,
+                        countryCode = draft.countryCode,
+                    )
+                }
+            }
+            if (!languagesTouched) {
+                val useDefault = draft.languages.isEmpty() && hydration == HydrationState.Loaded
+                languagesDefaulted = useDefault
+                _uiState.update { it.copy(languages = if (useDefault) listOf(ENGLISH) else draft.languages) }
             }
         }
 
-        private fun restoreFromSavedState() {
-            val ids = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_IDS).orEmpty()
-            val labels = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_LABELS).orEmpty()
+        private fun restoreTextFromSavedState() {
             _uiState.update {
                 it.copy(
                     firstName = savedStateHandle.get<String>(KEY_FIRST_NAME).orEmpty(),
                     city = savedStateHandle.get<String>(KEY_CITY).orEmpty(),
                     provinceState = savedStateHandle.get<String>(KEY_PROVINCE).orEmpty(),
                     countryCode = savedStateHandle.get<String>(KEY_COUNTRY).orEmpty(),
-                    languages = ids.mapIndexed { index, id -> LanguageItem(id, labels.getOrNull(index) ?: id) },
                 )
             }
         }
 
-        /** Marks the form edited (so the draft no longer re-seeds it) and mirrors it to saved state. */
+        private fun restoreLanguagesFromSavedState() {
+            val ids = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_IDS).orEmpty()
+            val labels = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_LABELS).orEmpty()
+            _uiState.update {
+                it.copy(languages = ids.mapIndexed { index, id -> LanguageItem(id, labels.getOrNull(index) ?: id) })
+            }
+        }
+
+        /** Marks the text fields edited (so the draft no longer re-seeds them) and mirrors the form to saved state. */
         private fun markEdited() {
             touched = true
+            mirrorToSavedState()
+        }
+
+        /** Marks the languages edited (so the draft no longer re-seeds them and Save sends them). */
+        private fun markLanguagesEdited() {
+            languagesTouched = true
+            languagesDefaulted = false
+            savedStateHandle[KEY_LANGUAGES_TOUCHED] = true
+            mirrorToSavedState()
+        }
+
+        private fun mirrorToSavedState() {
             val state = _uiState.value
             savedStateHandle[KEY_FIRST_NAME] = state.firstName
             savedStateHandle[KEY_CITY] = state.city
@@ -159,12 +198,17 @@ class SignupBasicInfoViewModel
             savedStateHandle[KEY_COUNTRY] = state.countryCode
             savedStateHandle[KEY_LANGUAGE_IDS] = ArrayList(state.languages.map { it.id })
             savedStateHandle[KEY_LANGUAGE_LABELS] = ArrayList(state.languages.map { it.label })
-            savedStateHandle[KEY_TOUCHED] = true
+            savedStateHandle[KEY_TOUCHED] = touched
         }
 
         private fun edit(transform: (SignupBasicInfoUiState) -> SignupBasicInfoUiState) {
             _uiState.update(transform)
             markEdited()
+        }
+
+        private fun editLanguages(transform: (SignupBasicInfoUiState) -> SignupBasicInfoUiState) {
+            _uiState.update(transform)
+            markLanguagesEdited()
         }
 
         // ---- text fields ----
@@ -189,7 +233,9 @@ class SignupBasicInfoViewModel
         // ---- languages ----
 
         fun removeLanguage(id: String) =
-            edit { state -> state.copy(languages = state.languages.filterNot { it.id == id }, languagesError = null) }
+            editLanguages { state ->
+                state.copy(languages = state.languages.filterNot { it.id == id }, languagesError = null)
+            }
 
         fun openLanguageSheet() {
             _uiState.update {
@@ -217,7 +263,7 @@ class SignupBasicInfoViewModel
 
         fun confirmLanguageSheet() {
             val selection = _uiState.value.languageSheet?.selection ?: return
-            edit { it.copy(languages = selection, languagesError = null, languageSheet = null) }
+            editLanguages { it.copy(languages = selection, languagesError = null, languageSheet = null) }
         }
 
         fun dismissLanguageSheet() = _uiState.update { it.copy(languageSheet = null) }
@@ -252,6 +298,7 @@ class SignupBasicInfoViewModel
         fun save() {
             val current = _uiState.value
             if (current.saveState != SaveState.Idle) return
+            val sendLanguages = languagesTouched || languagesDefaulted
             _uiState.update {
                 it.copy(
                     firstNameError = null,
@@ -270,7 +317,7 @@ class SignupBasicInfoViewModel
                         city = current.city,
                         provinceState = current.provinceState,
                         countryCode = current.countryCode,
-                        languages = current.languages,
+                        languages = if (sendLanguages) current.languages else null,
                     )
                     _uiState.update { it.copy(saveState = SaveState.Saved) }
                     delay(Motion.SAVED_CONFIRMATION_HOLD_MS.toLong())
@@ -315,7 +362,10 @@ class SignupBasicInfoViewModel
         }
 
         companion object {
-            /** Pre-selected on a fresh form (D-16). Kept out of the draft so an untouched list is never sent. */
+            /**
+             * Pre-selected once a hydrate shows the server has no languages (D-16). Kept out of the draft; saving the
+             * form with it shown sends it.
+             */
             val ENGLISH = LanguageItem("en", "English")
         }
     }

@@ -288,6 +288,20 @@ class SignupSetupRepositoryTest {
         }
 
     @Test
+    fun saveBasicInfoWithUnchangedLanguagesOmitsTheFieldAndKeepsTheDraftList() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile(languages = listOf(ExpertLanguage("fr", "French"))) }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+
+            h.repository.saveBasicInfo("Ada", "", "", "", languages = null)
+
+            assertEquals(SetupExpertProfileRequest(firstName = "Ada"), h.api.setupProfileRequests.single())
+            assertEquals(listOf(h.language("fr", "French")), h.repository.draft.value.languages)
+        }
+
+    @Test
     fun saveBasicInfoWithNothingFilledMakesNoRequest() =
         runTest(main.testDispatcher) {
             val h = harness(this)
