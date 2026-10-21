@@ -2,16 +2,22 @@ package com.uptrendinvestments.clickmeapp.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material3.Text
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -132,5 +138,138 @@ class PickerComponentsTest {
         rule.onNodeWithContentDescription("Remove French").assertDoesNotExist()
         rule.onNodeWithText("French").performClick()
         assertEquals(1, clicks)
+    }
+
+    // PickerSheetContent
+
+    @Test
+    fun sheetContent_showsHeadingTitleAndSearchPlaceholder_noClearWhenEmpty() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerSheetContent(
+                    title = "Select Country",
+                    searchQuery = "",
+                    searchPlaceholder = "Search countries...",
+                    content = {},
+                )
+            }
+        }
+        rule.onNodeWithText("Select Country").assertIsDisplayed()
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertExists()
+        rule.onNodeWithText("Search countries...").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Clear search").assertDoesNotExist()
+    }
+
+    @Test
+    fun sheetContent_clearButton_callsOnSearchQueryChangeWithEmpty() {
+        val changes = mutableListOf<String>()
+        rule.setContent {
+            ClickMeTheme {
+                PickerSheetContent(
+                    title = "Select Country",
+                    searchQuery = "can",
+                    searchPlaceholder = "Search countries...",
+                    onSearchQueryChange = { changes += it },
+                    content = {},
+                )
+            }
+        }
+        rule.onNodeWithContentDescription("Clear search").performClick()
+        assertEquals(listOf(""), changes)
+    }
+
+    @Test
+    fun sheetContent_typing_reportsNewText() {
+        val changes = mutableListOf<String>()
+        rule.setContent {
+            ClickMeTheme {
+                PickerSheetContent(
+                    title = "Select Country",
+                    searchQuery = "",
+                    searchPlaceholder = "Search countries...",
+                    onSearchQueryChange = { changes += it },
+                    content = {},
+                )
+            }
+        }
+        rule.onNode(hasSetTextAction()).performTextInput("fra")
+        assertEquals(listOf("fra"), changes)
+    }
+
+    @Test
+    fun sheetContent_nullSearchQuery_rendersNoSearchField() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerSheetContent(title = "Select Timezone", searchQuery = null, content = {})
+            }
+        }
+        rule.onNode(hasSetTextAction()).assertDoesNotExist()
+    }
+
+    @Test
+    fun sheetContent_rendersListContentAndFooter() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerSheetContent(
+                    title = "Select Languages",
+                    footer = { Text("Footer content") },
+                    content = {
+                        item { PickerRow(label = "Canada", selected = false, onClick = {}) }
+                    },
+                )
+            }
+        }
+        rule.onNodeWithText("Canada").assertIsDisplayed()
+        rule.onNodeWithText("Footer content").assertIsDisplayed()
+    }
+
+    // PickerRow
+
+    @Test
+    fun pickerRow_selected_isSelectedWithCheckAndClicks() {
+        var clicks = 0
+        rule.setContent {
+            ClickMeTheme {
+                PickerRow(label = "Canada", selected = true, onClick = { clicks++ })
+            }
+        }
+        rule.onNodeWithText("Canada").assertIsSelected()
+        rule.onNodeWithTag(PICKER_ROW_CHECK_TAG, useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("Canada").performClick()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun pickerRow_unselected_isNotSelectedAndHasNoCheck() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerRow(label = "Canada", selected = false, onClick = {})
+            }
+        }
+        rule.onNodeWithText("Canada").assertIsNotSelected()
+        rule.onNodeWithTag(PICKER_ROW_CHECK_TAG, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun pickerRow_minHeight56_isAtLeast56dp() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerRow(label = "Toronto", selected = false, onClick = {}, minHeight = 56.dp)
+            }
+        }
+        rule.onNodeWithText("Toronto").assertHeightIsAtLeast(56.dp)
+    }
+
+    // PickerLoading
+
+    @Test
+    fun pickerLoading_showsTextAndProgressIndicator() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerLoading(text = "Loading languages\u2026")
+            }
+        }
+        rule.onNodeWithText("Loading languages\u2026").assertIsDisplayed()
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertExists()
     }
 }

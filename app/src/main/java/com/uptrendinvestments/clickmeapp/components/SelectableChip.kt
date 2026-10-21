@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
-private val ChipMinHeight = 48.dp
 private val CloseIconSize = 16.dp
 
 /**
@@ -53,7 +52,7 @@ fun SelectableChip(
         Row(
             modifier =
                 Modifier
-                    .heightIn(min = ChipMinHeight)
+                    .heightIn(min = 48.dp)
                     .clickable(role = Role.Button, onClick = onClick)
                     .padding(horizontal = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
