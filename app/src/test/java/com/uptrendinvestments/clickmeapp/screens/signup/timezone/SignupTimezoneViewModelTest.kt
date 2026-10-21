@@ -96,7 +96,12 @@ class SignupTimezoneViewModelTest {
             runCurrent()
 
             assertEquals("Asia/Tokyo", vm.uiState.value.selectedId)
-            assertEquals("Asia/Tokyo", vm.uiState.value.entries.first().id)
+            assertEquals(
+                "Asia/Tokyo",
+                vm.uiState.value.entries
+                    .first()
+                    .id,
+            )
             assertEquals(Timezones.entryFor("Asia/Tokyo").label, vm.uiState.value.selectedLabel)
             assertEquals(11, vm.uiState.value.entries.size)
         }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Signup Timezone step (iOS SignupTimezoneView copy, 04-UI-SPEC screen 4). -->
+    <string name="signup_timezone_title">Timezone</string>
+    <string name="signup_timezone_heading">Confirm your timezone</string>
+    <string name="signup_timezone_body">We auto-detected this from your device.\nChange it if it\'s wrong.</string>
+    <string name="signup_timezone_field">Timezone</string>
+    <string name="signup_timezone_sheet_title">Select Timezone</string>
+    <string name="signup_timezone_auto_detect">Auto-detect from device</string>
+    <string name="signup_timezone_explainer">We use this to convert booking times to your local time and to align payouts with your day.</string>
+</resources>
