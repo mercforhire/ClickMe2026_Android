@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="signup_crop_hint">Pinch to zoom and drag to reposition.</string>
+    <string name="signup_crop_cancel">Cancel</string>
+    <string name="signup_crop_use">Use Photo</string>
+    <string name="signup_crop_area_a11y">Photo crop area</string>
+    <string name="signup_crop_zoom_in">Zoom in</string>
+    <string name="signup_crop_zoom_out">Zoom out</string>
+    <string name="signup_crop_move_left">Move left</string>
+    <string name="signup_crop_move_right">Move right</string>
+    <string name="signup_crop_move_up">Move up</string>
+    <string name="signup_crop_move_down">Move down</string>
+    <string name="signup_photo_open_error_title">Couldn\'t open photo</string>
+    <string name="signup_photo_open_error_body">Pick a different photo and try again.</string>
+</resources>
