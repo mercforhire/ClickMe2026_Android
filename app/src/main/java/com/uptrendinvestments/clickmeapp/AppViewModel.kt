@@ -114,22 +114,29 @@ class AppViewModel
 
         /**
          * Switches mode (D-17). Cancels any in-flight switch so only the last request lands; the result is
-         * applied only while the route is still a home route (a lookup finishing after logout is dropped).
+         * applied only while the session is alive and the route is still a home route. `logout()` flips
+         * [UserManager.isLoggedIn] off the main thread, so the switch can resume before the collector above
+         * cancels it; the session check drops that late result (WR-01).
          */
         fun switchMode(target: AppMode) {
             switchJob?.cancel()
             switchJob =
                 viewModelScope.launch {
                     val destination = userManager.requestModeSwitch(target)
-                    if (_route.value in HOME_ROUTES) _route.value = destination.toRoute()
+                    if (userManager.isLoggedIn.value && _route.value in HOME_ROUTES) {
+                        _route.value = destination.toRoute()
+                    }
                 }
         }
 
-        /** Signup setup was published (D-22): mode becomes Client and the route client home. */
+        /**
+         * Signup setup was published (D-22): mode becomes Client and the route client home. A session that ended
+         * while this ran (logout, rejection) keeps the Login route the isLoggedIn collector chose (WR-01).
+         */
         fun onSetupPublished() {
             viewModelScope.launch {
                 userManager.completeSetup()
-                _route.value = AppRoute.ClientHome
+                if (userManager.isLoggedIn.value) _route.value = AppRoute.ClientHome
             }
         }
 

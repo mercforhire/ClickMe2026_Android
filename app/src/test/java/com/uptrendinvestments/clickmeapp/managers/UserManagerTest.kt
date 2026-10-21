@@ -937,6 +937,98 @@ class UserManagerTest {
             assertEquals(false to AppMode.Client, pairs.last())
         }
 
+    // ---- WR-01: mode writes are session-guarded ----
+
+    @Test
+    fun switchLookupFinishingAfterLogoutPersistsNoMode() =
+        runTest {
+            val h = Harness(this, authedPair)
+            val gate = CompletableDeferred<Unit>()
+            h.api.expertProfileHandler = {
+                gate.await()
+                ExpertProfileData(setupCompleted = true)
+            }
+            var result: LaunchDestination? = null
+            backgroundScope.launch { result = h.manager.requestModeSwitch(AppMode.Expert) }
+            runCurrent()
+
+            h.manager.logout()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(LaunchDestination.Login, result)
+            assertNull(h.sessionStore.storedMode())
+            assertEquals(AppMode.Client, h.manager.currentMode.value)
+        }
+
+    @Test
+    fun incompleteSwitchFinishingAfterLogoutReportsLogin() =
+        runTest {
+            val h = Harness(this, authedPair)
+            val gate = CompletableDeferred<Unit>()
+            h.api.expertProfileHandler = {
+                gate.await()
+                ExpertProfileData(setupCompleted = false)
+            }
+            var result: LaunchDestination? = null
+            backgroundScope.launch { result = h.manager.requestModeSwitch(AppMode.Expert) }
+            runCurrent()
+
+            h.manager.logout()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(LaunchDestination.Login, result)
+        }
+
+    @Test
+    fun lateRestoreAfterLogoutPersistsNoModeForTheNextSession() =
+        runTest {
+            val h = Harness(this, authedPair)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = { me("expert") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
+            h.api.topicsHandler = {
+                gate.await()
+                MyExpertTopicsPayload(listOf(mapOf("id" to "t1")))
+            }
+            var restored: LaunchDestination? = null
+            backgroundScope.launch { restored = h.manager.restore() }
+            runCurrent()
+
+            h.manager.logout()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(LaunchDestination.Login, restored)
+            assertNull(h.sessionStore.storedMode())
+            assertEquals(AppMode.Client, h.manager.currentMode.value)
+        }
+
+    @Test
+    fun resolveWithoutASessionWritesNoMode() =
+        runTest {
+            val h = Harness(this)
+
+            assertEquals(LaunchDestination.Login, h.manager.resolvePostAuthDestination(setOf(UserRole.Client)))
+
+            assertNull(h.sessionStore.storedMode())
+        }
+
+    @Test
+    fun completeSetupAfterLogoutWritesNoMode() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.manager.logout()
+
+            h.manager.completeSetup()
+            runCurrent()
+
+            assertNull(h.sessionStore.storedMode())
+            assertEquals(0, h.api.userProfileCalls)
+        }
+
     // ---- CR-03: session-local files ----
 
     @Test

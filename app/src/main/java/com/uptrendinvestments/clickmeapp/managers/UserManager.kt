@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -92,9 +94,16 @@ class UserManager
         @Volatile
         private var persistedStateLoaded = false
 
-        /** Bumped by every logout so an in-flight profile fetch can tell its session is gone. */
+        /** Bumped by every logout so an in-flight profile fetch or mode write can tell its session is gone. */
         @Volatile
         private var sessionGeneration = 0
+
+        /**
+         * Orders logout's [sessionGeneration] bump against [setModeForSession] (WR-01). A mode write that holds the
+         * lock first finishes before logout clears the store; one that gets it after sees the new generation and
+         * writes nothing, so a late switch or restore can never persist a mode into the next session.
+         */
+        private val modeWriteLock = Mutex()
 
         init {
             // The bus has no replay, so the subscription must exist before any request can emit.
@@ -165,7 +174,7 @@ class UserManager
          */
         suspend fun logout() {
             withContext(NonCancellable + io) {
-                sessionGeneration++
+                modeWriteLock.withLock { sessionGeneration++ }
                 // Called first so the future push-token DELETE still has a bearer token (iOS order).
                 runCatching { pushTokenRegistrar.unregister() }
                 tokens.clear()
@@ -223,6 +232,7 @@ class UserManager
             }
 
         private suspend fun restoreInternal(): LaunchDestination {
+            val generation = sessionGeneration
             loadPersistedState()
             if (!withContext(io) { tokens.hasSession() }) return LaunchDestination.Login
             _isLoggedIn.value = true
@@ -233,7 +243,7 @@ class UserManager
             }
             appScope.launch { bestEffort { refreshProfile() } }
             val roles = _me.value?.userRoles ?: return offlineDestination()
-            return resolvePostAuthDestination(roles)
+            return resolvePostAuthDestination(roles, generation)
         }
 
         private suspend fun loadPersistedState() {
@@ -264,16 +274,25 @@ class UserManager
         /**
          * Routes a freshly authenticated user (shared by [restore] and the login screen, D-07): an expert
          * with incomplete setup resumes signup (D-05); otherwise the stored mode, else expert only when the
-         * expert has at least one topic. The chosen mode is persisted.
+         * expert has at least one topic. The chosen mode is persisted, but only while the session that asked is
+         * still alive: when it ended during the lookups the answer is [LaunchDestination.Login] and nothing is
+         * written (WR-01).
          */
-        suspend fun resolvePostAuthDestination(roles: Set<UserRole>): LaunchDestination {
+        suspend fun resolvePostAuthDestination(roles: Set<UserRole>): LaunchDestination =
+            resolvePostAuthDestination(roles, sessionGeneration)
+
+        private suspend fun resolvePostAuthDestination(
+            roles: Set<UserRole>,
+            generation: Int,
+        ): LaunchDestination {
             val isExpert = UserRole.Expert in roles
-            if (isExpert && isExpertProfileIncomplete()) return LaunchDestination.SignupSetup
+            if (isExpert && isExpertProfileIncomplete()) {
+                return if (generation == sessionGeneration) LaunchDestination.SignupSetup else LaunchDestination.Login
+            }
             val mode =
                 sessionStore.storedMode()
                     ?: if (isExpert && expertHasTopics()) AppMode.Expert else AppMode.Client
-            setMode(mode)
-            return LaunchDestination.Home(mode)
+            return if (setModeForSession(mode, generation)) LaunchDestination.Home(mode) else LaunchDestination.Login
         }
 
         /** `GET /expert/profile` `setup_completed`, or null when the lookup failed. */
@@ -330,21 +349,30 @@ class UserManager
          *
          * The GET goes through the backend's `ensureExpert` and permanently converts a client-only account to
          * expert. D-23 accepts this as the "become an expert" path, so there is no role pre-gate here.
+         *
+         * When the session ends while the switch runs (logout, rejection), nothing is persisted and the result is
+         * [LaunchDestination.Login] (WR-01).
          */
-        suspend fun requestModeSwitch(target: AppMode): LaunchDestination =
-            when (target) {
-                AppMode.Client -> {
-                    setMode(AppMode.Client)
-                    LaunchDestination.Home(AppMode.Client)
+        suspend fun requestModeSwitch(target: AppMode): LaunchDestination {
+            val generation = sessionGeneration
+            val destination =
+                when (target) {
+                    AppMode.Client -> LaunchDestination.Home(AppMode.Client)
+                    AppMode.Expert ->
+                        if (isExpertProfileIncomplete()) {
+                            LaunchDestination.SignupSetup
+                        } else {
+                            LaunchDestination.Home(AppMode.Expert)
+                        }
                 }
-                AppMode.Expert ->
-                    if (isExpertProfileIncomplete()) {
-                        LaunchDestination.SignupSetup
-                    } else {
-                        setMode(AppMode.Expert)
-                        LaunchDestination.Home(AppMode.Expert)
-                    }
+            // WR-01: a switch whose session ended meanwhile writes nothing and reports Login.
+            return when {
+                destination is LaunchDestination.Home && !setModeForSession(destination.mode, generation) ->
+                    LaunchDestination.Login
+                generation != sessionGeneration -> LaunchDestination.Login
+                else -> destination
             }
+        }
 
         /**
          * Re-checks a setup check that could not run or whose answer was not applied (D-11). Order:
@@ -368,9 +396,12 @@ class UserManager
             return if (completed) null else LaunchDestination.SignupSetup
         }
 
-        /** Signup setup was published (D-22): land in Client mode and refresh the cached profile (new avatar). */
+        /**
+         * Signup setup was published (D-22): land in Client mode and refresh the cached profile (new avatar). Does
+         * nothing when the session has already ended (WR-01).
+         */
         suspend fun completeSetup() {
-            setMode(AppMode.Client)
+            if (!setModeForSession(AppMode.Client, sessionGeneration)) return
             setupCheckPending = false
             appScope.launch { bestEffort { refreshProfile() } }
         }
@@ -413,6 +444,20 @@ class UserManager
             _currentMode.value = mode
             sessionStore.setMode(mode)
         }
+
+        /**
+         * [setMode] for a result computed in session [generation] (WR-01): writes only while that session is still
+         * the current one and still holds tokens, and returns whether it wrote. See [modeWriteLock].
+         */
+        private suspend fun setModeForSession(
+            mode: AppMode,
+            generation: Int,
+        ): Boolean =
+            modeWriteLock.withLock {
+                if (generation != sessionGeneration || !withContext(io) { tokens.hasSession() }) return@withLock false
+                setMode(mode)
+                true
+            }
 
         suspend fun hasStoredModePreference(): Boolean = sessionStore.storedMode() != null
 

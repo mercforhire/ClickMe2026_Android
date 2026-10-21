@@ -702,6 +702,25 @@ class AppViewModelTest {
         }
 
     @Test
+    fun onSetupPublishedAfterTheSessionEndedStaysOnLogin() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.expertLaunch(setupCompleted = false)
+            val vm = h.viewModel()
+            runCurrent()
+            assertEquals(AppRoute.SignupSetup, vm.route.value)
+            h.events.emit(SessionEvent.Rejected)
+            runCurrent()
+            assertEquals(AppRoute.Login, vm.route.value)
+
+            vm.onSetupPublished()
+            runCurrent()
+
+            assertEquals(AppRoute.Login, vm.route.value)
+            assertEquals(null, h.sessionStore.storedMode())
+        }
+
+    @Test
     fun capPathLoadsPersistedOnboardingFlagBeforeRouteResolves() =
         runTest(main.testDispatcher) {
             val h = Harness(this)
