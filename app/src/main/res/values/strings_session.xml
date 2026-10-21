@@ -16,8 +16,4 @@
     <string name="suspended_body">You can\'t use ClickMe with this account right now. If you think this is a mistake, contact %1$s.</string>
     <string name="suspended_ok">OK</string>
     <string name="suspended_contact_support">Email support</string>
-
-    <!-- SignupSetup placeholder (D-05) until Phase 4 builds the signup flow. -->
-    <string name="signup_setup_placeholder_title">Finish setting up your expert profile</string>
-    <string name="signup_setup_placeholder_body">Expert profile setup isn\'t available in this build yet. Log out to use a different account.</string>
 </resources>

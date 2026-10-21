@@ -17,11 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.navigation.AuthNavHost
+import com.uptrendinvestments.clickmeapp.navigation.SignupSetupNavHost
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
-import com.uptrendinvestments.clickmeapp.screens.signup.SignupSetupPlaceholder
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
 /**
@@ -55,8 +55,8 @@ fun ClickMeApp(
 
             AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 
-            // Replaced by the real signup setup hub in plan 04-19.
-            AppRoute.SignupSetup -> SignupSetupPlaceholder(onLogout = appViewModel::logout)
+            // Publish success sets mode Client and routes to client home (D-22).
+            AppRoute.SignupSetup -> SignupSetupNavHost(onPublished = appViewModel::onSetupPublished)
 
             AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
 
