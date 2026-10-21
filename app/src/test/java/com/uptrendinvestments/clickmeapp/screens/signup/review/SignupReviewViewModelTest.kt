@@ -94,6 +94,13 @@ class SignupReviewViewModelTest {
         }
 
     @Test
+    fun customLanguagesAreListedAfterCatalogueLanguages() {
+        val s = SignupDraft(languages = listOf(lang("fr", "French")), customLanguages = listOf("Klingon")).toUiState()
+        assertEquals("French, Klingon", s.languages)
+        assertEquals("Klingon", SignupDraft(customLanguages = listOf("Klingon")).toUiState().languages)
+    }
+
+    @Test
     fun skillsAndLanguagesKeepDraftOrder() {
         val draft =
             SignupDraft(

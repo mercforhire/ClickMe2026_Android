@@ -139,7 +139,10 @@ internal fun SignupDraft.toUiState(): SignupReviewUiState =
     SignupReviewUiState(
         firstName = firstName.trim().ifBlank { null },
         location = reviewLocation(),
-        languages = languages.joinToString(", ") { it.label }.ifBlank { null },
+        languages =
+            (languages.map { it.label } + customLanguages.filter { it.isNotBlank() })
+                .joinToString(", ")
+                .ifBlank { null },
         timezoneLabel = timezone.takeIf { it.isNotBlank() }?.let { Timezones.entryFor(it).label },
         avatarUrl = avatarUrl?.takeIf { it.isNotBlank() },
         skills = expertiseTags.joinToString(", ") { it.label }.ifBlank { null },

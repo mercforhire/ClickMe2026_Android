@@ -251,6 +251,8 @@ class SignupSetupRepository
                     provinceState = provinceValue ?: draft.provinceState,
                     countryCode = country ?: draft.countryCode,
                     languages = if (languageIds != null && languages != null) languages else draft.languages,
+                    // Sending `languages` replaced the server's whole list, custom entries included (WR-07).
+                    customLanguages = if (languageIds != null) emptyList() else draft.customLanguages,
                 )
             }
         }
@@ -352,7 +354,9 @@ class SignupSetupRepository
                             countryCode = Countries.normalize(current.countryCode),
                         ),
                     timezone = current.timezone,
-                    languages = current.languages.map { it.id },
+                    // WR-07: with custom languages on the server the catalogue list is unchanged since the hydrate (any
+                    // language save clears them), so it is omitted rather than replaced, which would delete them.
+                    languages = current.languages.map { it.id }.takeIf { current.customLanguages.isEmpty() },
                     expertiseTags = current.expertiseTags.map { it.id },
                     setupCompleted = true,
                 )
@@ -403,6 +407,8 @@ class SignupSetupRepository
                 languages =
                     profile.languages?.mapNotNull { lang -> lang.id?.let { LanguageItem(it, lang.label ?: it) } }
                         ?: languages,
+                customLanguages =
+                    profile.languages?.filter { it.id == null }?.map { it.label.orEmpty() } ?: customLanguages,
                 expertiseTags = profile.expertiseTags?.map { ExpertiseTagItem(it.id, it.label) } ?: expertiseTags,
             )
         }

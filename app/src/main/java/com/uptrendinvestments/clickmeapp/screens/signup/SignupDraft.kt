@@ -18,6 +18,12 @@ data class SignupDraft(
     val provinceState: String = "",
     val countryCode: String = "",
     val languages: List<LanguageItem> = emptyList(),
+    /**
+     * Labels of custom (free-text, id-less) languages the server already holds, for example saved by another client.
+     * The setup PATCH can only send catalogue ids and fully replaces the list, so these are kept here only to count
+     * toward completion and to keep `languages` out of the publish payload, which would delete them (WR-07).
+     */
+    val customLanguages: List<String> = emptyList(),
     val timezone: String = "",
     val avatarUrl: String? = null,
     val expertiseTags: List<ExpertiseTagItem> = emptyList(),
@@ -31,7 +37,10 @@ data class SignupDraft(
         if (step in publishBlockedSteps) return false
         return when (step) {
             SetupStep.PersonalDetails ->
-                firstName.isNotBlank() && city.isNotBlank() && countryCode.isNotBlank() && languages.isNotEmpty()
+                firstName.isNotBlank() &&
+                    city.isNotBlank() &&
+                    countryCode.isNotBlank() &&
+                    (languages.isNotEmpty() || customLanguages.isNotEmpty())
             SetupStep.Timezone -> timezone.isNotBlank()
             SetupStep.ProfilePhoto -> !avatarUrl.isNullOrBlank()
             SetupStep.VerifyEmail -> emailVerified

@@ -41,6 +41,13 @@ class SignupDraftTest {
     }
 
     @Test
+    fun aCustomLanguageAloneCompletesPersonalDetails() {
+        val customOnly = full.copy(languages = emptyList(), customLanguages = listOf("Klingon"))
+        assertTrue(customOnly.isComplete(SetupStep.PersonalDetails))
+        assertTrue(customOnly.canPublish)
+    }
+
+    @Test
     fun otherStepsFollowTheirOwnField() {
         assertFalse(SignupDraft().isComplete(SetupStep.Timezone))
         assertTrue(SignupDraft(timezone = "UTC").isComplete(SetupStep.Timezone))

@@ -157,7 +157,8 @@ class SignupBasicInfoViewModel
                 }
             }
             if (!languagesTouched) {
-                val useDefault = draft.languages.isEmpty() && hydration == HydrationState.Loaded
+                val useDefault =
+                    draft.languages.isEmpty() && draft.customLanguages.isEmpty() && hydration == HydrationState.Loaded
                 languagesDefaulted = useDefault
                 _uiState.update { it.copy(languages = if (useDefault) listOf(ENGLISH) else draft.languages) }
             }

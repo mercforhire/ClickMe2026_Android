@@ -98,6 +98,7 @@ class SignupSetupRepositoryTest {
             assertEquals("America/Toronto", draft.timezone)
             assertEquals("https://cdn.example/avatar.jpg", draft.avatarUrl)
             assertEquals(listOf(h.language("en", "English")), draft.languages)
+            assertEquals(listOf("Klingon"), draft.customLanguages)
             assertEquals(listOf(h.tag("t2", "Audit"), h.tag("t1", "Tax")), draft.expertiseTags)
             assertTrue(draft.emailVerified)
             assertEquals("ada@b.co", draft.email)
@@ -713,6 +714,70 @@ class SignupSetupRepositoryTest {
             }
 
             assertEquals(setOf(SetupStep.Timezone), h.repository.draft.value.publishBlockedSteps)
+        }
+
+    // ---- WR-07: custom (id-less) languages are not deleted ----
+
+    private suspend fun hydrateWithCustom(
+        h: SignupTestHarness,
+        languages: List<ExpertLanguage> = listOf(ExpertLanguage("en", "English"), ExpertLanguage(null, "Klingon")),
+    ) {
+        h.api.expertProfileHandler = { h.fullProfile(languages = languages) }
+        h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+        h.repository.hydrate()
+    }
+
+    @Test
+    fun publishWithCustomLanguagesOmitsTheLanguageList() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateWithCustom(h)
+
+            h.repository.publish()
+
+            val request = h.api.setupProfileRequests.single()
+            assertNull(request.languages)
+            assertEquals(true, request.setupCompleted)
+            assertEquals(listOf("t1"), request.expertiseTags)
+        }
+
+    @Test
+    fun aCustomOnlyLanguageListCountsAsCompleteAndPublishes() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateWithCustom(h, languages = listOf(ExpertLanguage(null, "Klingon")))
+
+            assertTrue(h.repository.draft.value.isComplete(SetupStep.PersonalDetails))
+            assertTrue(h.repository.draft.value.canPublish)
+            h.repository.publish()
+            assertNull(
+                h.api.setupProfileRequests
+                    .single()
+                    .languages,
+            )
+        }
+
+    @Test
+    fun aLanguageSaveReplacesTheServerListSoCustomLanguagesAreDropped() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            hydrateWithCustom(h)
+
+            h.repository.saveBasicInfo("Ada", "", "", "", languages = null)
+            assertEquals(listOf("Klingon"), h.repository.draft.value.customLanguages)
+
+            h.repository.saveBasicInfo("Ada", "", "", "", listOf(h.language("fr", "French")))
+            assertTrue(
+                h.repository.draft.value.customLanguages
+                    .isEmpty(),
+            )
+            h.repository.publish()
+            assertEquals(
+                listOf("fr"),
+                h.api.setupProfileRequests
+                    .last()
+                    .languages,
+            )
         }
 
     // ---- reset and session end ----

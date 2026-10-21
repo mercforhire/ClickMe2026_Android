@@ -558,6 +558,29 @@ class SignupBasicInfoViewModelTest {
             assertEquals(listOf(french), s.languages)
         }
 
+    @Test
+    fun customOnlyServerLanguagesGetNoEnglishDefaultAndAreNotReplaced() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile(languages = listOf(ExpertLanguage(null, "Klingon"))) }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+            val vm = viewModel(h)
+            assertTrue(
+                vm.uiState.value.languages
+                    .isEmpty(),
+            )
+
+            vm.save()
+            runCurrent()
+
+            assertNull(
+                h.api.setupProfileRequests
+                    .single()
+                    .languages,
+            )
+        }
+
     // ---- WR-04: a cleared optional field is cleared on the server ----
 
     @Test
