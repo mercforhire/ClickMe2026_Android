@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Signup Initial step (SIGN-01): email and password only (D-01). -->
+    <string name="signup_initial_headline">Create Account</string>
+    <string name="signup_initial_subtitle">Start your journey with us.</string>
+    <string name="signup_initial_email_placeholder">Email</string>
+    <string name="signup_initial_password_placeholder">Password</string>
+    <string name="signup_initial_password_hint">At least 8 characters, with a letter and a number.</string>
+    <string name="signup_initial_continue">Continue</string>
+    <string name="signup_initial_error_title">Couldn\'t create account</string>
+    <string name="signup_initial_error_email_taken">An account with this email already exists.</string>
+</resources>
