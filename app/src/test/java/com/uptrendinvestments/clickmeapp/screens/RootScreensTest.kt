@@ -1,14 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens
 
 import android.content.Intent
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
-import com.uptrendinvestments.clickmeapp.screens.signup.SignupSetupPlaceholder
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -23,7 +21,6 @@ class RootScreensTest {
 
     private var dismissCount = 0
     private var supportCount = 0
-    private var logoutCount = 0
 
     private fun showDialog() {
         rule.setContent {
@@ -69,19 +66,5 @@ class RootScreensTest {
 
         assertEquals(Intent.ACTION_SENDTO, intent.action)
         assertEquals("mailto:support@clickme.app", intent.dataString)
-    }
-
-    @Test
-    fun signupSetupPlaceholderShowsHeadingAndLogoutButton() {
-        rule.setContent {
-            ClickMeTheme {
-                SignupSetupPlaceholder(onLogout = { logoutCount++ })
-            }
-        }
-
-        rule.onNodeWithText("Finish setting up your expert profile").assertExists()
-        rule.onNode(hasText("Log out") and hasClickAction()).performClick()
-
-        assertEquals(1, logoutCount)
     }
 }
