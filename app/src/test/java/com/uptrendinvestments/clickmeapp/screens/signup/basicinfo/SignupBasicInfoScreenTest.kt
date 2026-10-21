@@ -1,5 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.basicinfo
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescriptionExactly
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -224,5 +230,54 @@ class SignupBasicInfoScreenTest {
 
         assertEquals(1, cancelled)
         assertEquals(1, done)
+    }
+
+    /** Renders the form under an outer Back handler, like NavDisplay's, and returns how often it fired (WR-06). */
+    private fun systemBackReachesNavigation(
+        saveState: SaveState,
+        onBack: () -> Unit = {},
+    ): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                SignupBasicInfoContent(
+                    state = SignupBasicInfoUiState(saveState = saveState),
+                    onFirstNameChange = {},
+                    onCityChange = {},
+                    onProvinceChange = {},
+                    onOpenCountrySheet = {},
+                    onOpenLanguageSheet = {},
+                    onRemoveLanguage = {},
+                    onSave = {},
+                    onBack = onBack,
+                    onDismissDialog = {},
+                )
+            }
+        }
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+        return navBacks
+    }
+
+    @Test
+    fun systemBackWhileIdleReachesNavigationAndTheArrowIsEnabled() {
+        assertEquals(1, systemBackReachesNavigation(SaveState.Idle))
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsEnabled()
+    }
+
+    @Test
+    fun backIsBlockedWhileSaving() {
+        var arrowBacks = 0
+        assertEquals(0, systemBackReachesNavigation(SaveState.Saving, onBack = { arrowBacks++ }))
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsNotEnabled().performClick()
+        assertEquals(0, arrowBacks)
+    }
+
+    @Test
+    fun backIsBlockedDuringTheSavedHold() {
+        assertEquals(0, systemBackReachesNavigation(SaveState.Saved))
     }
 }

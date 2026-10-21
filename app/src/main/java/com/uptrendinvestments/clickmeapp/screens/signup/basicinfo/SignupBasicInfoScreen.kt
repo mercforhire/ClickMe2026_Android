@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.basicinfo
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -136,12 +137,19 @@ fun SignupBasicInfoContent(
     modifier: Modifier = Modifier,
 ) {
     val editable = state.saveState == SaveState.Idle
+    // WR-06: leaving mid-save would cancel the request after the PATCH may have landed, before the draft is updated;
+    // swallow system Back and disable the arrow until it finishes (as Tags does).
+    BackHandler(enabled = !editable) {}
 
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            AuthTopAppBar(title = stringResource(R.string.signup_basic_info_title), onBack = onBack)
+            AuthTopAppBar(
+                title = stringResource(R.string.signup_basic_info_title),
+                onBack = onBack,
+                backEnabled = editable,
+            )
         },
     ) { innerPadding ->
         Column(

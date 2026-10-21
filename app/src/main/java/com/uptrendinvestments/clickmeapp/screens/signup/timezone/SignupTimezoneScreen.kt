@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.timezone
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ import com.uptrendinvestments.clickmeapp.components.PickerRow
 import com.uptrendinvestments.clickmeapp.components.PickerSheet
 import com.uptrendinvestments.clickmeapp.components.PickerSheetContent
 import com.uptrendinvestments.clickmeapp.components.buttons.AsyncSaveButton
+import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.constants.TimezoneEntry
 import com.uptrendinvestments.clickmeapp.constants.Timezones
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
@@ -99,9 +101,20 @@ fun SignupTimezoneContent(
     onDismissDialog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val editable = state.saveState == SaveState.Idle
+    // WR-06: leaving mid-save would cancel the request after the PATCH may have landed, before the draft is updated;
+    // swallow system Back and disable the arrow until it finishes (as Tags does).
+    BackHandler(enabled = !editable) {}
+
     Scaffold(
         modifier = modifier,
-        topBar = { AuthTopAppBar(title = stringResource(R.string.signup_timezone_title), onBack = onBack) },
+        topBar = {
+            AuthTopAppBar(
+                title = stringResource(R.string.signup_timezone_title),
+                onBack = onBack,
+                backEnabled = editable,
+            )
+        },
         bottomBar = {
             Column(
                 modifier =

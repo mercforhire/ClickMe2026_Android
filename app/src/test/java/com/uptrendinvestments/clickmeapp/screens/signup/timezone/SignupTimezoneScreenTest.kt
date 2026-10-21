@@ -1,5 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.timezone
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescriptionExactly
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -12,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.uptrendinvestments.clickmeapp.components.PickerSheetContent
+import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.constants.Timezones
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -137,5 +144,48 @@ class SignupTimezoneScreenTest {
 
         rule.onNodeWithText("OK").performClick()
         assertEquals(1, dismissDialogCount)
+    }
+
+    /** Renders the step under an outer Back handler, like NavDisplay's, and returns how often it fired (WR-06). */
+    private fun systemBackReachesNavigation(saveState: SaveState): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                SignupTimezoneContent(
+                    state = baseState.copy(saveState = saveState),
+                    onOpenSheet = {},
+                    onDismissSheet = {},
+                    onSelect = {},
+                    onAutoDetect = {},
+                    onSave = {},
+                    onBack = { backCount++ },
+                    onDismissDialog = {},
+                )
+            }
+        }
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+        return navBacks
+    }
+
+    @Test
+    fun systemBackWhileIdleReachesNavigationAndTheArrowIsEnabled() {
+        assertEquals(1, systemBackReachesNavigation(SaveState.Idle))
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsEnabled()
+    }
+
+    @Test
+    fun backIsBlockedWhileSaving() {
+        assertEquals(0, systemBackReachesNavigation(SaveState.Saving))
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsNotEnabled().performClick()
+        assertEquals(0, backCount)
+    }
+
+    @Test
+    fun backIsBlockedDuringTheSavedHold() {
+        assertEquals(0, systemBackReachesNavigation(SaveState.Saved))
     }
 }
