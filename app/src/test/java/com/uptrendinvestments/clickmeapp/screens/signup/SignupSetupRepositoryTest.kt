@@ -483,6 +483,92 @@ class SignupSetupRepositoryTest {
             )
         }
 
+    /** Publishes against a 422 that names [fields], leaving those steps blocked (D-06). */
+    private suspend fun blockOnPublish(
+        h: SignupTestHarness,
+        vararg fields: String,
+    ) {
+        val list = fields.joinToString(",") { "\"$it\"" }
+        h.api.setupProfileHandler = {
+            throw h.api.httpError(422, """{"message":"incomplete","missing_fields":[$list]}""")
+        }
+        try {
+            h.repository.publish()
+            fail("expected ApiException.Http")
+        } catch (e: ApiException.Http) {
+            assertEquals(422, e.status)
+        }
+        h.api.setupProfileHandler = { SetupExpertProfileData() }
+    }
+
+    @Test
+    fun uploadingThePhotoLiftsOnlyThePhotoBlock() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+            blockOnPublish(h, "profile_image_url", "expertise_tags")
+            h.api.uploadAvatarHandler = { AvatarUploadData("https://cdn.example/new.jpg") }
+
+            h.repository.uploadAvatar(byteArrayOf(1))
+
+            val draft = h.repository.draft.value
+            assertEquals(setOf(SetupStep.Expertise), draft.publishBlockedSteps)
+            assertTrue(draft.isComplete(SetupStep.ProfilePhoto))
+            assertFalse(draft.isComplete(SetupStep.Expertise))
+            assertFalse(draft.canPublish)
+        }
+
+    @Test
+    fun eachStepSaveLiftsItsOwnBlockSoPublishIsEnabledAgain() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+            blockOnPublish(h, "first_name", "timezone", "expertise_tags")
+            assertEquals(
+                setOf(SetupStep.PersonalDetails, SetupStep.Timezone, SetupStep.Expertise),
+                h.repository.draft.value.publishBlockedSteps,
+            )
+
+            h.repository.saveBasicInfo("Ada", "", "", "", listOf(h.language("en", "English")))
+            assertEquals(
+                setOf(SetupStep.Timezone, SetupStep.Expertise),
+                h.repository.draft.value.publishBlockedSteps,
+            )
+            h.repository.saveTimezone("America/Toronto")
+            assertEquals(setOf(SetupStep.Expertise), h.repository.draft.value.publishBlockedSteps)
+            h.repository.saveTags(listOf(h.tag("t1", "Tax")))
+
+            assertTrue(
+                h.repository.draft.value.publishBlockedSteps
+                    .isEmpty(),
+            )
+            assertTrue(h.repository.draft.value.canPublish)
+        }
+
+    @Test
+    fun aFailedSaveKeepsTheBlock() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.repository.hydrate()
+            blockOnPublish(h, "timezone")
+            h.api.setupProfileHandler = { throw IOException("offline") }
+
+            try {
+                h.repository.saveTimezone("America/Toronto")
+                fail("expected ApiException.Network")
+            } catch (e: ApiException.Network) {
+                // expected
+            }
+
+            assertEquals(setOf(SetupStep.Timezone), h.repository.draft.value.publishBlockedSteps)
+        }
+
     // ---- reset and session end ----
 
     @Test

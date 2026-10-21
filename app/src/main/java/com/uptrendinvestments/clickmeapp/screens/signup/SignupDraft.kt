@@ -21,7 +21,10 @@ data class SignupDraft(
     val timezone: String = "",
     val avatarUrl: String? = null,
     val expertiseTags: List<ExpertiseTagItem> = emptyList(),
-    /** Steps the server rejected on publish (D-06); shown incomplete until the next hydrate. */
+    /**
+     * Steps the server rejected on publish (D-06); shown incomplete until that step saves again or the next
+     * hydrate.
+     */
     val publishBlockedSteps: Set<SetupStep> = emptySet(),
 ) {
     fun isComplete(step: SetupStep): Boolean {

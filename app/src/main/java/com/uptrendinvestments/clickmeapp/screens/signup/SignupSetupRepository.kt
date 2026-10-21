@@ -203,7 +203,7 @@ class SignupSetupRepository
                 }
             val languageIds = listFieldFor(languages.map { it.id }, current.languages.map { it.id })
             val request = SetupExpertProfileRequest(firstName = name, location = location, languages = languageIds)
-            patch(request) { draft ->
+            patch(request, SetupStep.PersonalDetails) { draft ->
                 draft.copy(
                     firstName = name ?: draft.firstName,
                     city = cityValue ?: draft.city,
@@ -215,25 +215,30 @@ class SignupSetupRepository
         }
 
         suspend fun saveTimezone(timezone: String) {
-            patch(SetupExpertProfileRequest(timezone = timezone)) { it.copy(timezone = timezone) }
+            patch(SetupExpertProfileRequest(timezone = timezone), SetupStep.Timezone) { it.copy(timezone = timezone) }
         }
 
         suspend fun saveTags(tags: List<ExpertiseTagItem>) {
             val tagIds = listFieldFor(tags.map { it.id }, _draft.value.expertiseTags.map { it.id })
-            patch(SetupExpertProfileRequest(expertiseTags = tagIds)) { draft ->
+            patch(SetupExpertProfileRequest(expertiseTags = tagIds), SetupStep.Expertise) { draft ->
                 if (tagIds != null) draft.copy(expertiseTags = tags) else draft
             }
         }
 
-        /** Sends [request] when it carries any field, then applies [apply] to the draft unless the session ended. */
+        /**
+         * Sends [request] when it carries any field, then applies [apply] to the draft unless the session ended. A
+         * successful save also lifts [step]'s D-06 publish block, so the row re-derives its state from the saved fields
+         * (the server re-checks everything on the next publish anyway).
+         */
         private suspend fun patch(
             request: SetupExpertProfileRequest,
+            step: SetupStep,
             apply: (SignupDraft) -> SignupDraft,
         ) {
             if (!request.hasAnyField()) return
             val startGeneration = generation
             apiCall { api.setupExpertProfile(request) }
-            if (startGeneration == generation) _draft.update(apply)
+            if (startGeneration == generation) _draft.update { apply(it).unblock(step) }
         }
 
         // ---- avatar ----
@@ -244,7 +249,9 @@ class SignupSetupRepository
             val body = jpeg.toRequestBody("image/jpeg".toMediaType())
             val part = MultipartBody.Part.createFormData("image", "avatar.jpg", body)
             val url = apiCall { api.uploadAvatar(part) }.data.avatarUrl
-            if (startGeneration == generation) _draft.update { it.copy(avatarUrl = url) }
+            if (startGeneration == generation) {
+                _draft.update { it.copy(avatarUrl = url).unblock(SetupStep.ProfilePhoto) }
+            }
             return url
         }
 
@@ -263,7 +270,9 @@ class SignupSetupRepository
         suspend fun verifyCode(code: String) {
             val startGeneration = generation
             apiCall { api.verifyEmailCode(VerifyEmailCodeRequest(code)) }
-            if (startGeneration == generation) _draft.update { it.copy(emailVerified = true) }
+            if (startGeneration == generation) {
+                _draft.update { it.copy(emailVerified = true).unblock(SetupStep.VerifyEmail) }
+            }
         }
 
         /**
@@ -278,7 +287,8 @@ class SignupSetupRepository
 
         /**
          * Re-sends the full payload with `setup_completed = true` and a normalized `country_code`. A 422 carrying
-         * `missing_fields` marks the matching steps blocked until the next hydrate, then rethrows.
+         * `missing_fields` marks the matching steps blocked until that step saves again or the next hydrate, then
+         * rethrows.
          */
         suspend fun publish() {
             val startGeneration = generation
@@ -322,6 +332,10 @@ class SignupSetupRepository
             _verificationSend.value = VerificationSendState()
             withContext(NonCancellable + io) { photoProcessor.clearWorkingFiles() }
         }
+
+        /** Lifts the D-06 publish block on [step] after a successful save of that step. */
+        private fun SignupDraft.unblock(step: SetupStep): SignupDraft =
+            if (step in publishBlockedSteps) copy(publishBlockedSteps = publishBlockedSteps - step) else this
 
         private fun SignupDraft.mergeStatus(status: EmailStatusData): SignupDraft =
             copy(emailVerified = status.verified)
