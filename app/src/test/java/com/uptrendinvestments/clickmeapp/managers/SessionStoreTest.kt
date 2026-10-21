@@ -102,6 +102,19 @@ class SessionStoreTest {
         }
 
     @Test
+    fun setupDeferredRoundTripsAndClearRemovesIt() =
+        runTest {
+            val (_, store) = newStore()
+            assertFalse(store.isSetupDeferred())
+
+            store.setSetupDeferred(true)
+            assertTrue(store.isSetupDeferred())
+
+            store.clear()
+            assertFalse(store.isSetupDeferred())
+        }
+
+    @Test
     fun clearRemovesModeOnboardingAndProfile() =
         runTest {
             val (_, store) = newStore()

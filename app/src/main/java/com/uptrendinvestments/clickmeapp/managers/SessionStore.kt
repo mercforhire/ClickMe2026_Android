@@ -55,7 +55,20 @@ class SessionStore
             dataStore.edit { it[PROFILE_KEY] = json }
         }
 
-        /** Removes the profile, mode and onboarding flag in a single edit (logout / suspension, FND-08). */
+        /**
+         * True after the user chose "Not now" on the setup hub (D-27): launch, login-restore and the foreground
+         * re-check stop forcing setup until a switch to Expert, a publish or a logout clears it.
+         */
+        suspend fun isSetupDeferred(): Boolean = dataStore.data.first()[SETUP_DEFERRED_KEY] ?: false
+
+        suspend fun setSetupDeferred(deferred: Boolean) {
+            dataStore.edit { it[SETUP_DEFERRED_KEY] = deferred }
+        }
+
+        /**
+         * Removes the profile, mode, onboarding flag and setup deferral in a single edit (logout / suspension,
+         * FND-08, D-27).
+         */
         suspend fun clear() {
             dataStore.edit { it.clear() }
         }
@@ -66,5 +79,6 @@ class SessionStore
             private val MODE_KEY = stringPreferencesKey("current_mode")
             private val ONBOARDING_KEY = booleanPreferencesKey("has_seen_onboarding")
             private val PROFILE_KEY = stringPreferencesKey("cached_profile_json")
+            private val SETUP_DEFERRED_KEY = booleanPreferencesKey("setup_deferred")
         }
     }

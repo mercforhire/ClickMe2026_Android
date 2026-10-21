@@ -17,6 +17,8 @@
     <string name="signup_overview_tip_expertise_title">Clearly Define Your Expertise</string>
     <string name="signup_overview_tip_expertise_detail">Pick focused tags over broad ones — specificity helps the right clients find you.</string>
     <string name="signup_overview_next">Next</string>
+    <!-- D-27: leaves an unfinished setup for client mode; remembered until logout or a switch to Expert. -->
+    <string name="signup_overview_not_now">Not now</string>
     <string name="signup_overview_more_options">More options</string>
     <string name="signup_overview_log_out">Log out</string>
     <string name="signup_overview_logout_title">Log out?</string>

@@ -140,6 +140,16 @@ class AppViewModel
             }
         }
 
+        /**
+         * "Not now" on the setup hub (D-27): mode becomes Client, the deferral is remembered for this login, and the
+         * route goes to client home. A session that already ended keeps the Login route (WR-01).
+         */
+        fun onSetupDeferred() {
+            viewModelScope.launch {
+                if (userManager.deferSetup() && userManager.isLoggedIn.value) _route.value = AppRoute.ClientHome
+            }
+        }
+
         /** Ends the session; the isLoggedIn collector then switches the route to Login (FND-08). */
         fun logout() {
             viewModelScope.launch { userManager.logout() }

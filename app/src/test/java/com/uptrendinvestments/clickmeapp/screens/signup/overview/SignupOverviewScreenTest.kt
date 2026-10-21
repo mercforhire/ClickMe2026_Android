@@ -47,6 +47,7 @@ class SignupOverviewScreenTest {
         state: SignupOverviewUiState = state(),
         onOpenStep: (SetupStep) -> Unit = {},
         onNext: () -> Unit = {},
+        onNotNow: () -> Unit = {},
         onRefresh: () -> Unit = {},
         onRefreshErrorShown: () -> Unit = {},
         onRequestLogout: () -> Unit = {},
@@ -59,6 +60,7 @@ class SignupOverviewScreenTest {
                     state = state,
                     onOpenStep = onOpenStep,
                     onNext = onNext,
+                    onNotNow = onNotNow,
                     onRefresh = onRefresh,
                     onRefreshErrorShown = onRefreshErrorShown,
                     onRequestLogout = onRequestLogout,
@@ -197,5 +199,15 @@ class SignupOverviewScreenTest {
 
         assertEquals(1, refreshes)
         assertEquals(1, shown)
+    }
+
+    @Test
+    fun notNowInTheAppBarCallsTheExit() {
+        var exits = 0
+        show(onNotNow = { exits++ })
+
+        rule.onNode(hasText("Not now") and hasClickAction()).assertIsEnabled().performClick()
+
+        assertEquals(1, exits)
     }
 }

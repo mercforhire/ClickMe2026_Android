@@ -23,11 +23,13 @@ import com.uptrendinvestments.clickmeapp.screens.signup.verifyemail.SignupVerify
  * The setup back stack that lives under `AppRoute.SignupSetup`: the Overview hub at the root with the five
  * steps, the photo crop and Review pushed on it. Resume at launch or login always opens the hub (D-10), and
  * the draft hydrates here, at the host, so a deeper entry restored after process death is filled too.
- * Publish success leaves through [onPublished] to AppViewModel (D-22).
+ * Publish success leaves through [onPublished] to AppViewModel (D-22); the hub's "Not now" leaves through [onNotNow]
+ * (D-27).
  */
 @Composable
 fun SignupSetupNavHost(
     onPublished: () -> Unit,
+    onNotNow: () -> Unit,
     modifier: Modifier = Modifier,
     hostViewModel: SignupSetupHostViewModel = hiltViewModel(),
 ) {
@@ -47,6 +49,7 @@ fun SignupSetupNavHost(
                     SignupOverviewScreen(
                         onOpenStep = setupNavigator::openStep,
                         onNext = setupNavigator::openReview,
+                        onNotNow = onNotNow,
                     )
                 }
                 entry<PersonalDetailsKey> {

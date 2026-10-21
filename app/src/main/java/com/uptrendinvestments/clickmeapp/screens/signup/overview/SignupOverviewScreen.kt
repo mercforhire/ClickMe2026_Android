@@ -78,13 +78,15 @@ private val StatusCircleSize = 40.dp
 private val IconSize = 24.dp
 
 /**
- * Hilt-aware Overview hub (iOS `SignupOverviewView`). [onOpenStep] opens a step; [onNext] opens Review (D-05).
- * The hub is the root of the setup back stack, so it has no back arrow and does not intercept system Back, which exits.
+ * Hilt-aware Overview hub (iOS `SignupOverviewView`). [onOpenStep] opens a step; [onNext] opens Review (D-05);
+ * [onNotNow] leaves setup for client mode (D-27). The hub is the root of the setup back stack, so it has no back arrow
+ * and does not intercept system Back, which exits.
  */
 @Composable
 fun SignupOverviewScreen(
     onOpenStep: (SetupStep) -> Unit,
     onNext: () -> Unit,
+    onNotNow: () -> Unit,
     viewModel: SignupOverviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -95,6 +97,7 @@ fun SignupOverviewScreen(
         state = state,
         onOpenStep = onOpenStep,
         onNext = onNext,
+        onNotNow = onNotNow,
         onRefresh = viewModel::refresh,
         onRefreshErrorShown = viewModel::onRefreshErrorShown,
         onRequestLogout = viewModel::requestLogout,
@@ -103,13 +106,18 @@ fun SignupOverviewScreen(
     )
 }
 
-/** Stateless hub: progress, five step rows and tips, with a pinned Next bar. */
+/**
+ * Stateless hub: progress, five step rows and tips, with a pinned Next bar. The app bar carries a "Not now" text
+ * action before the overflow (D-27): a low-emphasis exit that keeps "Next" the only primary CTA (UI-SPEC color rule 1)
+ * and keeps the hub free of a navigation icon (it is the stack root).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupOverviewContent(
     state: SignupOverviewUiState,
     onOpenStep: (SetupStep) -> Unit,
     onNext: () -> Unit,
+    onNotNow: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshErrorShown: () -> Unit,
     onRequestLogout: () -> Unit,
@@ -141,7 +149,10 @@ fun SignupOverviewContent(
                 AuthTopAppBar(
                     title = stringResource(R.string.signup_overview_title),
                     onBack = null,
-                    actions = { OverflowMenu(onLogOut = onRequestLogout) },
+                    actions = {
+                        TextButton(onClick = onNotNow) { Text(stringResource(R.string.signup_overview_not_now)) }
+                        OverflowMenu(onLogOut = onRequestLogout)
+                    },
                 )
                 if (state.isRefreshing) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(4.dp))

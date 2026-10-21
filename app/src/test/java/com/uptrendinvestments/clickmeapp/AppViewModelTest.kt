@@ -11,7 +11,9 @@ import com.uptrendinvestments.clickmeapp.managers.TokenPair
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -718,6 +720,143 @@ class AppViewModelTest {
 
             assertEquals(AppRoute.Login, vm.route.value)
             assertEquals(null, h.sessionStore.storedMode())
+        }
+
+    // ---- CR-01 / D-27: "Not now" on the setup hub; roles match the backend's ['client','expert'] ----
+
+    private fun Harness.convertedClientWithUnfinishedSetup() {
+        api.meHandler = { me("client", "expert") }
+        api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+        api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+    }
+
+    private fun TestScope.relaunch(h: Harness): AppViewModel =
+        AppViewModel(
+            UserManager(
+                h.api,
+                h.tokens,
+                h.sessionStore,
+                h.events,
+                PushTokenRegistrar(),
+                backgroundScope,
+                main.testDispatcher,
+            ),
+        )
+
+    /** Launches into the unfinished hub and taps "Not now". */
+    private fun TestScope.launchAndDefer(h: Harness): AppViewModel {
+        h.convertedClientWithUnfinishedSetup()
+        val vm = h.viewModel()
+        runCurrent()
+        assertEquals(AppRoute.SignupSetup, vm.route.value)
+        vm.onSetupDeferred()
+        runCurrent()
+        return vm
+    }
+
+    @Test
+    fun notNowRoutesToClientHomeAndRemembersTheDeferral() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+
+            val vm = launchAndDefer(h)
+
+            assertEquals(AppRoute.ClientHome, vm.route.value)
+            assertEquals(AppMode.Client, h.sessionStore.storedMode())
+            assertTrue(h.sessionStore.isSetupDeferred())
+        }
+
+    @Test
+    fun relaunchWhileDeferredGoesToClientHome() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            launchAndDefer(h)
+            val before = h.api.expertProfileCalls
+
+            val relaunched = relaunch(h)
+            runCurrent()
+
+            assertEquals(AppRoute.ClientHome, relaunched.route.value)
+            assertEquals(before, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun foregroundRecheckIsSkippedWhileDeferred() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            launchAndDefer(h)
+            h.api.meHandler = { throw IOException("offline") }
+            val relaunched = relaunch(h)
+            runCurrent()
+            assertEquals(AppRoute.ClientHome, relaunched.route.value)
+            h.convertedClientWithUnfinishedSetup()
+            val before = h.api.expertProfileCalls
+
+            relaunched.onAppForegrounded()
+            runCurrent()
+
+            assertEquals(AppRoute.ClientHome, relaunched.route.value)
+            assertEquals(before, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun switchingToExpertReopensSetupAndClearsTheDeferral() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val vm = launchAndDefer(h)
+
+            vm.switchMode(AppMode.Expert)
+            runCurrent()
+
+            assertEquals(AppRoute.SignupSetup, vm.route.value)
+            assertFalse(h.sessionStore.isSetupDeferred())
+            val relaunched = relaunch(h)
+            runCurrent()
+            assertEquals(AppRoute.SignupSetup, relaunched.route.value)
+        }
+
+    @Test
+    fun logoutThenLoginResumesSetupAgain() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val vm = launchAndDefer(h)
+
+            vm.logout()
+            runCurrent()
+            assertEquals(AppRoute.Login, vm.route.value)
+            assertFalse(h.sessionStore.isSetupDeferred())
+
+            h.api.loginHandler = {
+                LoginData(
+                    token = "access-2",
+                    user = AuthUser(id = "u1", firstName = "Ada", lastName = "L", roles = listOf("client", "expert")),
+                    refreshToken = "refresh-2",
+                    expiresAt = 1_900_000_100L,
+                    expiresIn = 3600L,
+                )
+            }
+            val user = h.manager.login("a@b.co", "pw")
+            vm.onLoggedIn(h.manager.resolvePostAuthDestination(user.userRoles))
+            runCurrent()
+
+            assertEquals(AppRoute.SignupSetup, vm.route.value)
+        }
+
+    @Test
+    fun notNowAfterTheSessionEndedStaysOnLogin() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.convertedClientWithUnfinishedSetup()
+            val vm = h.viewModel()
+            runCurrent()
+            h.events.emit(SessionEvent.Rejected)
+            runCurrent()
+
+            vm.onSetupDeferred()
+            runCurrent()
+
+            assertEquals(AppRoute.Login, vm.route.value)
+            assertFalse(h.sessionStore.isSetupDeferred())
         }
 
     @Test

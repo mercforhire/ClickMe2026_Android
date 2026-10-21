@@ -90,6 +90,14 @@ class UserManager
         @Volatile
         private var setupCheckPending = false
 
+        /**
+         * Mirror of [SessionStore.isSetupDeferred] (D-27): the user left an unfinished setup with "Not now", so no
+         * routing path forces [LaunchDestination.SignupSetup] until [requestModeSwitch] to Expert, [completeSetup] or
+         * [logout] clears it.
+         */
+        @Volatile
+        private var setupDeferred = false
+
         /** True once [loadPersistedState] has run, so [offlineDestination] can load it when restore has not. */
         @Volatile
         private var persistedStateLoaded = false
@@ -192,6 +200,7 @@ class UserManager
                 _profile.value = null
                 meStale = false
                 setupCheckPending = false
+                setupDeferred = false
                 sessionStore.clear()
                 // AppViewModel maps this flip to the Login route (iOS onChange(of: isLoggedIn)).
                 _isLoggedIn.value = false
@@ -258,6 +267,7 @@ class UserManager
             _currentMode.value = sessionStore.storedMode() ?: AppMode.Client
             _hasSeenOnboarding.value = sessionStore.hasSeenOnboarding()
             _profile.value = sessionStore.cachedProfile()
+            setupDeferred = sessionStore.isSetupDeferred()
             persistedStateLoaded = true
         }
 
@@ -284,7 +294,7 @@ class UserManager
          * with incomplete setup resumes signup (D-05); otherwise the stored mode, else expert only when the
          * expert has at least one topic. The chosen mode is persisted, but only while the session that asked is
          * still alive: when it ended during the lookups the answer is [LaunchDestination.Login] and nothing is
-         * written (WR-01).
+         * written (WR-01). While setup is deferred (D-27) the setup lookup is skipped, so the user lands home.
          */
         suspend fun resolvePostAuthDestination(roles: Set<UserRole>): LaunchDestination =
             resolvePostAuthDestination(roles, sessionGeneration)
@@ -294,7 +304,7 @@ class UserManager
             generation: Int,
         ): LaunchDestination {
             val isExpert = UserRole.Expert in roles
-            if (isExpert && isExpertProfileIncomplete()) {
+            if (isExpert && !setupDeferred && isExpertProfileIncomplete()) {
                 return if (generation == sessionGeneration) LaunchDestination.SignupSetup else LaunchDestination.Login
             }
             val mode =
@@ -359,10 +369,12 @@ class UserManager
          * expert. D-23 accepts this as the "become an expert" path, so there is no role pre-gate here.
          *
          * When the session ends while the switch runs (logout, rejection), nothing is persisted and the result is
-         * [LaunchDestination.Login] (WR-01).
+         * [LaunchDestination.Login] (WR-01). Switching to Expert clears a "Not now" setup deferral (D-27).
          */
         suspend fun requestModeSwitch(target: AppMode): LaunchDestination {
             val generation = sessionGeneration
+            // D-27: asking for Expert ends a "Not now" deferral, whatever the lookup says (D-17 gates expert mode).
+            if (target == AppMode.Expert) clearSetupDeferral()
             val destination =
                 when (target) {
                     AppMode.Client -> LaunchDestination.Home(AppMode.Client)
@@ -384,7 +396,8 @@ class UserManager
 
         /**
          * Re-checks a setup check that could not run or whose answer was not applied (D-11). Order:
-         * (a) nothing unless a check is pending and a session exists; (b) the roles must be known, from `/me`
+         * (a) nothing unless a check is pending and a session exists; a setup the user deferred with "Not now"
+         * (D-27) clears the flag with no request; (b) the roles must be known, from `/me`
          * else the login or signup user, otherwise stay pending (after an offline launch `/me` is loaded by
          * `refreshIfStale` on a later foreground); (c) role guard: without the expert role and outside Expert
          * mode there is nothing to check, so clear the flag with no request, because a background GET must
@@ -394,6 +407,11 @@ class UserManager
          */
         suspend fun recheckSetupIfPending(): LaunchDestination? {
             if (!setupCheckPending || !withContext(io) { tokens.hasSession() }) return null
+            // D-27: a deferred setup is never forced; there is nothing to apply, so no request is made.
+            if (setupDeferred) {
+                setupCheckPending = false
+                return null
+            }
             val roles = _me.value?.userRoles ?: _authUser.value?.userRoles ?: return null
             if (UserRole.Expert !in roles && _currentMode.value != AppMode.Expert) {
                 setupCheckPending = false
@@ -411,7 +429,26 @@ class UserManager
         suspend fun completeSetup() {
             if (!setModeForSession(AppMode.Client, sessionGeneration)) return
             setupCheckPending = false
+            clearSetupDeferral()
             appScope.launch { bestEffort { refreshProfile() } }
+        }
+
+        /**
+         * "Not now" on the setup hub (D-27): lands in Client mode and remembers, for this login, that setup must not
+         * be forced. Returns false, writing nothing, when the session has already ended (WR-01).
+         */
+        suspend fun deferSetup(): Boolean {
+            if (!setModeForSession(AppMode.Client, sessionGeneration)) return false
+            setupDeferred = true
+            setupCheckPending = false
+            sessionStore.setSetupDeferred(true)
+            return true
+        }
+
+        private suspend fun clearSetupDeferral() {
+            if (!setupDeferred) return
+            setupDeferred = false
+            sessionStore.setSetupDeferred(false)
         }
 
         /** Re-fetches `/me` and the profile only after a cached-path launch (D-01 retry). */

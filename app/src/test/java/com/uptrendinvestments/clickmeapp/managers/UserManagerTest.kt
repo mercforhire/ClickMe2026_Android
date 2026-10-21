@@ -939,6 +939,124 @@ class UserManagerTest {
             assertEquals(false to AppMode.Client, pairs.last())
         }
 
+    // ---- CR-01 / D-27: "Not now" defers setup for the current login ----
+    // Roles are ['client','expert'], as the backend gives every expert signup and every converted client.
+
+    /** A new process over the same token and session stores. */
+    private fun TestScope.relaunch(h: Harness) =
+        UserManager(
+            h.api,
+            h.tokens,
+            h.sessionStore,
+            SessionEvents(),
+            PushTokenRegistrar(),
+            backgroundScope,
+            UnconfinedTestDispatcher(testScheduler),
+        )
+
+    private fun TestScope.deferredHarness(): Harness {
+        val h = Harness(this, authedPair)
+        h.api.meHandler = { me("client", "expert") }
+        h.api.userProfileHandler = { sampleProfile }
+        h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = false) }
+        h.api.topicsHandler = { MyExpertTopicsPayload(emptyList()) }
+        return h
+    }
+
+    @Test
+    fun deferSetupLandsInClientAndPersistsTheDeferral() =
+        runTest {
+            val h = deferredHarness()
+            assertEquals(LaunchDestination.SignupSetup, h.manager.restore())
+
+            assertTrue(h.manager.deferSetup())
+
+            assertEquals(AppMode.Client, h.manager.currentMode.value)
+            assertEquals(AppMode.Client, h.sessionStore.storedMode())
+            assertTrue(h.sessionStore.isSetupDeferred())
+        }
+
+    @Test
+    fun relaunchWhileDeferredGoesHomeWithoutTheSetupLookup() =
+        runTest {
+            val h = deferredHarness()
+            h.manager.restore()
+            h.manager.deferSetup()
+            val before = h.api.expertProfileCalls
+
+            assertEquals(LaunchDestination.Home(AppMode.Client), relaunch(h).restore())
+            assertEquals(before, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun foregroundRecheckIsSkippedWhileDeferred() =
+        runTest {
+            val h = deferredHarness()
+            h.manager.restore()
+            h.manager.deferSetup()
+            val relaunched = relaunch(h)
+            h.api.meHandler = { throw IOException("offline") }
+            assertEquals(LaunchDestination.Home(AppMode.Client), relaunched.restore())
+            h.api.meHandler = { me("client", "expert") }
+            relaunched.refreshIfStale()
+            val before = h.api.expertProfileCalls
+
+            assertNull(relaunched.recheckSetupIfPending())
+            assertEquals(before, h.api.expertProfileCalls)
+        }
+
+    @Test
+    fun switchingToExpertReopensSetupAndClearsTheDeferral() =
+        runTest {
+            val h = deferredHarness()
+            h.manager.restore()
+            h.manager.deferSetup()
+
+            assertEquals(LaunchDestination.SignupSetup, h.manager.requestModeSwitch(AppMode.Expert))
+
+            assertFalse(h.sessionStore.isSetupDeferred())
+            assertEquals(LaunchDestination.SignupSetup, relaunch(h).restore())
+        }
+
+    @Test
+    fun publishingClearsTheDeferral() =
+        runTest {
+            val h = deferredHarness()
+            h.manager.restore()
+            h.manager.deferSetup()
+
+            h.manager.completeSetup()
+
+            assertFalse(h.sessionStore.isSetupDeferred())
+        }
+
+    @Test
+    fun logoutClearsTheDeferralSoTheNextLoginResumesSetup() =
+        runTest {
+            val h = deferredHarness()
+            h.manager.restore()
+            h.manager.deferSetup()
+
+            h.manager.logout()
+            assertFalse(h.sessionStore.isSetupDeferred())
+            h.api.loginHandler = { sampleLogin.copy(user = sampleLogin.user.copy(roles = listOf("client", "expert"))) }
+            val user = h.manager.login("a@b.co", "pw")
+
+            assertEquals(LaunchDestination.SignupSetup, h.manager.resolvePostAuthDestination(user.userRoles))
+        }
+
+    @Test
+    fun deferSetupAfterTheSessionEndedWritesNothing() =
+        runTest {
+            val h = deferredHarness()
+            h.manager.logout()
+
+            assertFalse(h.manager.deferSetup())
+
+            assertFalse(h.sessionStore.isSetupDeferred())
+            assertNull(h.sessionStore.storedMode())
+        }
+
     // ---- WR-01: mode writes are session-guarded ----
 
     @Test

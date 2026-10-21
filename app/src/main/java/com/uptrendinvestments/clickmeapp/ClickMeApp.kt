@@ -56,7 +56,11 @@ fun ClickMeApp(
             AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 
             // Publish success sets mode Client and routes to client home (D-22).
-            AppRoute.SignupSetup -> SignupSetupNavHost(onPublished = appViewModel::onSetupPublished)
+            AppRoute.SignupSetup ->
+                SignupSetupNavHost(
+                    onPublished = appViewModel::onSetupPublished,
+                    onNotNow = appViewModel::onSetupDeferred,
+                )
 
             AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
 
