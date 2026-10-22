@@ -61,7 +61,7 @@ Filled at planning time (one row per plan task; tests are written first inside e
 | 05-10-T1 | 05-10 | 4 | DISC-01, DISC-02, DISC-03 | — | — | Compose | `./gradlew :app:testDevDebugUnitTest --tests '*ExploreScreenTest'` | ✅ | ✅ green |
 | 05-10-T2 | 05-10 | 4 | DISC-01, DISC-03 | T-05-32, T-05-33, T-05-34 | Keys carry no secrets; R8 build | Compose + build | `./gradlew :app:testDevDebugUnitTest --tests '*HomeShellsTest'` + `assembleProdRelease` | ✅ extended | ✅ green |
 | 05-11-T1 | 05-11 | 5 | all | T-05-35, T-05-36, T-05-37 | Full gate + deferred-control sweeps | full suite | Full suite command (above) | n/a | ✅ green |
-| 05-11-T2 | 05-11 | 5 | all | — | — | doc check | `grep -c '\[Phase 5\] DEFERRED (human)' .planning/STATE.md` | n/a | ⬜ pending |
+| 05-11-T2 | 05-11 | 5 | all | — | — | doc check | `grep -c '\[Phase 5\] DEFERRED (human)' .planning/STATE.md` | n/a | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

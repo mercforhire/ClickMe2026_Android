@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 Phase: 05 (explore-expert-profile) — EXECUTING
 Plan: 1 of 11
-Status: Executing Phase 05
+Status: Phase 05 execution complete (11/11 plans), pending the deferred device checks and verification
 Last activity: 2026-10-22 -- Phase 05 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -76,6 +76,9 @@ Recent decisions affecting current work:
 - Report to the iOS side: RealtimeEvents BookingStatus has no `rescheduled` case, so iOS drops booking.update events with that status (Android keeps raw strings).
 - Report to the iOS side (found while porting Phase 4): publishing without a photo always fails (server requires avatar), province is required on iOS but optional on the server, the verified-email state is lost on resume, tags/languages are sent alphabetically so the primary tag is accidental (and language order is not stored server-side at all), country_code is not normalized on publish, the photo zoom slider does nothing.
 - [Phase 2 UAT, 2026-10-21] OPEN, must fix before Phase 7: Stripe spike Add card shows PaymentSheet briefly then closes, and paying fails with "client secret does not match any associated SetupIntent on this account". Likely cause: `pk_test_51Tha0r...` (Android dev flavor, spike, iOS dev/staging) belongs to a different Stripe account than the production backend's secret key (iOS prod uses `pk_live_51U8OTJ...`). Confirm the backend's account and use that account's test publishable key. See 02-UAT.md gaps (tests 7-8).
+- [Phase 6 hand-off] BookingKey(expertId, expertName, expertTitle, expertImageUrl) and its stub body are in screens/clientmode/makeabooking; Phase 6 replaces MakeABookingStubScreen's body, not the key or the shell entry. Recommended Experts does not exclude the caller (home_feed), so a multi-role tester can open their own profile and Book: map 422 CANNOT_BOOK_SELF in the Phase 6 booking flow. Money.format (util/Money.kt) is the shared formatter for Phases 6, 7, 11, 14.
+- [Phase 8/9 hand-off] Today's Sessions cards on Explore are inert (D-01): Phase 8 wires the card tap to Upcoming Booking Details (ExploreTodaysSessionsSection). Join Call is always disabled (D-02): Phase 9 finds "// PHASE-9: join window + click (D-02)" and test tag todays_session_join, adds the join window, the click and the STARTING NOW badge. ClientBookingsRepository and ClientBookingItem (screens/clientmode/mybookings, model/responses/ClientBookingsPayload.kt) are the base for My Bookings.
+- Report to the iOS side (found while porting Phase 5): Expert Profile fails silently on a 404 (suspended/deleted experts) and on network errors; empty Expertise/Topics/Reviews render blank headers and zero reviews shows "—"; featured topic cards ignore is_free; prices divide every currency by 100 (JPY shows 1/100 of the price) and drop decimals on whole amounts; Today's Sessions times use a fixed en_US "h:mm a".
 
 ### Blockers/Concerns
 
@@ -103,6 +106,11 @@ Recent decisions affecting current work:
   - [ ] SC-4 After publish: log out and log in -> carousel shows once on client home (Skip and Get Started both mark it; Back on page 1 leaves the app without marking it); avatar -> Mode Switcher -> Expert Mode -> expert home; force-stop and relaunch keeps expert mode; Client Mode switches back.
   - [ ] Photo picker on API 26-32 (no AVD available); 200% font scale and keyboard-open checks on all 12 surfaces; ModalBottomSheet search with the IME; TalkBack crop custom actions.
   - [ ] Consequence to watch (D-17, D-23): a client-only account that taps Expert Mode is converted to expert by the server and then resumes into setup on every launch until it publishes or logs out (iOS has the same relaunch behavior). Raise in Phase 16 QA if testers find it surprising.
+- [Phase 5] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (1056 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F with the devDebug build against production, logged in as a client.
+  - [ ] SC-1 Explore: the Explore tab shows the hero, Trending Categories (6 chips with icons), Featured Topics and Recommended Experts from /client/home; a free featured topic reads "Free" in green (confirms live featured_topics carries is_free, RESEARCH A5); with a confirmed booking today (create via the iOS expert or the backend agent) Today's Sessions shows it with a disabled Join Call. Chip tap filters experts only and a second tap clears; View all -> sheet search, multi-select, Apply filters, the chip row shows the selection; a filter with no matches shows "No experts in this category yet" + Clear filter. Pull to refresh; airplane mode on first load shows per-section Retry.
+  - [ ] SC-2 Category cache: open View all once online (GET /categories), force-stop, relaunch in airplane mode, open View all: the list shows from cache (no error). Optional: set the device date 8 days ahead and confirm a refetch.
+  - [ ] SC-3 Expert Profile: tap an expert card -> hero (static glow, ring, no online dot), stats, Book Session, About, Expertise, Topics (Free in green, prices with full decimals), up to 3 reviews; empty sections absent; open from a Featured Topic -> hero fills in; Book Session -> "Book a Session" stub without the bottom bar; Back returns. A suspended or deleted expert id (backend agent) shows "This profile isn't available".
+  - [ ] Visual and accessibility: 200% font scale on Explore, the sheet and the profile (cards grow, nothing clips); sheet search with the IME; pull-to-refresh feel; skeleton-to-content transitions on a slow network; release build smoke after the Phase 2 keystore exists.
 
 ## Deferred Items
 
@@ -115,5 +123,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-10-21T22:47:34.380Z
-Stopped at: Phase 5 UI-SPEC approved
-Resume file: .planning/phases/05-explore-expert-profile/05-UI-SPEC.md
+Stopped at: Completed 05-11-PLAN.md (Phase 5 gate green; device checks deferred)
+Resume file: None
