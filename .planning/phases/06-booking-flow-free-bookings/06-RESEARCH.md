@@ -661,26 +661,32 @@ Buttons are not clickable while their alpha is 0 (`enabled = alpha == 1f` or `Mo
 | A4 | The production backend currently runs the same `generateSlotsForMonth` and `createRequest` as the `backend-reference` checkout. | Everywhere | Wire shape could differ on a stale deploy. iOS decodes `start_utc` against production today, which supports the claim. |
 | A5 | Topic durations on the server are always multiples of 30, so `duration_minutes` passes `multipleOf(30)`. | Request body | A 45-minute topic would 422 with a server message (shown by the generic branch). Not verified against the topic-create schema. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **D-08 premise: `available_meeting_types` exists.**
    - What we know: `/experts/:id/details` returns `available_meeting_types` (backend `meetingTypes.js`, task 04-09). `PublicProfileDetailsData.availableMeetingTypes` already parses it. iOS does not read it.
    - What's unclear: whether the user still wants both options always visible (D-08 as written) or wants Skype/Zoom hidden/disabled when the list is present and lacks it.
-   - Recommendation: keep D-08's 422 handling and automatic reset regardless (it is the backstop). Put the pre-filter to the user as a one-line decision; it costs about five lines and removes a guaranteed dead end for experts with no link. Absent or null list = show both (old backend).
+   - Recommendation: keep D-08's 422 handling and automatic reset regardless (it is the backstop). Put the pre-filter to the user as a one-line decision; it costs about five lines and removes a guaranteed dead end for experts with no link. absent or null list = show both (old backend).
+   - RESOLVED (user, 2026-10-22): keep D-08 as written. Always offer both meeting types and handle the 422. No pre-filter.
 
 2. **Send `topic_id` with the availability request?**
    - What we know: the backend narrows the slot grid to the topic's duration when `?topic_id=` is present (consecutive cells, windows). iOS never sends it. `createRequest` checks only the Redis hold and DB conflict, not the availability window.
    - What's unclear: whether a 60-minute topic shown the 30-minute grid causes visible 409s or off-window bookings in practice.
    - Recommendation: D-07 says "as iOS does", so default to no `topic_id`. Add the optional `@Query("topic_id")` parameter to the API method now (free), and have the user decide whether a topic change should reload availability. If yes, a topic change then reloads three months and keeps the D-02 slot clearing.
+   - RESOLVED (user, 2026-10-22): add the optional `topic_id` parameter to the API method; the app always passes null (iOS parity).
 
 3. **`SavedStateHandle` with `@AssistedInject` (A1).**
    - Recommendation: the first ViewModel task compiles and unit-tests this (`SavedStateHandle` built by hand in the test). If it fails, fall back to `rememberSaveable` for the six selection values.
+   - RESOLVED: 06-06 Task 1 compile- and runtime-checks it, with the `rememberSaveable` fallback.
 
 4. **Block Back while a request is in flight** (Pitfall 5). Not covered by the UI-SPEC. Recommend yes. Needs no decision unless the user objects.
+   - RESOLVED: Back is blocked while submitting (06-12: `BackHandler(enabled = isSubmitting)`, disabled app-bar back).
 
 5. **Rename `MakeABookingStubScreen` to `MakeABookingScreen`.** CLAUDE.md naming convention says yes; the stub test and `HomeShellsTest` change either way.
+   - RESOLVED: renamed to `MakeABookingScreen` (06-12, 06-13).
 
 6. **DTO location for the booking detail.** CONTEXT D-14 says "in the `mybookings` package". Phase 5 put every DTO in `model/responses` and the STATE hand-off calls `ClientBookingsPayload.kt` the base. Recommend `model/responses/ClientBookingDetail.kt` with the repository method in `mybookings/ClientBookingsRepository.kt`. Low risk.
+   - RESOLVED: `model/responses/ClientBookingDetail.kt`, repository method in `mybookings/ClientBookingsRepository.kt` (06-05).
 
 ## Environment Availability
 
