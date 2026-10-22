@@ -1,10 +1,5 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.categoriesmodal.AllCategoriesSheet
@@ -48,8 +44,6 @@ import kotlinx.coroutines.launch
 
 /** Test tag on the Explore home list. */
 const val EXPLORE_LIST_TAG = "explore_list"
-
-private const val SECTION_ANIM_MS = 200
 
 /**
  * Hilt-aware Explore tab root. Both ViewModels live as long as the Explore Nav3 entry, so the selection, the sheet
@@ -173,7 +167,7 @@ fun ExploreContent(
                 item(key = "hero") { ExploreHeroHeader() }
                 if (showToday) {
                     item(key = "today") {
-                        AnimatedSection { ExploreTodaysSessionsSection(state.todaysSessions) }
+                        SectionAppear { ExploreTodaysSessionsSection(state.todaysSessions) }
                     }
                 }
                 item(key = "categories") {
@@ -187,7 +181,7 @@ fun ExploreContent(
                 }
                 if (showFeatured) {
                     item(key = "featured") {
-                        AnimatedSection {
+                        SectionAppear {
                             ExploreFeaturedTopicsSection(
                                 state = state.featuredTopics,
                                 onTopicClick = onFeaturedTopicClick,
@@ -219,15 +213,3 @@ private fun SectionState<List<FeaturedTopicUi>>.isVisible(): Boolean =
         is SectionState.Error -> true
         is SectionState.Loaded -> data.isNotEmpty()
     }
-
-/** Fades and expands an optional section in when it first appears (UI-SPEC Motion, 200 ms). */
-@Composable
-private fun AnimatedSection(content: @Composable () -> Unit) {
-    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
-    AnimatedVisibility(
-        visibleState = visibleState,
-        enter = fadeIn(tween(SECTION_ANIM_MS)) + expandVertically(tween(SECTION_ANIM_MS)),
-    ) {
-        content()
-    }
-}

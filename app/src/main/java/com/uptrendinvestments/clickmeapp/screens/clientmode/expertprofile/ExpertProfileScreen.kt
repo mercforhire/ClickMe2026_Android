@@ -1,11 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,7 +25,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,6 +39,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.ErrorState
+import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCardSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileActionButtons
@@ -62,7 +58,6 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 
 private const val SKELETON_FADE_MS = 150
-private const val SECTION_APPEAR_MS = 200
 
 private enum class DetailsKind { Loading, Loaded, Error }
 
@@ -285,22 +280,6 @@ private fun ReviewsSection(reviews: ReviewsState) {
                 }
             ReviewsKind.Absent -> Unit
         }
-    }
-}
-
-/** Fade and expand a section into place when it first composes (UI-SPEC Motion, 200 ms). */
-@Composable
-private fun SectionAppear(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
-    AnimatedVisibility(
-        visibleState = visibleState,
-        modifier = modifier,
-        enter = fadeIn(tween(SECTION_APPEAR_MS)) + expandVertically(tween(SECTION_APPEAR_MS)),
-    ) {
-        content()
     }
 }
 
