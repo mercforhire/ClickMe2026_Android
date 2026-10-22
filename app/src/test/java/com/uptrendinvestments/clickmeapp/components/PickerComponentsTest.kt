@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material3.Text
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -10,6 +11,8 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -258,6 +261,57 @@ class PickerComponentsTest {
             }
         }
         rule.onNodeWithText("Toronto").assertHeightIsAtLeast(56.dp)
+    }
+
+    @Test
+    fun pickerRow_checkboxRole_selected_isOnWithLeadingIconAndCheckAndClicks() {
+        var clicks = 0
+        rule.setContent {
+            ClickMeTheme {
+                PickerRow(
+                    label = "AI",
+                    selected = true,
+                    onClick = { clicks++ },
+                    leadingIcon = Icons.Outlined.Memory,
+                    role = Role.Checkbox,
+                )
+            }
+        }
+        rule.onNodeWithText("AI").assertIsOn()
+        rule.onNode(hasRole(Role.Checkbox)).assertExists()
+        rule.onNodeWithTag(PICKER_ROW_LEADING_ICON_TAG, useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag(PICKER_ROW_CHECK_TAG, useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("AI").performClick()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun pickerRow_checkboxRole_unselected_isOffWithNoCheck() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerRow(
+                    label = "AI",
+                    selected = false,
+                    onClick = {},
+                    leadingIcon = Icons.Outlined.Memory,
+                    role = Role.Checkbox,
+                )
+            }
+        }
+        rule.onNodeWithText("AI").assertIsOff()
+        rule.onNodeWithTag(PICKER_ROW_CHECK_TAG, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun pickerRow_defaults_keepRadioSemanticsAndHaveNoLeadingIcon() {
+        rule.setContent {
+            ClickMeTheme {
+                PickerRow(label = "Canada", selected = true, onClick = {})
+            }
+        }
+        rule.onNodeWithText("Canada").assertIsSelected()
+        rule.onNode(hasRole(Role.RadioButton)).assertExists()
+        rule.onNodeWithTag(PICKER_ROW_LEADING_ICON_TAG, useUnmergedTree = true).assertDoesNotExist()
     }
 
     // PickerLoading
