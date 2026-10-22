@@ -123,6 +123,27 @@ class NavigatorTest {
     }
 
     @Test
+    fun pushingTheCurrentTopAgainIsIgnored() {
+        val navigator = newNavigator()
+        // Double tap: the second equal push is dropped, so one Back returns to the root.
+        navigator.navigate(Detail)
+        navigator.navigate(Detail)
+        assertEquals(listOf<NavKey>(Explore, Detail), navigator.stack(Explore))
+        navigator.goBack()
+        assertEquals(listOf<NavKey>(Explore), navigator.stack(Explore))
+    }
+
+    @Test
+    fun pushingAnEqualRouteBelowTheTopStillPushes() {
+        val navigator = newNavigator()
+        navigator.navigate(A)
+        navigator.navigate(B)
+        navigator.navigate(A)
+        assertEquals(listOf<NavKey>(Explore, A, B, A), navigator.stack(Explore))
+        assertEquals(NavTransition.Push, navigator.state.lastTransition)
+    }
+
+    @Test
     fun navigateInTabSelectsTabAndPushes() {
         val navigator = newNavigator()
         navigator.navigateInTab(Chats, Detail)

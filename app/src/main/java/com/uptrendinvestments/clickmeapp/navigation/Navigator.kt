@@ -28,6 +28,10 @@ class Navigator(
 ) {
     /**
      * Select a top level route, or push [route] on the current tab's stack.
+     *
+     * A push of a route equal to the current top of the stack is ignored. Outgoing content still accepts
+     * input during the push transition, so a quick double tap would otherwise stack two equal keys that
+     * share one Nav3 `contentKey` (and so one ViewModel and saveable state) and need two Backs to leave.
      */
     fun navigate(route: NavKey) {
         if (route in state.backStacks.keys) {
@@ -36,8 +40,10 @@ class Navigator(
                 state.topLevelRoute = route
             }
         } else {
+            val stack = currentStack()
+            if (stack.lastOrNull() == route) return
             state.lastTransition = NavTransition.Push
-            currentStack().add(route)
+            stack.add(route)
         }
     }
 
