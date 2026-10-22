@@ -1,9 +1,10 @@
 ---
 phase: 06-booking-flow-free-bookings
-reviewed: 2026-10-22T21:06:45Z
+reviewed: 2026-10-22T21:33:17Z
 depth: standard
-files_reviewed: 63
+files_reviewed: 67
 files_reviewed_list:
+  - app/src/main/java/com/uptrendinvestments/clickmeapp/di/BookingModule.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/model/enums/MeetingType.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/model/requests/BookingRequests.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/model/responses/BookingRequestData.kt
@@ -21,6 +22,7 @@ files_reviewed_list:
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingRepository.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingSlots.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingTimezoneNote.kt
+  - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/CompletedBookingStore.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingScreen.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingUiState.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt
@@ -56,6 +58,7 @@ files_reviewed_list:
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingSlotsTest.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingTestFixtures.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingTimezoneNoteTest.kt
+  - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/DataStoreCompletedBookingStoreTest.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/EntrySavedStateHandleTest.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingCalendarSlotsTest.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingFormCardsTest.kt
@@ -67,199 +70,185 @@ files_reviewed_list:
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/requestsent/BookingRequestSentScreenTest.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/requestsent/BookingRequestSentViewModelTest.kt
   - app/src/test/java/com/uptrendinvestments/clickmeapp/testing/FakeClickMeApi.kt
+  - app/src/test/java/com/uptrendinvestments/clickmeapp/testing/FakeCompletedBookingStore.kt
 findings:
   critical: 0
   warning: 2
-  info: 6
-  total: 8
+  info: 10
+  total: 12
 status: issues_found
 ---
 
-# Phase 6: Code Review Report (re-review after fix passes)
+# Phase 6: Code Review Report (third review, after the review-2 fixes d9b2300 and 3ac63e5)
 
-**Reviewed:** 2026-10-22T21:06:45Z
+**Reviewed:** 2026-10-22T21:33:17Z
 **Depth:** standard
-**Files Reviewed:** 63 (38 main source and resource files read in full; the 25 test files were read only to check the new fix tests and whether they are reliable)
+**Files Reviewed:** 67
 **Status:** issues_found
+
+## Narrative Findings (AI reviewer)
 
 ## Summary
 
-This is a re-review after the fix commits `6166b0b..62372f9`, which closed CR-01, WR-01..04 and IN-01..11 from the
-first review (`3b635cd`). The fix code got the most attention: the post-success lock, the persisted completed
-booking id, `refreshClock()` and the zone in state, the in-flight input lock, the drag-only focus clearing, and Back
-to Home.
+This review looks at the two review-2 fixes in `a153475..HEAD`:
 
-How each earlier fix holds up:
+- **WR-01** (`d9b2300`): the attempt id in the `SavedStateHandle`, `DataStoreCompletedBookingStore` and the `BookingModule` binding.
+- **WR-02** (`3ac63e5`): the slot check in `refreshClock()` and the explanation in `applyAvailability()`.
 
-| Prior finding | Verdict |
-|---|---|
-| CR-01 drag-only focus clearing | Fixed. `collectIsDraggedAsState` on the scroll's interaction source ignores bring-into-view and `imePadding` scrolls. The new Robolectric tests cover both directions. |
-| WR-01 post-success lock | Fixed. `isSubmitting` stays true after success and is never reset, `BackHandler`/`backEnabled` follow it, and a restored completed id starts locked. |
-| WR-02 completed id across process death | **Incomplete. See WR-01 below.** The id is written to `SavedStateHandle` after the response arrives. In the scenario the finding described (the app is already in the background), that write happens after `onSaveInstanceState`, so it is never persisted. |
-| WR-03 refreshClock / zone in state | The zone and `today` logic is correct. **It now conflicts with the IN-09 fix (see WR-02 below).** |
-| WR-04 in-flight input lock | Fixed for user input. A small gap remains for background data loads (IN-03). |
-| IN-10 Back to Home / Explore | Fixed, and matches iOS `returnToHome`. One documentation and edge-case note (IN-02). |
-| IN-01..09, IN-11 | Fixed. IN-04's marker approach has one leftover edge case (IN-05). |
+For the 63 files that did not change, the review only re-checked the six open Info items from review 2.
 
-No new security issues: server text is still rendered only as plain `Text`, there are no secrets, and the request
-body is built from typed fields.
+**WR-01: the mechanism is sound for the scenario it targets.** Each step was traced:
+
+- **Before the save:** the attempt id is written synchronously inside `book()`, from a user tap. The activity is in the foreground at that point, so the write always comes before `onSaveInstanceState`.
+- **When the response lands:** `put` finishes before the saved-state write and the UI update.
+- **When the screen does not run:** `collectAsStateWithLifecycle` stops collecting below STARTED, so `consumeCompletedBooking` and `discard` never run while the app is in the background.
+- **Discard:** it runs inside `edit` and is conditional on the attempt id, so it cannot remove a newer attempt's record.
+- **Hilt:** the `@Singleton` class is bound through two `@Binds` methods, so both bindings resolve to the same instance.
+- **DataStore instance:** an unqualified `DataStore<Preferences>` is the `clickme_session` instance. The category cache is the only other `DataStore<Preferences>`, and it is qualified.
+- **Account boundaries:** logout (`clearSessionData` and then `SessionStore.clear()`) wipes the record. Login and signup also run the cleaner first. `restore()` does not clear it, which is correct: the record has to survive the cold start it exists for.
+
+**WR-01 is still incomplete in one case**, reported below as WR-01. The fix report already lists it as residual. The ViewModel now knows that a request was sent and that its outcome is unknown, but it still reopens the form as if nothing had been sent.
+
+**WR-02: the slot checks are correct.** No path shows two dialogs, and none shows the dialog by mistake:
+
+- **First resume and restore:** on the first resume `held` is null, because a restored slot sits in `pendingSlotMillis`, not in `selectedSlotStart`. While a booking is in flight or being recovered, `refreshClock()` returns early.
+- **409:** the 409 path clears the slot before it reloads, so `applyAvailability` does not show the dialog a second time.
+- **Zone change:** when a zone change regroups the slots, both `applyAvailability` and `refreshClock` may set the same `dialogError` value. That is still a single dialog.
+
+The problem is *where* the dialog now appears. `refreshClock()` is also the first call in `selectDate`, `goToPrevious/NextMonth` and `selectSlot`. A modal dialog titled "Couldn't book" now interrupts ordinary taps, even when the tap would have replaced the slot anyway (WR-02).
+
+**Review-2 Info items:** IN-01 to IN-06 are all still present, unchanged, and are carried forward below. None of the review-2 fixes has regressed.
+
+There are no Critical findings.
 
 ## Warnings
 
-### WR-01: The completed booking id is not persisted when the success arrives in the background, so the WR-02 fix does not cover its own scenario (prior WR-02 incomplete)
+### WR-01: A restore whose attempt has no record silently reopens an editable form with the in-flight slot preselected
 
-**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:205-212`, `:396-412`
-**Issue:** `SavedStateHandle` contents reach the system only when `SavedStateRegistry.performSave` runs from
-`ComponentActivity.onSaveInstanceState`. On API 28+ that call happens right after `onStop`, and the bundle is handed
-to the system at that moment. Values written to the handle later stay in memory until the next save, and a stopped
-activity does not save again.
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:108-120` (`recoverAttempt`), `:237` (`put`); `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/CompletedBookingStore.kt:61-83`
+**Issue:** If `KEY_ATTEMPT_ID` is in the restored state but `completedBookings.get()` returns null, the ViewModel throws the attempt id away and loads the form. The restored slot, topic, meeting type and notes are applied as if no request had ever been sent. There are three ways to get here, and in each one the booking may already exist on the server:
 
-The prior WR-02 scenario was: tap Book Now, leave the app while the request is in flight, the response arrives in the
-background, then the process is killed. In that order of events:
+1. **Process killed with the request in flight.** The response was never processed, but the server may have created the booking. The fix report lists this as a residual.
+2. **The write failed.** `put()` swallows `IOException`, so a successful booking whose disk write failed produces no record.
+3. **The read failed.** `get()` maps an `IOException` to null, so a read failure looks exactly like "no record".
 
-1. Book Now → `isSubmitting = true` (not persisted, which is fine).
-2. Home → `onStop` → `onSaveInstanceState`. The bundle holds the topic, date and slot, but no `booking_completed_id`.
-3. The response arrives → `savedStateHandle[KEY_COMPLETED_BOOKING_ID] = result.bookingId` (memory only).
-4. The process is killed → the restore uses the bundle from step 2.
+In all three cases the user sees a fully filled form with Book Now enabled. Two things can go wrong from there:
 
-The restored ViewModel has no completed id and `isSubmitting = false`, so it reloads the form. The restored slot is
-now `available: false` because it is the user's own booking, so `applyAvailability` drops it silently. The user is
-back on an editable form with no sign that the booking exists, and may book a second slot. The fix only works if the
-response lands before step 2, which is the case where nothing was lost in the first place.
+- **Same slot:** the server answers 409 `SLOT_UNAVAILABLE`. The user's own pending booking now holds that slot, but the dialog says it was taken.
+- **Different slot:** the free path has no idempotency key (`requestSchema` is `.strict()` and has no attempt field), so a second pending request to the same expert is created.
 
-The new tests can't catch this. `aCompletedBookingSurvivesProcessDeathUntilConsumed` reuses the same in-memory
-`SavedStateHandle` object, and `entrySavedStateHandleSurvivesRecreationWithFreshViewModels` writes the value before
-`emulateSavedInstanceStateRestore()`. Neither models a write after the save.
-
-**Fix:** Record the result where it survives process death no matter when it is written. The process is still alive
-when the response arrives, so a synchronous write to a small persistent store works. Alternatively, persist an
-"attempt in flight" marker before the request is sent, which is always before `onSaveInstanceState`, and check it
-against the server on restore:
-
+Before this fix the ViewModel could not tell this case apart from a clean restore. Now it can, through the attempt id and the missing record. So this is an incomplete fix, not a pre-existing limitation.
+**Fix:** Treat "attempt present, no record" as an unknown outcome, not as "never sent":
 ```kotlin
-// Option A: durable store written at response time (survives later process death)
-val result = repository.requestBooking(body)
-completedBookingStore.put(expertId, result.bookingId)   // SharedPreferences.commit() / DataStore
-savedStateHandle[KEY_COMPLETED_BOOKING_ID] = result.bookingId
-_uiState.update { it.copy(completedBookingId = result.bookingId) }
-// initialState(): completedBookingId = savedStateHandle[...] ?: completedBookingStore.take(expertId)
+// in book(): also persist what was sent, before launching
+savedStateHandle[KEY_ATTEMPT_ID] = attemptId
+savedStateHandle[KEY_ATTEMPT_START] = slot.start.toEpochMilli()
 
-// Option B: marker persisted before sending, reconciled on restore
-savedStateHandle[KEY_ATTEMPT] = "${topic.id}|${slot.start.toEpochMilli()}"   // before launch {}
-// init: if KEY_ATTEMPT is present and there is no completed id, look up
-// ClientBookingsRepository.list(TYPE_UPCOMING) for this expert and start time; navigate if found, else clear it
-```
-
-Add a test that captures the handle's saved bundle before the response completes (or simulates the save with
-`SavedStateHandle.savedStateProvider().saveState()` at that point) and restores from that snapshot.
-
-### WR-02: `refreshClock()` either strands a passed slot as selected or clears it silently, so the IN-09 "time has passed" dialog is unreachable in most real cases (IN-09 fix regressed by the WR-03 fix)
-
-**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:177-193, 350-377`; `MakeABookingScreen.kt:73`; `MakeABookingUiState.kt:117-123`
-**Issue:** IN-09 was fixed by showing `make_a_booking_error_slot_passed` when `book()` finds that the selected slot
-has started. `book()` now calls `refreshClock()` first, and `refreshClock()` runs on every `ON_RESUME`. That creates
-three inconsistent outcomes:
-
-1. **Same day, after a resume (the most common case).** `refreshClock()` only stamps `now` (lines 356-358). It does
-   not reconcile `selectedSlotStart`. The chip still renders as selected: `isSelected` is true, so it gets the
-   primary fill, even though it is no longer enabled. The Summary still shows the time. `bookDisabledReason` becomes
-   `NoSlot` because `!slot.isSelectable(now)`, so Book Now is disabled and announces "Choose a time slot to
-   continue". The user cannot tap Book, so the IN-09 dialog never appears. The stale slot also stays in
-   `KEY_SLOT_START`.
-2. **Crossing midnight.** `refreshClock()` moves the past `selectedDate` to today and calls `clearSlot()` (lines
-   366-369). When this runs inside `book()`, `s.selectedSlot ?: return` (line 183) exits silently. Book Now does
-   nothing, the day jumps and the selection vanishes with no explanation, which is exactly what IN-09 set out to
-   remove.
-3. **Zone change.** `applyAvailability(groupSlots(loadedDays, zone), …)` drops a slot that moved to another local day
-   (this is asserted in `aZoneChangeRegroupsTheLoadedSlotsWithoutARequest`). Inside `book()` this is another silent
-   no-op.
-
-The only case where the dialog shows is the one the test uses: the clock passes the slot with no resume, and the user
-taps Book.
-
-**Fix:** Reconcile the slot in one place whenever `now`, `today` or `zone` moves, and tell the user each time a
-selection is dropped because time moved:
-
-```kotlin
-fun refreshClock() {
-    ...
-    val hadSlot = _uiState.value.selectedSlotStart
-    // existing zone/today/month handling ...
-    val s2 = _uiState.value
-    val stillOk = s2.selectedSlot?.isSelectable(s2.now) == true
-    if (hadSlot != null && !stillOk) {
-        clearSlot()
-        _uiState.update { it.copy(dialogError = FieldError.Res(R.string.make_a_booking_error_slot_passed)) }
-    }
+// recoverAttempt(): when get() returns null
+val start = savedStateHandle.get<Long>(KEY_ATTEMPT_START)?.let(Instant::ofEpochMilli)
+val existing = start?.let { runCatching {
+    clientBookings.list(ClientBookingsRepository.TYPE_UPCOMING).bookings
+        .firstOrNull { it.expert.id == expertId && it.startTime == start }   // ClientBookingItem fields
+}.getOrNull() }
+if (existing != null) { /* same as a found record: go to Request Sent with existing.bookingId */ }
+else {
+    savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
+    _uiState.update { it.copy(isSubmitting = false, dialogError = FieldError.Res(R.string.make_a_booking_error_unconfirmed)) }
+    loadForm()
 }
 ```
+The `dialogError` would hold a new string such as "We couldn't confirm your last request. Check My Bookings before booking again." That notice is the minimum fix. Also make `get()` return a tri-state result (`Found`, `Absent`, `Unreadable`), so that a read failure is not treated as proof that no booking exists.
 
-Then `book()` only needs `val slot = s.selectedSlot ?: return`, because refreshClock already explained a dropped
-slot. Add tests for: a resume after the slot started, a `book()` after midnight, and a `book()` after a zone change
-that moves the slot's day.
+### WR-02: Ordinary taps now open a "Couldn't book" dialog, including when the tap replaces the slot anyway
+
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:138, 145, 159, 169` (callers) and `:399-405` (`refreshClock` slot check); `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingScreen.kt:244-249`; `app/src/main/res/values/strings_make_a_booking.xml:65,67`
+**Issue:** WR-02 moved the "clear and explain" step into `refreshClock()`. But `selectDate`, `goToPreviousMonth`, `goToNextMonth` and `selectSlot` call `refreshClock()` first. Suppose the held slot has started while the screen sat idle:
+
+- **`selectDate(d)` and the month arrows:** `refreshClock()` clears the slot and opens the modal dialog. Then the date or month change runs, and it clears the slot anyway (D-07). The user picked a different day and gets an error for a selection they were already leaving.
+- **`selectSlot(B)`:** the dialog says "That time has passed. Please pick another." while B, the slot the user just picked, is shown as selected underneath it.
+- **Every trigger, including resume:** the dialog is rendered with the `make_a_booking_error_title` title, "Couldn't book". On a resume or a calendar tap no booking was attempted, so the title says something that did not happen.
+
+The fix report lists this as "Dialog before a new selection … deliberate". This review disagrees. The tap already answers "pick another", so the dialog is a spurious interruption with an incorrect title. Before this fix those paths cleared the slot silently, which was the right behaviour for them.
+**Fix:** Have `refreshClock` return whether it dropped the slot, and let only resume and `book()` explain the drop:
+```kotlin
+/** Returns true when a held slot was dropped because time moved past it. */
+private fun syncClock(): Boolean { /* current refreshClock body without explainSlotPassed() */ }
+
+fun refreshClock() { if (syncClock()) explainSlotPassed() }   // ON_RESUME
+fun book() { if (_uiState.value.isSubmitting) return; if (syncClock()) { explainSlotPassed(); return } ... }
+fun selectDate(date: LocalDate) { if (_uiState.value.isSubmitting) return; syncClock(); ... }   // silent
+// same for goToPreviousMonth / goToNextMonth / selectSlot
+```
+Also give this notice a title that does not say a booking failed. Either add a title to the dialog state (for example `dialogTitle: Int`), or use a separate `notice` field with its own title, such as "Time slot unavailable".
 
 ## Info
 
-### IN-01: `replaceTop` replaces whatever is on top of the currently selected tab, not the booking entry that completed
+### IN-01: `replaceTop` replaces the top of whichever tab is selected, not the booking entry that completed (carried forward from review 2, IN-01)
 
-**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/navigation/Navigator.kt:88-94`; `screens/clientmode/home/ClientBookingFlowEntries.kt:41`
-**Issue:** `onBooked` calls `navigator.replaceTop(RequestSentKey(id))`, which works on `currentStack()`. That is
-correct today because the bottom bar is hidden on `BookingKey`. Once Phase 12/13 `navigateInTab` (push routing) can
-switch tabs while the form is open, a success that lands during the outgoing transition would act on the new tab's
-stack. It would either replace an unrelated screen or crash in `check(stack.size > 1)` on a root-only tab.
-**Fix:** Give the entry its own key and make the replacement targeted, e.g. `replace(from = key, to = RequestSentKey(id))`,
-which finds the stack that contains `key` and is a no-op if the key is gone.
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/navigation/Navigator.kt:88-94`; `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/home/ClientBookingFlowEntries.kt:41`
+**Issue:** Unchanged. `onBooked` calls `navigator.replaceTop(RequestSentKey(id))`, which acts on `currentStack()`. That is safe today only because the bottom bar is hidden on `BookingKey`. Once Phase 12/13 push routing (`navigateInTab`) can switch tabs while the form is open, the replace would hit another tab's stack. It would then either remove an unrelated screen or crash in `check(stack.size > 1)`.
+**Fix:** Target the replacement at the entry: `replace(from = key, to = RequestSentKey(id))`. It should find the stack that contains `key` and do nothing if `key` is gone.
 
-### IN-02: "Back to Home" leaves the flow stacked on another tab, although the KDoc says it handles that case
+### IN-02: "Back to Home" leaves the flow stacked on another tab, although the KDoc says that case is handled (carried forward from review 2, IN-02)
 
-**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/home/ClientBookingFlowEntries.kt:21-22, 48`; `app/src/test/.../navigation/BookingFlowNavigationTest.kt` (`backToHomeFromAnotherTabSelectsExplore`)
-**Issue:** `resetAndSelect(ExploreRoot, setOf(ExploreRoot))` only resets Explore. That matches iOS `returnToHome`.
-But if a future entry point starts the flow from another tab, which the KDoc explicitly says is covered, that tab
-keeps Expert Profile → Request Sent on its stack, and the user meets a stale Request Sent the next time they open
-the tab. The new test asserts only the Explore stack, so it passes with the stale entry still in place.
-**Fix:** Either change the KDoc to say only Explore is reset (iOS parity), or reset the tab that owns the Request
-Sent entry as well, and assert that tab's stack in the test.
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/home/ClientBookingFlowEntries.kt:21-22, 48`; `app/src/test/java/com/uptrendinvestments/clickmeapp/navigation/BookingFlowNavigationTest.kt` (`backToHomeFromAnotherTabSelectsExplore`)
+**Issue:** Unchanged. `resetAndSelect(ExploreRoot, setOf(ExploreRoot))` resets only Explore. The KDoc says the flow lands correctly "even if a future entry point starts the flow from another tab". In that case the other tab keeps a stale Expert Profile → Request Sent on its stack. The test asserts only the Explore stack.
+**Fix:** Either reword the KDoc to "resets Explore only (iOS `returnToHome` parity)", or also reset the tab that owns the Request Sent entry and assert that tab's stack in the test.
 
-### IN-03: The in-flight lock does not cover background availability loads
+### IN-03: The in-flight lock does not cover background availability loads (carried forward from review 2, IN-03)
 
-**File:** `MakeABookingViewModel.kt:43-44, 233-237, 309-332`
-**Issue:** After a 409, `loadAvailability(..., keepVisible = true)` runs while the form is editable again. If the
-user picks a slot that is still visible and taps Book before that reload returns, `applyAvailability` can set
-`selectedSlotStart = null` mid-flight. The Summary and chips then change while `isSubmitting` is true. This
-contradicts the class KDoc ("the request, the Summary and the 409/422 side effects all refer to the same slot"). The
-impact is cosmetic, because the request body was captured before launch.
-**Fix:** In `applyAvailability`, keep `selectedSlotStart` unchanged while `isSubmitting` (store the grouped slots
-only), or cancel `availabilityJob` when `book()` starts.
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:44-45, 207-244, 261-265, 341-374`
+**Issue:** Unchanged. After a 409, the reload runs with `keepVisible = true` while the form is editable again. If the user re-selects a slot that is still visible and taps Book before the reload returns, `applyAvailability` can set `selectedSlotStart = null` while the request is in flight. That contradicts the class KDoc ("the request, the Summary and the 409/422 side effects all refer to the same slot"). Since WR-02, `applyAvailability` can also call `explainSlotPassed()` during that window. In practice that needs the slot to start during the reload, so it is unlikely.
+**Fix:** In `applyAvailability`, keep `selectedSlotStart` unchanged and show no dialog while `isSubmitting` (store only the grouped slots). Or cancel `availabilityJob` when `book()` starts.
 
-### IN-04: `isInLoadedWindow` treats the outer edge days of the window as fully loaded
+### IN-04: `isInLoadedWindow` treats the outer edge days of the window as fully loaded (carried forward from review 2, IN-04)
 
 **File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingCalendar.kt:36-46`
-**Issue:** The three loaded months are expert-local, and slots are regrouped by viewer-local date. When the viewer
-is behind the expert, the last viewer day of month+1 can include slots from the expert's month+2, which was never
-loaded. When the viewer is ahead, the same happens on the first day of month−1. Those days show a partial list, or
-"No available slots", even though `isSelectedDateLoaded` is true. This is only reachable after a day is picked and
-the month is then moved by one, so it is rare.
-**Fix:** Treat the first and last day of the window as unknown (shrink the window by one day on each side), or
-mention the limitation in the KDoc.
+**Issue:** Unchanged. The three loaded months are expert-local, but the slots are regrouped by the viewer's local date. So the viewer's first day of month−1 and last day of month+1 can be missing slots from months that were never loaded. Those days still report `isSelectedDateLoaded == true` and can show "No available slots".
+**Fix:** Treat the first and last day of the window as not loaded (shrink the window by one day on each side), or document the limitation in the KDoc.
 
-### IN-05: The headline marker is replaced only once
+### IN-05: The headline marker is replaced only once (carried forward from review 2, IN-05)
 
 **File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/requestsent/subviews/BookingRequestSentHeadline.kt:65-79`
-**Issue:** A translation that uses `%1$s` twice ends up with a raw U+0000 where the second name should be, because
-`requestSentBody` replaces only the first `indexOf(NAME_MARKER)`.
-**Fix:** Loop over every occurrence of the marker, or split on `NAME_MARKER` and add a styled name between each pair
-of parts.
+**Issue:** Unchanged. `requestSentBody` replaces only the first `indexOf(NAME_MARKER)`. A translation that uses `%1$s` twice would show a raw U+0000 where the second name belongs.
+**Fix:** Split on `NAME_MARKER` and append the styled name between each pair of parts.
 
-### IN-06: Formatter composables still default `zone` to `ZoneId.systemDefault()`, against the new UiState rule
+### IN-06: Formatter composables still default `zone` to `ZoneId.systemDefault()`, against the UiState rule (carried forward from review 2, IN-06)
 
-**File:** `subviews/MakeABookingTimeSlotsCard.kt:96`, `subviews/MakeABookingSummarySection.kt:54`
-**Issue:** The `MakeABookingUiState.zone` KDoc says every formatter must use the state zone and never
-`ZoneId.systemDefault()` directly. Both cards still have a `systemDefault()` default, so a future call site that
-leaves out `zone` would quietly bring back the WR-03 mismatch. The screen passes `state.zone` today.
-**Fix:** Make `zone` a required parameter (previews can pass `ZoneId.of("America/Toronto")`).
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/subviews/MakeABookingTimeSlotsCard.kt:96`; `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/subviews/MakeABookingSummarySection.kt:54`
+**Issue:** Unchanged. The `MakeABookingUiState.zone` KDoc (`MakeABookingUiState.kt:67`) says every formatter must use the state's zone and never `systemDefault()`. Both composables still default to `systemDefault()`, so a future call site that leaves out `zone` would bring the WR-03 mismatch back.
+**Fix:** Make `zone` a required parameter. The previews can pass `ZoneId.of("America/Toronto")`.
+
+### IN-07: A zone change that moves the slot to another day is reported as "That time has passed"
+
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:399-405`; `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelTest.kt:525`; `MakeABookingViewModelBookTest.kt` (`aBookAfterAZoneChangeThatMovesTheSlotsDayClearsItAndSaysWhy`, `aResumeAfterAZoneChangeThatMovesTheSlotsDayClearsItAndSaysWhy`)
+**Issue:** The `!stillSelectable` branch shows `make_a_booking_error_slot_passed` for every kind of drop. When a zone change moves a slot that is still in the future to another local day, the message is false: the time has not passed. Two tests now assert this false message, so they will resist a later fix. The fixer flagged this for human review.
+**Fix:** Either use a separate string ("Your time zone changed. Please pick the time again."), or skip the drop altogether: set `selectedDate` to `held.atZone(zone).toLocalDate()` and keep the slot, since it is still bookable.
+
+### IN-08: The completed-booking record shares `SessionStore`'s file, and the `SessionStore` KDoc no longer describes what that file holds
+
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/CompletedBookingStore.kt:54-59`; `app/src/main/java/com/uptrendinvestments/clickmeapp/managers/SessionStore.kt:16-22, 68-71`; `app/src/main/java/com/uptrendinvestments/clickmeapp/di/SessionModule.kt:28-36`
+**Issue:** Functionally this works. `SessionStore.clear()` wipes the whole file, and the cleaner is registered. The design has two weak points, though:
+
+- **Implicit file choice.** The session file is reached only because it is the unqualified `DataStore<Preferences>` binding. Any future class that injects an unqualified `DataStore<Preferences>` would silently write into the session file too. The category cache uses `@CategoryCache`; the session store has no qualifier.
+- **Outdated KDoc.** `SessionStore`'s KDoc still says the file holds the profile, mode, onboarding flag and setup deferral, and that `clear()` removes "the profile, mode, onboarding flag and setup deferral". The file now has a second owner whose keys it does not list.
+
+**Fix:** Add a `@SessionPreferences` qualifier to the session DataStore and use it in both `SessionStore` and `DataStoreCompletedBookingStore`. Update the `SessionStore` KDoc to say that `clear()` also removes the booking record (WR-01).
+
+### IN-09: `KEY_ATTEMPT_ID` / "attempt id" clashes with the Phase 7 booking attempt id
+
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:37-38, 218-219, 510`
+**Issue:** The class KDoc (lines 37-38) already reserves "booking attempt id" for the iOS/Phase 7 concept. That id is regenerated on a topic change, kept across retries, and used as the backend's Stripe idempotency key (`booking.schema.js:45-56`). The new `"booking_attempt_id"` key has a different lifetime: a new one on every tap, and it is removed on failure. If Phase 7 reuses the name or the key, retries would get a fresh idempotency key on every tap, which defeats the idempotency.
+**Fix:** Rename it now, for example `KEY_INFLIGHT_REQUEST_ID = "booking_inflight_request_id"`, and update the `CompletedBookingStore` parameter names to match.
+
+### IN-10: `explainSlotPassed()` overwrites any dialog already on screen
+
+**File:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt:435-437`
+**Issue:** `explainSlotPassed` replaces `dialogError` without checking whether a dialog is already showing. Example: the user leaves the app while the 422 `MEETING_LINK_UNAVAILABLE` dialog is open ("…switched to In-app Voice"). The held slot starts while the app is away. On resume, that dialog is replaced by "That time has passed". The user is never told that the meeting type was reset.
+**Fix:** Only set the slot-passed message when `dialogError == null`, or queue dialogs, so an unread failure message is not lost.
 
 ---
 
-_Reviewed: 2026-10-22T21:06:45Z_
+_Reviewed: 2026-10-22T21:33:17Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
