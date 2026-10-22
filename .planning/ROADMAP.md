@@ -239,7 +239,7 @@ Plans:
   3. Tapping an expert card opens Expert Profile with the hero, stats, about, topics and reviews preview. Its Book button takes the client into the booking flow.
 
 **Planning notes:** If time runs short, simplify the hero and visuals. The Chat button and report/block on Expert Profile come in Phase 12.
-**Plans:** 3/11 plans executed
+**Plans:** 6/11 plans executed
 Plans:
 **Wave 1**
 
@@ -249,9 +249,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-04-PLAN.md — CategoryStore: 7-day TTL on its own logout-proof DataStore, fetch/refresh, single-flight (DISC-02)
-- [ ] 05-05-PLAN.md — ClientBookingsRepository + Today's Sessions filter, ExploreRepository, ExploreViewModel (sections, shared selection, latest-wins, refresh) (DISC-01)
-- [ ] 05-06-PLAN.md — ExpertProfileKey/BookingKey, assisted ExpertProfileViewModel (preview, parallel loads, 404 unavailable), booking stub screen (DISC-03)
+- [x] 05-04-PLAN.md — CategoryStore: 7-day TTL on its own logout-proof DataStore, fetch/refresh, single-flight (DISC-02)
+- [x] 05-05-PLAN.md — ClientBookingsRepository + Today's Sessions filter, ExploreRepository, ExploreViewModel (sections, shared selection, latest-wins, refresh) (DISC-01)
+- [x] 05-06-PLAN.md — ExpertProfileKey/BookingKey, assisted ExpertProfileViewModel (preview, parallel loads, 404 unavailable), booking stub screen (DISC-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -477,7 +477,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
-| 5. Explore & Expert Profile | 3/11 | In Progress|  |
+| 5. Explore & Expert Profile | 6/11 | In Progress|  |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
