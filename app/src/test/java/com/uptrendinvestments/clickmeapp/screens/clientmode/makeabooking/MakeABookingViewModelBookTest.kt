@@ -129,7 +129,8 @@ class MakeABookingViewModelBookTest {
             assertTrue(vm.uiState.value.isSubmitting)
             gate.complete(BookingRequestData(bookingId = "b1"))
             runCurrent()
-            assertFalse(vm.uiState.value.isSubmitting)
+            assertEquals("b1", vm.uiState.value.completedBookingId)
+            assertEquals(1, api.requestBookingCalls)
         }
 
     @Test
@@ -139,9 +140,27 @@ class MakeABookingViewModelBookTest {
             vm.book()
             runCurrent()
             assertEquals("b1", vm.uiState.value.completedBookingId)
-            assertFalse(vm.uiState.value.isSubmitting)
+            // WR-01: success is terminal, so the form stays locked until the entry leaves.
+            assertTrue(vm.uiState.value.isSubmitting)
             vm.consumeCompletedBooking()
             assertNull(vm.uiState.value.completedBookingId)
+            assertTrue(vm.uiState.value.isSubmitting)
+        }
+
+    @Test
+    fun aTapAfterSuccessAndConsumptionNeverSendsASecondRequest() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            vm.book()
+            runCurrent()
+            vm.consumeCompletedBooking()
+            // The outgoing entry is still composed during the push transition; another slot and tap go nowhere.
+            vm.selectSlot(slot21)
+            vm.book()
+            runCurrent()
+            assertEquals(1, api.requestBookingCalls)
+            assertNull(vm.uiState.value.completedBookingId)
+            assertFalse(vm.uiState.value.canBook)
         }
 
     @Test

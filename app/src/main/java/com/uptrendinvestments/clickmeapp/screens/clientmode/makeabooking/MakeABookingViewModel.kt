@@ -134,7 +134,7 @@ class MakeABookingViewModel
 
         /**
          * Port of iOS `book()` + `performFreeBooking`, free topics only (BOOK-03). A tap while a request is in
-         * flight is ignored (D-11 single flight), and a paid topic never reaches the API: the paid path is
+         * flight, or after one has succeeded, is ignored (D-11 single flight), and a paid topic never reaches the API: the paid path is
          * Phase 7 (D-01), so there is no payment-methods gate here either. A slot that is no longer after now is
          * cleared instead of sent, because the server does not reject a past `scheduled_start`.
          *
@@ -172,7 +172,9 @@ class MakeABookingViewModel
             viewModelScope.launch {
                 try {
                     val result = repository.requestBooking(body)
-                    _uiState.update { it.copy(isSubmitting = false, completedBookingId = result.bookingId) }
+                    // Success is terminal: isSubmitting stays true, so Book Now, Back and the single-flight guard stay
+                    // locked while the outgoing entry is still composed during the push to Request Sent.
+                    _uiState.update { it.copy(completedBookingId = result.bookingId) }
                 } catch (e: ApiException) {
                     handleBookingFailure(e)
                 }
@@ -209,7 +211,7 @@ class MakeABookingViewModel
 
         /**
          * The screen consumes the id, then calls `navigator.replaceTop(RequestSentKey(id))` (D-12); the entry and
-         * this ViewModel are then removed.
+         * this ViewModel are then removed. `isSubmitting` is left true, so nothing can be booked again in between.
          */
         fun consumeCompletedBooking() {
             _uiState.update { it.copy(completedBookingId = null) }
