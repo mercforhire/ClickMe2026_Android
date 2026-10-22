@@ -67,12 +67,52 @@ class Navigator(
         if (tab == state.topLevelRoute) reselect(tab) else navigate(tab)
     }
 
-    /** Pop [tab]'s stack down to its root. */
+    /**
+     * Pop [tab]'s stack down to its root. This is also "Back to Home" from Request Sent
+     * (`reselect(ExploreRoot)`, D-13): the Explore stack returns to its root and Explore stays selected.
+     */
     fun reselect(tab: NavKey) {
         require(tab in state.backStacks) { "Unknown tab: $tab" }
         val stack = state.backStacks.getValue(tab)
         state.lastTransition = NavTransition.Pop
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
+    }
+
+    /**
+     * Replace the top entry of the current tab's stack with [route] in one change (booking to Request Sent,
+     * D-12), so Back from [route] skips the replaced screen. The removed entry's ViewModel store is cleared
+     * by the Nav3 decorator, which is intended (RESEARCH Pitfall 11).
+     *
+     * Unlike [navigate] this does not apply the "same as top is ignored" rule; replacing with an equal key
+     * is a caller error that the root check below does not need to cover.
+     *
+     * @throws IllegalStateException if the current stack is only its tab root.
+     */
+    fun replaceTop(route: NavKey) {
+        val stack = currentStack()
+        check(stack.size > 1) { "Cannot replace a tab root" }
+        state.lastTransition = NavTransition.Push
+        stack.removeAt(stack.lastIndex)
+        stack.add(route)
+    }
+
+    /**
+     * Pop every tab in [reset] to its root, then select [tab]. Mirrors iOS `showMyBookings`
+     * (explorePath.reset, bookingsPath.reset, selectedTab = .bookings), D-13; the caller passes
+     * `setOf(ExploreRoot, ClientBookingsRoot)`.
+     */
+    fun resetAndSelect(
+        tab: NavKey,
+        reset: Collection<NavKey>,
+    ) {
+        require(tab in state.backStacks) { "Unknown tab: $tab" }
+        // Validate every key before mutating anything, so a bad call leaves the stacks untouched.
+        val stacks = reset.map { r -> requireNotNull(state.backStacks[r]) { "Unknown tab: $r" } }
+        for (stack in stacks) {
+            while (stack.size > 1) stack.removeAt(stack.lastIndex)
+        }
+        state.lastTransition = NavTransition.TabSwitch
+        state.topLevelRoute = tab
     }
 
     /**
