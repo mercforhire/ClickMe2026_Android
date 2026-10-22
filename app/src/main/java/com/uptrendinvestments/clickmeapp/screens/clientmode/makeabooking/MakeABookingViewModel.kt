@@ -39,7 +39,8 @@ import java.time.format.DateTimeParseException
  * - D-08: both meeting types are always offered; the expert's `available_meeting_types` is never read.
  * - Selection state (topic, day, month, slot, meeting type, notes) is mirrored to [SavedStateHandle] so it
  *   survives process death. A restored topic or slot is only applied if it is still present in the freshly
- *   loaded data (and, for a slot, still selectable).
+ *   loaded data (and, for a slot, still selectable). A completed booking id is persisted too, until the screen
+ *   consumes it, so a success that lands while the app is in the background is not lost to process death.
  */
 @HiltViewModel(assistedFactory = MakeABookingViewModel.Factory::class)
 class MakeABookingViewModel
@@ -71,8 +72,11 @@ class MakeABookingViewModel
         private var availabilityJob: Job? = null
 
         init {
-            loadTopics()
-            loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
+            // A restored completed booking navigates straight to Request Sent, so there is nothing to load.
+            if (_uiState.value.completedBookingId == null) {
+                loadTopics()
+                loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
+            }
         }
 
         fun retryTopics() = loadTopics()
@@ -173,7 +177,9 @@ class MakeABookingViewModel
                 try {
                     val result = repository.requestBooking(body)
                     // Success is terminal: isSubmitting stays true, so Book Now, Back and the single-flight guard stay
-                    // locked while the outgoing entry is still composed during the push to Request Sent.
+                    // locked while the outgoing entry is still composed during the push to Request Sent. The id is
+                    // persisted so a process death before the screen resumes still lands on Request Sent.
+                    savedStateHandle[KEY_COMPLETED_BOOKING_ID] = result.bookingId
                     _uiState.update { it.copy(completedBookingId = result.bookingId) }
                 } catch (e: ApiException) {
                     handleBookingFailure(e)
@@ -215,6 +221,7 @@ class MakeABookingViewModel
          */
         fun consumeCompletedBooking() {
             _uiState.update { it.copy(completedBookingId = null) }
+            savedStateHandle.remove<String>(KEY_COMPLETED_BOOKING_ID)
         }
 
         private fun clearSlot() {
@@ -318,6 +325,7 @@ class MakeABookingViewModel
                     ?.let { parseOrNull { YearMonth.parse(it) } }
                     ?.takeUnless { it.isBefore(currentMonth) }
                     ?: currentMonth
+            val completedBookingId = savedStateHandle.get<String>(KEY_COMPLETED_BOOKING_ID)
             return MakeABookingUiState(
                 expertId = key.expertId,
                 expertName = key.expertName,
@@ -330,6 +338,9 @@ class MakeABookingViewModel
                 meetingType =
                     MeetingType.fromWire(savedStateHandle.get<String>(KEY_MEETING_TYPE)) ?: MeetingType.InAppVoice,
                 notes = capNotes(savedStateHandle.get<String>(KEY_NOTES).orEmpty()),
+                // A booking that succeeded before process death: stay locked and let the screen navigate on.
+                isSubmitting = completedBookingId != null,
+                completedBookingId = completedBookingId,
             )
         }
 
@@ -364,6 +375,7 @@ class MakeABookingViewModel
             const val KEY_SLOT_START = "booking_slot_start"
             const val KEY_MEETING_TYPE = "booking_meeting_type"
             const val KEY_NOTES = "booking_notes"
+            const val KEY_COMPLETED_BOOKING_ID = "booking_completed_id"
         }
     }
 

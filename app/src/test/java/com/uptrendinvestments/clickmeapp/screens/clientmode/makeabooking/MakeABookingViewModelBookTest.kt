@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
@@ -161,6 +162,51 @@ class MakeABookingViewModelBookTest {
             assertEquals(1, api.requestBookingCalls)
             assertNull(vm.uiState.value.completedBookingId)
             assertFalse(vm.uiState.value.canBook)
+        }
+
+    // ---- WR-02: a completed booking survives process death until the screen consumes it ----
+
+    @Test
+    fun aCompletedBookingSurvivesProcessDeathUntilConsumed() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm1 = newViewModel(api, handle, clock)
+            runCurrent()
+            vm1.selectSlot(slot20)
+            vm1.book()
+            runCurrent()
+            assertEquals("b1", vm1.uiState.value.completedBookingId)
+
+            // The process dies before the screen resumes and consumes the id.
+            val detailsBefore = api.expertDetailsCalls
+            val availabilityBefore = api.expertAvailabilityCalls
+            val vm2 = newViewModel(api, handle, clock)
+            runCurrent()
+            val s = vm2.uiState.value
+            assertEquals("b1", s.completedBookingId)
+            assertTrue(s.isSubmitting)
+            assertEquals(detailsBefore, api.expertDetailsCalls)
+            assertEquals(availabilityBefore, api.expertAvailabilityCalls)
+            vm2.book()
+            runCurrent()
+            assertEquals(1, api.requestBookingCalls)
+
+            vm2.consumeCompletedBooking()
+            assertFalse(handle.contains("booking_completed_id"))
+        }
+
+    @Test
+    fun aFailedBookingPersistsNoCompletedId() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            api.requestBookingHandler = { throw IOException("offline") }
+            val vm = newViewModel(api, handle, clock)
+            runCurrent()
+            vm.selectSlot(slot20)
+            vm.book()
+            runCurrent()
+            assertFalse(handle.contains("booking_completed_id"))
+            assertNull(newViewModel(api, handle, clock).uiState.value.completedBookingId)
         }
 
     @Test

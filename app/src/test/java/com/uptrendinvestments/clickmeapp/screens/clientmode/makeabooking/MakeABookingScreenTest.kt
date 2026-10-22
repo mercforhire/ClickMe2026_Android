@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
@@ -357,6 +358,17 @@ class MakeABookingScreenTest {
             ),
             api.requestBookingRequests.single(),
         )
+        assertNull(vm.uiState.value.completedBookingId)
+    }
+
+    @Test
+    fun aBookingRestoredAfterProcessDeathNavigatesToRequestSentOnce() {
+        stubFreeAndPaidTopicsWithOneSlot()
+        val vm = newViewModel(api, SavedStateHandle(mapOf("booking_completed_id" to "b9")))
+        setScreen(vm)
+
+        assertEquals(listOf("b9"), booked)
+        assertEquals(0, api.requestBookingCalls)
         assertNull(vm.uiState.value.completedBookingId)
     }
 
