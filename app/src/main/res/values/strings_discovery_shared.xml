@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared discovery components (Phase 5): section error/retry, skeleton loading and rating copy. -->
+    <string name="section_retry">Retry</string>
+    <string name="content_loading">Loading</string>
+    <string name="rating_no_reviews">No reviews yet</string>
+    <string name="rating_value">%1$.1f</string>
+    <plurals name="rating_card_review_count">
+        <item quantity="one">· %d review</item>
+        <item quantity="other">· %d reviews</item>
+    </plurals>
+    <plurals name="rating_hero_review_count">
+        <item quantity="one">(%d review)</item>
+        <item quantity="other">(%d reviews)</item>
+    </plurals>
+    <plurals name="rating_semantics">
+        <item quantity="one">Rated %1$s out of 5 from %2$d review</item>
+        <item quantity="other">Rated %1$s out of 5 from %2$d reviews</item>
+    </plurals>
+</resources>

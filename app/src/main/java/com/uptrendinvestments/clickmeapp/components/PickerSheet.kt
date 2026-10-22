@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -48,6 +50,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag on the trailing check icon of a selected [PickerRow]. */
 internal const val PICKER_ROW_CHECK_TAG = "picker_row_check"
+
+/** Test tag on the optional leading icon of a [PickerRow]. */
+internal const val PICKER_ROW_LEADING_ICON_TAG = "picker_row_leading_icon"
 
 private val RowMinHeight = 48.dp
 private val RowIconSize = 24.dp
@@ -154,6 +159,10 @@ fun PickerSheetContent(
 /**
  * Selectable list row. Selected rows show an accent check and expose selected semantics to TalkBack; a 1 dp
  * outlineVariant divider separates rows. Timezone rows pass `minHeight = 56.dp`.
+ *
+ * [leadingIcon] adds a 24 dp primary-tinted decorative icon before the label. [role] defaults to
+ * [Role.RadioButton] (single-select, `selectable`); pass [Role.Checkbox] for multi-select lists such as the All
+ * Categories sheet, which switches the row to `toggleable` so TalkBack announces checked/unchecked.
  */
 @Composable
 fun PickerRow(
@@ -162,18 +171,34 @@ fun PickerRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     minHeight: Dp = RowMinHeight,
+    leadingIcon: ImageVector? = null,
+    role: Role = Role.RadioButton,
 ) {
+    val selectionModifier =
+        if (role == Role.Checkbox) {
+            Modifier.toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+        } else {
+            Modifier.selectable(selected = selected, role = role, onClick = onClick)
+        }
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = minHeight)
-                    .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+                    .then(selectionModifier)
                     .padding(horizontal = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(RowIconSize).testTag(PICKER_ROW_LEADING_ICON_TAG),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
             Text(
                 text = label,
                 modifier = Modifier.weight(1f),
