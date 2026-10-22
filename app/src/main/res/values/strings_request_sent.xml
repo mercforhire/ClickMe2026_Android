@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Request Sent (Phase 6, BOOK-04). -->
+    <string name="request_sent_title">Booking Request</string>
+    <string name="request_sent_headline">Request Sent!</string>
+    <string name="request_sent_body">Your booking request has been sent to %1$s. They will review it and respond shortly. You\'ll be notified as soon as it\'s confirmed.</string>
+    <string name="request_sent_details_header">Booking Details</string>
+    <string name="request_sent_label_expert">Expert</string>
+    <string name="request_sent_label_topic">Topic</string>
+    <string name="request_sent_label_date_time">Date &amp; Time</string>
+    <string name="request_sent_label_status">Status</string>
+    <string name="request_sent_status_pending">Awaiting Approval</string>
+    <string name="request_sent_date_time_value">%1$s | %2$s - %3$s</string>
+    <string name="request_sent_row_a11y">%1$s, %2$s</string>
+    <string name="request_sent_view_bookings">View My Bookings</string>
+    <string name="request_sent_back_home">Back to Home</string>
+    <string name="request_sent_loading">Loading your booking…</string>
+    <string name="request_sent_error_heading">Couldn\'t load your booking</string>
+    <string name="request_sent_error_body">Your request was sent, but we couldn\'t load the details. Check your connection and try again.</string>
+</resources>
