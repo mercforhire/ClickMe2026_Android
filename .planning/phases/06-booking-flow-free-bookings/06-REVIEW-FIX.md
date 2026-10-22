@@ -1,8 +1,8 @@
 ---
 phase: 06-booking-flow-free-bookings
-fixed_at: 2026-10-22T21:26:02Z
+fixed_at: 2026-10-22T21:51:47Z
 review_path: .planning/phases/06-booking-flow-free-bookings/06-REVIEW.md
-iteration: 3
+iteration: 4
 findings_in_scope: 2
 fixed: 2
 skipped: 0
@@ -11,120 +11,119 @@ status: all_fixed
 
 # Phase 6: Code Review Fix Report
 
-**Fixed at:** 2026-10-22T21:26:02Z
-**Source review:** .planning/phases/06-booking-flow-free-bookings/06-REVIEW.md (re-review after fix passes, `a153475`)
-**Iteration:** 3
+**Fixed at:** 2026-10-22T21:51:47Z
+**Source review:** .planning/phases/06-booking-flow-free-bookings/06-REVIEW.md (third review, `59917ea`)
+**Iteration:** 4
 
-This report replaces the previous one. The previous report covered the first review (CR-01, WR-01..04 and
-IN-01..11) and is preserved in git at `8f2c919`.
+This report replaces the previous one. Earlier reports are preserved in git: the first-review report at `8f2c919`
+and the iteration-3 report (review-2 WR-01/WR-02) at `ef0cd10`.
 
 **Summary:**
-- Findings in scope: 2 (WR-01, WR-02; the re-review has no Critical findings, and Info IN-01..IN-06 are out of
-  scope for `critical_warning`)
+- Findings in scope: 2 (WR-01, WR-02; no Critical findings; Info IN-01..IN-10 are out of scope for
+  `critical_warning`)
 - Fixed: 2
 - Skipped: 0
 
 **Gate:** `./gradlew testDevDebugUnitTest ktlintCheck assembleDevDebug` (JDK 25 from the Android Studio JBR) passed
-after both commits. 1330 unit tests ran, with 0 failures, 0 errors and 0 skipped. ktlint is clean and the dev debug
-APK builds.
+after both commits: 1340 unit tests, 0 failures, 0 errors. ktlint is clean and the dev debug APK builds.
 
 ## Fixed Issues
 
-### WR-01: The completed booking id is not persisted when the success arrives in the background
+### WR-01: A restore whose attempt has no record silently reopens an editable form with the in-flight slot preselected
 
-**Files modified:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/CompletedBookingStore.kt` (new), `app/src/main/java/com/uptrendinvestments/clickmeapp/di/BookingModule.kt` (new), `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/testing/FakeCompletedBookingStore.kt` (new), `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/DataStoreCompletedBookingStoreTest.kt` (new), `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/BookingTestFixtures.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelBookTest.kt`
-**Commit:** d9b2300
-**Applied fix:** This combines the review's Option A (a durable write when the response arrives) with the attempt
-marker from Option B. It does not add the server reconciliation from Option B.
-- `book()` writes a random attempt id (`booking_attempt_id`) to the `SavedStateHandle` before it launches the
-  request. The user has just tapped Book Now, so the activity is in the foreground and this always happens before
-  `onSaveInstanceState`.
-- On success the ViewModel first calls `CompletedBookingStore.put(attemptId, bookingId)`, a suspending DataStore
-  edit that returns once the record is on disk. Then it writes the saved-state id and updates the UI state as
-  before.
-- `initialState()` and `init` handle a ViewModel restored with an attempt id but no completed id. The form starts
-  locked (`isSubmitting = true`) and `recoverAttempt()` reads the record. If a record is found, the ViewModel goes to
-  Request Sent exactly as for a saved-state completed id, with no form loads. If not, the attempt id is dropped, the
-  form unlocks and loads, and the restored selection is applied as usual.
-- The record is used up once. `consumeCompletedBooking()` removes the attempt id and calls `discard(attemptId)`. The
-  discard runs on `@ApplicationScope`, so the write finishes even though the entry's ViewModel is cleared right
-  after. A failed booking also removes the attempt id.
-- The record cannot come back in a later flow. The store holds a single record, and it only answers for its own
-  attempt id. A new booking flow has no attempt id in its saved state, so it never reads the store.
-- The record cannot reach another account. It is stored in the existing Hilt-provided session Preferences DataStore
-  (`clickme_session`), with no new dependency. `SessionStore.clear()` wipes that file at logout. The store is also
-  bound as a `SessionDataCleaner` through `@IntoSet` in `BookingModule`, so it is cleared before login and signup
-  as well.
-- iOS (`/Users/LeonChen/Documents/ClickMe2026/.../MakeABookingViewModel.swift`) has nothing equivalent, because iOS
-  does not restore a booking form after the app is terminated. This is an Android-only robustness addition, and the
-  KDoc says so.
+**Files modified:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/CompletedBookingStore.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt`, `app/src/main/res/values/strings_make_a_booking.xml`, `app/src/test/java/com/uptrendinvestments/clickmeapp/testing/FakeCompletedBookingStore.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/DataStoreCompletedBookingStoreTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelBookTest.kt`
+**Commit:** 0f04b42
+**Applied fix:** This follows the agreed approach. There is no server lookup of upcoming bookings.
+- **`get()` result:** `CompletedBookingStore.get()` now returns a sealed `CompletedBookingLookup`: `Found(bookingId)`,
+  `Absent` or `Unreadable`. A DataStore `IOException` on read becomes `Unreadable`, so a failed read is no longer
+  reported as "no record".
+- **Restore without a record:** in `recoverAttempt()`, `Found` still goes to Request Sent. `Absent` and `Unreadable`
+  no longer reopen a ready-to-book form silently. The ViewModel:
+  - removes `KEY_ATTEMPT_ID`, so the notice shows only once;
+  - unlocks the form and loads it;
+  - sets `dialogError` to the new string `make_a_booking_error_unconfirmed`: "We couldn't confirm your last booking
+    request. It may already have been sent, so please check My Bookings before booking again."
+
+  The notice uses the existing `AuthErrorDialog`. Once it is dismissed the form works normally, and the restored
+  selection is kept.
+- **Failed `put()`:** it stays best-effort. The comment now says that a restore with no record is covered by the
+  notice.
+- **Supporting guard:** `explainSlotPassed()` no longer replaces a dialog that is already on screen. Without this
+  guard, the notice could be overwritten straight away by "That time has passed" when the restored slot had started
+  in the meantime. This guard also resolves **IN-10**.
 
 **Tests:**
-- `aSuccessThatLandsAfterTheStateWasSavedSurvivesProcessDeath` models the failure the review describes. It takes a
-  snapshot of the handle while the request is in flight (a copy of its contents, which is what the state save hands
-  to the system), then completes the response. It asserts that the snapshot has no `booking_completed_id`, builds a
-  fresh ViewModel from the snapshot with the same store, and checks that the ViewModel is locked at once, lands on
-  `b1`, loads nothing and sends no second request. Consuming the id clears the record.
-- With the `put` line removed, this test fails at the completed-id assertion. That run was done locally and
-  reverted.
-- `aRequestLostWithTheProcessReopensTheRestoredForm`: when there is no record, the form comes back editable with the
-  restored slot.
-- `aRecordFromAnotherAttemptNeverResurfaces`: a fresh flow, or a restore with a different attempt id, ignores an old
-  record.
-- `aFailedBookingPersistsNoCompletedId` now also checks that the attempt id and the record are cleared.
-- `DataStoreCompletedBookingStoreTest` checks four things: a record is only returned for its own attempt; a record
-  survives a second DataStore opened over the same file after the first one is shut down; `discard` only removes
-  the matching attempt; and both the session cleaner and `SessionStore.clear()` (logout) remove the record.
+- `aRequestLostWithTheProcessReopensTheFormBehindACheckYourBookingsNotice` replaces
+  `aRequestLostWithTheProcessReopensTheRestoredForm`. After the process dies mid-request it checks that the notice
+  shows and the attempt id is cleared, and that a second restore shows no notice. After dismissal, booking works.
+- `anUnreadableRecordIsNotTreatedAsNoBooking`: a store read failure produces the notice.
+- `aRestoredSlotThatHasStartedDoesNotReplaceTheCheckYourBookingsNotice`: the notice survives the slot-passed path.
+- `aRecordFromAnotherAttemptNeverResurfaces`: a restore with a different attempt id does not show the other record,
+  but now shows the notice. A fresh flow shows no dialog.
+- `DataStoreCompletedBookingStoreTest`: the existing tests now assert `Found` and `Absent`. A new test,
+  `aReadFailureIsUnreadableNotAbsent`, uses a DataStore that throws on read and write. It checks that a failed read
+  returns `Unreadable` and that a failed `put` does not throw.
 
-**Residual (not in WR-01's scenario):** suppose the process is killed while the request is still in flight, so the
-response is never processed. The restored form reopens, and the booking may still exist on the server. Covering
-that needs Option B's server reconciliation, for example looking up upcoming bookings for this expert and start
-time. That is a possible follow-up.
+**Requires human verification:**
+1. **Notice title.** The notice keeps the "Couldn't book" title, following the instruction to reuse the existing
+   error dialog and add one string. Paired with "We couldn't confirm your last booking request…" it reads
+   consistently, but a neutral title such as "Check My Bookings" is an option.
+2. **False positive after a background failure.** The attempt id is also still in the saved state when the request
+   *failed* after the activity saved its state, because the failure removes it only from the live handle. A restore
+   then shows the notice even though nothing was booked. The notice says "may", so this errs on the safe side.
 
-### WR-02: `refreshClock()` either strands a passed slot as selected or clears it silently
+### WR-02: Ordinary taps now open a "Couldn't book" dialog, including when the tap replaces the slot anyway
 
-**Files modified:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingScreen.kt` (comment only), `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelBookTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelTest.kt`
-**Commit:** 3ac63e5
+**Files modified:** `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModel.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingUiState.kt`, `app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingScreen.kt`, `app/src/main/res/values/strings_make_a_booking.xml`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelBookTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingViewModelTest.kt`, `app/src/test/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingScreenTest.kt`
+**Commit:** 7bf8011
 **Applied fix:**
-- `refreshClock()` remembers the held slot. It stamps `now` on the same day, or runs the existing day, month and
-  zone handling (moved into `moveClock()`) when the day or zone changed. Then it checks the slot in one place: if the
-  held slot is no longer the selected slot and selectable at the new `now`, it calls `clearSlot()`, which also removes
-  `KEY_SLOT_START`, and shows the existing IN-09 `make_a_booking_error_slot_passed` dialog.
-- This covers all three outcomes in the review: a same-day resume after the slot started (the slot is no longer left
-  selected with Book Now disabled), crossing midnight, and a zone change that moves the slot to another local day.
-- `book()` now relies on that check. It keeps only `val slot = s.selectedSlot ?: return` and drops its own past-slot
-  branch, because the slot has already been cleared and explained.
-- `applyAvailability()` also explains a held or restored slot that is dropped because it has already started, for
-  example a selection restored after process death. Slots dropped because they are unavailable stay silent, as
-  before. The 409 path clears the slot before it reloads, so it never shows two dialogs.
+- **Silent clock sync:** the old `refreshClock()` body is now `private fun syncClock(): Boolean`. It clears a held
+  slot that is no longer selectable and returns true, but shows nothing.
+- **Callers:**
+  - `refreshClock()` (ON_RESUME) is now `if (syncClock()) explainSlotPassed()`.
+  - `book()` explains the drop and returns.
+  - `selectDate`, `goToPreviousMonth`, `goToNextMonth` and `selectSlot` call `syncClock()` and ignore the result, so
+    a tap clears a passed slot silently.
+- **No second path to the dialog:** `applyAvailability()` has a new `explainPassedSlot` parameter. It is true for
+  network loads, which covers the restored-slot-after-process-death case. It is false for the synchronous zone regroup
+  inside `syncClock()`, where the caller decides. Without this, a tap after a zone change could still show the dialog
+  through the regroup.
+- **Neutral title:** `MakeABookingUiState` has a new field, `@StringRes dialogTitle`, which defaults to
+  `make_a_booking_error_title`. The screen renders `stringResource(state.dialogTitle)`.
+  - The slot-passed notice uses the new string `make_a_booking_notice_slot_passed_title`, "Time slot unavailable".
+  - Booking failures and the WR-01 notice set "Couldn't book" explicitly.
+  - `dismissError()` resets the title to the default.
 
-**Tests (MakeABookingViewModelBookTest):** these five fail against the pre-fix ViewModel:
-- `aResumeAfterTheSlotStartedClearsItAndSaysWhy` (resume on the same day)
-- `aBookAfterMidnightClearsTheSlotAndSaysWhy`
-- `aBookAfterAZoneChangeThatMovesTheSlotsDayClearsItAndSaysWhy`
-- `aResumeAfterAZoneChangeThatMovesTheSlotsDayClearsItAndSaysWhy`
-- `aRestoredSlotThatHasStartedIsDroppedAndExplained`
+**Tests:**
+- **Tap tests (new):** these fail against the pre-fix code.
+  - `aSlotTapAfterTheHeldSlotStartedReplacesItSilently`
+  - `aDateTapAfterTheHeldSlotStartedClearsItSilently`
+  - `aMonthTapAfterTheHeldSlotStartedClearsItSilently`
+  - `aTapThatRegroupsAfterAZoneChangeDropsAPassedSlotSilently`
+- **Resume and title tests (new):**
+  - `aResumeAfterAZoneChangeDropsAPassedSlotWithOneNotice`
+  - `aBookingFailureIsTitledCouldNotBookEvenAfterANotice`: after a notice is dismissed, a later booking failure is
+    titled "Couldn't book" again.
+- **Existing tests:** the resume, Book Now and restore tests now also assert the neutral title (via
+  `assertSlotPassedNotice`), and so does `MakeABookingViewModelTest.aZoneChangeRegroupsTheLoadedSlotsWithoutARequest`.
+  No existing test asserted a message on `selectDate` or `selectSlot`, so the new tap tests cover those paths.
+- **Screen test:** `MakeABookingScreenTest.aSlotPassedNoticeHasANeutralTitle` checks that "Time slot unavailable" is
+  rendered and "Couldn't book" is not.
 
-These cases check that nothing is dropped when it shouldn't be:
-- `aResumeBeforeTheSlotStartsKeepsItWithoutADialog`
-- `aZoneChangeThatKeepsTheSlotsDayKeepsItWithoutADialog`
+**Requires human verification (logic change):** decide whether the rule (explain only on resume and Book Now, stay
+silent on taps) matches the intended UX. Resume is the only case where a selection disappears without the user doing
+anything.
 
-In `MakeABookingViewModelTest`:
-- `aZoneChangeRegroupsTheLoadedSlotsWithoutARequest` now also asserts the dialog.
-- `restoredSlotThatIsNoLongerAvailableIsDropped` now asserts that no dialog appears when the slot is unavailable
-  rather than past.
+## Info items touched along the way
 
-**Requires human verification (logic change):**
-1. **Copy on a zone change.** As instructed, a zone change that moves the slot to another day shows the existing
-   "That time has passed. Please pick another." That is not literally true in this case, because the time has not
-   passed. Decide whether a separate string is worth adding.
-2. **Dialog before a new selection.** All clock-driven drops are explained, including when the user's next action
-   (tap another chip, day or month) is what triggers `refreshClock()`. In that case the dialog appears just before
-   the new selection is applied. This is deliberate: it keeps one place that decides, and never leaves a dropped slot
-   unexplained.
+- **IN-10 resolved:** this came from the WR-01 guard in `explainSlotPassed()`. An unread dialog, such as the 422
+  meeting-type reset, is no longer replaced by the slot-passed notice.
+- **IN-07 not resolved:** a zone change that moves a still-future slot to another day still says "That time has
+  passed." The title is now the neutral "Time slot unavailable", which is closer, but the message is unchanged. The
+  two tests named in IN-07 still assert that message.
 
 ---
 
-_Fixed: 2026-10-22T21:26:02Z_
+_Fixed: 2026-10-22T21:51:47Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 3_
+_Iteration: 4_
