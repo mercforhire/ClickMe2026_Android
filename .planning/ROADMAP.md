@@ -282,7 +282,7 @@ Plans:
   3. An Android client books a free topic and sees Request Sent, and the iOS expert receives the request. (PRD Week 3 checkpoint, free path)
 
 **Planning notes:** Highest-risk week. Regroup by `startUtc` into the client's local date. Test with the iOS app as the expert.
-**Plans:** 12/14 plans executed
+**Plans:** 13/14 plans executed
 Plans:
 **Wave 1**
 
@@ -313,7 +313,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 06-13-PLAN.md — Shell wiring of BookingKey and RequestSentKey (replace on success, View My Bookings, Back to Home), stub removal (BOOK-03, BOOK-04)
+- [x] 06-13-PLAN.md — Shell wiring of BookingKey and RequestSentKey (replace on success, View My Bookings, Back to Home), stub removal (BOOK-03, BOOK-04)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -514,7 +514,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
-| 6. Booking Flow & Free Bookings | 12/14 | In Progress|  |
+| 6. Booking Flow & Free Bookings | 13/14 | In Progress|  |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
