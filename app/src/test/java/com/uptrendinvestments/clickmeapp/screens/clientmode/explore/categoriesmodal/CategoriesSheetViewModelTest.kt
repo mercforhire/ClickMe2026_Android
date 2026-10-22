@@ -142,12 +142,14 @@ class CategoriesSheetViewModelTest {
             runCurrent()
 
             vm.onQueryChange("DES")
-            assertEquals(listOf("Design"), vm.uiState.value.visible.map { it.name })
-            assertFalse(vm.uiState.value.noMatch)
+            val state = vm.uiState.value
+            assertEquals(listOf("Design"), state.visible.map { it.name })
+            assertFalse(state.noMatch)
 
             vm.onQueryChange("zzz")
-            assertTrue(vm.uiState.value.visible.isEmpty())
-            assertTrue(vm.uiState.value.noMatch)
+            val noMatchState = vm.uiState.value
+            assertTrue(noMatchState.visible.isEmpty())
+            assertTrue(noMatchState.noMatch)
 
             vm.onQueryChange("  ")
             assertEquals(categories, vm.uiState.value.visible)
