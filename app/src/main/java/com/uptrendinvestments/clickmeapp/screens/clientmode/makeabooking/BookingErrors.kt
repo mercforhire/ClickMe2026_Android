@@ -5,7 +5,7 @@ import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 
-/** What the booking screen does with a failed `POST /bookings/confirm`. */
+/** What the booking screen does with a failed `POST /bookings/request` (the free path). */
 sealed interface BookingFailure {
     /** Nothing to show here: the global suspended-account dialog owns ACCOUNT_SUSPENDED (Phase 2 D-08). */
     data object Silent : BookingFailure
@@ -24,8 +24,8 @@ sealed interface BookingFailure {
 }
 
 /**
- * D-10 error mapping for the confirm call. Server text is only ever wrapped in [FieldError.Text], which is
- * rendered as plain text (T-06-13).
+ * D-10 error mapping for the `POST /bookings/request` call. Server text is only ever wrapped in
+ * [FieldError.Text], which is rendered as plain text (T-06-13).
  */
 fun ApiException.toBookingFailure(): BookingFailure =
     when (this) {

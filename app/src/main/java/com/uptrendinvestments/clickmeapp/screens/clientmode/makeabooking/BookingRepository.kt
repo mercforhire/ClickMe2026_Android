@@ -14,7 +14,7 @@ import javax.inject.Singleton
  *
  * `topic_id` is never sent on the availability call: the backend would narrow the grid to the topic duration,
  * but iOS never sends it (D-07 iOS parity, user decision on research Open Question 2), so the grid always
- * shows the expert's base slots and the server re-checks the duration when the booking is confirmed.
+ * shows the expert's base slots and the server re-checks the duration when the booking is requested.
  */
 @Singleton
 class BookingRepository
@@ -28,7 +28,7 @@ class BookingRepository
             month: YearMonth,
         ): ExpertAvailabilityData = apiCall { api.getExpertAvailability(expertId, month.toString(), null) }.data
 
-        /** `POST /bookings/confirm`, free path. */
+        /** `POST /bookings/request`, free path. The paid Stripe path (`POST /bookings/confirm`) is Phase 7. */
         suspend fun requestBooking(body: BookingRequestBody): BookingRequestData =
             apiCall { api.requestBooking(body) }.data
     }
