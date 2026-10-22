@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
 import dagger.assisted.Assisted
@@ -11,21 +12,29 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeParseException
 
 /**
  * Make a Booking state machine, free path. Port of iOS `MakeABookingViewModel`; `book()` is added by 06-11.
  *
  * - D-02: the first free topic is preselected, else the first topic, else none. Phase 7 may revert this to
  *   the plain first topic, and iOS regenerates its booking attempt id on a topic change, which Phase 7 owns.
+ * - D-03: opens on today with no auto-jump to the first open day. D-06: no month before the current one and
+ *   no past day. D-07: the displayed month plus both neighbours load in parallel and are regrouped by local
+ *   date; changing the month or the day clears the slot, changing the meeting type or the notes does not.
+ *   iOS lets a slow response for an old month overwrite the new one; here every load cancels the previous.
  * - D-08: both meeting types are always offered; the expert's `available_meeting_types` is never read.
  * - Selection state (topic, day, month, slot, meeting type, notes) is mirrored to [SavedStateHandle] so it
  *   survives process death. A restored topic or slot is only applied if it is still present in the freshly
@@ -54,13 +63,158 @@ class MakeABookingViewModel
         private val _uiState = MutableStateFlow(initialState(key))
         val uiState: StateFlow<MakeABookingUiState> = _uiState.asStateFlow()
 
+        /** A restored slot start (epoch millis), applied once the first availability load shows it is selectable. */
+        private var pendingSlotMillis: Long? = savedStateHandle.get<Long>(KEY_SLOT_START)
+
         private var topicsJob: Job? = null
+        private var availabilityJob: Job? = null
 
         init {
             loadTopics()
+            loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
         }
 
         fun retryTopics() = loadTopics()
+
+        fun retryAvailability() = loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
+
+        /** Changing the topic clears the slot (D-02); re-selecting the current topic is a no-op. */
+        fun selectTopic(topicId: String) {
+            if (_uiState.value.selectedTopicId == topicId) return
+            pendingTopicId = null
+            _uiState.update { it.copy(selectedTopicId = topicId, now = clock.instant()) }
+            persistTopic(topicId)
+            clearSlot()
+        }
+
+        /** D-06: ignored on the current month. Clears the slot, keeps the day (D-07). */
+        fun goToPreviousMonth() {
+            if (!_uiState.value.canGoToPreviousMonth) return
+            moveToMonth(_uiState.value.displayedMonth.minusMonths(1))
+        }
+
+        fun goToNextMonth() = moveToMonth(_uiState.value.displayedMonth.plusMonths(1))
+
+        private fun moveToMonth(month: YearMonth) {
+            _uiState.update { it.copy(displayedMonth = month, now = clock.instant()) }
+            savedStateHandle[KEY_DISPLAYED_MONTH] = month.toString()
+            clearSlot()
+            loadAvailability(month, keepVisible = false)
+        }
+
+        /** D-06: past days are ignored. The month does not change; the slot is cleared. */
+        fun selectDate(date: LocalDate) {
+            if (isPastDay(date, _uiState.value.today)) return
+            _uiState.update { it.copy(selectedDate = date, now = clock.instant()) }
+            savedStateHandle[KEY_SELECTED_DATE] = date.toString()
+            clearSlot()
+        }
+
+        /** D-04: only an available slot that starts after now can be chosen. */
+        fun selectSlot(start: Instant) {
+            val now = clock.instant()
+            val slot = _uiState.value.slotsForSelectedDate.firstOrNull { it.start == start }
+            if (slot == null || !slot.isSelectable(now)) return
+            pendingSlotMillis = null
+            _uiState.update { it.copy(selectedSlotStart = start, now = now) }
+            savedStateHandle[KEY_SLOT_START] = start.toEpochMilli()
+        }
+
+        fun selectMeetingType(type: MeetingType) {
+            _uiState.update { it.copy(meetingType = type) }
+            savedStateHandle[KEY_MEETING_TYPE] = type.wire
+        }
+
+        fun onNotesChange(text: String) {
+            val capped = capNotes(text)
+            _uiState.update { it.copy(notes = capped) }
+            savedStateHandle[KEY_NOTES] = capped
+        }
+
+        private fun clearSlot() {
+            pendingSlotMillis = null
+            _uiState.update { it.copy(selectedSlotStart = null) }
+            savedStateHandle.remove<Long>(KEY_SLOT_START)
+        }
+
+        /**
+         * Loads [month] and both neighbours in parallel (D-07, iOS parity: `topic_id` is never sent). Only the
+         * centre month can fail the section; a failing neighbour is silent. Slots of all three responses are
+         * flattened and regrouped by the viewer's local date in one [groupSlots] call. The previous load is
+         * cancelled first, so a stale response can never overwrite a newer month (iOS has that race).
+         * [keepVisible] leaves the current slots on screen while loading (06-11 uses it after a 409).
+         */
+        private fun loadAvailability(
+            month: YearMonth,
+            keepVisible: Boolean,
+        ) {
+            availabilityJob?.cancel()
+            if (!keepVisible) _uiState.update { it.copy(availability = AvailabilityState.Loading) }
+            availabilityJob =
+                viewModelScope.launch {
+                    try {
+                        val (previous, center, next) =
+                            coroutineScope {
+                                val centerCall = async { repository.availability(expertId, month) }
+                                val previousCall = async { neighbor(month.minusMonths(1)) }
+                                val nextCall = async { neighbor(month.plusMonths(1)) }
+                                Triple(previousCall.await(), centerCall.await(), nextCall.await())
+                            }
+                        if (_uiState.value.displayedMonth != month) return@launch
+                        val days = listOfNotNull(previous, center, next).flatMap { it.days }
+                        val grouped = groupSlots(days, ZoneId.systemDefault())
+                        applyAvailability(grouped, center.expertTimezone)
+                    } catch (e: ApiException) {
+                        if (_uiState.value.displayedMonth == month) {
+                            _uiState.update { it.copy(availability = AvailabilityState.Failed(e.toSectionMessage())) }
+                        }
+                    }
+                }
+        }
+
+        private suspend fun neighbor(month: YearMonth): ExpertAvailabilityData? =
+            try {
+                repository.availability(expertId, month)
+            } catch (e: ApiException) {
+                null
+            }
+
+        /**
+         * Stores freshly grouped slots, then reconciles the slot: a restored slot is applied only if it is present
+         * and selectable now (T-06-20); a held slot that has since become unavailable or past is dropped.
+         */
+        private fun applyAvailability(
+            grouped: Map<LocalDate, List<BookingTimeSlot>>,
+            expertTimezone: String?,
+        ) {
+            val now = clock.instant()
+            val pending = pendingSlotMillis?.let(Instant::ofEpochMilli)
+            _uiState.update { s ->
+                val slots = grouped[s.selectedDate].orEmpty()
+                val selectable = { start: Instant? ->
+                    start != null && slots.any { it.start == start && it.isSelectable(now) }
+                }
+                val slot =
+                    when {
+                        selectable(pending) -> pending
+                        selectable(s.selectedSlotStart) -> s.selectedSlotStart
+                        else -> null
+                    }
+                s.copy(
+                    availability = AvailabilityState.Loaded(grouped),
+                    expertTimezone = expertTimezone,
+                    now = now,
+                    selectedSlotStart = slot,
+                )
+            }
+            pendingSlotMillis = null
+            val slot = _uiState.value.selectedSlotStart
+            if (slot == null) {
+                savedStateHandle.remove<Long>(KEY_SLOT_START)
+            } else {
+                savedStateHandle[KEY_SLOT_START] = slot.toEpochMilli()
+            }
+        }
 
         private fun initialState(key: BookingKey): MakeABookingUiState {
             val now = clock.instant()
@@ -68,14 +222,14 @@ class MakeABookingViewModel
             val date =
                 savedStateHandle
                     .get<String>(KEY_SELECTED_DATE)
-                    ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                    ?.let { parseOrNull { LocalDate.parse(it) } }
                     ?.takeUnless { isPastDay(it, today) }
                     ?: today
             val currentMonth = YearMonth.from(today)
             val month =
                 savedStateHandle
                     .get<String>(KEY_DISPLAYED_MONTH)
-                    ?.let { runCatching { YearMonth.parse(it) }.getOrNull() }
+                    ?.let { parseOrNull { YearMonth.parse(it) } }
                     ?.takeUnless { it.isBefore(currentMonth) }
                     ?: currentMonth
             return MakeABookingUiState(
@@ -125,4 +279,12 @@ class MakeABookingViewModel
             const val KEY_MEETING_TYPE = "booking_meeting_type"
             const val KEY_NOTES = "booking_notes"
         }
+    }
+
+/** Restored saved-state strings may be corrupt; a bad value is ignored rather than crashing. */
+private inline fun <T> parseOrNull(parse: () -> T): T? =
+    try {
+        parse()
+    } catch (e: DateTimeParseException) {
+        null
     }
