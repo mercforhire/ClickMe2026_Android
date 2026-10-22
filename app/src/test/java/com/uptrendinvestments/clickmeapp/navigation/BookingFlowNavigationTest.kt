@@ -85,10 +85,4 @@ class BookingFlowNavigationTest {
         assertEquals(ExploreRoot, navigator.state.topLevelRoute)
         assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
     }
-
-    @Test
-    fun requestSentKeyCarriesOnlyTheBookingId() {
-        assertEquals(RequestSentKey("b1"), RequestSentKey("b1"))
-        assertEquals("b1", RequestSentKey("b1").bookingId)
-    }
 }

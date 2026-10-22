@@ -1,5 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.getValue
@@ -224,10 +227,62 @@ class MakeABookingScreenTest {
     }
 
     @Test
-    fun backIsDisabledWhileSubmittingAndEnabledOtherwise() {
+    fun backArrowIsDisabledWhileSubmitting() {
         setContent(loadedState(isSubmitting = true))
         composeRule.onNodeWithContentDescription("Back").assertIsNotEnabled().performClick()
         assertEquals(0, backCount)
+    }
+
+    @Test
+    fun backArrowIsEnabledWhenIdle() {
+        setContent(loadedState())
+        composeRule.onNodeWithContentDescription("Back").assertIsEnabled().performClick()
+        assertEquals(1, backCount)
+    }
+
+    /**
+     * Renders the form under an outer Back handler, like NavDisplay's, sends a system Back and returns how often
+     * the outer handler fired.
+     */
+    private fun systemBackReachesNavigation(isSubmitting: Boolean): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        composeRule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                MakeABookingContent(
+                    state = loadedState(isSubmitting = isSubmitting),
+                    onBack = { backCount++ },
+                    onRetryTopics = {},
+                    onSelectTopic = {},
+                    onPreviousMonth = {},
+                    onNextMonth = {},
+                    onSelectDate = {},
+                    onSelectSlot = {},
+                    onRetryAvailability = {},
+                    onSelectMeetingType = {},
+                    onNotesChange = {},
+                    onBook = {},
+                    onDismissError = {},
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                )
+            }
+        }
+        composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        composeRule.waitForIdle()
+        return navBacks
+    }
+
+    @Test
+    fun systemBackIsSwallowedWhileSubmitting() {
+        assertEquals(0, systemBackReachesNavigation(isSubmitting = true))
+        assertEquals(0, backCount)
+    }
+
+    @Test
+    fun systemBackReachesNavigationWhenIdle() {
+        assertEquals(1, systemBackReachesNavigation(isSubmitting = false))
     }
 
     @Test
