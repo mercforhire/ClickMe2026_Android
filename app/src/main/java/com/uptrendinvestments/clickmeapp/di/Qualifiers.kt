@@ -11,3 +11,11 @@ annotation class IoDispatcher
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class ApplicationScope
+
+/**
+ * The `clickme_categories` Preferences DataStore that backs the categories cache. It is a separate file from the
+ * unqualified session store, so it survives logout (D-08).
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class CategoryCache
