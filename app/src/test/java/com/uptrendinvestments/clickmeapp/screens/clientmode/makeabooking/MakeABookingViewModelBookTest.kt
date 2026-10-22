@@ -331,8 +331,10 @@ class MakeABookingViewModelBookTest {
             assertFalse(saved.contains("booking_attempt_id"))
         }
 
+    private val unconfirmed = FieldError.Res(R.string.make_a_booking_error_unconfirmed)
+
     @Test
-    fun aRequestLostWithTheProcessReopensTheRestoredForm() =
+    fun aRequestLostWithTheProcessReopensTheFormBehindACheckYourBookingsNotice() =
         runTest(main.testDispatcher) {
             api.requestBookingHandler = { CompletableDeferred<BookingRequestData>().await() }
             val store = FakeCompletedBookingStore()
@@ -344,16 +346,54 @@ class MakeABookingViewModelBookTest {
             runCurrent()
             val saved = handle.savedSnapshot()
 
-            // The process dies before any response: there is no record, so the form comes back editable.
+            // The process dies before any response: the server may still have created the booking, so the user is
+            // told to check My Bookings rather than being handed a ready-to-book form as if nothing had been sent.
             api.requestBookingHandler = { BookingRequestData(bookingId = "b2") }
             val vm2 = newViewModel(api, saved, clock, store)
             runCurrent()
             val s = vm2.uiState.value
             assertNull(s.completedBookingId)
+            assertEquals(unconfirmed, s.dialogError)
             assertFalse(s.isSubmitting)
             assertTrue(s.topics is TopicsState.Loaded)
             assertEquals(slot20, s.selectedSlotStart)
+            // Handled once: the attempt id is forgotten, so a later restore does not show the notice again.
             assertFalse(saved.contains("booking_attempt_id"))
+            val vm3 = newViewModel(api, saved.savedSnapshot(), clock, store)
+            runCurrent()
+            assertNull(vm3.uiState.value.dialogError)
+
+            // Once dismissed, the form is usable.
+            vm2.dismissError()
+            vm2.book()
+            runCurrent()
+            assertEquals("b2", vm2.uiState.value.completedBookingId)
+        }
+
+    @Test
+    fun anUnreadableRecordIsNotTreatedAsNoBooking() =
+        runTest(main.testDispatcher) {
+            val store = FakeCompletedBookingStore()
+            store.put("a1", "b1")
+            store.unreadable = true
+            val restored = newViewModel(api, SavedStateHandle(mapOf("booking_attempt_id" to "a1")), clock, store)
+            runCurrent()
+            val s = restored.uiState.value
+            assertNull(s.completedBookingId)
+            assertEquals(unconfirmed, s.dialogError)
+            assertFalse(s.isSubmitting)
+        }
+
+    @Test
+    fun aRestoredSlotThatHasStartedDoesNotReplaceTheCheckYourBookingsNotice() =
+        runTest(main.testDispatcher) {
+            val handle =
+                SavedStateHandle(mapOf("booking_attempt_id" to "a1", "booking_slot_start" to slot20.toEpochMilli()))
+            clock.instant = slot20.plusSeconds(60)
+            val restored = newViewModel(api, handle, clock, FakeCompletedBookingStore())
+            runCurrent()
+            assertNull(restored.uiState.value.selectedSlotStart)
+            assertEquals(unconfirmed, restored.uiState.value.dialogError)
         }
 
     @Test
@@ -367,13 +407,15 @@ class MakeABookingViewModelBookTest {
             runCurrent()
             assertNull(fresh.uiState.value.completedBookingId)
             assertFalse(fresh.uiState.value.isSubmitting)
+            assertNull(fresh.uiState.value.dialogError)
 
-            // A restored flow only accepts the record of its own attempt.
+            // A restored flow only accepts the record of its own attempt; its own outcome is unknown, so it says so.
             val restored = newViewModel(api, SavedStateHandle(mapOf("booking_attempt_id" to "another")), clock, store)
             runCurrent()
             assertNull(restored.uiState.value.completedBookingId)
             assertFalse(restored.uiState.value.isSubmitting)
             assertTrue(restored.uiState.value.topics is TopicsState.Loaded)
+            assertEquals(unconfirmed, restored.uiState.value.dialogError)
         }
 
     @Test

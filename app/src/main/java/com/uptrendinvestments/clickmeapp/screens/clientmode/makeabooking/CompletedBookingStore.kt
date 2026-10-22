@@ -35,14 +35,32 @@ interface CompletedBookingStore {
         bookingId: String,
     )
 
-    /** The booking id created by [attemptId], or null when there is none (or it cannot be read). */
-    suspend fun get(attemptId: String): String?
+    /** What is recorded for [attemptId]; a read failure is [CompletedBookingLookup.Unreadable], never "no record". */
+    suspend fun get(attemptId: String): CompletedBookingLookup
 
     /**
      * Forgets [attemptId]'s record if it is still the stored one. Fire and forget: the write must finish even though
      * the calling ViewModel is about to be cleared.
      */
     fun discard(attemptId: String)
+}
+
+/**
+ * The result of [CompletedBookingStore.get]. Only [Found] proves that the attempt created a booking, and neither of the
+ * other two proves that it did not: the process may have died with the request in flight, or the write may have
+ * failed (WR-01).
+ */
+sealed interface CompletedBookingLookup {
+    /** The attempt created [bookingId]. */
+    data class Found(
+        val bookingId: String,
+    ) : CompletedBookingLookup
+
+    /** The store holds no record for the attempt. */
+    data object Absent : CompletedBookingLookup
+
+    /** The store could not be read. */
+    data object Unreadable : CompletedBookingLookup
 }
 
 /**
@@ -68,18 +86,20 @@ class DataStoreCompletedBookingStore
                     it[BOOKING_KEY] = bookingId
                 }
             } catch (_: IOException) {
-                // Best effort: the in-memory and saved-state copies still cover every case except process death.
+                // Best effort: the in-memory and saved-state copies still cover every case except process death, and a
+                // restore that finds no record tells the user to check My Bookings (WR-01).
             }
         }
 
-        override suspend fun get(attemptId: String): String? {
+        override suspend fun get(attemptId: String): CompletedBookingLookup {
             val prefs =
                 try {
                     dataStore.data.first()
                 } catch (_: IOException) {
-                    return null
+                    return CompletedBookingLookup.Unreadable
                 }
-            return if (prefs[ATTEMPT_KEY] == attemptId) prefs[BOOKING_KEY] else null
+            val bookingId = prefs[BOOKING_KEY]?.takeIf { prefs[ATTEMPT_KEY] == attemptId }
+            return bookingId?.let(CompletedBookingLookup::Found) ?: CompletedBookingLookup.Absent
         }
 
         override fun discard(attemptId: String) {

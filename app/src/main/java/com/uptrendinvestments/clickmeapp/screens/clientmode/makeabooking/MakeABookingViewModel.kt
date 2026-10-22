@@ -49,7 +49,7 @@ import java.util.UUID
  *   consumes it. A success that lands after the activity saved its state (the app is in the background) is not in
  *   that saved state, so it is also written to the durable [CompletedBookingStore] under an attempt id that is put
  *   in the saved state before the request is sent (WR-01). A ViewModel restored with that attempt id looks the
- *   record up before it shows the form.
+ *   record up before it shows the form; without a record it shows the form behind a check-My-Bookings notice.
  */
 @HiltViewModel(assistedFactory = MakeABookingViewModel.Factory::class)
 class MakeABookingViewModel
@@ -103,18 +103,31 @@ class MakeABookingViewModel
 
         /**
          * WR-01: the form stays locked while the durable store is read. A recorded success goes on to Request Sent
-         * exactly like a completed id from the saved state; otherwise the attempt is forgotten and the form loads.
+         * exactly like a completed id from the saved state.
+         *
+         * Without a record the outcome is unknown, not "never sent": the process may have died with the request in
+         * flight (the server may still have created the booking), the record may have failed to write, or the store
+         * may be unreadable. The free path has no idempotency key, so the form is not reopened as if nothing had been
+         * sent: it loads behind a notice that asks the user to check My Bookings before booking again, and is usable
+         * once the notice is dismissed. The attempt id is forgotten so the notice is shown only once.
          */
         private fun recoverAttempt(attemptId: String) {
             viewModelScope.launch {
-                val bookingId = completedBookings.get(attemptId)
-                if (bookingId != null) {
-                    savedStateHandle[KEY_COMPLETED_BOOKING_ID] = bookingId
-                    _uiState.update { it.copy(completedBookingId = bookingId) }
-                } else {
-                    savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
-                    _uiState.update { it.copy(isSubmitting = false) }
-                    loadForm()
+                when (val lookup = completedBookings.get(attemptId)) {
+                    is CompletedBookingLookup.Found -> {
+                        savedStateHandle[KEY_COMPLETED_BOOKING_ID] = lookup.bookingId
+                        _uiState.update { it.copy(completedBookingId = lookup.bookingId) }
+                    }
+                    CompletedBookingLookup.Absent, CompletedBookingLookup.Unreadable -> {
+                        savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
+                        _uiState.update {
+                            it.copy(
+                                isSubmitting = false,
+                                dialogError = FieldError.Res(R.string.make_a_booking_error_unconfirmed),
+                            )
+                        }
+                        loadForm()
+                    }
                 }
             }
         }
@@ -431,9 +444,14 @@ class MakeABookingViewModel
             }
         }
 
-        /** IN-09 / WR-02: tells the user that the slot they had picked was dropped because its time has passed. */
+        /**
+         * IN-09 / WR-02: tells the user that the slot they had picked was dropped because its time has passed. A
+         * dialog already on screen is kept, so an unread message (for example the WR-01 check-My-Bookings notice on
+         * a restore whose slot has since started) is never replaced.
+         */
         private fun explainSlotPassed() {
-            _uiState.update { it.copy(dialogError = FieldError.Res(R.string.make_a_booking_error_slot_passed)) }
+            val message = FieldError.Res(R.string.make_a_booking_error_slot_passed)
+            _uiState.update { if (it.dialogError != null) it else it.copy(dialogError = message) }
         }
 
         private fun initialState(key: BookingKey): MakeABookingUiState {
