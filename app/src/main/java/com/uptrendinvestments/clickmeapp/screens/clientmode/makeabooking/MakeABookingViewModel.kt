@@ -141,6 +141,10 @@ class MakeABookingViewModel
          * The body is the D-11 contract: `topic.durationMins` already defaults to 30 (06-04), notes are trimmed
          * and omitted when blank, and [Instant.toString] is ISO 8601 UTC ("2026-10-22T20:00:00Z"), accepted by
          * the backend `z.string().datetime({ offset: true })`.
+         *
+         * Failures are mapped by [toBookingFailure] and shown in one AlertDialog titled "Couldn't book" (the
+         * screen, 06-12). The 422 MEETING_LINK_UNAVAILABLE cannot be prevented up front because Phase 6 keeps
+         * D-08 as written: both meeting types are always offered and `available_meeting_types` is not read.
          */
         fun book() {
             val s = _uiState.value
@@ -170,9 +174,37 @@ class MakeABookingViewModel
                     val result = repository.requestBooking(body)
                     _uiState.update { it.copy(isSubmitting = false, completedBookingId = result.bookingId) }
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(isSubmitting = false) }
+                    handleBookingFailure(e)
                 }
             }
+        }
+
+        /** D-10 mapping with the D-08 meeting reset and the D-09 clear-and-reload side effects. */
+        private fun handleBookingFailure(e: ApiException) {
+            when (val failure = e.toBookingFailure()) {
+                BookingFailure.Silent -> _uiState.update { it.copy(isSubmitting = false) }
+                is BookingFailure.Show -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            dialogError = failure.message,
+                            meetingType = if (failure.resetMeetingType) MeetingType.InAppVoice else it.meetingType,
+                            selectedSlotStart = if (failure.clearSlotAndReload) null else it.selectedSlotStart,
+                        )
+                    }
+                    if (failure.resetMeetingType) savedStateHandle[KEY_MEETING_TYPE] = MeetingType.InAppVoice.wire
+                    if (failure.clearSlotAndReload) {
+                        pendingSlotMillis = null
+                        savedStateHandle.remove<Long>(KEY_SLOT_START)
+                        loadAvailability(_uiState.value.displayedMonth, keepVisible = true)
+                    }
+                }
+            }
+        }
+
+        /** The error dialog's OK, Back and scrim all call this (D-10). */
+        fun dismissError() {
+            _uiState.update { it.copy(dialogError = null) }
         }
 
         /**

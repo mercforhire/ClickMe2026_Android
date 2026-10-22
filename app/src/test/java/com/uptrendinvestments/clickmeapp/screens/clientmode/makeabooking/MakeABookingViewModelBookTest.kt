@@ -207,7 +207,10 @@ class MakeABookingViewModelBookTest {
             val gate = CompletableDeferred<Unit>()
             api.expertAvailabilityHandler = { _, _ ->
                 gate.await()
-                availabilityOf(slotDto("2026-10-22T20:00:00Z", available = false), slotDto("2026-10-22T21:00:00Z"))
+                availabilityOf(
+                    slotDto("2026-10-22T20:00:00Z", available = false),
+                    slotDto("2026-10-22T21:00:00Z"),
+                )
             }
             vm.book()
             runCurrent()
@@ -260,7 +263,11 @@ class MakeABookingViewModelBookTest {
 
     @Test
     fun expertNotBookable() =
-        assertKeepsSlotAndMeeting(422, "EXPERT_NOT_BOOKABLE", FieldError.Res(R.string.make_a_booking_error_not_bookable))
+        assertKeepsSlotAndMeeting(
+            422,
+            "EXPERT_NOT_BOOKABLE",
+            FieldError.Res(R.string.make_a_booking_error_not_bookable),
+        )
 
     @Test
     fun cannotBookSelf() =
