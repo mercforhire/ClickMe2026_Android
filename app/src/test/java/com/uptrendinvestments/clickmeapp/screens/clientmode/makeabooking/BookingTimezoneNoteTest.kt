@@ -36,6 +36,23 @@ class BookingTimezoneNoteTest {
     }
 
     @Test
+    fun aliasOfTheClientZoneGivesSingleZoneNote() {
+        val day = LocalDate.of(2026, 10, 22)
+        assertTrue(timezoneNote(ZoneId.of("Asia/Kolkata"), "Asia/Calcutta", day, Locale.US) is TimezoneNote.Same)
+        assertEquals(
+            TimezoneNote.Same("EDT"),
+            timezoneNote(ZoneId.of("America/New_York"), "US/Eastern", day, Locale.US),
+        )
+        assertTrue(timezoneNote(ZoneId.of("UTC"), "Etc/UTC", day, Locale.US) is TimezoneNote.Same)
+    }
+
+    @Test
+    fun zonesSharingOnlyTodaysOffsetStayDifferent() {
+        val note = timezoneNote(toronto, "America/New_York", LocalDate.of(2026, 10, 22), Locale.US)
+        assertEquals(TimezoneNote.Different("EDT", "New York", "EDT"), note)
+    }
+
+    @Test
     fun missingOrInvalidExpertZoneFallsBackToSingleZoneNote() {
         val day = LocalDate.of(2026, 10, 22)
         val expected = TimezoneNote.Same("EDT")

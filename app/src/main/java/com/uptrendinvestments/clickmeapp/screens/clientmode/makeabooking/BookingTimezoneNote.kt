@@ -24,7 +24,7 @@ sealed interface TimezoneNote {
 
 /**
  * Builds the timezone note for [on], the selected date, so EST/EDT switch correctly. A null, blank or invalid
- * [expertZoneId] yields [TimezoneNote.Same] and never throws. The composable maps [TimezoneNote.Same] to
+ * [expertZoneId] yields [TimezoneNote.Same] and never throws, as does an alias of the client zone ([isSameZone]). The composable maps [TimezoneNote.Same] to
  * `make_a_booking_tz_same` and [TimezoneNote.Different] to `make_a_booking_tz_different`; the raw IANA id is never
  * shown (D-05).
  */
@@ -45,9 +45,19 @@ fun timezoneNote(
             }
         }
     val clientAbbr = zoneAbbreviation(client, on, locale)
-    if (expert == null || expert.id == client.id) return TimezoneNote.Same(clientAbbr)
+    if (expert == null || isSameZone(client, expert)) return TimezoneNote.Same(clientAbbr)
     return TimezoneNote.Different(clientAbbr, zoneCity(expert.id), zoneAbbreviation(expert, on, locale))
 }
+
+/**
+ * True when [a] and [b] are the same zone under different ids: an alias ("Asia/Calcutta" and "Asia/Kolkata",
+ * "US/Eastern" and "America/New_York") or a fixed offset spelled two ways ("UTC" and "Etc/UTC"). Zones that only
+ * share today's offset ("America/Toronto" and "America/New_York") keep their own rules, so they stay different.
+ */
+internal fun isSameZone(
+    a: ZoneId,
+    b: ZoneId,
+): Boolean = a.id == b.id || a.normalized() == b.normalized() || a.rules == b.rules
 
 /** Short platform name of [zone] ("EDT", "PST") as in effect at noon of [on]. */
 fun zoneAbbreviation(
