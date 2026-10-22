@@ -17,6 +17,8 @@ import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -198,5 +200,46 @@ class CategoryStoreTest {
             assertEquals(false, session.hasSeenOnboarding())
             assertEquals(listA, CategoryStore(s.api, s.dataStore, s.clock).fetch())
             assertEquals(1, s.api.categoriesCalls)
+        }
+
+    /** A DataStore whose reads and writes both fail, like a full disk or an I/O error. */
+    private class FailingDataStore : DataStore<Preferences> {
+        var writes = 0
+
+        override val data: Flow<Preferences> = flow { throw IOException("disk read failed") }
+
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+            writes += 1
+            throw IOException("disk full")
+        }
+    }
+
+    @Test
+    fun diskReadAndWriteFailuresStillReturnTheFetchedList() =
+        runTest(main.testDispatcher) {
+            val api = FakeClickMeApi().also { it.categoriesHandler = { CategoriesPayload(listA) } }
+            val dataStore = FailingDataStore()
+            val store = CategoryStore(api, dataStore, MutableClock(start))
+
+            assertEquals(listA, store.fetch())
+            assertEquals(1, api.categoriesCalls)
+            assertEquals(1, dataStore.writes)
+            // The in-memory copy still serves within the TTL even though the disk write failed.
+            assertEquals(listA, store.fetch())
+            assertEquals(1, api.categoriesCalls)
+            assertEquals(listA, store.refresh())
+            assertEquals(2, api.categoriesCalls)
+        }
+
+    @Test
+    fun diskFailureWithNetworkFailureStillThrowsApiException() =
+        runTest(main.testDispatcher) {
+            val api = FakeClickMeApi().also { it.categoriesHandler = { throw IOException("offline") } }
+            val store = CategoryStore(api, FailingDataStore(), MutableClock(start))
+            try {
+                store.fetch()
+                fail("expected ApiException.Network")
+            } catch (_: ApiException.Network) {
+            }
         }
 }

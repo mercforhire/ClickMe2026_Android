@@ -14,6 +14,7 @@ import com.uptrendinvestments.clickmeapp.network.apiCall
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +25,9 @@ import javax.inject.Singleton
  * [fetch] serves the in-memory copy, else the DataStore copy, while either is under [TTL_MS] old, and only
  * then calls the network. [refresh] always calls the network. A failed network call throws the
  * [com.uptrendinvestments.clickmeapp.network.ApiException] and leaves the existing cache untouched, so the
- * caller (the All Categories sheet, D-06) can show Retry and the old list still serves later.
+ * caller (the All Categories sheet, D-06) can show Retry and the old list still serves later. The DataStore copy is
+ * best-effort: a disk read failure counts as a miss and a disk write failure still returns the fetched list, so
+ * cache I/O never surfaces as a non-[com.uptrendinvestments.clickmeapp.network.ApiException] error.
  *
  * Freshness uses the injected wall [Clock] (the fetch time is persisted, so a monotonic clock would be wrong
  * after a reboot). A negative age, from the device clock moving backwards, counts as stale. Cached JSON that
@@ -60,7 +63,13 @@ class CategoryStore
 
         private suspend fun freshCache(): List<CategoryItem>? {
             memory?.let { if (isFresh(memoryFetchedAt)) return it }
-            val prefs = dataStore.data.first()
+            // The disk cache is best-effort: a read failure (full disk, I/O error) is a miss, not a failure.
+            val prefs =
+                try {
+                    dataStore.data.first()
+                } catch (_: IOException) {
+                    return null
+                }
             val fetchedAt = prefs[FETCHED_AT_KEY] ?: return null
             if (!isFresh(fetchedAt)) return null
             val list = prefs[DATA_KEY]?.let { runCatching { adapter.fromJson(it) }.getOrNull() } ?: return null
@@ -72,13 +81,18 @@ class CategoryStore
         private suspend fun fetchAndSave(): List<CategoryItem> {
             val list = apiCall { api.getCategories() }.data.categories
             val now = clock.millis()
-            val json = adapter.toJson(list)
-            dataStore.edit {
-                it[DATA_KEY] = json
-                it[FETCHED_AT_KEY] = now
-            }
             memory = list
             memoryFetchedAt = now
+            // A failed cache write must not throw away the list that was just downloaded.
+            try {
+                val json = adapter.toJson(list)
+                dataStore.edit {
+                    it[DATA_KEY] = json
+                    it[FETCHED_AT_KEY] = now
+                }
+            } catch (_: IOException) {
+                // Best-effort: the in-memory copy still serves this process.
+            }
             return list
         }
 
