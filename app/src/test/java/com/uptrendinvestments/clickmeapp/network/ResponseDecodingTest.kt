@@ -8,14 +8,20 @@ import com.uptrendinvestments.clickmeapp.model.requests.RefreshTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.CategoryItem
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaginationMeta
+import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RefreshTokenData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
@@ -26,6 +32,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 
 class ResponseDecodingTest {
     private val moshi = MoshiProvider.moshi
@@ -346,5 +353,164 @@ class ResponseDecodingTest {
                 .adapter(ExpertiseTagsPayload::class.java)
                 .fromJson("""{"tags":[{"id":"u1","label":"Tax","category_id":"c1"}]}""")!!
         assertEquals("u1", tags.tags.single().id)
+    }
+
+    @Test
+    fun clientHomeDecodesFeaturedFreeTopicAndLenientExperts() {
+        val json =
+            """
+            {"status":"success","data":{
+            "trending_categories":[{"id":"ai","name":"AI","icon_name":"cpu","color_accent":null}],
+            "recommended_experts":[{"expert_id":"e1","full_name":"Ada Lovelace","title":"Engineer",
+              "profile_image_url":"https://x/a.jpg","rating":4.5,"review_count":12,"years_experience":7,
+              "expertise_tags":["AI","Math"],"is_favorite":false}],
+            "featured_topics":[
+              {"topic_id":"t1","title":"Intro to ML","duration_mins":30,
+               "hourly_rate":{"amount":5000,"currency":"CAD"},"is_free":false,
+               "expert":{"expert_id":"e1","full_name":"Ada Lovelace","profile_image_url":null},
+               "rating":4.5,"is_favorite":false},
+              {"topic_id":"t2","title":"Free chat","duration_mins":15,
+               "hourly_rate":{"amount":null,"currency":null},"is_free":true,
+               "expert":{"expert_id":"e2","full_name":null,"profile_image_url":null},"rating":0.0}]}}
+            """.trimIndent()
+        val data = envelope(ClientHomeData::class.java).fromJson(json)!!.data
+        assertEquals("ai", data.trendingCategories.single().id)
+        assertEquals("cpu", data.trendingCategories.single().iconName)
+        assertNull(data.trendingCategories.single().colorAccent)
+        val expert = data.recommendedExperts.single()
+        assertEquals("e1", expert.expertId)
+        assertEquals(4.5, expert.rating!!, 0.0)
+        assertEquals(12, expert.reviewCount)
+        assertEquals(listOf("AI", "Math"), expert.expertiseTags)
+        val topics = data.featuredTopics!!
+        assertEquals(5000L, topics[0].hourlyRate!!.amount)
+        assertEquals("CAD", topics[0].hourlyRate!!.currency)
+        assertEquals(false, topics[0].isFree)
+        assertEquals(true, topics[1].isFree)
+        assertNull(topics[1].hourlyRate!!.amount)
+        assertNull(topics[1].hourlyRate!!.currency)
+        assertNull(topics[1].expert.fullName)
+    }
+
+    @Test
+    fun clientHomeWithoutFeaturedTopicsDecodesNullAndSparseExpert() {
+        val json = """{"trending_categories":[],"recommended_experts":[{"expert_id":"e9"}]}"""
+        val data = moshi.adapter(ClientHomeData::class.java).fromJson(json)!!
+        assertNull(data.featuredTopics)
+        val expert = data.recommendedExperts.single()
+        assertEquals("e9", expert.expertId)
+        assertNull(expert.rating)
+        assertNull(expert.reviewCount)
+        assertNull(expert.title)
+        assertNull(expert.expertiseTags)
+    }
+
+    @Test
+    fun categoriesDecodeAndRoundTrip() {
+        val json =
+            """{"categories":[{"id":"ai","name":"AI","icon_name":"cpu","color_accent":null,"description":null}]}"""
+        val payload = moshi.adapter(CategoriesPayload::class.java).fromJson(json)!!
+        val item = payload.categories.single()
+        assertEquals("ai", item.id)
+        assertEquals("AI", item.name)
+        assertEquals("cpu", item.iconName)
+        assertNull(item.colorAccent)
+        assertNull(item.description)
+
+        val listAdapter =
+            moshi.adapter<List<CategoryItem>>(Types.newParameterizedType(List::class.java, CategoryItem::class.java))
+        assertEquals(payload.categories, listAdapter.fromJson(listAdapter.toJson(payload.categories)))
+    }
+
+    private val detailsJson =
+        """
+        {"is_favorite":false,"is_bookable":false,"available_meeting_types":["in_app_voice"],
+        "profile":{"name":"Ada Lovelace","title":null,"bio":"Hi",
+          "stats":{"experience_years":null,"total_bookings":3,"avg_response_time":null}},
+        "topics_of_discussion":[
+          {"id":"t1","title":"Intro","duration_mins":30,"description":null,"icon_slug":null,
+           "price":{"amount":null,"currency":null,"is_free":true},"expertise_tags":[]},
+          {"id":"t2","title":"Deep dive","duration_mins":60,"description":"Long","icon_slug":null,
+           "price":{"amount":5000,"currency":"USD","is_free":false},"expertise_tags":[]}]}
+        """.trimIndent()
+
+    @Test
+    fun expertDetailsDecodesFreeAndPaidTopics() {
+        val data = moshi.adapter(PublicProfileDetailsData::class.java).fromJson(detailsJson)!!
+        assertEquals(false, data.isBookable)
+        assertEquals(listOf("in_app_voice"), data.availableMeetingTypes)
+        assertEquals("Ada Lovelace", data.profile.name)
+        assertNull(data.profile.title)
+        assertNull(data.profile.stats.experienceYears)
+        assertEquals(3, data.profile.stats.totalBookings)
+        val (free, paid) = data.topicsOfDiscussion
+        assertTrue(free.price.isFree)
+        assertNull(free.price.amount)
+        assertFalse(paid.price.isFree)
+        assertEquals(5000L, paid.price.amount)
+        assertEquals("USD", paid.price.currency)
+        assertEquals(60, paid.durationMins)
+    }
+
+    @Test
+    fun expertDetailsWithoutIsBookableDecodesNull() {
+        val json = """{"profile":{"name":"Ada"},"topics_of_discussion":[]}"""
+        val data = moshi.adapter(PublicProfileDetailsData::class.java).fromJson(json)!!
+        assertNull(data.isBookable)
+        assertNull(data.availableMeetingTypes)
+        assertEquals(0, data.profile.stats.totalBookings)
+    }
+
+    @Test
+    fun expertReviewsDecodeNullRatingAndEmptyList() {
+        val json =
+            """
+            {"summary":{"expert_id":"e1","overall_rating":null,"total_reviews":0,"rating_distribution":{"1":0}},
+            "reviews":[],"pagination":{"current_page":1,"total_pages":0,"has_more":false}}
+            """.trimIndent()
+        val data = moshi.adapter(ExpertReviewsPayload::class.java).fromJson(json)!!
+        assertNull(data.summary.overallRating)
+        assertEquals(0, data.summary.totalReviews)
+        assertTrue(data.reviews.isEmpty())
+        assertFalse(data.pagination!!.hasMoreOrDerived)
+    }
+
+    @Test
+    fun expertReviewsDecodeOneReviewWithNullReviewerName() {
+        val json =
+            """
+            {"summary":{"expert_id":"e1","overall_rating":4.8,"total_reviews":1},
+            "reviews":[{"id":"r1","reviewer":{"name":null,"avatar_url":null},
+              "session_context":{"topic":"Intro","date":"2026-10-01T15:00:00.000000Z","date_label":"Oct 1"},
+              "rating":5,"comment":"Great","created_at":"2026-10-02T10:00:00.123456Z","verified_booking":true}],
+            "pagination":{"current_page":1,"total_pages":1,"has_more":false}}
+            """.trimIndent()
+        val data = moshi.adapter(ExpertReviewsPayload::class.java).fromJson(json)!!
+        assertEquals(4.8, data.summary.overallRating!!, 0.0)
+        assertEquals(1, data.summary.totalReviews)
+        val review = data.reviews.single()
+        assertEquals("r1", review.id)
+        assertNull(review.reviewer.name)
+        assertEquals(5, review.rating)
+        assertEquals("Great", review.comment)
+    }
+
+    @Test
+    fun clientBookingsDecodeInstantsAndIgnoreUnknownKeys() {
+        val json =
+            """
+            {"bookings":[{"booking_id":"b1","expert":{"id":"e1","full_name":"Ada Lovelace","avatar_url":null},
+              "topic":null,"start_time":"2026-10-21T19:00:00.000000Z","end_time":"2026-10-21T20:00:00.000000Z",
+              "meeting_type":"in_app_voice","status":"confirmed","private_note_preview":null,"reschedule":null}],
+            "pagination":{"current_page":1,"total_pages":1,"total_count":1}}
+            """.trimIndent()
+        val data = moshi.adapter(ClientBookingsPayload::class.java).fromJson(json)!!
+        val booking = data.bookings.single()
+        assertEquals("b1", booking.bookingId)
+        assertEquals("e1", booking.expert.id)
+        assertEquals(Instant.parse("2026-10-21T19:00:00Z"), booking.startTime)
+        assertEquals(Instant.parse("2026-10-21T20:00:00Z"), booking.endTime)
+        assertEquals("confirmed", booking.status)
+        assertNull(booking.topic)
     }
 }
