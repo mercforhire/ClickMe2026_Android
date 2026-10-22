@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import androidx.annotation.StringRes
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.TopicOfDiscussionDto
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -67,7 +69,8 @@ enum class BookDisabledReason { NoTopic, PaidTopic, NoSlot }
  * and the slot grouping were derived from; every formatter must use it (never `ZoneId.systemDefault()` directly), so
  * labels and grouping always agree after a zone change. [meetingType] defaults to In-app
  * Voice (D-08); both meeting types are always offered. The expert fields come from `BookingKey` and have no
- * loading state.
+ * loading state. [dialogTitle] titles the [dialogError] dialog: "Couldn't book" for a booking that failed, and a
+ * neutral title for a notice where no booking was attempted (WR-02).
  */
 data class MakeABookingUiState(
     val expertId: String,
@@ -88,6 +91,7 @@ data class MakeABookingUiState(
     val notes: String = "",
     val isSubmitting: Boolean = false,
     val dialogError: FieldError? = null,
+    @StringRes val dialogTitle: Int = R.string.make_a_booking_error_title,
     val completedBookingId: String? = null,
 ) {
     /** The loaded topics, or empty while loading or failed. */

@@ -91,6 +91,7 @@ class MakeABookingScreenTest {
         selectedTopicId: String = "t1",
         isSubmitting: Boolean = false,
         dialogError: FieldError? = null,
+        dialogTitle: Int = R.string.make_a_booking_error_title,
     ): MakeABookingUiState {
         val topics =
             listOf(
@@ -119,6 +120,7 @@ class MakeABookingScreenTest {
             meetingType = MeetingType.InAppVoice,
             isSubmitting = isSubmitting,
             dialogError = dialogError,
+            dialogTitle = dialogTitle,
         )
     }
 
@@ -224,6 +226,20 @@ class MakeABookingScreenTest {
         composeRule.onNodeWithText("OK").performClick()
 
         assertEquals(1, dismissCount)
+    }
+
+    @Test
+    fun aSlotPassedNoticeHasANeutralTitle() {
+        setContent(
+            loadedState(
+                dialogError = FieldError.Res(R.string.make_a_booking_error_slot_passed),
+                dialogTitle = R.string.make_a_booking_notice_slot_passed_title,
+            ),
+        )
+
+        composeRule.onNodeWithText("Time slot unavailable").assertExists()
+        composeRule.onNodeWithText("That time has passed. Please pick another.").assertExists()
+        composeRule.onNodeWithText("Couldn't book").assertDoesNotExist()
     }
 
     @Test

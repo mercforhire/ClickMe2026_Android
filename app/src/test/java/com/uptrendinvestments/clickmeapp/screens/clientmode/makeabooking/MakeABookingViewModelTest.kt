@@ -523,6 +523,7 @@ class MakeABookingViewModelTest {
             // The held slot is no longer on the selected day in the new zone, so it is dropped, and explained (WR-02).
             assertNull(s.selectedSlotStart)
             assertEquals(FieldError.Res(R.string.make_a_booking_error_slot_passed), s.dialogError)
+            assertEquals(R.string.make_a_booking_notice_slot_passed_title, s.dialogTitle)
         }
 
     @Test

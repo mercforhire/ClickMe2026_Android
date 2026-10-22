@@ -454,6 +454,7 @@ class MakeABookingViewModelBookTest {
             assertFalse(vm.uiState.value.isSubmitting)
             // IN-09: the user is told why the selection disappeared.
             assertEquals(FieldError.Res(R.string.make_a_booking_error_slot_passed), vm.uiState.value.dialogError)
+            assertEquals(R.string.make_a_booking_notice_slot_passed_title, vm.uiState.value.dialogTitle)
             vm.dismissError()
             assertNull(vm.uiState.value.dialogError)
             // The other slot is untouched and still bookable.
@@ -461,9 +462,15 @@ class MakeABookingViewModelBookTest {
             assertEquals(slot21, vm.uiState.value.selectedSlotStart)
         }
 
-    // ---- WR-02: a slot that time moved past is cleared and explained wherever it is noticed ----
+    // ---- WR-02: a slot that time moved past is cleared; resume and Book Now explain it, a tap does not ----
 
     private val slotPassed = FieldError.Res(R.string.make_a_booking_error_slot_passed)
+
+    /** The notice is titled neutrally: no booking was attempted, so it must not say "Couldn't book". */
+    private fun assertSlotPassedNotice(s: MakeABookingUiState) {
+        assertEquals(slotPassed, s.dialogError)
+        assertEquals(R.string.make_a_booking_notice_slot_passed_title, s.dialogTitle)
+    }
 
     @Test
     fun aResumeAfterTheSlotStartedClearsItAndSaysWhy() =
@@ -479,7 +486,7 @@ class MakeABookingViewModelBookTest {
             // Not stranded as selected with Book Now disabled: cleared, and the user is told why.
             assertNull(s.selectedSlotStart)
             assertFalse(handle.contains("booking_slot_start"))
-            assertEquals(slotPassed, s.dialogError)
+            assertSlotPassedNotice(s)
             assertEquals(BookDisabledReason.NoSlot, s.bookDisabledReason)
             vm.dismissError()
             vm.selectSlot(slot21)
@@ -510,7 +517,7 @@ class MakeABookingViewModelBookTest {
             assertFalse(s.isSubmitting)
             assertEquals(LocalDate.of(2026, 10, 23), s.selectedDate)
             assertNull(s.selectedSlotStart)
-            assertEquals(slotPassed, s.dialogError)
+            assertSlotPassedNotice(s)
         }
 
     @Test
@@ -531,7 +538,7 @@ class MakeABookingViewModelBookTest {
             assertEquals(0, api.requestBookingCalls)
             assertFalse(s.isSubmitting)
             assertNull(s.selectedSlotStart)
-            assertEquals(slotPassed, s.dialogError)
+            assertSlotPassedNotice(s)
         }
 
     @Test
@@ -544,7 +551,7 @@ class MakeABookingViewModelBookTest {
             TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"))
             vm.refreshClock()
             assertNull(vm.uiState.value.selectedSlotStart)
-            assertEquals(slotPassed, vm.uiState.value.dialogError)
+            assertSlotPassedNotice(vm.uiState.value)
         }
 
     @Test
@@ -570,7 +577,88 @@ class MakeABookingViewModelBookTest {
             val vm2 = newViewModel(api, handle, clock)
             runCurrent()
             assertNull(vm2.uiState.value.selectedSlotStart)
-            assertEquals(slotPassed, vm2.uiState.value.dialogError)
+            assertSlotPassedNotice(vm2.uiState.value)
+        }
+
+    @Test
+    fun aSlotTapAfterTheHeldSlotStartedReplacesItSilently() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            clock.instant = slot20.plusSeconds(60)
+            vm.selectSlot(slot21)
+            // The tap is the new choice: no dialog over the slot the user just picked.
+            assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+            assertNull(vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aDateTapAfterTheHeldSlotStartedClearsItSilently() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = newViewModel(api, handle, clock)
+            runCurrent()
+            vm.selectSlot(slot20)
+            clock.instant = slot20.plusSeconds(60)
+            vm.selectDate(LocalDate.of(2026, 10, 24))
+            assertEquals(LocalDate.of(2026, 10, 24), vm.uiState.value.selectedDate)
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertFalse(handle.contains("booking_slot_start"))
+            assertNull(vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aMonthTapAfterTheHeldSlotStartedClearsItSilently() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            clock.instant = slot20.plusSeconds(60)
+            vm.goToNextMonth()
+            runCurrent()
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertNull(vm.uiState.value.dialogError)
+            vm.goToPreviousMonth()
+            runCurrent()
+            assertNull(vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aTapThatRegroupsAfterAZoneChangeDropsAPassedSlotSilently() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            // 20:01Z is still 2026-10-22 in Vancouver: the zone regroup itself drops the started slot.
+            clock.instant = slot20.plusSeconds(60)
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Vancouver"))
+            vm.selectSlot(slot21)
+            assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+            assertNull(vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aResumeAfterAZoneChangeDropsAPassedSlotWithOneNotice() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            clock.instant = slot20.plusSeconds(60)
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Vancouver"))
+            vm.refreshClock()
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertSlotPassedNotice(vm.uiState.value)
+        }
+
+    @Test
+    fun aBookingFailureIsTitledCouldNotBookEvenAfterANotice() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            clock.instant = slot20.plusSeconds(60)
+            vm.refreshClock()
+            assertSlotPassedNotice(vm.uiState.value)
+            vm.dismissError()
+            assertEquals(R.string.make_a_booking_error_title, vm.uiState.value.dialogTitle)
+
+            api.requestBookingHandler = { throw IOException("offline") }
+            vm.selectSlot(slot21)
+            vm.book()
+            runCurrent()
+            assertEquals(FieldError.Res(R.string.login_error_network), vm.uiState.value.dialogError)
+            assertEquals(R.string.make_a_booking_error_title, vm.uiState.value.dialogTitle)
         }
 
     // ---- Task 2: error handling ----
