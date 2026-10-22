@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 UI-SPEC approved
+stopped_at: Phase 6 execution complete (06-14), pending deferred device checks and verification
 last_updated: "2026-10-22T18:45:50.731Z"
 last_activity: 2026-10-22 -- Phase 06 execution started
 progress:
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 ## Current Position
 
-Phase: 06 (booking-flow-free-bookings) — EXECUTING
+Phase: 06 (booking-flow-free-bookings) — EXECUTION COMPLETE (pending deferred device checks and verification)
 Plan: 2 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 -- Phase 06 execution started
@@ -81,6 +81,10 @@ Recent decisions affecting current work:
 - [Phase 6 hand-off] BookingKey(expertId, expertName, expertTitle, expertImageUrl) and its stub body are in screens/clientmode/makeabooking; Phase 6 replaces MakeABookingStubScreen's body, not the key or the shell entry. Recommended Experts does not exclude the caller (home_feed), so a multi-role tester can open their own profile and Book: map 422 CANNOT_BOOK_SELF in the Phase 6 booking flow. Money.format (util/Money.kt) is the shared formatter for Phases 6, 7, 11, 14.
 - [Phase 8/9 hand-off] Today's Sessions cards on Explore are inert (D-01): Phase 8 wires the card tap to Upcoming Booking Details (ExploreTodaysSessionsSection). Join Call is always disabled (D-02): Phase 9 finds "// PHASE-9: join window + click (D-02)" and test tag todays_session_join, adds the join window, the click and the STARTING NOW badge. ClientBookingsRepository and ClientBookingItem (screens/clientmode/mybookings, model/responses/ClientBookingsPayload.kt) are the base for My Bookings.
 - Report to the iOS side (found while porting Phase 5): Expert Profile fails silently on a 404 (suspended/deleted experts) and on network errors; empty Expertise/Topics/Reviews render blank headers and zero reviews shows "—"; featured topic cards ignore is_free; prices divide every currency by 100 (JPY shows 1/100 of the price) and drop decimals on whole amounts; Today's Sessions times use a fixed en_US "h:mm a".
+- [Phase 7 hand-off] Replace the `BookDisabledReason.PaidTopic` branch (MakeABookingBookButton note + the `!topic.isFree` early return in MakeABookingViewModel.book()) with the paid flow at the same footprint; add bookingAttemptId regeneration on topic and slot change (iOS); decide whether to keep the D-02 first-free default or revert to first; add the payment-lifecycle card to Request Sent for `BookingRequestSentDetails.isFree == false`.
+- [Phase 8 hand-off] `ClientBookingDetail` (model/responses) and `ClientBookingsRepository.detail(id)` are the base for Upcoming Booking Details; "View My Bookings" already selects `ClientBookingsRoot`, which is still the placeholder.
+- [Backend notes] `POST /bookings/request` trusts the client `duration_minutes` and does not reject a past `scheduled_start` (Android guards both on the client); `/experts/:id/details` already returns `available_meeting_types` (D-08's premise is stale; Phase 6 kept D-08 as written by user decision; a pre-filter is a later option); `/experts/:id/availability` accepts `topic_id` (Android's API method has the parameter and passes null).
+- [iOS follow-ups found while porting Phase 6] Request Sent is pushed on top of the booking form (re-submittable); a month change does not cancel the previous availability load (stale overwrite race); the slots card shows the raw IANA zone id; slot times are fixed to h:mm a; the Request Sent loading copy says "Sending your booking…" after the request was already sent.
 
 ### Blockers/Concerns
 
@@ -113,6 +117,11 @@ Recent decisions affecting current work:
   - [ ] SC-2 Category cache: open View all once online (GET /categories), force-stop, relaunch in airplane mode, open View all: the list shows from cache (no error). Optional: set the device date 8 days ahead and confirm a refetch.
   - [ ] SC-3 Expert Profile: tap an expert card -> hero (static glow, ring, no online dot), stats, Book Session, About, Expertise, Topics (Free in green, prices with full decimals), up to 3 reviews; empty sections absent; open from a Featured Topic -> hero fills in; Book Session -> "Book a Session" stub without the bottom bar; Back returns. A suspended or deleted expert id (backend agent) shows "This profile isn't available".
   - [ ] Visual and accessibility: 200% font scale on Explore, the sheet and the profile (cards grow, nothing clips); sheet search with the IME; pull-to-refresh feel; skeleton-to-content transitions on a slow network; release build smoke after the Phase 2 keystore exists.
+- [Phase 6] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (1288 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F with the devDebug build against production, logged in as a client, with the iOS app signed in as the expert.
+  - [ ] SC-1 Booking form: Expert Profile -> Book Session -> pick a topic in the sheet (paid topics listed with prices; a paid topic disables Book Now with the coming-soon note), a day (past days and earlier months blocked; dots on open days), a slot, a meeting type and notes (500 cap, counter, keyboard does not cover Book Now).
+  - [ ] SC-2 Cross-timezone: set the iOS expert's timezone different from the device (for example Pacific/Auckland) with slots near midnight at month edges; Android shows each slot under the correct local date with no duplicates across neighbor months, the timezone note names the expert city and abbreviation, held slots (hold one from iOS) are dimmed and not selectable.
+  - [ ] SC-3 Free booking: book a free topic -> Request Sent loads the details ("Awaiting Approval"), the iOS expert receives the booking_request push and sees the request; Back from Request Sent lands on Expert Profile; View My Bookings selects the Bookings tab; Back to Home returns to Explore; a Skype/Zoom booking with an expert who has no link shows the D-08 alert and snaps back to In-app Voice; a slot taken from another account shows the D-09 alert and the slot turns dimmed.
+  - [ ] Visual and system: 200% font scale on both screens (06-10); rotation and "Don't keep activities" keep the topic, day, month, slot, meeting type and notes (confirms SavedStateHandle with assisted injection at runtime, research A1) and do not replay the Request Sent animation; animations off shows the final state at once (06-10, A2); system Back during an in-flight booking is ignored (06-12, BackHandler not JVM-tested); the topic sheet open state survives rotation (06-12, rememberSaveable not JVM-tested); prodRelease R8 smoke on a device (T-06-45, needs the deferred Phase 2 keystore).
 
 ## Deferred Items
 
