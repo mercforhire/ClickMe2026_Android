@@ -224,8 +224,10 @@ private fun ExploreUiState.withHome(
 
 /**
  * A refresh with data on screen keeps it and raises [ExploreUiState.refreshFailed]; sections that were not loaded
- * still show the error. Otherwise every section gets the error (D-16). The experts section is left to its own
- * request when the selection changed while this one was in flight.
+ * still show the error. Otherwise every section still waiting on this request gets the error (D-16). A section that
+ * is Loaded now is always kept: on a non-refresh load every section started as Loading, so a Loaded one was filled by
+ * a concurrent experts request (an Apply during the initial load) and must not be replaced by this failure. The
+ * experts section is left to its own request when the selection changed while this one was in flight.
  */
 private fun ExploreUiState.withHomeFailure(
     message: FieldError,
@@ -233,7 +235,7 @@ private fun ExploreUiState.withHomeFailure(
     selectionUnchanged: Boolean,
 ): ExploreUiState {
     fun <T> SectionState<T>.orError(): SectionState<T> =
-        if (keepData && this is SectionState.Loaded) this else SectionState.Error(message)
+        if (this is SectionState.Loaded) this else SectionState.Error(message)
     return copy(
         categories = categories.orError(),
         featuredTopics = featuredTopics.orError(),

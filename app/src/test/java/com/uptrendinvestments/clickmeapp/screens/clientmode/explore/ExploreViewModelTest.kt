@@ -366,6 +366,37 @@ class ExploreViewModelTest {
         }
 
     @Test
+    fun failedInitialHomeKeepsSectionsAConcurrentApplyAlreadyFilled() =
+        runTest {
+            stubDefaults()
+            val gate = CompletableDeferred<Unit>()
+            api.clientHomeHandler = { category ->
+                if (category == null) {
+                    gate.await()
+                    throw IOException("offline")
+                } else {
+                    home(experts = listOf(expert("filtered")))
+                }
+            }
+            val vm = viewModel()
+            runCurrent()
+            // Apply while the initial home request is still in flight; the experts request wins the race.
+            vm.applySelection(setOf("ai"))
+            runCurrent()
+            assertTrue(vm.uiState.value.categories is SectionState.Loaded)
+            assertTrue(vm.uiState.value.featuredTopics is SectionState.Loaded)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertTrue(state.categories is SectionState.Loaded)
+            assertTrue(state.featuredTopics is SectionState.Loaded)
+            assertEquals(listOf("filtered"), (state.experts as SectionState.Loaded).data.map { it.expertId })
+            assertFalse(state.refreshFailed)
+        }
+
+    @Test
     fun refreshReloadsHomeAndBookingsAndTracksInFlight() =
         runTest {
             stubDefaults()
