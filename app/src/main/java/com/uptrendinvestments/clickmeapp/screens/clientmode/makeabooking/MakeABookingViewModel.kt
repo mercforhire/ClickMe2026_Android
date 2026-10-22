@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
@@ -71,6 +72,10 @@ class MakeABookingViewModel
         private var topicsJob: Job? = null
         private var availabilityJob: Job? = null
 
+        /** The raw days of the last applied availability load, kept so a zone change can regroup without a request. */
+        private var loadedDays: List<AvailabilityDayDto> = emptyList()
+        private var loadedExpertTimezone: String? = null
+
         init {
             // A restored completed booking navigates straight to Request Sent, so there is nothing to load.
             if (_uiState.value.completedBookingId == null) {
@@ -94,11 +99,15 @@ class MakeABookingViewModel
 
         /** D-06: ignored on the current month. Clears the slot, keeps the day (D-07). */
         fun goToPreviousMonth() {
+            refreshClock()
             if (!_uiState.value.canGoToPreviousMonth) return
             moveToMonth(_uiState.value.displayedMonth.minusMonths(1))
         }
 
-        fun goToNextMonth() = moveToMonth(_uiState.value.displayedMonth.plusMonths(1))
+        fun goToNextMonth() {
+            refreshClock()
+            moveToMonth(_uiState.value.displayedMonth.plusMonths(1))
+        }
 
         private fun moveToMonth(month: YearMonth) {
             _uiState.update { it.copy(displayedMonth = month, now = clock.instant()) }
@@ -109,6 +118,7 @@ class MakeABookingViewModel
 
         /** D-06: past days are ignored. The month does not change; the slot is cleared. */
         fun selectDate(date: LocalDate) {
+            refreshClock()
             if (isPastDay(date, _uiState.value.today)) return
             _uiState.update { it.copy(selectedDate = date, now = clock.instant()) }
             savedStateHandle[KEY_SELECTED_DATE] = date.toString()
@@ -117,6 +127,7 @@ class MakeABookingViewModel
 
         /** D-04: only an available slot that starts after now can be chosen. */
         fun selectSlot(start: Instant) {
+            refreshClock()
             val now = clock.instant()
             val slot = _uiState.value.slotsForSelectedDate.firstOrNull { it.start == start }
             if (slot == null || !slot.isSelectable(now)) return
@@ -138,9 +149,11 @@ class MakeABookingViewModel
 
         /**
          * Port of iOS `book()` + `performFreeBooking`, free topics only (BOOK-03). A tap while a request is in
-         * flight, or after one has succeeded, is ignored (D-11 single flight), and a paid topic never reaches the API: the paid path is
-         * Phase 7 (D-01), so there is no payment-methods gate here either. A slot that is no longer after now is
-         * cleared instead of sent, because the server does not reject a past `scheduled_start`.
+         * flight, or after one has succeeded, is ignored (D-11 single flight), and a paid topic never reaches the
+         * API: the paid path is Phase 7 (D-01), so there is no payment-methods gate here either. A slot that is no
+         * longer after now is cleared instead of sent, because the server does not reject a past `scheduled_start`.
+         * The clock and zone are refreshed first (WR-03), and the request's `timezone` is the zone the slots were
+         * grouped in.
          *
          * The body is the D-11 contract: `topic.durationMins` already defaults to 30 (06-04), notes are trimmed
          * and omitted when blank, and [Instant.toString] is ISO 8601 UTC ("2026-10-22T20:00:00Z"), accepted by
@@ -151,8 +164,9 @@ class MakeABookingViewModel
          * D-08 as written: both meeting types are always offered and `available_meeting_types` is not read.
          */
         fun book() {
+            if (_uiState.value.isSubmitting) return
+            refreshClock()
             val s = _uiState.value
-            if (s.isSubmitting) return
             val topic = s.selectedTopic ?: return
             if (!topic.isFree) return
             val slot = s.selectedSlot ?: return
@@ -170,7 +184,7 @@ class MakeABookingViewModel
                     scheduledStart = slot.start.toString(),
                     durationMinutes = topic.durationMins,
                     meetingType = s.meetingType.wire,
-                    timezone = ZoneId.systemDefault().id,
+                    timezone = s.zone.id,
                     clientNotes = s.notes.trim().ifEmpty { null },
                 )
             viewModelScope.launch {
@@ -255,8 +269,9 @@ class MakeABookingViewModel
                             }
                         if (_uiState.value.displayedMonth != month) return@launch
                         val days = listOfNotNull(previous, center, next).flatMap { it.days }
-                        val grouped = groupSlots(days, ZoneId.systemDefault())
-                        applyAvailability(grouped, center.expertTimezone)
+                        loadedDays = days
+                        loadedExpertTimezone = center.expertTimezone
+                        applyAvailability(groupSlots(days, _uiState.value.zone), center.expertTimezone)
                     } catch (e: ApiException) {
                         if (_uiState.value.displayedMonth == month) {
                             _uiState.update { it.copy(availability = AvailabilityState.Failed(e.toSectionMessage())) }
@@ -309,9 +324,47 @@ class MakeABookingViewModel
             }
         }
 
+        /**
+         * Re-derives the viewer's zone and `today` (WR-03). The screen calls this on every resume and the
+         * ViewModel at the start of each date, month, slot and book action, so a screen left open past midnight or
+         * across a zone change (travel, or the user changing the setting) never keeps yesterday selectable (D-06)
+         * nor labels slots in one zone while grouping them in another. A selected day that is now past moves to
+         * today and a past month to the current one (clearing the slot, as any day or month change does); a new
+         * zone regroups the slots already loaded, without a request. Ignored while a booking is in flight.
+         */
+        fun refreshClock() {
+            val s = _uiState.value
+            if (s.isSubmitting) return
+            val zone = ZoneId.systemDefault()
+            val now = clock.instant()
+            val today = LocalDate.now(clock.withZone(zone))
+            if (zone == s.zone && today == s.today) {
+                _uiState.update { it.copy(now = now) }
+                return
+            }
+            val currentMonth = YearMonth.from(today)
+            val date = if (isPastDay(s.selectedDate, today)) today else s.selectedDate
+            val month = if (s.displayedMonth.isBefore(currentMonth)) currentMonth else s.displayedMonth
+            _uiState.update {
+                it.copy(zone = zone, today = today, now = now, selectedDate = date, displayedMonth = month)
+            }
+            if (date != s.selectedDate) {
+                savedStateHandle[KEY_SELECTED_DATE] = date.toString()
+                clearSlot()
+            }
+            if (month != s.displayedMonth) {
+                savedStateHandle[KEY_DISPLAYED_MONTH] = month.toString()
+                clearSlot()
+                loadAvailability(month, keepVisible = false)
+            } else if (zone != s.zone && s.availability is AvailabilityState.Loaded) {
+                applyAvailability(groupSlots(loadedDays, zone), loadedExpertTimezone)
+            }
+        }
+
         private fun initialState(key: BookingKey): MakeABookingUiState {
             val now = clock.instant()
-            val today = LocalDate.now(clock.withZone(ZoneId.systemDefault()))
+            val zone = ZoneId.systemDefault()
+            val today = LocalDate.now(clock.withZone(zone))
             val date =
                 savedStateHandle
                     .get<String>(KEY_SELECTED_DATE)
@@ -331,6 +384,7 @@ class MakeABookingViewModel
                 expertName = key.expertName,
                 expertTitle = key.expertTitle,
                 expertImageUrl = key.expertImageUrl,
+                zone = zone,
                 today = today,
                 now = now,
                 selectedDate = date,

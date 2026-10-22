@@ -7,6 +7,7 @@ import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 
 /** D-11: a topic without a `duration_mins` is booked as a 30 minute session. */
 const val DEFAULT_DURATION_MINS = 30
@@ -62,7 +63,9 @@ enum class BookDisabledReason { NoTopic, PaidTopic, NoSlot }
  * Everything the Make a Booking screen renders, plus the rules derived from it.
  *
  * [now] is stamped by the ViewModel from the injected Clock on every load and user action, so past-slot
- * dimming (D-04) and the open-day dots (D-03) are deterministic in tests. [meetingType] defaults to In-app
+ * dimming (D-04) and the open-day dots (D-03) are deterministic in tests. [zone] is the viewer's zone that [today]
+ * and the slot grouping were derived from; every formatter must use it (never `ZoneId.systemDefault()` directly), so
+ * labels and grouping always agree after a zone change. [meetingType] defaults to In-app
  * Voice (D-08); both meeting types are always offered. The expert fields come from `BookingKey` and have no
  * loading state.
  */
@@ -71,6 +74,7 @@ data class MakeABookingUiState(
     val expertName: String,
     val expertTitle: String,
     val expertImageUrl: String?,
+    val zone: ZoneId,
     val today: LocalDate,
     val now: Instant,
     val selectedDate: LocalDate,

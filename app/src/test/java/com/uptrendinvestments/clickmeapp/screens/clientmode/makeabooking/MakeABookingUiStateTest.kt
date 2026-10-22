@@ -12,6 +12,7 @@ import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 
 class MakeABookingUiStateTest {
     private val now = Instant.parse("2026-10-15T12:00:00Z")
@@ -43,6 +44,7 @@ class MakeABookingUiStateTest {
         expertName = "Expert",
         expertTitle = "Coach",
         expertImageUrl = null,
+        zone = ZoneId.of("America/Toronto"),
         today = today,
         now = now,
         selectedDate = today,

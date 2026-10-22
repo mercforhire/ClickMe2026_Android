@@ -28,6 +28,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.SectionHeader
@@ -47,7 +49,6 @@ import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 
 const val MAKE_A_BOOKING_SCROLL_TAG = "make_a_booking_scroll"
 
@@ -67,6 +68,9 @@ fun MakeABookingScreen(
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // WR-03: "today" and the viewer's zone are re-derived whenever the screen comes back, e.g. after midnight or
+    // after the user changed the time zone setting.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshClock() }
     LaunchedEffect(state.completedBookingId) {
         val id = state.completedBookingId ?: return@LaunchedEffect
         viewModel.consumeCompletedBooking()
@@ -112,7 +116,6 @@ fun MakeABookingContent(
     onBook: () -> Unit,
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
-    zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
 ) {
     var showTopicSheet by rememberSaveable { mutableStateOf(false) }
@@ -183,7 +186,7 @@ fun MakeABookingContent(
                 expertTimezone = state.expertTimezone,
                 onSelectSlot = onSelectSlot,
                 onRetry = onRetryAvailability,
-                zone = zone,
+                zone = state.zone,
                 timeFormat = timeFormat,
             )
             Section(R.string.make_a_booking_section_meeting_type) {
@@ -198,7 +201,7 @@ fun MakeABookingContent(
                     selectedDate = state.selectedDate,
                     selectedSlotStart = state.selectedSlotStart,
                     meetingType = state.meetingType,
-                    zone = zone,
+                    zone = state.zone,
                     timeFormat = timeFormat,
                 )
             }

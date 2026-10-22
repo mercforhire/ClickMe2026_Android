@@ -5,10 +5,12 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
+import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
@@ -25,6 +27,7 @@ import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.util.TimeZone
 
 class MakeABookingViewModelTest {
@@ -446,5 +449,91 @@ class MakeABookingViewModelTest {
             val vm2 = vm(handle)
             runCurrent()
             assertEquals(YearMonth.of(2026, 11), vm2.uiState.value.displayedMonth)
+        }
+
+    // ---- WR-03: "today" and the viewer's zone are refreshed, not frozen at creation ----
+
+    @Test
+    fun theZoneIsPartOfTheState() =
+        runTest(main.testDispatcher) {
+            assertEquals(ZoneId.of("America/Toronto"), vm().uiState.value.zone)
+        }
+
+    @Test
+    fun afterMidnightYesterdayIsNoLongerSelectable() =
+        runTest(main.testDispatcher) {
+            val clock = MutableClock(Instant.parse(NOW))
+            val vm = newViewModel(api, clock = clock)
+            runCurrent()
+            // 2026-10-23 10:00 in Toronto.
+            clock.instant = Instant.parse("2026-10-23T14:00:00Z")
+            vm.selectDate(LocalDate.of(2026, 10, 22))
+            val s = vm.uiState.value
+            assertEquals(LocalDate.of(2026, 10, 23), s.today)
+            // The day that became past moved to today rather than staying selected.
+            assertEquals(LocalDate.of(2026, 10, 23), s.selectedDate)
+        }
+
+    @Test
+    fun aMonthRolloverOnResumeMovesToTheCurrentMonthAndBlocksThePastOne() =
+        runTest(main.testDispatcher) {
+            val clock = MutableClock(Instant.parse(NOW))
+            val handle = SavedStateHandle()
+            val vm = newViewModel(api, handle, clock)
+            runCurrent()
+            val callsBefore = api.expertAvailabilityCalls
+            // 2026-11-01 12:00 in Toronto.
+            clock.instant = Instant.parse("2026-11-01T17:00:00Z")
+            vm.refreshClock()
+            runCurrent()
+            val s = vm.uiState.value
+            assertEquals(LocalDate.of(2026, 11, 1), s.today)
+            assertEquals(LocalDate.of(2026, 11, 1), s.selectedDate)
+            assertEquals(YearMonth.of(2026, 11), s.displayedMonth)
+            assertFalse(s.canGoToPreviousMonth)
+            assertEquals(callsBefore + 3, api.expertAvailabilityCalls)
+            assertEquals("2026-11", handle.get<String>("booking_displayed_month"))
+            vm.goToPreviousMonth()
+            assertEquals(YearMonth.of(2026, 11), vm.uiState.value.displayedMonth)
+        }
+
+    @Test
+    fun aZoneChangeRegroupsTheLoadedSlotsWithoutARequest() =
+        runTest(main.testDispatcher) {
+            // 2026-10-22 22:00 in Toronto, but 2026-10-23 03:00 in London.
+            val late = Instant.parse("2026-10-23T02:00:00Z")
+            api.expertAvailabilityHandler = { _, _ -> availabilityOf(slotDto("2026-10-23T02:00:00Z")) }
+            val vm = vm()
+            runCurrent()
+            vm.selectSlot(late)
+            assertEquals(late, vm.uiState.value.selectedSlotStart)
+            val callsBefore = api.expertAvailabilityCalls
+
+            TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"))
+            vm.refreshClock()
+            runCurrent()
+
+            val s = vm.uiState.value
+            assertEquals(ZoneId.of("Europe/London"), s.zone)
+            assertEquals(callsBefore, api.expertAvailabilityCalls)
+            assertTrue(s.slotsForSelectedDate.isEmpty())
+            assertEquals(listOf(late), loadedSlots(vm).slotsByDate[LocalDate.of(2026, 10, 23)]?.map { it.start })
+            // The held slot is no longer on the selected day in the new zone, so it is dropped.
+            assertNull(s.selectedSlotStart)
+        }
+
+    @Test
+    fun aBookAfterAZoneChangeSendsTheNewZone() =
+        runTest(main.testDispatcher) {
+            api.expertAvailabilityHandler = { _, _ -> availabilityOf(slotDto("2026-10-22T20:00:00Z")) }
+            api.requestBookingHandler = { BookingRequestData(bookingId = "b1") }
+            val vm = vm()
+            runCurrent()
+            vm.selectSlot(Instant.parse("2026-10-22T20:00:00Z"))
+            // 20:00Z is still 2026-10-22 in Vancouver, so the slot survives the regroup.
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Vancouver"))
+            vm.book()
+            runCurrent()
+            assertEquals("America/Vancouver", api.requestBookingRequests.single().timezone)
         }
 }

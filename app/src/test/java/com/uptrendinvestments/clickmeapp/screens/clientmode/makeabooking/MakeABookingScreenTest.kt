@@ -98,6 +98,7 @@ class MakeABookingScreenTest {
             expertName = "Ada Lovelace",
             expertTitle = "Engineer",
             expertImageUrl = null,
+            zone = zone,
             today = date,
             now = Instant.parse(NOW),
             selectedDate = date,
@@ -133,7 +134,6 @@ class MakeABookingScreenTest {
                     onNotesChange = {},
                     onBook = { bookCount++ },
                     onDismissError = { dismissCount++ },
-                    zone = zone,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                 )
             }
@@ -258,7 +258,6 @@ class MakeABookingScreenTest {
                         onNotesChange = {},
                         onBook = {},
                         onDismissError = {},
-                        zone = zone,
                         timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     )
                 }
