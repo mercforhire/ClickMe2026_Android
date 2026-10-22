@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
@@ -27,7 +28,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeParseException
 
 /**
- * Make a Booking state machine, free path. Port of iOS `MakeABookingViewModel`; `book()` is added by 06-11.
+ * Make a Booking state machine, free path. Port of iOS `MakeABookingViewModel`; `book()` is the free booking action (BOOK-03).
  *
  * - D-02: the first free topic is preselected, else the first topic, else none. Phase 7 may revert this to
  *   the plain first topic, and iOS regenerates its booking attempt id on a topic change, which Phase 7 owns.
@@ -129,6 +130,89 @@ class MakeABookingViewModel
             val capped = capNotes(text)
             _uiState.update { it.copy(notes = capped) }
             savedStateHandle[KEY_NOTES] = capped
+        }
+
+        /**
+         * Port of iOS `book()` + `performFreeBooking`, free topics only (BOOK-03). A tap while a request is in
+         * flight is ignored (D-11 single flight), and a paid topic never reaches the API: the paid path is
+         * Phase 7 (D-01), so there is no payment-methods gate here either. A slot that is no longer after now is
+         * cleared instead of sent, because the server does not reject a past `scheduled_start`.
+         *
+         * The body is the D-11 contract: `topic.durationMins` already defaults to 30 (06-04), notes are trimmed
+         * and omitted when blank, and [Instant.toString] is ISO 8601 UTC ("2026-10-22T20:00:00Z"), accepted by
+         * the backend `z.string().datetime({ offset: true })`.
+         *
+         * Failures are mapped by [toBookingFailure] and shown in one AlertDialog titled "Couldn't book" (the
+         * screen, 06-12). The 422 MEETING_LINK_UNAVAILABLE cannot be prevented up front because Phase 6 keeps
+         * D-08 as written: both meeting types are always offered and `available_meeting_types` is not read.
+         */
+        fun book() {
+            val s = _uiState.value
+            if (s.isSubmitting) return
+            val topic = s.selectedTopic ?: return
+            if (!topic.isFree) return
+            val slot = s.selectedSlot ?: return
+            val now = clock.instant()
+            if (!slot.isSelectable(now)) {
+                _uiState.update { it.copy(now = now) }
+                clearSlot()
+                return
+            }
+            _uiState.update { it.copy(isSubmitting = true, now = now) }
+            val body =
+                BookingRequestBody(
+                    expertId = s.expertId,
+                    topicId = topic.id,
+                    scheduledStart = slot.start.toString(),
+                    durationMinutes = topic.durationMins,
+                    meetingType = s.meetingType.wire,
+                    timezone = ZoneId.systemDefault().id,
+                    clientNotes = s.notes.trim().ifEmpty { null },
+                )
+            viewModelScope.launch {
+                try {
+                    val result = repository.requestBooking(body)
+                    _uiState.update { it.copy(isSubmitting = false, completedBookingId = result.bookingId) }
+                } catch (e: ApiException) {
+                    handleBookingFailure(e)
+                }
+            }
+        }
+
+        /** D-10 mapping with the D-08 meeting reset and the D-09 clear-and-reload side effects. */
+        private fun handleBookingFailure(e: ApiException) {
+            when (val failure = e.toBookingFailure()) {
+                BookingFailure.Silent -> _uiState.update { it.copy(isSubmitting = false) }
+                is BookingFailure.Show -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            dialogError = failure.message,
+                            meetingType = if (failure.resetMeetingType) MeetingType.InAppVoice else it.meetingType,
+                            selectedSlotStart = if (failure.clearSlotAndReload) null else it.selectedSlotStart,
+                        )
+                    }
+                    if (failure.resetMeetingType) savedStateHandle[KEY_MEETING_TYPE] = MeetingType.InAppVoice.wire
+                    if (failure.clearSlotAndReload) {
+                        pendingSlotMillis = null
+                        savedStateHandle.remove<Long>(KEY_SLOT_START)
+                        loadAvailability(_uiState.value.displayedMonth, keepVisible = true)
+                    }
+                }
+            }
+        }
+
+        /** The error dialog's OK, Back and scrim all call this (D-10). */
+        fun dismissError() {
+            _uiState.update { it.copy(dialogError = null) }
+        }
+
+        /**
+         * The screen consumes the id, then calls `navigator.replaceTop(RequestSentKey(id))` (D-12); the entry and
+         * this ViewModel are then removed.
+         */
+        fun consumeCompletedBooking() {
+            _uiState.update { it.copy(completedBookingId = null) }
         }
 
         private fun clearSlot() {
