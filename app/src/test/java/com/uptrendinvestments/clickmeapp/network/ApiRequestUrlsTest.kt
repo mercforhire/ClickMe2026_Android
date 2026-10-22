@@ -101,4 +101,23 @@ class ApiRequestUrlsTest {
             assertTrue(path, ApiRequestUrls.needAuthToken(path))
         }
     }
+
+    @Test
+    fun phaseSixConstants_haveExactRelativeValues() {
+        assertEquals("experts/{id}/availability", ApiRequestUrls.EXPERT_AVAILABILITY)
+        assertEquals("bookings/request", ApiRequestUrls.BOOKING_REQUEST)
+        assertEquals("client/bookings/{id}", ApiRequestUrls.CLIENT_BOOKING_DETAIL)
+    }
+
+    @Test
+    fun bookingPaths_needAuthToken() {
+        listOf(
+            "/api/v1/experts/e1/availability",
+            "/api/v1/bookings/request",
+            "/api/v1/client/bookings/b1",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
 }

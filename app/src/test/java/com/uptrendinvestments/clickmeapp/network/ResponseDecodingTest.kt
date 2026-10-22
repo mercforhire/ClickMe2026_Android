@@ -3,16 +3,21 @@ package com.uptrendinvestments.clickmeapp.network
 import com.squareup.moshi.Types
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.UserRole
+import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RefreshTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
+import com.uptrendinvestments.clickmeapp.model.responses.AvailabilitySlotDto
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CategoryItem
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -512,5 +517,136 @@ class ResponseDecodingTest {
         assertEquals(Instant.parse("2026-10-21T20:00:00Z"), booking.endTime)
         assertEquals("confirmed", booking.status)
         assertNull(booking.topic)
+    }
+
+    @Test
+    fun expertAvailabilityDecodesBackendShapedGridWithInstantSlots() {
+        val json =
+            """
+            {"status":"success","data":{"expert_timezone":"Pacific/Auckland","client_timezone":"UTC",
+            "month":"2026-11","days":[{"date":"2026-11-01","slots":[
+            {"start_utc":"2026-10-31T20:00:00.000Z","end_utc":"2026-10-31T20:30:00.000Z",
+            "start_local":"8:00 PM","end_local":"8:30 PM","available":true},
+            {"start_utc":"2026-10-31T20:30:00.000Z","end_utc":"2026-10-31T21:00:00.000Z",
+            "start_local":"8:30 PM","end_local":"9:00 PM","available":false}]},
+            {"date":"2026-11-02","slots":null}]}}
+            """.trimIndent()
+        val data = envelope(ExpertAvailabilityData::class.java).fromJson(json)!!.data
+        assertEquals("Pacific/Auckland", data.expertTimezone)
+        assertEquals("UTC", data.clientTimezone)
+        assertEquals("2026-11", data.month)
+        assertEquals(2, data.days.size)
+        val slots = data.days[0].slots!!
+        assertEquals(Instant.parse("2026-10-31T20:00:00Z"), slots[0].startUtc)
+        assertEquals(Instant.parse("2026-10-31T20:30:00Z"), slots[0].endUtc)
+        assertEquals(true, slots[0].available)
+        assertNull(slots[0].held)
+        assertEquals(false, slots[1].available)
+        assertNull(data.days[1].slots)
+    }
+
+    @Test
+    fun availabilitySlotDecodesHeldFlagAndMissingEnd() {
+        val json = """{"start_utc":"2026-10-31T21:00:00.000Z","available":true,"held":true}"""
+        val slot = moshi.adapter(AvailabilitySlotDto::class.java).fromJson(json)!!
+        assertEquals(Instant.parse("2026-10-31T21:00:00Z"), slot.startUtc)
+        assertEquals(true, slot.held)
+        assertNull(slot.endUtc)
+    }
+
+    @Test
+    fun availabilityDataDecodesFromEmptyObject() {
+        val data = moshi.adapter(ExpertAvailabilityData::class.java).fromJson("{}")!!
+        assertNull(data.expertTimezone)
+        assertTrue(data.days.isEmpty())
+    }
+
+    @Test
+    fun bookingRequestResponseDecodes() {
+        val json =
+            """
+            {"status":"success","data":{"booking_id":"b1","status":"pending_approval",
+            "message":"Your booking request has been sent for review."}}
+            """.trimIndent()
+        val data = envelope(BookingRequestData::class.java).fromJson(json)!!.data
+        assertEquals("b1", data.bookingId)
+        assertEquals("pending_approval", data.status)
+    }
+
+    @Test
+    fun clientBookingDetailDecodesOffsetInstantsAndTopicIsFree() {
+        val json =
+            """
+            {"booking_id":"b1","status":"pending_approval","start_time":"2026-10-24T18:00:00+00:00",
+            "end_time":"2026-10-24T19:00:00+00:00","meeting_type":"in_app_voice",
+            "expert_timezone":"America/Toronto","payment_status":"none",
+            "topic":{"id":"t1","title":"Intro","duration_mins":60,"is_free":true,
+            "price":{"amount":null,"currency":null}},
+            "expert":{"id":"e1","full_name":"Ada Lovelace","avatar_url":null,"title":"Engineer"},
+            "join_link":null,"can_join":false,"client_notes":null,"private_note":null,"reschedule":null,
+            "authorization_expires_at":null}
+            """.trimIndent()
+        val detail = moshi.adapter(ClientBookingDetail::class.java).fromJson(json)!!
+        assertEquals("b1", detail.bookingId)
+        assertEquals(Instant.parse("2026-10-24T18:00:00Z"), detail.startTime)
+        assertEquals(Instant.parse("2026-10-24T19:00:00Z"), detail.endTime)
+        assertTrue(detail.topic.isFree)
+        assertEquals(60, detail.topic.durationMins)
+        assertEquals("Ada Lovelace", detail.expert.fullName)
+        assertNull(detail.clientNotes)
+    }
+
+    @Test
+    fun clientBookingDetailDecodesPaidTopicWithoutEndTime() {
+        val json =
+            """
+            {"booking_id":"b2","status":"confirmed","start_time":"2026-10-24T18:00:00+00:00",
+            "topic":{"id":"t2","title":"Deep dive","duration_mins":30,"is_free":false,
+            "price":{"amount":5000,"currency":"CAD"}},
+            "expert":{"id":"e1","full_name":"Ada Lovelace"}}
+            """.trimIndent()
+        val detail = moshi.adapter(ClientBookingDetail::class.java).fromJson(json)!!
+        assertNull(detail.endTime)
+        assertFalse(detail.topic.isFree)
+        assertEquals(5000L, detail.topic.price!!.amount)
+        assertEquals("CAD", detail.topic.price.currency)
+    }
+
+    @Test
+    fun bookingRequestBodySerializesExactKeysInOrderWithNotes() {
+        val body =
+            BookingRequestBody(
+                expertId = "e1",
+                topicId = "t1",
+                scheduledStart = "2026-10-24T14:00:00Z",
+                durationMinutes = 30,
+                meetingType = "in_app_voice",
+                timezone = "America/Toronto",
+                clientNotes = "Hi",
+            )
+        assertEquals(
+            """{"expert_id":"e1","topic_id":"t1","scheduled_start":"2026-10-24T14:00:00Z",""" +
+                """"duration_minutes":30,"meeting_type":"in_app_voice","timezone":"America/Toronto",""" +
+                """"client_notes":"Hi"}""",
+            moshi.adapter(BookingRequestBody::class.java).toJson(body),
+        )
+    }
+
+    @Test
+    fun bookingRequestBodyOmitsClientNotesWhenNull() {
+        val body =
+            BookingRequestBody(
+                expertId = "e1",
+                topicId = "t1",
+                scheduledStart = "2026-10-24T14:00:00Z",
+                durationMinutes = 30,
+                meetingType = "in_app_voice",
+                timezone = "America/Toronto",
+            )
+        assertEquals(
+            """{"expert_id":"e1","topic_id":"t1","scheduled_start":"2026-10-24T14:00:00Z",""" +
+                """"duration_minutes":30,"meeting_type":"in_app_voice","timezone":"America/Toronto"}""",
+            moshi.adapter(BookingRequestBody::class.java).toJson(body),
+        )
     }
 }

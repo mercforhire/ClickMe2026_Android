@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.testing
 
+import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
@@ -7,10 +8,13 @@ import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileReques
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -58,6 +62,10 @@ class FakeClickMeApi : ClickMeApi {
     var categoriesHandler: suspend () -> CategoriesPayload = { notStubbed() }
     var expertDetailsHandler: suspend (String) -> PublicProfileDetailsData = { notStubbed() }
     var expertReviewsHandler: suspend (String) -> ExpertReviewsPayload = { notStubbed() }
+    var expertAvailabilityHandler: suspend (expertId: String, month: String) -> ExpertAvailabilityData =
+        { _, _ -> notStubbed() }
+    var requestBookingHandler: suspend (BookingRequestBody) -> BookingRequestData = { notStubbed() }
+    var clientBookingDetailHandler: suspend (String) -> ClientBookingDetail = { notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -122,6 +130,15 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var expertReviewsCalls = 0
         private set
 
+    @Volatile var expertAvailabilityCalls = 0
+        private set
+
+    @Volatile var requestBookingCalls = 0
+        private set
+
+    @Volatile var clientBookingDetailCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -131,6 +148,21 @@ class FakeClickMeApi : ClickMeApi {
 
     /** Every PATCH /expert/profile/setup body received, in call order. */
     val setupProfileRequests: List<SetupExpertProfileRequest> get() = _setupProfileRequests
+
+    private val _availabilityMonths = mutableListOf<String>()
+
+    /** The `month` argument of every getExpertAvailability call, in call order (recorded before the handler runs). */
+    val availabilityMonths: List<String> get() = _availabilityMonths
+
+    private val _availabilityTopicIds = mutableListOf<String?>()
+
+    /** The `topicId` argument of every getExpertAvailability call, in call order (null means omitted). */
+    val availabilityTopicIds: List<String?> get() = _availabilityTopicIds
+
+    private val _requestBookingRequests = mutableListOf<BookingRequestBody>()
+
+    /** Every POST /bookings/request body received, in call order. */
+    val requestBookingRequests: List<BookingRequestBody> get() = _requestBookingRequests
 
     override suspend fun login(body: LoginRequest): SuccessDataResponse<LoginData> {
         loginCalls++
@@ -247,6 +279,28 @@ class FakeClickMeApi : ClickMeApi {
     ): SuccessDataResponse<ExpertReviewsPayload> {
         expertReviewsCalls++
         return ok(expertReviewsHandler(expertId))
+    }
+
+    override suspend fun getExpertAvailability(
+        expertId: String,
+        month: String,
+        topicId: String?,
+    ): SuccessDataResponse<ExpertAvailabilityData> {
+        expertAvailabilityCalls++
+        _availabilityMonths += month
+        _availabilityTopicIds += topicId
+        return ok(expertAvailabilityHandler(expertId, month))
+    }
+
+    override suspend fun requestBooking(body: BookingRequestBody): SuccessDataResponse<BookingRequestData> {
+        requestBookingCalls++
+        _requestBookingRequests += body
+        return ok(requestBookingHandler(body))
+    }
+
+    override suspend fun getClientBookingDetail(bookingId: String): SuccessDataResponse<ClientBookingDetail> {
+        clientBookingDetailCalls++
+        return ok(clientBookingDetailHandler(bookingId))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

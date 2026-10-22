@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
@@ -7,10 +8,13 @@ import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileReques
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -40,7 +44,8 @@ import retrofit2.http.Query
  * expert lookups used by SplashViewModel and LoginView. It also covers the Phase 3 password-recovery
  * endpoints (iOS ClickMeAPI+Auth). Phase 4 adds signup, email verification, expert profile setup, meta
  * lookups and avatar upload/delete. Phase 5 adds the discovery group (client home, client bookings,
- * categories, expert details and reviews). Other API groups arrive with their features (ROADMAP Phase 2 planning
+ * categories, expert details and reviews). Phase 6 adds the booking group (availability, free booking
+ * request, client booking detail). Other API groups arrive with their features (ROADMAP Phase 2 planning
  * note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -153,4 +158,28 @@ interface ClickMeApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): SuccessDataResponse<ExpertReviewsPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+Availability getExpertAvailability. [month] is `YearMonth.toString()`
+     * (`yyyy-MM`). [topicId] null omits the parameter; Phase 6 always passes null (D-07 iOS parity). The
+     * backend narrows the grid to the topic duration when it is present.
+     */
+    @GET(ApiRequestUrls.EXPERT_AVAILABILITY)
+    suspend fun getExpertAvailability(
+        @Path("id") expertId: String,
+        @Query("month") month: String,
+        @Query("topic_id") topicId: String?,
+    ): SuccessDataResponse<ExpertAvailabilityData>
+
+    /** Ports iOS ClickMeAPI+Booking requestBooking. Free path only; 201 on success. */
+    @POST(ApiRequestUrls.BOOKING_REQUEST)
+    suspend fun requestBooking(
+        @Body body: BookingRequestBody,
+    ): SuccessDataResponse<BookingRequestData>
+
+    /** Ports iOS ClickMeAPI+Booking getClientBookingDetail. */
+    @GET(ApiRequestUrls.CLIENT_BOOKING_DETAIL)
+    suspend fun getClientBookingDetail(
+        @Path("id") bookingId: String,
+    ): SuccessDataResponse<ClientBookingDetail>
 }
