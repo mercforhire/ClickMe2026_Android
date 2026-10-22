@@ -77,10 +77,10 @@ From the PRD's Explore and Expert Profile (Week 3).
 
 From the PRD's Make a Booking (booking flow and free path) and Request Sent (Week 3), and My Bookings, Upcoming Booking Details, Cancellation and Booking Summary (Week 4).
 
-- [ ] **BOOK-01**: Client can make a booking by picking a topic, then a day on a custom month calendar and a slot, then a meeting type and optional notes.
-- [ ] **BOOK-02**: Slots load for the previous, current and next month. They are regrouped by the client's local date using `startUtc`, with duplicates dropped. The expert's timezone is shown, and `held` slots can't be selected.
-- [ ] **BOOK-03**: Client can book a free topic (`POST /bookings/request`).
-- [ ] **BOOK-04**: After sending a booking request, the client sees the Request Sent confirmation screen. The staggered animation is optional.
+- [x] **BOOK-01**: Client can make a booking by picking a topic, then a day on a custom month calendar and a slot, then a meeting type and optional notes.
+- [x] **BOOK-02**: Slots load for the previous, current and next month. They are regrouped by the client's local date using `startUtc`, with duplicates dropped. The expert's timezone is shown, and `held` slots can't be selected.
+- [x] **BOOK-03**: Client can book a free topic (`POST /bookings/request`).
+- [x] **BOOK-04**: After sending a booking request, the client sees the Request Sent confirmation screen. The staggered animation is optional.
 - [ ] **BOOK-05**: Client can view My Bookings with Upcoming and Past tabs. A `completed` booking whose end time hasn't passed stays in Upcoming. Past items are labeled completed, cancelled (cancelled or declined) or missed (missed or expired).
 - [ ] **BOOK-06**: Client can open Upcoming Booking Details, which shows the "Waiting for expert" banner, the join card and a Cancel action. There is no Reschedule action.
 - [ ] **BOOK-07**: Client can cancel a booking with a reason picker and a refund preview through `cancelClientBooking`. Whether to collect and send the cancellation comment is an open item for Phase 8 planning; iOS collects it but never sends it.
@@ -283,10 +283,10 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | DISC-01 | Phase 5 | Complete |
 | DISC-02 | Phase 5 | Complete |
 | DISC-03 | Phase 5 | Complete |
-| BOOK-01 | Phase 6 | Pending |
-| BOOK-02 | Phase 6 | Pending |
-| BOOK-03 | Phase 6 | Pending |
-| BOOK-04 | Phase 6 | Pending |
+| BOOK-01 | Phase 6 | Complete |
+| BOOK-02 | Phase 6 | Complete |
+| BOOK-03 | Phase 6 | Complete |
+| BOOK-04 | Phase 6 | Complete |
 | BOOK-05 | Phase 8 | Pending |
 | BOOK-06 | Phase 8 | Pending |
 | BOOK-07 | Phase 8 | Pending |
