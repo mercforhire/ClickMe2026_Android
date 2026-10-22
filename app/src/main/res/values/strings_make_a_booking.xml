@@ -64,6 +64,7 @@
     <!-- Errors -->
     <string name="make_a_booking_error_title">Couldn\'t book</string>
     <string name="make_a_booking_error_slot_taken">That time slot was just taken. Please pick another.</string>
+    <string name="make_a_booking_error_slot_passed">That time has passed. Please pick another.</string>
     <string name="make_a_booking_error_not_bookable">This expert isn\'t accepting bookings right now.</string>
     <string name="make_a_booking_error_no_link">This expert hasn\'t set up a Skype/Zoom link. Please choose In-app Voice instead.</string>
     <string name="make_a_booking_error_self">You can\'t book yourself.</string>

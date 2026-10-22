@@ -301,6 +301,10 @@ class MakeABookingViewModelBookTest {
             assertEquals(0, api.requestBookingCalls)
             assertNull(vm.uiState.value.selectedSlotStart)
             assertFalse(vm.uiState.value.isSubmitting)
+            // IN-09: the user is told why the selection disappeared.
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_slot_passed), vm.uiState.value.dialogError)
+            vm.dismissError()
+            assertNull(vm.uiState.value.dialogError)
             // The other slot is untouched and still bookable.
             vm.selectSlot(slot21)
             assertEquals(slot21, vm.uiState.value.selectedSlotStart)

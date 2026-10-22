@@ -3,12 +3,14 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -159,7 +161,8 @@ class MakeABookingViewModel
          * Port of iOS `book()` + `performFreeBooking`, free topics only (BOOK-03). A tap while a request is in
          * flight, or after one has succeeded, is ignored (D-11 single flight), and a paid topic never reaches the
          * API: the paid path is Phase 7 (D-01), so there is no payment-methods gate here either. A slot that is no
-         * longer after now is cleared instead of sent, because the server does not reject a past `scheduled_start`.
+         * longer after now is cleared instead of sent, because the server does not reject a past `scheduled_start`,
+         * and the error dialog says the time has passed.
          * The clock and zone are refreshed first (WR-03), and the request's `timezone` is the zone the slots were
          * grouped in.
          *
@@ -180,7 +183,11 @@ class MakeABookingViewModel
             val slot = s.selectedSlot ?: return
             val now = clock.instant()
             if (!slot.isSelectable(now)) {
-                _uiState.update { it.copy(now = now) }
+                // The slot started while the screen sat idle (`now` only moves on actions and resume): say why the
+                // selection disappeared instead of clearing it silently (IN-09).
+                _uiState.update {
+                    it.copy(now = now, dialogError = FieldError.Res(R.string.make_a_booking_error_slot_passed))
+                }
                 clearSlot()
                 return
             }
