@@ -13,9 +13,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontWeight
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentDetailsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentHeadline
+import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.NAME_MARKER
+import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.requestSentBody
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -68,6 +73,24 @@ class BookingRequestSentScreenTest {
                 "Your booking request has been sent to Ada Lovelace. They will review it and respond " +
                     "shortly. You'll be notified as soon as it's confirmed.",
             ).assertExists()
+    }
+
+    @Test
+    fun headlineBodyStylesOnlyTheExpertName() {
+        val style = SpanStyle(fontWeight = FontWeight.SemiBold)
+        val body = requestSentBody("Sent to ${NAME_MARKER}. Thanks.", "Ada", style)
+
+        assertEquals("Sent to Ada. Thanks.", body.text)
+        assertEquals(listOf(AnnotatedString.Range(style, 8, 11)), body.spanStyles)
+    }
+
+    @Test
+    fun headlineBodyWithoutTheNamePlaceholderFallsBackToTheTemplate() {
+        // IN-04: a translation that drops %1$s must not crash the screen.
+        val body = requestSentBody("Your request was sent.", "Ada", SpanStyle(fontWeight = FontWeight.SemiBold))
+
+        assertEquals("Your request was sent.", body.text)
+        assertEquals(emptyList<AnnotatedString.Range<SpanStyle>>(), body.spanStyles)
     }
 
     @Test

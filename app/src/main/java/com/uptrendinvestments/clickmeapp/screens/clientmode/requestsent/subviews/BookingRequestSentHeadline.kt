@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -20,7 +21,8 @@ import androidx.compose.ui.text.withStyle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
-private const val NAME_MARKER = "\u0000"
+/** Stands in for the expert name while formatting, so the name span can be found and styled. */
+internal const val NAME_MARKER = "\u0000"
 
 /**
  * "Request Sent!" heading and the body naming the expert. The same copy is used for free bookings and never
@@ -34,13 +36,7 @@ fun BookingRequestSentHeadline(
     val onSurface = MaterialTheme.colorScheme.onSurface
     // Format with a marker so the name span can be styled even when the name itself contains text of the body.
     val template = stringResource(R.string.request_sent_body, NAME_MARKER)
-    val body =
-        buildAnnotatedString {
-            val index = template.indexOf(NAME_MARKER)
-            append(template.substring(0, index))
-            withStyle(SpanStyle(color = onSurface, fontWeight = FontWeight.SemiBold)) { append(expertName) }
-            append(template.substring(index + NAME_MARKER.length))
-        }
+    val body = requestSentBody(template, expertName, SpanStyle(color = onSurface, fontWeight = FontWeight.SemiBold))
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -61,3 +57,23 @@ fun BookingRequestSentHeadline(
         )
     }
 }
+
+/**
+ * Replaces the name marker in [template] with [expertName] styled as [nameStyle]. A translation that drops the
+ * `%1$s` placeholder has no marker; the template is then shown as is instead of crashing.
+ */
+internal fun requestSentBody(
+    template: String,
+    expertName: String,
+    nameStyle: SpanStyle,
+): AnnotatedString =
+    buildAnnotatedString {
+        val index = template.indexOf(NAME_MARKER)
+        if (index < 0) {
+            append(template)
+        } else {
+            append(template.substring(0, index))
+            withStyle(nameStyle) { append(expertName) }
+            append(template.substring(index + NAME_MARKER.length))
+        }
+    }
