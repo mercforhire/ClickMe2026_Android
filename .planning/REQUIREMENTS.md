@@ -69,9 +69,9 @@ From the PRD's realtime service (Week 2; iOS `Realtime/RealtimeService.swift`). 
 
 From the PRD's Explore and Expert Profile (Week 3).
 
-- [ ] **DISC-01**: Client sees the Explore home from `getClientHome`: categories, featured topics, today's sessions and expert cards. The hero and visuals may be simplified.
-- [ ] **DISC-02**: Categories are cached in a `CategoryStore` with a 7-day TTL.
-- [ ] **DISC-03**: Client can open an Expert Profile with a hero, stats, about, topics, a reviews preview, and a Book button that starts the booking flow.
+- [x] **DISC-01**: Client sees the Explore home from `getClientHome`: categories, featured topics, today's sessions and expert cards. The hero and visuals may be simplified.
+- [x] **DISC-02**: Categories are cached in a `CategoryStore` with a 7-day TTL.
+- [x] **DISC-03**: Client can open an Expert Profile with a hero, stats, about, topics, a reviews preview, and a Book button that starts the booking flow.
 
 ### Client Booking
 
@@ -280,9 +280,9 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | RT-01 | Phase 3 | Complete |
 | RT-02 | Phase 3 | Complete |
 | RT-03 | Phase 3 | Complete |
-| DISC-01 | Phase 5 | Pending |
-| DISC-02 | Phase 5 | Pending |
-| DISC-03 | Phase 5 | Pending |
+| DISC-01 | Phase 5 | Complete |
+| DISC-02 | Phase 5 | Complete |
+| DISC-03 | Phase 5 | Complete |
 | BOOK-01 | Phase 6 | Pending |
 | BOOK-02 | Phase 6 | Pending |
 | BOOK-03 | Phase 6 | Pending |

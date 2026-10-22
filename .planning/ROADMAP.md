@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Networking, Session & SDK Spikes** - Networking core, single-flight token refresh, session storage, Stripe and Agora spikes (Week 1)
 - [x] **Phase 3: Login, Password Recovery & Realtime** - Real login, OTP password reset, authenticated socket with event SharedFlow (Week 2) (completed 2026-10-20)
 - [x] **Phase 4: Signup, Onboarding & Mode Switch** - Signup Initial → Overview hub → Review/Publish, resume, onboarding carousel, mode switch (Week 2) (completed 2026-10-21)
-- [ ] **Phase 5: Explore & Expert Profile** - Client Explore home with category cache and the Expert Profile screen (Week 3)
+- [x] **Phase 5: Explore & Expert Profile** - Client Explore home with category cache and the Expert Profile screen (Week 3) (completed 2026-10-22)
 - [ ] **Phase 6: Booking Flow & Free Bookings** - Topic/calendar/slot picker with timezone regrouping, free booking, Request Sent (Week 3)
 - [ ] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3)
 - [ ] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4)
@@ -239,7 +239,7 @@ Plans:
   3. Tapping an expert card opens Expert Profile with the hero, stats, about, topics and reviews preview. Its Book button takes the client into the booking flow.
 
 **Planning notes:** If time runs short, simplify the hero and visuals. The Chat button and report/block on Expert Profile come in Phase 12.
-**Plans:** 10/11 plans executed
+**Plans:** 11/11 plans complete
 Plans:
 **Wave 1**
 
@@ -265,7 +265,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 05-11-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred device checklist, Phase 6/8/9 hand-offs and iOS follow-ups in STATE.md (all)
+- [x] 05-11-PLAN.md — Phase gate (full suite + R8), VALIDATION sign-off, deferred device checklist, Phase 6/8/9 hand-offs and iOS follow-ups in STATE.md (all)
 
 **UI hint**: yes
 
@@ -477,7 +477,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
-| 5. Explore & Expert Profile | 10/11 | In Progress|  |
+| 5. Explore & Expert Profile | 11/11 | Complete   | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
