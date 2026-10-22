@@ -4,11 +4,15 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentDetailsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentHeadline
@@ -134,5 +138,127 @@ class BookingRequestSentScreenTest {
 
         rule.onNodeWithText("View My Bookings").assertIsNotEnabled()
         rule.onNodeWithText("Back to Home").assertIsNotEnabled()
+    }
+
+    private fun setContent(
+        state: BookingRequestSentUiState,
+        onBack: () -> Unit = {},
+        onRetry: () -> Unit = {},
+        onViewBookings: () -> Unit = {},
+        onBackToHome: () -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                BookingRequestSentContent(
+                    state = state,
+                    onBack = onBack,
+                    onRetry = onRetry,
+                    onViewBookings = onViewBookings,
+                    onBackToHome = onBackToHome,
+                    zone = zone,
+                    timeFormat = time12,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun loadingShowsTitleAndLoadingText() {
+        setContent(BookingRequestSentUiState.Loading)
+
+        rule.onNodeWithText("Booking Request").assertExists()
+        rule.onNodeWithText("Loading your booking\u2026").assertExists()
+    }
+
+    @Test
+    fun failedShowsFixedCopyAndRetryCallsOnRetry() {
+        var retries = 0
+        setContent(BookingRequestSentUiState.Failed, onRetry = { retries++ })
+
+        rule.onNodeWithText("Couldn't load your booking").assertExists()
+        rule
+            .onNodeWithText(
+                "Your request was sent, but we couldn't load the details. Check your connection and try again.",
+            ).assertExists()
+        rule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, retries)
+    }
+
+    @Test
+    fun loadedShowsContentAndWiresCallbacks() {
+        var viewBookings = 0
+        var backHome = 0
+        var back = 0
+        setContent(
+            BookingRequestSentUiState.Loaded(details),
+            onBack = { back++ },
+            onViewBookings = { viewBookings++ },
+            onBackToHome = { backHome++ },
+        )
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Request Sent!").assertExists()
+        rule.onNodeWithContentDescription("Expert, Ada Lovelace").assertExists()
+        rule.onNodeWithText("View My Bookings").assertIsEnabled()
+        rule.onNodeWithText("Back to Home").assertIsEnabled()
+        // The column scrolls and the test window is small, so bring each button into view first.
+        rule.onNodeWithText("View My Bookings").performScrollTo().performClick()
+        rule.onNodeWithText("Back to Home").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Back").performClick()
+
+        assertEquals(1, viewBookings)
+        assertEquals(1, backHome)
+        assertEquals(1, back)
+    }
+
+    @Test
+    fun actionsAreNotClickableUntilTheEntryAnimationEnds() {
+        rule.mainClock.autoAdvance = false
+        setContent(BookingRequestSentUiState.Loaded(details))
+        rule.mainClock.advanceTimeByFrame()
+
+        rule.onNodeWithText("View My Bookings").assertIsNotEnabled()
+
+        rule.mainClock.advanceTimeBy(800)
+
+        rule.onNodeWithText("View My Bookings").assertIsEnabled()
+        rule.onNodeWithText("Back to Home").assertIsEnabled()
+    }
+
+    @Test
+    fun entryAnimationIsNotReplayedAfterRestoration() {
+        val restorer = StateRestorationTester(rule)
+        restorer.setContent {
+            ClickMeTheme {
+                BookingRequestSentContent(
+                    state = BookingRequestSentUiState.Loaded(details),
+                    onBack = {},
+                    onRetry = {},
+                    onViewBookings = {},
+                    onBackToHome = {},
+                    zone = zone,
+                    timeFormat = time12,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("View My Bookings").assertIsEnabled()
+
+        rule.mainClock.autoAdvance = false
+        restorer.emulateSavedInstanceStateRestore()
+        rule.mainClock.advanceTimeByFrame()
+
+        rule.onNodeWithText("View My Bookings").assertIsEnabled()
+    }
+
+    @Test
+    fun paidBookingRendersSameBlocksWithoutPaymentWording() {
+        setContent(BookingRequestSentUiState.Loaded(details.copy(isFree = false)))
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Request Sent!").assertExists()
+        rule.onNodeWithText("Awaiting Approval").assertExists()
+        rule.onAllNodesWithText("payment", substring = true, ignoreCase = true).assertCountEquals(0)
     }
 }
