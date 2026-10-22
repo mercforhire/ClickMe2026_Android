@@ -7,13 +7,18 @@ import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileReques
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
@@ -48,6 +53,11 @@ class FakeClickMeApi : ClickMeApi {
     var expertiseTagsHandler: suspend () -> ExpertiseTagsPayload = { notStubbed() }
     var uploadAvatarHandler: suspend (MultipartBody.Part) -> AvatarUploadData = { notStubbed() }
     var deleteAvatarHandler: suspend () -> SuccessMessageResponse = { notStubbed() }
+    var clientHomeHandler: suspend (String?) -> ClientHomeData = { notStubbed() }
+    var clientBookingsHandler: suspend (String) -> ClientBookingsPayload = { notStubbed() }
+    var categoriesHandler: suspend () -> CategoriesPayload = { notStubbed() }
+    var expertDetailsHandler: suspend (String) -> PublicProfileDetailsData = { notStubbed() }
+    var expertReviewsHandler: suspend (String) -> ExpertReviewsPayload = { notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -96,6 +106,26 @@ class FakeClickMeApi : ClickMeApi {
 
     @Volatile var deleteAvatarCalls = 0
         private set
+
+    @Volatile var clientHomeCalls = 0
+        private set
+
+    @Volatile var clientBookingsCalls = 0
+        private set
+
+    @Volatile var categoriesCalls = 0
+        private set
+
+    @Volatile var expertDetailsCalls = 0
+        private set
+
+    @Volatile var expertReviewsCalls = 0
+        private set
+
+    private val _clientHomeCategories = mutableListOf<String?>()
+
+    /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
+    val clientHomeCategories: List<String?> get() = _clientHomeCategories
 
     private val _setupProfileRequests = mutableListOf<SetupExpertProfileRequest>()
 
@@ -183,6 +213,40 @@ class FakeClickMeApi : ClickMeApi {
     override suspend fun deleteAvatar(): SuccessMessageResponse {
         deleteAvatarCalls++
         return deleteAvatarHandler()
+    }
+
+    override suspend fun getClientHome(category: String?): SuccessDataResponse<ClientHomeData> {
+        clientHomeCalls++
+        _clientHomeCategories += category
+        return ok(clientHomeHandler(category))
+    }
+
+    override suspend fun getClientBookings(
+        type: String,
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ClientBookingsPayload> {
+        clientBookingsCalls++
+        return ok(clientBookingsHandler(type))
+    }
+
+    override suspend fun getCategories(): SuccessDataResponse<CategoriesPayload> {
+        categoriesCalls++
+        return ok(categoriesHandler())
+    }
+
+    override suspend fun getExpertDetails(expertId: String): SuccessDataResponse<PublicProfileDetailsData> {
+        expertDetailsCalls++
+        return ok(expertDetailsHandler(expertId))
+    }
+
+    override suspend fun getExpertReviews(
+        expertId: String,
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ExpertReviewsPayload> {
+        expertReviewsCalls++
+        return ok(expertReviewsHandler(expertId))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

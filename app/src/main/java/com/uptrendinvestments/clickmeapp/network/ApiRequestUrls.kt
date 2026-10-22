@@ -4,7 +4,8 @@ package com.uptrendinvestments.clickmeapp.network
  * Path constants (relative to the base URL, which ends in /api/v1) and the bearer allowlist.
  * Port of iOS APIRequestURLs.needAuthToken, fixed to test the encoded path rather than the full URL
  * string so a query string cannot change the answer. Phase 4 adds the signup, email-verification, expert
- * setup, meta and avatar groups.
+ * setup, meta and avatar groups. Phase 5 adds the discovery group (home, client bookings, categories, expert
+ * details and reviews).
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -25,6 +26,13 @@ object ApiRequestUrls {
     const val META_LANGUAGES = "meta/languages"
     const val META_EXPERTISE_TAGS = "meta/expertise-tags"
     const val USER_AVATAR = "user/profile/avatar"
+
+    // Phase 5: discovery (home, client bookings, categories, expert details/reviews).
+    const val CLIENT_HOME = "client/home"
+    const val CLIENT_BOOKINGS = "client/bookings"
+    const val CATEGORIES = "categories"
+    const val EXPERT_DETAILS = "experts/{id}/details"
+    const val EXPERT_REVIEWS = "experts/{id}/reviews"
 
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
