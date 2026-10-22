@@ -161,7 +161,7 @@ class MakeABookingViewModelBookTest {
             runCurrent()
             assertEquals(1, api.requestBookingCalls)
             assertNull(vm.uiState.value.completedBookingId)
-            assertFalse(vm.uiState.value.canBook)
+            assertTrue(vm.uiState.value.isSubmitting)
         }
 
     // ---- WR-04: selections are locked while a booking is in flight ----

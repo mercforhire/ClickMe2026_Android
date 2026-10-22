@@ -117,7 +117,4 @@ data class MakeABookingUiState(
             val slot = selectedSlot
             return if (slot == null || !slot.isSelectable(now)) BookDisabledReason.NoSlot else null
         }
-
-    val canBook: Boolean
-        get() = bookDisabledReason == null && !isSubmitting
 }

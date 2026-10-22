@@ -6,9 +6,11 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * What the Request Sent screen shows for one booking. [isFree] is the topic-level flag (D-14): it hides the
- * payment-lifecycle card and selects the free headline. Phase 7 adds the paid lifecycle data; this phase only
- * needs [isFree] to hide that card.
+ * What the Request Sent screen shows for one booking.
+ *
+ * @property isFree the topic-level flag (D-14). Not read in Phase 6: only free bookings reach this screen, so
+ * there is no payment-lifecycle card to hide yet. Reserved for Phase 7, which adds that card behind
+ * `!isFree` (iOS `BookingRequestSentView` parity).
  */
 data class BookingRequestSentDetails(
     val expertName: String?,

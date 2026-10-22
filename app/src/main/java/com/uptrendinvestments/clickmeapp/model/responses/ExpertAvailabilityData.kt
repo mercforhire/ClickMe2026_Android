@@ -10,6 +10,9 @@ import java.time.Instant
  * Every field is optional so one odd value cannot turn the booking screen into a decoding error. The
  * backend also sends the local-time label keys, which are deliberately not modelled: they are formatted in
  * the profile zone, not the zone the user picked (the UI formats `startUtc` itself).
+ *
+ * @property clientTimezone decoded for parity with the iOS DTO but deliberately not read: slots are grouped and
+ * labelled in the device zone (`MakeABookingUiState.zone`), not the zone saved on the profile.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertAvailabilityData(

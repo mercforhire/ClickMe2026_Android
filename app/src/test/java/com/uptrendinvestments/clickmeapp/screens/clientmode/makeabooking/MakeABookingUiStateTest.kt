@@ -141,16 +141,15 @@ class MakeABookingUiStateTest {
     }
 
     @Test
-    fun can_book_with_free_topic_and_selectable_slot() {
+    fun no_disabled_reason_with_free_topic_and_selectable_slot() {
         val s = state(selectedTopicId = "free", selectedSlotStart = futureStart)
         assertNull(s.bookDisabledReason)
-        assertTrue(s.canBook)
     }
 
     @Test
-    fun can_book_is_false_while_submitting() {
+    fun submitting_keeps_no_disabled_reason_so_book_now_keeps_its_filled_look() {
+        // While submitting, Book Now stays enabled-looking and ignores taps itself (D-11); the reason stays null.
         val s = state(selectedTopicId = "free", selectedSlotStart = futureStart, isSubmitting = true)
         assertNull(s.bookDisabledReason)
-        assertFalse(s.canBook)
     }
 }
