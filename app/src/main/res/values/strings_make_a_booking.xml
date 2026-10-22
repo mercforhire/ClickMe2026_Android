@@ -3,4 +3,71 @@
     <string name="make_a_booking_title">Book a Session</string>
     <string name="make_a_booking_coming_soon_heading">Booking is coming soon</string>
     <string name="make_a_booking_coming_soon_body">You\'ll be able to book %1$s here in an upcoming update.</string>
+
+    <!-- Section headings -->
+    <string name="make_a_booking_section_expert">Expert</string>
+    <string name="make_a_booking_section_topic">Topic of Discussion</string>
+    <string name="make_a_booking_section_time">Select a Time</string>
+    <string name="make_a_booking_slots_title">Available Time Slots</string>
+    <string name="make_a_booking_section_meeting_type">Meeting Type</string>
+    <string name="make_a_booking_section_message">Message (optional)</string>
+    <string name="make_a_booking_section_summary">Summary</string>
+
+    <!-- Topic -->
+    <string name="make_a_booking_topic_placeholder">Select a topic</string>
+    <string name="make_a_booking_topic_sheet_title">Choose a Topic</string>
+    <string name="make_a_booking_duration">%1$d min</string>
+    <plurals name="make_a_booking_minutes_a11y">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="make_a_booking_topic_a11y">Topic of Discussion, %1$s, %2$s, %3$s</string>
+    <string name="make_a_booking_no_topics">This expert has no topics to book yet.</string>
+
+    <!-- Calendar -->
+    <string name="make_a_booking_previous_month">Previous month</string>
+    <string name="make_a_booking_next_month">Next month</string>
+    <string name="make_a_booking_day_open">Has open times</string>
+    <string name="make_a_booking_day_today">Today</string>
+
+    <!-- Slots -->
+    <string name="make_a_booking_no_slots">No available slots on this day.</string>
+    <string name="make_a_booking_slot_unavailable">Unavailable</string>
+    <string name="make_a_booking_tz_same">Times are in your time zone (%1$s).</string>
+    <string name="make_a_booking_tz_different">Times are in your time zone (%1$s). Expert is in %2$s (%3$s).</string>
+
+    <!-- Meeting type -->
+    <string name="make_a_booking_meeting_in_app">In-app Voice Call</string>
+    <string name="make_a_booking_meeting_skype_zoom">Skype/Zoom Call</string>
+
+    <!-- Notes -->
+    <string name="make_a_booking_notes_placeholder">Add context for the expert — what you\'d like to focus on, questions you have, etc.</string>
+    <string name="make_a_booking_notes_counter">%1$d/%2$d</string>
+    <string name="make_a_booking_notes_counter_a11y">%1$d of %2$d characters</string>
+
+    <!-- Summary -->
+    <string name="make_a_booking_summary_topic">Topic:</string>
+    <string name="make_a_booking_summary_date_time">Date &amp; Time:</string>
+    <string name="make_a_booking_summary_duration">Duration:</string>
+    <string name="make_a_booking_summary_meeting_type">Meeting Type:</string>
+    <string name="make_a_booking_summary_price">Price:</string>
+    <string name="make_a_booking_summary_placeholder">—</string>
+    <string name="make_a_booking_summary_date_time_value">%1$s, %2$s</string>
+
+    <!-- Book Now -->
+    <string name="make_a_booking_book_now">Book Now</string>
+    <string name="make_a_booking_paid_note">Booking paid sessions is coming soon. Choose a free topic to book now.</string>
+    <string name="make_a_booking_state_no_slot">Choose a time slot to continue</string>
+    <string name="make_a_booking_state_paid">Paid booking is coming soon</string>
+    <string name="make_a_booking_state_no_topic">Choose a topic to continue</string>
+    <string name="make_a_booking_state_booking">Booking</string>
+
+    <!-- Errors -->
+    <string name="make_a_booking_error_title">Couldn\'t book</string>
+    <string name="make_a_booking_error_slot_taken">That time slot was just taken. Please pick another.</string>
+    <string name="make_a_booking_error_not_bookable">This expert isn\'t accepting bookings right now.</string>
+    <string name="make_a_booking_error_no_link">This expert hasn\'t set up a Skype/Zoom link. Please choose In-app Voice instead.</string>
+    <string name="make_a_booking_error_self">You can\'t book yourself.</string>
+    <string name="make_a_booking_error_needs_payment">This topic needs payment, which isn\'t available in the app yet.</string>
+    <string name="make_a_booking_error_duplicate">A booking for this session already exists.</string>
 </resources>
