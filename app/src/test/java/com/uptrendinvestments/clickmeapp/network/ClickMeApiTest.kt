@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
@@ -16,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -493,5 +496,127 @@ class ClickMeApiTest {
 
             assertTrue(error is ApiException.Http)
             assertEquals(404, (error as ApiException.Http).status)
+        }
+
+    private fun sampleBookingBody(clientNotes: String?) =
+        BookingRequestBody(
+            expertId = "e1",
+            topicId = "t1",
+            scheduledStart = "2026-10-24T14:00:00Z",
+            durationMinutes = 30,
+            meetingType = "in_app_voice",
+            timezone = "America/Toronto",
+            clientNotes = clientNotes,
+        )
+
+    @Test
+    fun getExpertAvailabilitySendsOnlyMonthWhenTopicIdIsNull() =
+        runTest {
+            enqueue(
+                200,
+                """{"status":"success","data":{"expert_timezone":"Pacific/Auckland","month":"2026-10","days":[]}}""",
+            )
+
+            val data = api.getExpertAvailability("e1", "2026-10", null).data
+
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/experts/e1/availability", request.url.encodedPath)
+            assertEquals(1, request.url.querySize)
+            assertEquals("2026-10", request.url.queryParameter("month"))
+            assertNull(request.url.queryParameter("topic_id"))
+            assertEquals("Pacific/Auckland", data.expertTimezone)
+        }
+
+    @Test
+    fun getExpertAvailabilitySendsTopicIdWhenGiven() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"days":[]}}""")
+
+            api.getExpertAvailability("e1", "2026-10", "t1")
+
+            val request = server.takeRequest()
+            assertEquals("2026-10", request.url.queryParameter("month"))
+            assertEquals("t1", request.url.queryParameter("topic_id"))
+        }
+
+    @Test
+    fun requestBookingPostsExactStrictBodyAndDecodesBookingId() =
+        runTest {
+            enqueue(
+                201,
+                """{"status":"success","data":{"booking_id":"b1","status":"pending_approval","message":"Sent"}}""",
+            )
+
+            val data = api.requestBooking(sampleBookingBody("Hi")).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/bookings/request", request.url.encodedPath)
+            assertEquals(
+                """{"expert_id":"e1","topic_id":"t1","scheduled_start":"2026-10-24T14:00:00Z",""" +
+                    """"duration_minutes":30,"meeting_type":"in_app_voice","timezone":"America/Toronto",""" +
+                    """"client_notes":"Hi"}""",
+                request.body?.utf8(),
+            )
+            assertEquals("b1", data.bookingId)
+        }
+
+    @Test
+    fun requestBookingOmitsClientNotesWhenNull() =
+        runTest {
+            enqueue(201, """{"status":"success","data":{"booking_id":"b1"}}""")
+
+            api.requestBooking(sampleBookingBody(null))
+
+            val request = server.takeRequest()
+            val body = request.body?.utf8().orEmpty()
+            assertFalse(body, body.contains("client_notes"))
+        }
+
+    @Test
+    fun requestBooking409SlotUnavailableSurfacesAsHttpWithErrorCode() =
+        runTest {
+            enqueue(409, """{"status":"error","code":"SLOT_UNAVAILABLE","message":"Slot is no longer available"}""")
+
+            val error = runCatching { apiCall { api.requestBooking(sampleBookingBody(null)) } }.exceptionOrNull()
+
+            assertTrue(error is ApiException.Http)
+            error as ApiException.Http
+            assertEquals(409, error.status)
+            assertEquals(ErrorCode.SlotUnavailable, error.code)
+        }
+
+    @Test
+    fun requestBooking422MeetingLinkUnavailableSurfacesAsHttpWithErrorCode() =
+        runTest {
+            enqueue(422, """{"status":"error","code":"MEETING_LINK_UNAVAILABLE","message":"No meeting link"}""")
+
+            val error = runCatching { apiCall { api.requestBooking(sampleBookingBody(null)) } }.exceptionOrNull()
+
+            assertTrue(error is ApiException.Http)
+            error as ApiException.Http
+            assertEquals(422, error.status)
+            assertEquals(ErrorCode.MeetingLinkUnavailable, error.code)
+        }
+
+    @Test
+    fun getClientBookingDetailUsesIdPathAndDecodes() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"booking_id":"b1","status":"pending_approval",
+                "start_time":"2026-10-24T18:00:00+00:00","topic":{"id":"t1","title":"Intro","is_free":true},
+                "expert":{"id":"e1","full_name":"Ada Lovelace"}}}
+                """.trimIndent(),
+            )
+
+            val detail = api.getClientBookingDetail("b1").data
+
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/client/bookings/b1", request.url.encodedPath)
+            assertEquals("b1", detail.bookingId)
         }
 }

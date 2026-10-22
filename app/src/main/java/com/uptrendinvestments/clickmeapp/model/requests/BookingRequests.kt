@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:filename")
+
 package com.uptrendinvestments.clickmeapp.model.requests
 
 import com.squareup.moshi.Json
