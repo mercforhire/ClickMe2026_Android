@@ -61,10 +61,12 @@ fun ApiException.toBookingFailure(): BookingFailure =
 
 /**
  * Message for an inline section failure (topics or availability load): the server message when there is
- * one, else the standard network copy.
+ * one. Only a real connection failure gets the "check your connection" copy; a server error without a message
+ * or an unreadable response is not the user's connection, so it gets the generic copy (as [toBookingFailure]).
  */
 fun ApiException.toSectionMessage(): FieldError =
     when (this) {
-        is ApiException.Http -> userMessage?.let { FieldError.Text(it) } ?: FieldError.Res(R.string.login_error_network)
-        is ApiException.Network, is ApiException.Decoding -> FieldError.Res(R.string.login_error_network)
+        is ApiException.Http -> userMessage?.let { FieldError.Text(it) } ?: FieldError.Res(R.string.login_error_unknown)
+        is ApiException.Network -> FieldError.Res(R.string.login_error_network)
+        is ApiException.Decoding -> FieldError.Res(R.string.login_error_unknown)
     }

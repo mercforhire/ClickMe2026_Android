@@ -141,10 +141,14 @@ class BookingErrorsTest {
     }
 
     @Test
-    fun section_message_falls_back_to_network_copy() {
-        val network = res(R.string.login_error_network)
-        assertEquals(network, http(500, null).toSectionMessage())
-        assertEquals(network, ApiException.Network(IOException()).toSectionMessage())
-        assertEquals(network, ApiException.Decoding(RuntimeException()).toSectionMessage())
+    fun section_message_uses_network_copy_only_for_a_connection_failure() {
+        assertEquals(res(R.string.login_error_network), ApiException.Network(IOException()).toSectionMessage())
+    }
+
+    @Test
+    fun section_message_uses_unknown_copy_for_a_server_or_decoding_fault() {
+        val unknown = res(R.string.login_error_unknown)
+        assertEquals(unknown, http(500, null).toSectionMessage())
+        assertEquals(unknown, ApiException.Decoding(RuntimeException()).toSectionMessage())
     }
 }
