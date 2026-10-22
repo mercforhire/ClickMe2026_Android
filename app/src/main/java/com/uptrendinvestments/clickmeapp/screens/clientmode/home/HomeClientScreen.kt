@@ -41,8 +41,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Explor
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.SearchRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.clientStartTab
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.clientTabs
-import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
-import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingStubScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
@@ -89,6 +91,28 @@ fun HomeClientScreen(
                             onBook = { navigator.navigate(it) },
                         )
                     }
+                    clientBookingFlowEntries(
+                        navigator = navigator,
+                        booking = { key, onBack, onBooked ->
+                            val bookingViewModel =
+                                hiltViewModel<MakeABookingViewModel, MakeABookingViewModel.Factory>(
+                                    creationCallback = { it.create(key) },
+                                )
+                            MakeABookingScreen(viewModel = bookingViewModel, onBack = onBack, onBooked = onBooked)
+                        },
+                        requestSent = { key, onBack, onViewBookings, onBackToHome ->
+                            val sentViewModel =
+                                hiltViewModel<BookingRequestSentViewModel, BookingRequestSentViewModel.Factory>(
+                                    creationCallback = { it.create(key) },
+                                )
+                            BookingRequestSentScreen(
+                                viewModel = sentViewModel,
+                                onBack = onBack,
+                                onViewBookings = onViewBookings,
+                                onBackToHome = onBackToHome,
+                            )
+                        },
+                    )
                 },
             )
         },
@@ -124,8 +148,8 @@ private const val ONBOARDING_FADE_MS = 200
  *
  * Two slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button), and
- * [detailEntries] registers extra routes pushed on top of a tab, such as the Expert Profile. The
- * booking stub route is registered here because it needs no injection.
+ * [detailEntries] registers extra routes pushed on top of a tab, such as the Expert Profile and the booking
+ * flow routes (see [clientBookingFlowEntries]).
  */
 @Composable
 fun HomeClientShell(
@@ -190,9 +214,6 @@ fun HomeClientShell(
                 }
                 entry<DesignSystemGalleryKey> {
                     DesignSystemGalleryScreen(onBack = navigator::goBack)
-                }
-                entry<BookingKey>(metadata = BottomBar.hidden()) { key ->
-                    MakeABookingStubScreen(key = key, onBack = navigator::goBack)
                 }
                 detailEntries(navigator)
             },

@@ -1,0 +1,50 @@
+package com.uptrendinvestments.clickmeapp.screens.clientmode.home
+
+import androidx.compose.runtime.Composable
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
+import com.uptrendinvestments.clickmeapp.navigation.BottomBar
+import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestSentKey
+
+/**
+ * Registers the booking flow routes ([BookingKey] and [RequestSentKey]) in the client shell, both with the
+ * bottom bar hidden. Hilt-free: the Hilt-backed screens arrive through [booking] and [requestSent], so
+ * HomeShellsTest drives the real metadata and navigation callbacks with fake content.
+ *
+ * - D-12: [booking]'s `onBooked` replaces Make a Booking with Request Sent (`replaceTop`), so Back from Request
+ *   Sent lands on Expert Profile and the filled form cannot be re-submitted.
+ * - D-13: `onViewBookings` mirrors iOS `showMyBookings` (reset the Explore and Bookings paths, then select
+ *   Bookings); `onBackToHome` mirrors iOS `returnToHome` (reset Explore to its root).
+ *
+ * The Bookings tab stays the placeholder until Phase 8 builds My Bookings; the wiring is final now.
+ */
+fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
+    navigator: Navigator,
+    booking: @Composable (
+        key: BookingKey,
+        onBack: () -> Unit,
+        onBooked: (bookingId: String) -> Unit,
+    ) -> Unit,
+    requestSent: @Composable (
+        key: RequestSentKey,
+        onBack: () -> Unit,
+        onViewBookings: () -> Unit,
+        onBackToHome: () -> Unit,
+    ) -> Unit,
+) {
+    entry<BookingKey>(metadata = BottomBar.hidden()) { key ->
+        booking(key, navigator::goBack) { id -> navigator.replaceTop(RequestSentKey(id)) }
+    }
+    entry<RequestSentKey>(metadata = BottomBar.hidden()) { key ->
+        requestSent(
+            key,
+            navigator::goBack,
+            { navigator.resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, ClientBookingsRoot)) },
+            { navigator.reselect(ExploreRoot) },
+        )
+    }
+}

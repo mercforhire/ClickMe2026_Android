@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsSelected
@@ -302,14 +303,18 @@ class HomeShellsTest {
                 clientBookingFlowEntries(
                     navigator = nav,
                     booking = { _, onBack, onBooked ->
-                        Button(onClick = onBack) { Text("fake back") }
-                        Button(onClick = { onBooked("b1") }) { Text("fake book") }
+                        Column {
+                            Button(onClick = onBack) { Text("fake back") }
+                            Button(onClick = { onBooked("b1") }) { Text("fake book") }
+                        }
                     },
                     requestSent = { key, onBack, onViewBookings, onBackToHome ->
-                        Text("sent ${key.bookingId}")
-                        Button(onClick = onBack) { Text("sent back") }
-                        Button(onClick = onViewBookings) { Text("sent bookings") }
-                        Button(onClick = onBackToHome) { Text("sent home") }
+                        Column {
+                            Text("sent ${key.bookingId}")
+                            Button(onClick = onBack) { Text("sent back") }
+                            Button(onClick = onViewBookings) { Text("sent bookings") }
+                            Button(onClick = onBackToHome) { Text("sent home") }
+                        }
                     },
                 )
             },
