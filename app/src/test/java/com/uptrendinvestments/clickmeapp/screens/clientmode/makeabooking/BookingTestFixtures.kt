@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.TopicOfDiscussionDto
 import com.uptrendinvestments.clickmeapp.model.responses.TopicPriceDto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeCompletedBookingStore
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import java.time.Clock
 import java.time.Instant
@@ -65,5 +66,13 @@ fun newViewModel(
     api: FakeClickMeApi,
     savedState: SavedStateHandle = SavedStateHandle(),
     clock: Clock = MutableClock(Instant.parse(NOW)),
+    completedBookings: CompletedBookingStore = FakeCompletedBookingStore(),
 ): MakeABookingViewModel =
-    MakeABookingViewModel(bookingKey(), savedState, ExpertProfileRepository(api), BookingRepository(api), clock)
+    MakeABookingViewModel(
+        bookingKey(),
+        savedState,
+        ExpertProfileRepository(api),
+        BookingRepository(api),
+        completedBookings,
+        clock,
+    )

@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeCompletedBookingStore
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import kotlinx.coroutines.CompletableDeferred
@@ -257,14 +258,121 @@ class MakeABookingViewModelBookTest {
     fun aFailedBookingPersistsNoCompletedId() =
         runTest(main.testDispatcher) {
             val handle = SavedStateHandle()
+            val store = FakeCompletedBookingStore()
             api.requestBookingHandler = { throw IOException("offline") }
-            val vm = newViewModel(api, handle, clock)
+            val vm = newViewModel(api, handle, clock, store)
             runCurrent()
             vm.selectSlot(slot20)
             vm.book()
             runCurrent()
             assertFalse(handle.contains("booking_completed_id"))
-            assertNull(newViewModel(api, handle, clock).uiState.value.completedBookingId)
+            // The failed attempt is forgotten, so a restore does not wait on the durable store for it.
+            assertFalse(handle.contains("booking_attempt_id"))
+            assertTrue(store.records.isEmpty())
+            val restored = newViewModel(api, handle, clock, store)
+            assertNull(restored.uiState.value.completedBookingId)
+            assertFalse(restored.uiState.value.isSubmitting)
+        }
+
+    // ---- WR-01: a success that lands after the activity saved its state survives process death ----
+
+    /**
+     * What the activity's state save hands to the system: a copy of the handle's contents at that moment. Writes to
+     * the live handle after this point are memory only and are lost with the process.
+     */
+    private fun SavedStateHandle.savedSnapshot(): SavedStateHandle =
+        SavedStateHandle(keys().associateWith { get<Any?>(it) })
+
+    @Test
+    fun aSuccessThatLandsAfterTheStateWasSavedSurvivesProcessDeath() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<BookingRequestData>()
+            api.requestBookingHandler = { gate.await() }
+            val store = FakeCompletedBookingStore()
+            val handle = SavedStateHandle()
+            val vm1 = newViewModel(api, handle, clock, store)
+            runCurrent()
+            vm1.selectSlot(slot20)
+            vm1.book()
+            runCurrent()
+
+            // The user leaves the app with the request in flight: onStop saves the state.
+            val saved = handle.savedSnapshot()
+            // The response lands in the background, after the save.
+            gate.complete(BookingRequestData(bookingId = "b1"))
+            runCurrent()
+            assertEquals("b1", vm1.uiState.value.completedBookingId)
+            // The failure the fix covers: the saved state has no completed id.
+            assertFalse(saved.contains("booking_completed_id"))
+
+            // The process is killed; a fresh ViewModel is built from the saved state only.
+            val detailsBefore = api.expertDetailsCalls
+            val availabilityBefore = api.expertAvailabilityCalls
+            val vm2 = newViewModel(api, saved, clock, store)
+            // Locked from the first frame while the durable record is read.
+            assertTrue(vm2.uiState.value.isSubmitting)
+            runCurrent()
+            val s = vm2.uiState.value
+            assertEquals("b1", s.completedBookingId)
+            assertTrue(s.isSubmitting)
+            // Nothing is loaded and nothing can be booked again.
+            assertEquals(detailsBefore, api.expertDetailsCalls)
+            assertEquals(availabilityBefore, api.expertAvailabilityCalls)
+            vm2.book()
+            runCurrent()
+            assertEquals(1, api.requestBookingCalls)
+
+            // Request Sent is shown: the record is consumed and can never resurface.
+            vm2.consumeCompletedBooking()
+            assertTrue(store.records.isEmpty())
+            assertEquals(1, store.discarded.size)
+            assertFalse(saved.contains("booking_completed_id"))
+            assertFalse(saved.contains("booking_attempt_id"))
+        }
+
+    @Test
+    fun aRequestLostWithTheProcessReopensTheRestoredForm() =
+        runTest(main.testDispatcher) {
+            api.requestBookingHandler = { CompletableDeferred<BookingRequestData>().await() }
+            val store = FakeCompletedBookingStore()
+            val handle = SavedStateHandle()
+            val vm1 = newViewModel(api, handle, clock, store)
+            runCurrent()
+            vm1.selectSlot(slot20)
+            vm1.book()
+            runCurrent()
+            val saved = handle.savedSnapshot()
+
+            // The process dies before any response: there is no record, so the form comes back editable.
+            api.requestBookingHandler = { BookingRequestData(bookingId = "b2") }
+            val vm2 = newViewModel(api, saved, clock, store)
+            runCurrent()
+            val s = vm2.uiState.value
+            assertNull(s.completedBookingId)
+            assertFalse(s.isSubmitting)
+            assertTrue(s.topics is TopicsState.Loaded)
+            assertEquals(slot20, s.selectedSlotStart)
+            assertFalse(saved.contains("booking_attempt_id"))
+        }
+
+    @Test
+    fun aRecordFromAnotherAttemptNeverResurfaces() =
+        runTest(main.testDispatcher) {
+            val store = FakeCompletedBookingStore()
+            store.put("an-earlier-attempt", "b0")
+
+            // A new booking flow (nothing restored) never reads the store.
+            val fresh = newViewModel(api, SavedStateHandle(), clock, store)
+            runCurrent()
+            assertNull(fresh.uiState.value.completedBookingId)
+            assertFalse(fresh.uiState.value.isSubmitting)
+
+            // A restored flow only accepts the record of its own attempt.
+            val restored = newViewModel(api, SavedStateHandle(mapOf("booking_attempt_id" to "another")), clock, store)
+            runCurrent()
+            assertNull(restored.uiState.value.completedBookingId)
+            assertFalse(restored.uiState.value.isSubmitting)
+            assertTrue(restored.uiState.value.topics is TopicsState.Loaded)
         }
 
     @Test

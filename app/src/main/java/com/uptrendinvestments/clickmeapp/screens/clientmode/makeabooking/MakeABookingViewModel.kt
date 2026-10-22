@@ -29,6 +29,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeParseException
+import java.util.UUID
 
 /**
  * Make a Booking state machine, free path. Port of iOS `MakeABookingViewModel`; `book()` is the free booking action (BOOK-03).
@@ -45,7 +46,10 @@ import java.time.format.DateTimeParseException
  * - Selection state (topic, day, month, slot, meeting type, notes) is mirrored to [SavedStateHandle] so it
  *   survives process death. A restored topic or slot is only applied if it is still present in the freshly
  *   loaded data (and, for a slot, still selectable). A completed booking id is persisted too, until the screen
- *   consumes it, so a success that lands while the app is in the background is not lost to process death.
+ *   consumes it. A success that lands after the activity saved its state (the app is in the background) is not in
+ *   that saved state, so it is also written to the durable [CompletedBookingStore] under an attempt id that is put
+ *   in the saved state before the request is sent (WR-01). A ViewModel restored with that attempt id looks the
+ *   record up before it shows the form.
  */
 @HiltViewModel(assistedFactory = MakeABookingViewModel.Factory::class)
 class MakeABookingViewModel
@@ -55,6 +59,7 @@ class MakeABookingViewModel
         private val savedStateHandle: SavedStateHandle,
         private val profiles: ExpertProfileRepository,
         private val repository: BookingRepository,
+        private val completedBookings: CompletedBookingStore,
         private val clock: Clock,
     ) : ViewModel() {
         @AssistedFactory
@@ -81,10 +86,36 @@ class MakeABookingViewModel
         private var loadedExpertTimezone: String? = null
 
         init {
-            // A restored completed booking navigates straight to Request Sent, so there is nothing to load.
-            if (_uiState.value.completedBookingId == null) {
-                loadTopics()
-                loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
+            val attemptId = savedStateHandle.get<String>(KEY_ATTEMPT_ID)
+            when {
+                // A restored completed booking navigates straight to Request Sent, so there is nothing to load.
+                _uiState.value.completedBookingId != null -> Unit
+                // A booking was in flight when the state was saved: it may have succeeded after the save (WR-01).
+                attemptId != null -> recoverAttempt(attemptId)
+                else -> loadForm()
+            }
+        }
+
+        private fun loadForm() {
+            loadTopics()
+            loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
+        }
+
+        /**
+         * WR-01: the form stays locked while the durable store is read. A recorded success goes on to Request Sent
+         * exactly like a completed id from the saved state; otherwise the attempt is forgotten and the form loads.
+         */
+        private fun recoverAttempt(attemptId: String) {
+            viewModelScope.launch {
+                val bookingId = completedBookings.get(attemptId)
+                if (bookingId != null) {
+                    savedStateHandle[KEY_COMPLETED_BOOKING_ID] = bookingId
+                    _uiState.update { it.copy(completedBookingId = bookingId) }
+                } else {
+                    savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
+                    _uiState.update { it.copy(isSubmitting = false) }
+                    loadForm()
+                }
             }
         }
 
@@ -192,6 +223,9 @@ class MakeABookingViewModel
                 return
             }
             _uiState.update { it.copy(isSubmitting = true, now = now) }
+            // Written while the screen is in the foreground, so always before the activity saves its state (WR-01).
+            val attemptId = UUID.randomUUID().toString()
+            savedStateHandle[KEY_ATTEMPT_ID] = attemptId
             val body =
                 BookingRequestBody(
                     expertId = s.expertId,
@@ -207,7 +241,9 @@ class MakeABookingViewModel
                     val result = repository.requestBooking(body)
                     // Success is terminal: isSubmitting stays true, so Book Now, Back and the single-flight guard stay
                     // locked while the outgoing entry is still composed during the push to Request Sent. The id is
-                    // persisted so a process death before the screen resumes still lands on Request Sent.
+                    // persisted so a process death before the screen resumes still lands on Request Sent: on disk
+                    // first, because the activity may already have saved its state (WR-01), then in the saved state.
+                    completedBookings.put(attemptId, result.bookingId)
                     savedStateHandle[KEY_COMPLETED_BOOKING_ID] = result.bookingId
                     _uiState.update { it.copy(completedBookingId = result.bookingId) }
                 } catch (e: ApiException) {
@@ -218,6 +254,7 @@ class MakeABookingViewModel
 
         /** D-10 mapping with the D-08 meeting reset and the D-09 clear-and-reload side effects. */
         private fun handleBookingFailure(e: ApiException) {
+            savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
             when (val failure = e.toBookingFailure()) {
                 BookingFailure.Silent -> _uiState.update { it.copy(isSubmitting = false) }
                 is BookingFailure.Show -> {
@@ -247,10 +284,12 @@ class MakeABookingViewModel
         /**
          * The screen consumes the id, then calls `navigator.replaceTop(RequestSentKey(id))` (D-12); the entry and
          * this ViewModel are then removed. `isSubmitting` is left true, so nothing can be booked again in between.
+         * The durable record is discarded too, so it can never send a later flow to Request Sent (WR-01).
          */
         fun consumeCompletedBooking() {
             _uiState.update { it.copy(completedBookingId = null) }
             savedStateHandle.remove<String>(KEY_COMPLETED_BOOKING_ID)
+            savedStateHandle.remove<String>(KEY_ATTEMPT_ID)?.let(completedBookings::discard)
         }
 
         private fun clearSlot() {
@@ -394,6 +433,8 @@ class MakeABookingViewModel
                     ?.takeUnless { it.isBefore(currentMonth) }
                     ?: currentMonth
             val completedBookingId = savedStateHandle.get<String>(KEY_COMPLETED_BOOKING_ID)
+            // A booking that was in flight when the state was saved: locked until recoverAttempt() has checked.
+            val recoveringAttempt = completedBookingId == null && savedStateHandle.contains(KEY_ATTEMPT_ID)
             return MakeABookingUiState(
                 expertId = key.expertId,
                 expertName = key.expertName,
@@ -408,7 +449,7 @@ class MakeABookingViewModel
                     MeetingType.fromWire(savedStateHandle.get<String>(KEY_MEETING_TYPE)) ?: MeetingType.InAppVoice,
                 notes = capNotes(savedStateHandle.get<String>(KEY_NOTES).orEmpty()),
                 // A booking that succeeded before process death: stay locked and let the screen navigate on.
-                isSubmitting = completedBookingId != null,
+                isSubmitting = completedBookingId != null || recoveringAttempt,
                 completedBookingId = completedBookingId,
             )
         }
@@ -445,6 +486,7 @@ class MakeABookingViewModel
             const val KEY_MEETING_TYPE = "booking_meeting_type"
             const val KEY_NOTES = "booking_notes"
             const val KEY_COMPLETED_BOOKING_ID = "booking_completed_id"
+            const val KEY_ATTEMPT_ID = "booking_attempt_id"
         }
     }
 
