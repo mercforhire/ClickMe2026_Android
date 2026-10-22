@@ -1,18 +1,30 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.BOOK_NOW_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.NOTES_FIELD_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.TOPIC_PICKER_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -221,6 +233,66 @@ class MakeABookingScreenTest {
         composeRule.onNodeWithContentDescription("Back").assertIsEnabled().performClick()
         assertEquals(1, backCount)
         assertTrue(pickedTopics.isEmpty())
+    }
+
+    // ---- CR-01: only a user drag clears focus; programmatic scrolls (bring-into-view, imePadding) do not ----
+
+    private var viewportHeight by mutableStateOf(640.dp)
+
+    private fun setContentInViewport(state: MakeABookingUiState) {
+        composeRule.setContent {
+            ClickMeTheme {
+                Box(Modifier.height(viewportHeight)) {
+                    MakeABookingContent(
+                        state = state,
+                        onBack = {},
+                        onRetryTopics = {},
+                        onSelectTopic = {},
+                        onPreviousMonth = {},
+                        onNextMonth = {},
+                        onSelectDate = {},
+                        onSelectSlot = {},
+                        onRetryAvailability = {},
+                        onSelectMeetingType = {},
+                        onNotesChange = {},
+                        onBook = {},
+                        onDismissError = {},
+                        zone = zone,
+                        timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun notesFieldKeepsFocusWhenTheViewportShrinks() {
+        setContentInViewport(loadedState())
+
+        composeRule.onNodeWithTag(NOTES_FIELD_TAG).performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(NOTES_FIELD_TAG).assertIsFocused()
+
+        // The same viewport shrink `imePadding` causes when the keyboard opens; the scroll container then
+        // scrolls programmatically to keep the focused field visible.
+        viewportHeight = 240.dp
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(NOTES_FIELD_TAG).assertIsFocused()
+    }
+
+    @Test
+    fun aUserDragClearsNotesFocus() {
+        setContentInViewport(loadedState())
+
+        composeRule.onNodeWithTag(NOTES_FIELD_TAG).performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(NOTES_FIELD_TAG).assertIsFocused()
+
+        composeRule.onNodeWithTag(MAKE_A_BOOKING_SCROLL_TAG).performTouchInput { swipeDown() }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(NOTES_FIELD_TAG).assertIsNotFocused()
     }
 
     // ---- Task 2: real ViewModel + FakeClickMeApi, the in-JVM stand-in for the deferred device check ----

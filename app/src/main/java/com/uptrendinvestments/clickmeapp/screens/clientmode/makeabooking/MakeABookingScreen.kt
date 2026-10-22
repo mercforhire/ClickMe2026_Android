@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -119,8 +120,12 @@ fun MakeABookingContent(
     val scrollState = rememberScrollState()
 
     BackHandler(enabled = state.isSubmitting) {}
-    LaunchedEffect(scrollState.isScrollInProgress) {
-        if (scrollState.isScrollInProgress) focusManager.clearFocus()
+    // Only a user drag dismisses the keyboard. `isScrollInProgress` is also true for programmatic scrolls, and
+    // focusing the notes field starts two of them (its own bring-into-view, and keeping the focused child visible
+    // when `imePadding` shrinks the viewport), which would clear focus as soon as the keyboard opens.
+    val isDragged by scrollState.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(isDragged) {
+        if (isDragged) focusManager.clearFocus()
     }
 
     Scaffold(
