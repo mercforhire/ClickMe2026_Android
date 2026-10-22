@@ -282,7 +282,7 @@ Plans:
   3. An Android client books a free topic and sees Request Sent, and the iOS expert receives the request. (PRD Week 3 checkpoint, free path)
 
 **Planning notes:** Highest-risk week. Regroup by `startUtc` into the client's local date. Test with the iOS app as the expert.
-**Plans:** 3/14 plans executed
+**Plans:** 5/14 plans executed
 Plans:
 **Wave 1**
 
@@ -292,8 +292,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 06-04-PLAN.md — groupSlots cross-timezone golden tests, booking error mapping, MeetingType, MakeABookingUiState contract, Make a Booking strings (BOOK-01, BOOK-02, BOOK-03)
-- [ ] 06-05-PLAN.md — Request Sent data: ClientBookingsRepository.detail, UI state, assisted ViewModel with Retry (BOOK-04)
+- [x] 06-04-PLAN.md — groupSlots cross-timezone golden tests, booking error mapping, MeetingType, MakeABookingUiState contract, Make a Booking strings (BOOK-01, BOOK-02, BOOK-03)
+- [x] 06-05-PLAN.md — Request Sent data: ClientBookingsRepository.detail, UI state, assisted ViewModel with Retry (BOOK-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -514,7 +514,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
-| 6. Booking Flow & Free Bookings | 3/14 | In Progress|  |
+| 6. Booking Flow & Free Bookings | 5/14 | In Progress|  |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
