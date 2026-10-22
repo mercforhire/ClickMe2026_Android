@@ -163,4 +163,63 @@ class NavigatorTest {
         val navigator = newNavigator()
         assertThrows(IllegalArgumentException::class.java) { navigator.reselect(Detail) }
     }
+
+    @Test
+    fun replaceTopSwapsTopEntryWithPushTransition() {
+        val navigator = newNavigator()
+        navigator.navigate(A)
+        navigator.navigate(B)
+        navigator.replaceTop(Detail)
+        assertEquals(listOf<NavKey>(Explore, A, Detail), navigator.stack(Explore))
+        assertEquals(NavTransition.Push, navigator.state.lastTransition)
+        assertEquals(Explore, navigator.state.topLevelRoute)
+    }
+
+    @Test
+    fun replaceTopEditsOnlyTheCurrentTabStack() {
+        val navigator = newNavigator()
+        navigator.navigate(Bookings)
+        navigator.navigate(A)
+        navigator.replaceTop(B)
+        assertEquals(listOf<NavKey>(Bookings, B), navigator.stack(Bookings))
+        assertEquals(listOf<NavKey>(Explore), navigator.stack(Explore))
+    }
+
+    @Test
+    fun replaceTopRefusesToReplaceATabRoot() {
+        val navigator = newNavigator()
+        assertThrows(IllegalStateException::class.java) { navigator.replaceTop(Detail) }
+        assertEquals(listOf<NavKey>(Explore), navigator.stack(Explore))
+    }
+
+    @Test
+    fun resetAndSelectPopsListedTabsAndSelectsTarget() {
+        val navigator = newNavigator()
+        navigator.navigate(A)
+        navigator.navigate(B)
+        navigator.navigateInTab(Bookings, Detail)
+        navigator.navigateInTab(Chats, A)
+        navigator.resetAndSelect(Bookings, setOf(Explore, Bookings))
+        assertEquals(listOf<NavKey>(Explore), navigator.stack(Explore))
+        assertEquals(listOf<NavKey>(Bookings), navigator.stack(Bookings))
+        assertEquals(listOf<NavKey>(Chats, A), navigator.stack(Chats))
+        assertEquals(Bookings, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
+    }
+
+    @Test
+    fun resetAndSelectWithEmptyResetOnlySelects() {
+        val navigator = newNavigator()
+        navigator.navigate(A)
+        navigator.resetAndSelect(Bookings, emptySet())
+        assertEquals(listOf<NavKey>(Explore, A), navigator.stack(Explore))
+        assertEquals(Bookings, navigator.state.topLevelRoute)
+    }
+
+    @Test
+    fun resetAndSelectRejectsUnknownTabOrResetKey() {
+        val navigator = newNavigator()
+        assertThrows(IllegalArgumentException::class.java) { navigator.resetAndSelect(Detail, emptySet()) }
+        assertThrows(IllegalArgumentException::class.java) { navigator.resetAndSelect(Bookings, setOf(Detail)) }
+    }
 }
