@@ -27,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.BOOK_NOW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.NOTES_FIELD_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.TOPIC_PICKER_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -81,6 +82,7 @@ class MakeABookingScreenTest {
     private var bookCount = 0
     private var dismissCount = 0
     private val pickedTopics = mutableListOf<String>()
+    private val formInputs = mutableListOf<String>()
 
     private fun loadedState(
         selectedTopicId: String = "t1",
@@ -125,13 +127,13 @@ class MakeABookingScreenTest {
                     onBack = { backCount++ },
                     onRetryTopics = {},
                     onSelectTopic = { pickedTopics += it },
-                    onPreviousMonth = {},
-                    onNextMonth = {},
-                    onSelectDate = {},
-                    onSelectSlot = {},
+                    onPreviousMonth = { formInputs += "previous" },
+                    onNextMonth = { formInputs += "next" },
+                    onSelectDate = { formInputs += "date $it" },
+                    onSelectSlot = { formInputs += "slot $it" },
                     onRetryAvailability = {},
-                    onSelectMeetingType = {},
-                    onNotesChange = {},
+                    onSelectMeetingType = { formInputs += "meeting $it" },
+                    onNotesChange = { formInputs += "notes $it" },
                     onBook = { bookCount++ },
                     onDismissError = { dismissCount++ },
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
@@ -226,6 +228,58 @@ class MakeABookingScreenTest {
         setContent(loadedState(isSubmitting = true))
         composeRule.onNodeWithContentDescription("Back").assertIsNotEnabled().performClick()
         assertEquals(0, backCount)
+    }
+
+    @Test
+    fun theFormIsLockedWhileSubmitting() {
+        setContent(loadedState(isSubmitting = true))
+
+        composeRule
+            .onNodeWithTag(TOPIC_PICKER_TAG)
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule.onNodeWithText("Choose a Topic").assertDoesNotExist()
+        composeRule
+            .onNodeWithContentDescription("Next month")
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithTag(calendarDayTestTag(LocalDate.of(2026, 10, 23)))
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithTag(slotChipTestTag(slot20))
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithText("Skype/Zoom Call")
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .performClick()
+
+        assertTrue("no form input may reach the ViewModel: $formInputs", formInputs.isEmpty())
+    }
+
+    @Test
+    fun theFormIsEditableWhenIdle() {
+        setContent(loadedState())
+
+        composeRule
+            .onNodeWithContentDescription("Next month")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithText("Skype/Zoom Call")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+
+        assertEquals(listOf("next", "meeting ${MeetingType.SkypeZoom}"), formInputs)
     }
 
     @Test

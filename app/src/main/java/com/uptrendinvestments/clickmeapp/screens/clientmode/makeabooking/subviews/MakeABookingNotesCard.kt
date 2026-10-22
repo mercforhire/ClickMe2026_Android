@@ -50,12 +50,14 @@ private val FocusedBorder = 2.dp
  *
  * Stateless: [notes] is the whole value and every edit goes to [onNotesChange]; the ViewModel applies `capNotes`, so
  * pasted text over the limit is cut there. Enter inserts a newline, and the field scrolls into view when focused.
+ * [readOnly] is set while a booking is in flight: the text can still be read and keeps focus, but not edited.
  */
 @Composable
 fun MakeABookingNotesCard(
     notes: String,
     onNotesChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
@@ -76,6 +78,7 @@ fun MakeABookingNotesCard(
         BasicTextField(
             value = notes,
             onValueChange = onNotesChange,
+            readOnly = readOnly,
             modifier =
                 Modifier
                     .fillMaxWidth()

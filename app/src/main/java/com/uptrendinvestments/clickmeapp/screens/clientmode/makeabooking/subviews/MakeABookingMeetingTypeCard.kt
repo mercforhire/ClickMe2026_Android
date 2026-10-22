@@ -35,12 +35,14 @@ private val RowMinHeight = 56.dp
  *
  * Both types are always offered (D-08 as written): the card does not read the expert's available meeting types. A
  * `422 MEETING_LINK_UNAVAILABLE` answer is handled in the ViewModel, which snaps [selected] back to In-app Voice.
+ * While [enabled] is false (a booking is in flight) the rows do not respond.
  */
 @Composable
 fun MakeABookingMeetingTypeCard(
     selected: MeetingType,
     onSelect: (MeetingType) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val types = MeetingType.entries
     Card(
@@ -58,6 +60,7 @@ fun MakeABookingMeetingTypeCard(
                             .heightIn(min = RowMinHeight)
                             .selectable(
                                 selected = type == selected,
+                                enabled = enabled,
                                 role = Role.RadioButton,
                                 onClick = { onSelect(type) },
                             ).padding(horizontal = Spacing.md),

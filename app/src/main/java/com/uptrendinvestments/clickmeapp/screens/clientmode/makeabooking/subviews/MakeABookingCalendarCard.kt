@@ -72,7 +72,8 @@ fun calendarDayTestTag(date: LocalDate): String = "make_a_booking_day_$date"
  *
  * The grid is a Column of 7-cell Rows built from [monthCells], never a lazy grid, because the screen already scrolls.
  * Days before [today] are dimmed and not selectable, a 4 dp dot marks days in [openDays], and the previous-month arrow
- * is controlled by [canGoToPreviousMonth]. Forward navigation has no limit.
+ * is controlled by [canGoToPreviousMonth]. Forward navigation has no limit. While [enabled] is false (a booking is in
+ * flight) neither the arrows nor the days respond; nothing is restyled.
  */
 @Composable
 fun MakeABookingCalendarCard(
@@ -85,6 +86,7 @@ fun MakeABookingCalendarCard(
     onNextMonth: () -> Unit,
     onSelectDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val firstDay = remember(locale) { firstDayOfWeek(locale) }
@@ -100,6 +102,7 @@ fun MakeABookingCalendarCard(
                 canGoToPreviousMonth = canGoToPreviousMonth,
                 onPreviousMonth = onPreviousMonth,
                 onNextMonth = onNextMonth,
+                enabled = enabled,
             )
             WeekdayHeader(firstDay = firstDay, locale = locale)
             Spacer(Modifier.height(Spacing.sm))
@@ -120,6 +123,7 @@ fun MakeABookingCalendarCard(
                                             isSelected = date == selectedDate,
                                             isOpen = date in openDays,
                                             locale = locale,
+                                            interactive = enabled,
                                             onSelect = { onSelectDate(date) },
                                         )
                                     }
@@ -139,10 +143,11 @@ private fun MonthRow(
     canGoToPreviousMonth: Boolean,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    enabled: Boolean,
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onPreviousMonth, enabled = canGoToPreviousMonth) {
+        IconButton(onClick = onPreviousMonth, enabled = enabled && canGoToPreviousMonth) {
             Icon(
                 imageVector = Icons.Outlined.ChevronLeft,
                 contentDescription = stringResource(R.string.make_a_booking_previous_month),
@@ -157,7 +162,7 @@ private fun MonthRow(
             color = onSurface,
             textAlign = TextAlign.Center,
         )
-        IconButton(onClick = onNextMonth) {
+        IconButton(onClick = onNextMonth, enabled = enabled) {
             Icon(
                 imageVector = Icons.Outlined.ChevronRight,
                 contentDescription = stringResource(R.string.make_a_booking_next_month),
@@ -193,6 +198,7 @@ private fun CalendarDay(
     isSelected: Boolean,
     isOpen: Boolean,
     locale: java.util.Locale,
+    interactive: Boolean,
     onSelect: () -> Unit,
 ) {
     val isPast = isPastDay(date, today)
@@ -220,7 +226,7 @@ private fun CalendarDay(
                 .testTag(calendarDayTestTag(date))
                 .selectable(
                     selected = isSelected,
-                    enabled = !isPast,
+                    enabled = interactive && !isPast,
                     role = Role.RadioButton,
                     onClick = onSelect,
                 ).semantics {

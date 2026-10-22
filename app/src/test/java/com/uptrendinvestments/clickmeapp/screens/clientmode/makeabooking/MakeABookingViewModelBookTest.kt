@@ -164,6 +164,64 @@ class MakeABookingViewModelBookTest {
             assertFalse(vm.uiState.value.canBook)
         }
 
+    // ---- WR-04: selections are locked while a booking is in flight ----
+
+    @Test
+    fun selectionChangesAreIgnoredWhileInFlight() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<BookingRequestData>()
+            api.requestBookingHandler = { gate.await() }
+            val vm = readyVm()
+            vm.onNotesChange("Hi")
+            vm.book()
+            runCurrent()
+            val before = vm.uiState.value
+            val availabilityCalls = api.expertAvailabilityCalls
+
+            vm.selectSlot(slot21)
+            vm.selectTopic("t2")
+            vm.selectDate(before.selectedDate.plusDays(1))
+            vm.selectMeetingType(MeetingType.SkypeZoom)
+            vm.goToNextMonth()
+            vm.goToPreviousMonth()
+            vm.onNotesChange("Changed")
+            runCurrent()
+
+            val after = vm.uiState.value
+            assertEquals(slot20, after.selectedSlotStart)
+            assertEquals("t1", after.selectedTopicId)
+            assertEquals(before.selectedDate, after.selectedDate)
+            assertEquals(before.displayedMonth, after.displayedMonth)
+            assertEquals(MeetingType.InAppVoice, after.meetingType)
+            assertEquals("Hi", after.notes)
+            assertEquals(availabilityCalls, api.expertAvailabilityCalls)
+            gate.complete(BookingRequestData(bookingId = "b1"))
+            runCurrent()
+        }
+
+    @Test
+    fun aSlotTakenAfterATapDuringFlightClearsTheRejectedSlotOnly() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.requestBookingHandler = {
+                gate.await()
+                throw api.httpError(409, errorJson("SLOT_UNAVAILABLE"))
+            }
+            val vm = readyVm()
+            vm.book()
+            runCurrent()
+            vm.selectSlot(slot21)
+            gate.complete(Unit)
+            runCurrent()
+            val s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_slot_taken), s.dialogError)
+            assertNull(s.selectedSlotStart)
+            assertFalse(s.isSubmitting)
+            // Editable again after the failure.
+            vm.selectSlot(slot21)
+            assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+        }
+
     // ---- WR-02: a completed booking survives process death until the screen consumes it ----
 
     @Test

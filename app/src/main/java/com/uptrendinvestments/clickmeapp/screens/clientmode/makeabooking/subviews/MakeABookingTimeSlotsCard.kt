@@ -72,6 +72,8 @@ fun slotChipTestTag(start: Instant): String = "make_a_booking_slot_${start.toEpo
  * cannot be tapped, but are never hidden. Chip labels use [timeFormat] in [zone], so the device 12/24 hour setting
  * wins.
  *
+ * While [enabled] is false (a booking is in flight) no chip responds, but nothing is dimmed or marked unavailable.
+ *
  * After a 409 the ViewModel reloads with the data kept visible, so the list refreshes in place and the taken slot
  * turns dimmed with no skeleton (D-09). [AvailabilityState.Failed] only ever describes the center month (D-07).
  */
@@ -86,6 +88,7 @@ fun MakeABookingTimeSlotsCard(
     onSelectSlot: (Instant) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
 ) {
@@ -149,6 +152,7 @@ fun MakeABookingTimeSlotsCard(
                                     label = formatSlotTime(slot.start, zone, timeFormat),
                                     isSelected = slot.start == selectedSlotStart,
                                     enabled = slot.isSelectable(now),
+                                    interactive = enabled,
                                     onSelect = { onSelectSlot(slot.start) },
                                 )
                             }
@@ -181,6 +185,7 @@ private fun SlotChip(
     label: String,
     isSelected: Boolean,
     enabled: Boolean,
+    interactive: Boolean,
     onSelect: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -211,7 +216,7 @@ private fun SlotChip(
                 .then(if (isSelected) Modifier else Modifier.border(1.dp, borderColor, CircleShape))
                 .selectable(
                     selected = isSelected,
-                    enabled = enabled,
+                    enabled = enabled && interactive,
                     role = Role.RadioButton,
                     onClick = onSelect,
                 ).semantics { if (!enabled) stateDescription = unavailable }

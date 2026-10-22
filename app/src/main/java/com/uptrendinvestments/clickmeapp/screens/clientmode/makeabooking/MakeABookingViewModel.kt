@@ -38,6 +38,8 @@ import java.time.format.DateTimeParseException
  *   date; changing the month or the day clears the slot, changing the meeting type or the notes does not.
  *   iOS lets a slow response for an old month overwrite the new one; here every load cancels the previous.
  * - D-08: both meeting types are always offered; the expert's `available_meeting_types` is never read.
+ * - While a booking is in flight (and after it succeeds) every selection setter is ignored, so the request, the
+ *   Summary and the 409/422 side effects all refer to the same slot, topic and meeting type.
  * - Selection state (topic, day, month, slot, meeting type, notes) is mirrored to [SavedStateHandle] so it
  *   survives process death. A restored topic or slot is only applied if it is still present in the freshly
  *   loaded data (and, for a slot, still selectable). A completed booking id is persisted too, until the screen
@@ -90,7 +92,7 @@ class MakeABookingViewModel
 
         /** Changing the topic clears the slot (D-02); re-selecting the current topic is a no-op. */
         fun selectTopic(topicId: String) {
-            if (_uiState.value.selectedTopicId == topicId) return
+            if (_uiState.value.isSubmitting || _uiState.value.selectedTopicId == topicId) return
             pendingTopicId = null
             _uiState.update { it.copy(selectedTopicId = topicId, now = clock.instant()) }
             persistTopic(topicId)
@@ -99,12 +101,14 @@ class MakeABookingViewModel
 
         /** D-06: ignored on the current month. Clears the slot, keeps the day (D-07). */
         fun goToPreviousMonth() {
+            if (_uiState.value.isSubmitting) return
             refreshClock()
             if (!_uiState.value.canGoToPreviousMonth) return
             moveToMonth(_uiState.value.displayedMonth.minusMonths(1))
         }
 
         fun goToNextMonth() {
+            if (_uiState.value.isSubmitting) return
             refreshClock()
             moveToMonth(_uiState.value.displayedMonth.plusMonths(1))
         }
@@ -118,6 +122,7 @@ class MakeABookingViewModel
 
         /** D-06: past days are ignored. The month does not change; the slot is cleared. */
         fun selectDate(date: LocalDate) {
+            if (_uiState.value.isSubmitting) return
             refreshClock()
             if (isPastDay(date, _uiState.value.today)) return
             _uiState.update { it.copy(selectedDate = date, now = clock.instant()) }
@@ -127,6 +132,7 @@ class MakeABookingViewModel
 
         /** D-04: only an available slot that starts after now can be chosen. */
         fun selectSlot(start: Instant) {
+            if (_uiState.value.isSubmitting) return
             refreshClock()
             val now = clock.instant()
             val slot = _uiState.value.slotsForSelectedDate.firstOrNull { it.start == start }
@@ -137,11 +143,13 @@ class MakeABookingViewModel
         }
 
         fun selectMeetingType(type: MeetingType) {
+            if (_uiState.value.isSubmitting) return
             _uiState.update { it.copy(meetingType = type) }
             savedStateHandle[KEY_MEETING_TYPE] = type.wire
         }
 
         fun onNotesChange(text: String) {
+            if (_uiState.value.isSubmitting) return
             val capped = capNotes(text)
             _uiState.update { it.copy(notes = capped) }
             savedStateHandle[KEY_NOTES] = capped

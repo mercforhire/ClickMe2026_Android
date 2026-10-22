@@ -98,7 +98,8 @@ fun MakeABookingScreen(
 /**
  * Stateless Make a Booking content: the eight sections in a fixed order inside one scrolling column (a Column of
  * Rows calendar, so no nested lazy layout). While a booking request is in flight both the app-bar Back and system
- * Back are blocked, because cancelling the request scope could hide a booking that already exists.
+ * Back are blocked, because cancelling the request scope could hide a booking that already exists, and the topic,
+ * calendar, slots, meeting type and notes are locked, so the Summary always shows what is being booked.
  */
 @Composable
 fun MakeABookingContent(
@@ -123,6 +124,7 @@ fun MakeABookingContent(
     val scrollState = rememberScrollState()
 
     BackHandler(enabled = state.isSubmitting) {}
+    val editable = !state.isSubmitting
     // Only a user drag dismisses the keyboard. `isScrollInProgress` is also true for programmatic scrolls, and
     // focusing the notes field starts two of them (its own bring-into-view, and keeping the focused child visible
     // when `imePadding` shrinks the viewport), which would clear focus as soon as the keyboard opens.
@@ -164,6 +166,7 @@ fun MakeABookingContent(
                     selectedTopic = state.selectedTopic,
                     onOpen = { showTopicSheet = true },
                     onRetry = onRetryTopics,
+                    enabled = editable,
                 )
             }
             Section(R.string.make_a_booking_section_time) {
@@ -176,6 +179,7 @@ fun MakeABookingContent(
                     onPreviousMonth = onPreviousMonth,
                     onNextMonth = onNextMonth,
                     onSelectDate = onSelectDate,
+                    enabled = editable,
                 )
             }
             MakeABookingTimeSlotsCard(
@@ -186,14 +190,23 @@ fun MakeABookingContent(
                 expertTimezone = state.expertTimezone,
                 onSelectSlot = onSelectSlot,
                 onRetry = onRetryAvailability,
+                enabled = editable,
                 zone = state.zone,
                 timeFormat = timeFormat,
             )
             Section(R.string.make_a_booking_section_meeting_type) {
-                MakeABookingMeetingTypeCard(selected = state.meetingType, onSelect = onSelectMeetingType)
+                MakeABookingMeetingTypeCard(
+                    selected = state.meetingType,
+                    onSelect = onSelectMeetingType,
+                    enabled = editable,
+                )
             }
             Section(R.string.make_a_booking_section_message) {
-                MakeABookingNotesCard(notes = state.notes, onNotesChange = onNotesChange)
+                MakeABookingNotesCard(
+                    notes = state.notes,
+                    onNotesChange = onNotesChange,
+                    readOnly = !editable,
+                )
             }
             Section(R.string.make_a_booking_section_summary) {
                 MakeABookingSummarySection(
@@ -214,7 +227,7 @@ fun MakeABookingContent(
         }
     }
 
-    if (showTopicSheet && state.topicList.isNotEmpty()) {
+    if (showTopicSheet && editable && state.topicList.isNotEmpty()) {
         MakeABookingTopicSheet(
             topics = state.topicList,
             selectedTopicId = state.selectedTopicId,

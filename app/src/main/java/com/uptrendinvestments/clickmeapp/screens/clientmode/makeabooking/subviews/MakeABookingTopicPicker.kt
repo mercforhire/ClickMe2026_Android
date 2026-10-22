@@ -57,7 +57,8 @@ private const val SKELETON_SECONDARY_BAR_FRACTION = 0.25f
 /**
  * The "Topic of Discussion" row: a button showing the selected topic (or the placeholder) that opens the topic sheet.
  * States: skeleton while [topics] loads, the button when loaded, a non-clickable "no topics" card when the list is
- * empty, and a [SectionError] with Retry on failure. Server text is plain [Text] only (T-06-23).
+ * empty, and a [SectionError] with Retry on failure. Server text is plain [Text] only (T-06-23). While [enabled] is
+ * false (a booking is in flight) the button does not open the sheet.
  */
 @Composable
 fun MakeABookingTopicPicker(
@@ -66,6 +67,7 @@ fun MakeABookingTopicPicker(
     onOpen: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     when (topics) {
         TopicsState.Loading -> PickerSkeleton(modifier)
@@ -79,7 +81,7 @@ fun MakeABookingTopicPicker(
                     )
                 }
             } else {
-                LoadedPicker(selectedTopic = selectedTopic, onOpen = onOpen, modifier = modifier)
+                LoadedPicker(selectedTopic = selectedTopic, onOpen = onOpen, enabled = enabled, modifier = modifier)
             }
         is TopicsState.Failed ->
             StaticCard(modifier) {
@@ -129,11 +131,13 @@ private fun StaticCard(
 private fun LoadedPicker(
     selectedTopic: BookingTopicUi?,
     onOpen: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier,
 ) {
     val description = selectedTopic?.let { topicDescription(it) }
     Surface(
         onClick = onOpen,
+        enabled = enabled,
         modifier =
             modifier
                 .fillMaxWidth()
