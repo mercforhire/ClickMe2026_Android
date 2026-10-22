@@ -1,0 +1,47 @@
+package com.uptrendinvestments.clickmeapp.model.responses
+
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
+import java.time.Instant
+
+/**
+ * `GET /experts/{id}/availability?month=yyyy-MM` payload. Ports iOS `BookingCalendarPayload`.
+ *
+ * Every field is optional so one odd value cannot turn the booking screen into a decoding error. The
+ * backend also sends the local-time label keys, which are deliberately not modelled: they are formatted in
+ * the profile zone, not the zone the user picked (the UI formats `startUtc` itself).
+ */
+@JsonClass(generateAdapter = true)
+data class ExpertAvailabilityData(
+    @Json(name = "expert_timezone") val expertTimezone: String? = null,
+    @Json(name = "client_timezone") val clientTimezone: String? = null,
+    val month: String? = null,
+    val days: List<AvailabilityDayDto> = emptyList(),
+)
+
+/**
+ * One calendar day of the availability grid.
+ *
+ * @property date the EXPERT-local day. It must never be used for grouping slots into the viewer's days;
+ * group by `startUtc` converted to the viewer's zone instead (D-07).
+ * @property slots null when the expert has nothing on that day.
+ */
+@JsonClass(generateAdapter = true)
+data class AvailabilityDayDto(
+    val date: String? = null,
+    val slots: List<AvailabilitySlotDto>? = null,
+)
+
+/**
+ * One bookable time slot.
+ *
+ * @property held not sent by the current backend. Redis holds arrive as `available: false`. Kept for iOS
+ * parity so an older or future backend that does send it still decodes.
+ */
+@JsonClass(generateAdapter = true)
+data class AvailabilitySlotDto(
+    @Json(name = "start_utc") val startUtc: Instant? = null,
+    @Json(name = "end_utc") val endUtc: Instant? = null,
+    val available: Boolean? = null,
+    val held: Boolean? = null,
+)
