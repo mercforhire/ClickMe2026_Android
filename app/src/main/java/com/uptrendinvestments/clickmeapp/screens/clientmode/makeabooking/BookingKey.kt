@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Nav3 route to Make a Booking (D-04). Mirrors the iOS MakeABooking inputs (expert id, name, title, image).
- * This is the real route Phase 6 keeps: Phase 6 replaces the body of `MakeABookingStubScreen`, not this key.
+ * The route body is `MakeABookingScreen` (Phase 6); the key is unchanged from Phase 5 (D-04).
  * Display seed only; the server re-checks bookability when the booking is confirmed.
  */
 @Serializable
