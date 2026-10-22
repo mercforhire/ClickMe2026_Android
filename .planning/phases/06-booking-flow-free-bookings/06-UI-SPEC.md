@@ -1,10 +1,11 @@
 ---
 phase: 6
 slug: booking-flow-free-bookings
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-10-22
+reviewed_at: 2026-10-22
 ---
 
 # Phase 6 — UI Design Contract
