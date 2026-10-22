@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- All Categories bottom sheet (Phase 5, DISC-02). -->
+    <string name="all_categories_title">All Categories</string>
+    <string name="all_categories_search">Search categories...</string>
+    <string name="all_categories_loading">Loading categories…</string>
+    <string name="all_categories_clear">Clear</string>
+    <string name="all_categories_apply">Apply</string>
+    <string name="all_categories_error_heading">Couldn\'t load categories</string>
+    <string name="all_categories_error_body">Check your connection and try again.</string>
+    <string name="all_categories_no_match_heading">No categories match “%1$s”</string>
+    <string name="all_categories_no_match_body">Try a different search term.</string>
+</resources>
