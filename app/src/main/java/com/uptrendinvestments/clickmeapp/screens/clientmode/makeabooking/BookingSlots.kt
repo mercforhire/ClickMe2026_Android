@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:filename")
+
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
