@@ -68,9 +68,22 @@ class BookingFlowNavigationTest {
     fun backToHomePopsExploreToRoot() {
         val navigator = navigatorAtBookingForm()
         navigator.replaceTop(RequestSentKey("b1"))
-        navigator.reselect(ExploreRoot)
+        navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot))
         assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
         assertEquals(ExploreRoot, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.Pop, navigator.state.lastTransition)
+    }
+
+    @Test
+    fun backToHomeFromAnotherTabSelectsExplore() {
+        // IN-10: iOS returnToHome also sets selectedTab = .explore, so a flow started from another tab ends on
+        // Explore, not on that tab's Request Sent.
+        val navigator = navigatorAtBookingForm()
+        navigator.navigateInTab(ClientBookingsRoot, RequestSentKey("b1"))
+        navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot))
+        assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
+        assertEquals(ExploreRoot, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
     }
 
     @Test

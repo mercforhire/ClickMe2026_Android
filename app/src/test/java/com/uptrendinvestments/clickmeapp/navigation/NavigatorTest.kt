@@ -208,6 +208,16 @@ class NavigatorTest {
     }
 
     @Test
+    fun resetAndSelectOfTheSelectedTabAnimatesAsAPop() {
+        val navigator = newNavigator()
+        navigator.navigate(A)
+        navigator.resetAndSelect(Explore, setOf(Explore))
+        assertEquals(listOf<NavKey>(Explore), navigator.stack(Explore))
+        assertEquals(Explore, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.Pop, navigator.state.lastTransition)
+    }
+
+    @Test
     fun resetAndSelectWithEmptyResetOnlySelects() {
         val navigator = newNavigator()
         navigator.navigate(A)

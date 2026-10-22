@@ -18,7 +18,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestS
  * - D-12: [booking]'s `onBooked` replaces Make a Booking with Request Sent (`replaceTop`), so Back from Request
  *   Sent lands on Expert Profile and the filled form cannot be re-submitted.
  * - D-13: `onViewBookings` mirrors iOS `showMyBookings` (reset the Explore and Bookings paths, then select
- *   Bookings); `onBackToHome` mirrors iOS `returnToHome` (reset Explore to its root).
+ *   Bookings); `onBackToHome` mirrors iOS `returnToHome` (reset Explore to its root, then select Explore), so it
+ *   lands on Explore even if a future entry point starts the flow from another tab.
  *
  * The Bookings tab stays the placeholder until Phase 8 builds My Bookings; the wiring is final now.
  */
@@ -44,7 +45,7 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
             key,
             navigator::goBack,
             { navigator.resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, ClientBookingsRoot)) },
-            { navigator.reselect(ExploreRoot) },
+            { navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot)) },
         )
     }
 }

@@ -67,10 +67,7 @@ class Navigator(
         if (tab == state.topLevelRoute) reselect(tab) else navigate(tab)
     }
 
-    /**
-     * Pop [tab]'s stack down to its root. This is also "Back to Home" from Request Sent
-     * (`reselect(ExploreRoot)`, D-13): the Explore stack returns to its root and Explore stays selected.
-     */
+    /** Pop [tab]'s stack down to its root without changing the selected tab (bottom bar re-tap). */
     fun reselect(tab: NavKey) {
         require(tab in state.backStacks) { "Unknown tab: $tab" }
         val stack = state.backStacks.getValue(tab)
@@ -97,9 +94,11 @@ class Navigator(
     }
 
     /**
-     * Pop every tab in [reset] to its root, then select [tab]. Mirrors iOS `showMyBookings`
-     * (explorePath.reset, bookingsPath.reset, selectedTab = .bookings), D-13; the caller passes
-     * `setOf(ExploreRoot, ClientBookingsRoot)`.
+     * Pop every tab in [reset] to its root, then select [tab] (D-13). Mirrors iOS `showMyBookings`
+     * (explorePath.reset, bookingsPath.reset, selectedTab = .bookings; the caller passes
+     * `setOf(ExploreRoot, ClientBookingsRoot)`) and `returnToHome` (explorePath.reset, selectedTab = .explore;
+     * the caller passes `setOf(ExploreRoot)`). When [tab] is already selected this animates as a pop, since
+     * only its stack changes.
      */
     fun resetAndSelect(
         tab: NavKey,
@@ -111,7 +110,7 @@ class Navigator(
         for (stack in stacks) {
             while (stack.size > 1) stack.removeAt(stack.lastIndex)
         }
-        state.lastTransition = NavTransition.TabSwitch
+        state.lastTransition = if (tab == state.topLevelRoute) NavTransition.Pop else NavTransition.TabSwitch
         state.topLevelRoute = tab
     }
 
