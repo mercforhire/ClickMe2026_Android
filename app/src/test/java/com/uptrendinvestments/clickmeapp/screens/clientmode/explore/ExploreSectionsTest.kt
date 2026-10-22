@@ -1,22 +1,33 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.components.RATING_STAR_EMPTY_TAG
+import com.uptrendinvestments.clickmeapp.components.RATING_STAR_FILLED_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreCategoriesSection
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreExpertsSection
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreFeaturedTopicsSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreHeroHeader
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreTodaysSessionsSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -137,6 +148,158 @@ class ExploreSectionsTest {
         showCategories(SectionState.Error(FieldError.Text("Boom")), onRetry = { retries++ })
         rule.onNodeWithText("Trending Categories").assertExists()
         rule.onNodeWithText("Boom").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+    }
+
+    // Featured Topics
+
+    private val t1 =
+        FeaturedTopicUi("t1", "Intro to ML", PriceDisplay.Paid("$50.00"), "e1", "Ada Lovelace", null)
+    private val t2 = FeaturedTopicUi("t2", "Career chat", PriceDisplay.Free, "e2", null, null)
+
+    private fun showFeatured(
+        state: SectionState<List<FeaturedTopicUi>>,
+        onTopicClick: (FeaturedTopicUi) -> Unit = {},
+        onRetry: () -> Unit = {},
+    ) {
+        show {
+            ExploreFeaturedTopicsSection(state = state, onTopicClick = onTopicClick, onRetry = onRetry)
+        }
+    }
+
+    @Test
+    fun featured_loaded_showsCardsPriceAndFallbackExpert() {
+        val clicked = mutableListOf<FeaturedTopicUi>()
+        showFeatured(SectionState.Loaded(listOf(t1, t2)), onTopicClick = { clicked += it })
+        rule.onNodeWithText("Featured Topics").assertExists()
+        rule.onNodeWithText("$50.00").assertExists()
+        rule.onNodeWithText("Free").assertExists()
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        rule.onNodeWithText("Expert").assertExists()
+        assertEquals(false, exists("See all"))
+        rule.onNodeWithText("Intro to ML").performClick()
+        assertEquals(listOf(t1), clicked)
+    }
+
+    @Test
+    fun featured_emptyAndLoading_renderNothing() {
+        showFeatured(SectionState.Loaded(emptyList()))
+        assertEquals(false, exists("Featured Topics"))
+    }
+
+    @Test
+    fun featured_loading_rendersNothing() {
+        showFeatured(SectionState.Loading)
+        assertEquals(false, exists("Featured Topics"))
+    }
+
+    @Test
+    fun featured_error_keepsHeadingAndRetries() {
+        var retries = 0
+        showFeatured(SectionState.Error(FieldError.Text("Nope")), onRetry = { retries++ })
+        rule.onNodeWithText("Featured Topics").assertExists()
+        rule.onNodeWithText("Nope").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+    }
+
+    // Recommended Experts
+
+    private val adaExpert =
+        ExpertCardUi(
+            expertId = "e1",
+            name = "Ada Lovelace",
+            title = "Engineer",
+            imageUrl = null,
+            rating = 4.5,
+            reviewCount = 12,
+            tags = listOf("AI", "Math", "Stats", "Ops"),
+        )
+
+    private fun showExperts(
+        state: SectionState<List<ExpertCardUi>>,
+        hasFilter: Boolean = false,
+        onExpertClick: (ExpertCardUi) -> Unit = {},
+        onClearFilter: () -> Unit = {},
+        onRetry: () -> Unit = {},
+    ) {
+        show {
+            ExploreExpertsSection(
+                state = state,
+                hasFilter = hasFilter,
+                onExpertClick = onExpertClick,
+                onClearFilter = onClearFilter,
+                onRetry = onRetry,
+            )
+        }
+    }
+
+    private fun countWithTag(tag: String) =
+        rule.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().size
+
+    @Test
+    fun experts_loaded_showsCardDetailsAndCapsTagsAtThree() {
+        val clicked = mutableListOf<ExpertCardUi>()
+        showExperts(SectionState.Loaded(listOf(adaExpert)), onExpertClick = { clicked += it })
+        rule.onNodeWithText("Recommended Experts").assertExists()
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        rule.onNodeWithText("4.5").assertExists()
+        rule.onNodeWithText("· 12 reviews").assertExists()
+        rule.onNodeWithText("Engineer").assertExists()
+        rule.onNodeWithText("AI").assertExists()
+        rule.onNodeWithText("Math").assertExists()
+        rule.onNodeWithText("Stats").assertExists()
+        assertEquals(false, exists("Ops"))
+        assertEquals(false, exists("See all"))
+        val favorite =
+            SemanticsMatcher("content description contains avorite") { node ->
+                node.config.getOrNull(SemanticsProperties.ContentDescription)?.any { it.contains("avorite") } == true
+            }
+        assertEquals(0, rule.onAllNodes(favorite, useUnmergedTree = true).fetchSemanticsNodes().size)
+        rule.onNodeWithText("Ada Lovelace").performClick()
+        assertEquals(listOf(adaExpert), clicked)
+    }
+
+    @Test
+    fun experts_noReviews_showsMessageWithoutStars_andOmitsBlankTitleAndTags() {
+        val grace = adaExpert.copy(expertId = "e2", name = "Grace", title = " ", reviewCount = 0, tags = emptyList())
+        showExperts(SectionState.Loaded(listOf(grace)))
+        rule.onNodeWithText("No reviews yet").assertExists()
+        assertEquals(0, countWithTag(RATING_STAR_FILLED_TAG))
+        assertEquals(0, countWithTag(RATING_STAR_EMPTY_TAG))
+        rule.onNodeWithText("Grace").assert(hasContentDescription("Grace. No reviews yet"))
+    }
+
+    @Test
+    fun experts_emptyWithFilter_showsClearFilter() {
+        var cleared = 0
+        showExperts(SectionState.Loaded(emptyList()), hasFilter = true, onClearFilter = { cleared++ })
+        rule.onNodeWithText("No experts in this category yet").assertExists()
+        rule.onNodeWithText("Clear filter").performClick()
+        assertEquals(1, cleared)
+    }
+
+    @Test
+    fun experts_emptyWithoutFilter_hasNoAction() {
+        showExperts(SectionState.Loaded(emptyList()), hasFilter = false)
+        rule.onNodeWithText("No experts available yet").assertExists()
+        assertEquals(false, exists("Clear filter"))
+    }
+
+    @Test
+    fun experts_loading_showsLoadingNode() {
+        showExperts(SectionState.Loading)
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onNodeWithText("Recommended Experts").assertExists()
+    }
+
+    @Test
+    fun experts_error_keepsHeadingAndRetries() {
+        var retries = 0
+        showExperts(SectionState.Error(FieldError.Text("Down")), onRetry = { retries++ })
+        rule.onNodeWithText("Recommended Experts").assertExists()
+        rule.onNodeWithText("Down").assertExists()
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retries)
     }
