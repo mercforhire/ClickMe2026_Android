@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Explore home (Phase 5): copy from the UI-SPEC Copywriting Contract. -->
+    <string name="explore_hero_title">Find your next expert</string>
+    <string name="explore_hero_subtitle">Connect with the top 1% of industry leaders.</string>
+    <string name="explore_section_todays_sessions">Today\'s Sessions</string>
+    <string name="explore_section_trending_categories">Trending Categories</string>
+    <string name="explore_section_featured_topics">Featured Topics</string>
+    <string name="explore_section_recommended_experts">Recommended Experts</string>
+    <string name="explore_view_all">View all</string>
+    <string name="explore_view_all_count">View all (%1$d)</string>
+    <string name="explore_join_call">Join Call</string>
+    <string name="explore_join_call_state">Available closer to the session start</string>
+    <string name="explore_session_topic_fallback">Consultation</string>
+    <string name="explore_expert_name_fallback">Expert</string>
+    <string name="explore_category_name_fallback">Category</string>
+    <string name="explore_experts_empty_filtered">No experts in this category yet</string>
+    <string name="explore_experts_empty">No experts available yet</string>
+    <string name="explore_clear_filter">Clear filter</string>
+    <string name="explore_refresh_failed">Couldn\'t refresh. Pull down to try again.</string>
+    <string name="explore_featured_semantics">%1$s, %2$s, with %3$s</string>
+    <!-- Expert card TalkBack description: name, optional title, rating, optional tags. -->
+    <string name="expert_card_tags_semantics">Expertise: %1$s</string>
+</resources>
