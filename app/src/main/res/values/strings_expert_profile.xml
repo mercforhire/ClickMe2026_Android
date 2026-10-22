@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expert Profile (Phase 5, DISC-03). -->
+    <string name="expert_profile_stat_experience">Experience</string>
+    <string name="expert_profile_stat_bookings">Bookings</string>
+    <plurals name="expert_profile_years">
+        <item quantity="one">%d yr</item>
+        <item quantity="other">%d yrs</item>
+    </plurals>
+    <string name="expert_profile_book_session">Book Session</string>
+    <string name="expert_profile_not_bookable">Not accepting bookings</string>
+    <string name="expert_profile_about">About</string>
+    <string name="expert_profile_expertise">Expertise</string>
+    <string name="expert_profile_topics">Topics of Discussion</string>
+    <string name="expert_profile_recent_reviews">Recent Reviews</string>
+    <string name="expert_profile_topic_duration">%1$d mins</string>
+    <string name="expert_profile_topic_line">%1$s • %2$s</string>
+    <string name="expert_profile_anonymous">Anonymous</string>
+    <string name="expert_profile_unavailable_heading">This profile isn\'t available</string>
+    <string name="expert_profile_unavailable_body">This expert may no longer be on ClickMe. Go back and try someone else.</string>
+    <string name="expert_profile_go_back">Go back</string>
+</resources>
