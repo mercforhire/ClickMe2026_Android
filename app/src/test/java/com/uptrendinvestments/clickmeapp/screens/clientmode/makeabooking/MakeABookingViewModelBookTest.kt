@@ -2,9 +2,11 @@
 
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
@@ -21,6 +23,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 import java.time.Instant
 import java.util.TimeZone
 
@@ -178,5 +181,149 @@ class MakeABookingViewModelBookTest {
             // The other slot is untouched and still bookable.
             vm.selectSlot(slot21)
             assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+        }
+
+    // ---- Task 2: error handling ----
+
+    private fun errorJson(
+        code: String,
+        message: String = "msg",
+    ) = """{"status":"error","code":"$code","message":"$message"}"""
+
+    private fun failWith(
+        status: Int,
+        code: String,
+        message: String = "msg",
+    ) {
+        api.requestBookingHandler = { throw api.httpError(status, errorJson(code, message)) }
+    }
+
+    @Test
+    fun slotTakenClearsTheSlotAndReloadsInPlace() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            failWith(409, "SLOT_UNAVAILABLE", "Slot taken")
+            val callsBefore = api.expertAvailabilityCalls
+            val gate = CompletableDeferred<Unit>()
+            api.expertAvailabilityHandler = { _, _ ->
+                gate.await()
+                availabilityOf(slotDto("2026-10-22T20:00:00Z", available = false), slotDto("2026-10-22T21:00:00Z"))
+            }
+            vm.book()
+            runCurrent()
+            val s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_slot_taken), s.dialogError)
+            assertNull(s.selectedSlotStart)
+            assertFalse(s.isSubmitting)
+            assertEquals(callsBefore + 3, api.expertAvailabilityCalls)
+            // The reload is suspended, yet the slots stay on screen (no skeleton).
+            assertTrue(s.availability is AvailabilityState.Loaded)
+            gate.complete(Unit)
+            runCurrent()
+            vm.selectSlot(slot20)
+            assertNull(vm.uiState.value.selectedSlotStart)
+            vm.selectSlot(slot21)
+            assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+        }
+
+    @Test
+    fun noMeetingLinkResetsTheMeetingTypeAndKeepsTheSlot() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            vm.selectMeetingType(MeetingType.SkypeZoom)
+            failWith(422, "MEETING_LINK_UNAVAILABLE")
+            vm.book()
+            runCurrent()
+            val s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_no_link), s.dialogError)
+            assertEquals(MeetingType.InAppVoice, s.meetingType)
+            assertEquals(slot20, s.selectedSlotStart)
+            assertFalse(s.isSubmitting)
+        }
+
+    private fun assertKeepsSlotAndMeeting(
+        status: Int,
+        code: String,
+        expected: FieldError,
+    ) = runTest(main.testDispatcher) {
+        val vm = readyVm()
+        vm.selectMeetingType(MeetingType.SkypeZoom)
+        failWith(status, code)
+        vm.book()
+        runCurrent()
+        val s = vm.uiState.value
+        assertEquals(expected, s.dialogError)
+        assertEquals(slot20, s.selectedSlotStart)
+        assertEquals(MeetingType.SkypeZoom, s.meetingType)
+        assertFalse(s.isSubmitting)
+    }
+
+    @Test
+    fun expertNotBookable() =
+        assertKeepsSlotAndMeeting(422, "EXPERT_NOT_BOOKABLE", FieldError.Res(R.string.make_a_booking_error_not_bookable))
+
+    @Test
+    fun cannotBookSelf() =
+        assertKeepsSlotAndMeeting(422, "CANNOT_BOOK_SELF", FieldError.Res(R.string.make_a_booking_error_self))
+
+    @Test
+    fun duplicateBooking() =
+        assertKeepsSlotAndMeeting(409, "DUPLICATE_BOOKING", FieldError.Res(R.string.make_a_booking_error_duplicate))
+
+    @Test
+    fun paidTopicRequiresPayment() =
+        assertKeepsSlotAndMeeting(
+            422,
+            "PAID_TOPIC_REQUIRES_PAYMENT",
+            FieldError.Res(R.string.make_a_booking_error_needs_payment),
+        )
+
+    @Test
+    fun otherCodesShowTheServerMessage() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            failWith(409, "EXPERT_UNAVAILABLE", "This expert is not available for booking.")
+            vm.book()
+            runCurrent()
+            assertEquals(FieldError.Text("This expert is not available for booking."), vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun networkFailureShowsTheNetworkCopy() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            api.requestBookingHandler = { throw IOException("offline") }
+            vm.book()
+            runCurrent()
+            assertEquals(FieldError.Res(R.string.login_error_network), vm.uiState.value.dialogError)
+            assertFalse(vm.uiState.value.isSubmitting)
+        }
+
+    @Test
+    fun suspendedAccountShowsNoBookingDialog() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            failWith(403, "ACCOUNT_SUSPENDED")
+            vm.book()
+            runCurrent()
+            assertNull(vm.uiState.value.dialogError)
+            assertFalse(vm.uiState.value.isSubmitting)
+        }
+
+    @Test
+    fun dismissClearsTheDialogAndABookAfterAFailureSendsAgain() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            failWith(422, "EXPERT_NOT_BOOKABLE")
+            vm.book()
+            runCurrent()
+            assertEquals(1, api.requestBookingCalls)
+            vm.dismissError()
+            assertNull(vm.uiState.value.dialogError)
+            api.requestBookingHandler = { BookingRequestData(bookingId = "b2") }
+            vm.book()
+            runCurrent()
+            assertEquals(2, api.requestBookingCalls)
+            assertEquals("b2", vm.uiState.value.completedBookingId)
         }
 }
