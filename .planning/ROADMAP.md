@@ -239,13 +239,13 @@ Plans:
   3. Tapping an expert card opens Expert Profile with the hero, stats, about, topics and reviews preview. Its Book button takes the client into the booking flow.
 
 **Planning notes:** If time runs short, simplify the hero and visuals. The Chat button and report/block on Expert Profile come in Phase 12.
-**Plans:** 11 plans
+**Plans:** 3/11 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Discovery network contract: home, client bookings, categories, expert details/reviews DTOs + endpoints, FakeClickMeApi handlers, wire-format tests (DISC-01, DISC-02, DISC-03)
-- [ ] 05-02-PLAN.md — Money formatter (minor units, device locale, full decimals), PriceDisplay/PriceText (Free in green), CategoryIconMap, wall Clock + MutableClock (DISC-01, DISC-03)
-- [ ] 05-03-PLAN.md — Shared components: RatingStars, ExpertTagChip, SkeletonBlock/Group, SectionHeader, SectionError; PickerRow icon + checkbox role (DISC-01, DISC-02, DISC-03)
+- [x] 05-01-PLAN.md — Discovery network contract: home, client bookings, categories, expert details/reviews DTOs + endpoints, FakeClickMeApi handlers, wire-format tests (DISC-01, DISC-02, DISC-03)
+- [x] 05-02-PLAN.md — Money formatter (minor units, device locale, full decimals), PriceDisplay/PriceText (Free in green), CategoryIconMap, wall Clock + MutableClock (DISC-01, DISC-03)
+- [x] 05-03-PLAN.md — Shared components: RatingStars, ExpertTagChip, SkeletonBlock/Group, SectionHeader, SectionError; PickerRow icon + checkbox role (DISC-01, DISC-02, DISC-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -477,7 +477,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
-| 5. Explore & Expert Profile | 0/11 | Planned | - |
+| 5. Explore & Expert Profile | 3/11 | In Progress|  |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
