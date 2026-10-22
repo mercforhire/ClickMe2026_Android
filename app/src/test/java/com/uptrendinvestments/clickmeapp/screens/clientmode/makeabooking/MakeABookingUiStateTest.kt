@@ -141,6 +141,12 @@ class MakeABookingUiStateTest {
     }
 
     @Test
+    fun selected_date_is_loaded_only_within_a_month_of_the_displayed_month() {
+        assertTrue(state(displayedMonth = YearMonth.of(2026, 11)).isSelectedDateLoaded)
+        assertFalse(state(displayedMonth = YearMonth.of(2026, 12)).isSelectedDateLoaded)
+    }
+
+    @Test
     fun no_disabled_reason_with_free_topic_and_selectable_slot() {
         val s = state(selectedTopicId = "free", selectedSlotStart = futureStart)
         assertNull(s.bookDisabledReason)

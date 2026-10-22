@@ -74,6 +74,9 @@ fun slotChipTestTag(start: Instant): String = "make_a_booking_slot_${start.toEpo
  *
  * While [enabled] is false (a booking is in flight) no chip responds, but nothing is dimmed or marked unavailable.
  *
+ * When [selectedDateLoaded] is false the selected day lies outside the loaded months (the day is kept when the month
+ * moves, D-07), so its slots are unknown: the card asks the user to pick a day instead of claiming it has no slots.
+ *
  * After a 409 the ViewModel reloads with the data kept visible, so the list refreshes in place and the taken slot
  * turns dimmed with no skeleton (D-09). [AvailabilityState.Failed] only ever describes the center month (D-07).
  */
@@ -89,6 +92,7 @@ fun MakeABookingTimeSlotsCard(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    selectedDateLoaded: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
 ) {
@@ -133,7 +137,14 @@ fun MakeABookingTimeSlotsCard(
                     SectionError(message = availability.message.asString(), onRetry = onRetry)
                 is AvailabilityState.Loaded -> {
                     val slots = availability.slotsByDate[selectedDate].orEmpty()
-                    if (slots.isEmpty()) {
+                    if (!selectedDateLoaded) {
+                        Text(
+                            text = stringResource(R.string.make_a_booking_pick_a_day),
+                            modifier = Modifier.padding(vertical = Spacing.xs),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.extras.onSurfaceMuted,
+                        )
+                    } else if (slots.isEmpty()) {
                         Text(
                             text = stringResource(R.string.make_a_booking_no_slots),
                             modifier = Modifier.padding(vertical = Spacing.xs),

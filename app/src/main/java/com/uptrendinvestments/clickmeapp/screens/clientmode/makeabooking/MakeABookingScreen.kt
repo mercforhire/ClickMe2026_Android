@@ -191,6 +191,7 @@ fun MakeABookingContent(
                 onSelectSlot = onSelectSlot,
                 onRetry = onRetryAvailability,
                 enabled = editable,
+                selectedDateLoaded = state.isSelectedDateLoaded,
                 zone = state.zone,
                 timeFormat = timeFormat,
             )

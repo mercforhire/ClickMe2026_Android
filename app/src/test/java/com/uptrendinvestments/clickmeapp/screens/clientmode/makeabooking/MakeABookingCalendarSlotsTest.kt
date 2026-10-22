@@ -185,6 +185,7 @@ class MakeABookingCalendarSlotsTest {
         selectedDate: LocalDate = today,
         selectedSlotStart: Instant? = null,
         expertTimezone: String? = null,
+        selectedDateLoaded: Boolean = true,
         onSelectSlot: (Instant) -> Unit = {},
         onRetry: () -> Unit = {},
     ) {
@@ -198,6 +199,7 @@ class MakeABookingCalendarSlotsTest {
                     expertTimezone = expertTimezone,
                     onSelectSlot = onSelectSlot,
                     onRetry = onRetry,
+                    selectedDateLoaded = selectedDateLoaded,
                     zone = zone,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                 )
@@ -278,6 +280,16 @@ class MakeABookingCalendarSlotsTest {
         setSlots(selectedDate = LocalDate.of(2026, 10, 23))
 
         rule.onNodeWithText("No available slots on this day.").assertExists()
+        rule.onAllNodes(anySlotChip).assertCountEquals(0)
+    }
+
+    @Test
+    fun dayOutsideTheLoadedMonthsAsksForADayInsteadOfClaimingNoSlots() {
+        // IN-08: the day is kept when the month moves; two months away its slots are unknown, not empty.
+        setSlots(selectedDate = LocalDate.of(2026, 10, 23), selectedDateLoaded = false)
+
+        rule.onNodeWithText("Pick a day to see its available times.").assertExists()
+        rule.onNodeWithText("No available slots on this day.").assertDoesNotExist()
         rule.onAllNodes(anySlotChip).assertCountEquals(0)
     }
 

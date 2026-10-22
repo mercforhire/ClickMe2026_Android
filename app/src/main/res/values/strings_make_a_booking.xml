@@ -30,6 +30,7 @@
 
     <!-- Slots -->
     <string name="make_a_booking_no_slots">No available slots on this day.</string>
+    <string name="make_a_booking_pick_a_day">Pick a day to see its available times.</string>
     <string name="make_a_booking_slot_unavailable">Unavailable</string>
     <string name="make_a_booking_tz_same">Times are in your time zone (%1$s).</string>
     <string name="make_a_booking_tz_different">Times are in your time zone (%1$s). Expert is in %2$s (%3$s).</string>

@@ -110,4 +110,14 @@ class BookingCalendarTest {
         assertTrue(canGoToPreviousMonth(YearMonth.of(2026, 11), today))
         assertFalse(canGoToPreviousMonth(YearMonth.of(2026, 9), today))
     }
+
+    @Test
+    fun loadedWindowIsTheDisplayedMonthAndBothNeighbours() {
+        val december = YearMonth.of(2026, 12)
+        assertTrue(isInLoadedWindow(LocalDate.of(2026, 11, 1), december))
+        assertTrue(isInLoadedWindow(LocalDate.of(2026, 12, 15), december))
+        assertTrue(isInLoadedWindow(LocalDate.of(2027, 1, 31), december))
+        assertFalse(isInLoadedWindow(LocalDate.of(2026, 10, 31), december))
+        assertFalse(isInLoadedWindow(LocalDate.of(2027, 2, 1), december))
+    }
 }

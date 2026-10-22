@@ -33,6 +33,18 @@ fun isPastDay(
     today: LocalDate,
 ): Boolean = date.isBefore(today)
 
+/**
+ * D-07: each load covers [displayed] and both neighbours, so only a [date] in that window has known slots. Two or
+ * more months away (the day is kept when the month moves) its slots are unknown, not empty.
+ */
+fun isInLoadedWindow(
+    date: LocalDate,
+    displayed: YearMonth,
+): Boolean {
+    val month = YearMonth.from(date)
+    return !month.isBefore(displayed.minusMonths(1)) && !month.isAfter(displayed.plusMonths(1))
+}
+
 /** D-06: no month before the current one; navigating forward has no limit. */
 fun canGoToPreviousMonth(
     displayed: YearMonth,

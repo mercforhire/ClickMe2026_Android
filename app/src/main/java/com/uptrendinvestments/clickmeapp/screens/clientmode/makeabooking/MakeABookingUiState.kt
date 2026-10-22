@@ -109,6 +109,10 @@ data class MakeABookingUiState(
     val canGoToPreviousMonth: Boolean
         get() = canGoToPreviousMonth(displayedMonth, today)
 
+    /** False when [selectedDate] is outside the loaded months, so the slots card asks for a day instead (IN-08). */
+    val isSelectedDateLoaded: Boolean
+        get() = isInLoadedWindow(selectedDate, displayedMonth)
+
     /** D-01 and D-06: no topic first, then a paid topic (display gate), then a missing or stale slot. */
     val bookDisabledReason: BookDisabledReason?
         get() {
