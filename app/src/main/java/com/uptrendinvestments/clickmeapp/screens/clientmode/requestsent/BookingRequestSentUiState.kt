@@ -1,10 +1,9 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent
 
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.DEFAULT_DURATION_MINS
 import java.time.Duration
 import java.time.Instant
-
-private const val DEFAULT_DURATION_MINS = 30L
 
 /**
  * What the Request Sent screen shows for one booking. [isFree] is the topic-level flag (D-14): it hides the
@@ -42,6 +41,6 @@ fun ClientBookingDetail.toRequestSentDetails(): BookingRequestSentDetails =
         expertAvatarUrl = expert.avatarUrl,
         topicTitle = topic.title,
         start = startTime,
-        end = endTime ?: startTime.plus(Duration.ofMinutes(topic.durationMins?.toLong() ?: DEFAULT_DURATION_MINS)),
+        end = endTime ?: startTime.plus(Duration.ofMinutes((topic.durationMins ?: DEFAULT_DURATION_MINS).toLong())),
         isFree = topic.isFree,
     )
