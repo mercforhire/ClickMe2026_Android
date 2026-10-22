@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="make_a_booking_title">Book a Session</string>
-    <string name="make_a_booking_coming_soon_heading">Booking is coming soon</string>
-    <string name="make_a_booking_coming_soon_body">You\'ll be able to book %1$s here in an upcoming update.</string>
 
     <!-- Section headings -->
     <string name="make_a_booking_section_expert">Expert</string>

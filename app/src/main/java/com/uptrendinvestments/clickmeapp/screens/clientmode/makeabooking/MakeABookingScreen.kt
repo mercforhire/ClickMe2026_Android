@@ -51,9 +51,8 @@ import java.time.ZoneId
 const val MAKE_A_BOOKING_SCROLL_TAG = "make_a_booking_scroll"
 
 /**
- * Make a Booking, free path. Port of iOS `Make a Booking/MakeABookingView.swift`; it replaces the body of
- * [MakeABookingStubScreen] under the unchanged [BookingKey] (Phase 5 D-04). The bottom bar is hidden by the route
- * metadata, not by this screen.
+ * Make a Booking, free path. Port of iOS `Make a Booking/MakeABookingView.swift`; it is the body of the
+ * unchanged [BookingKey] route (Phase 5 D-04). The bottom bar is hidden by the route metadata, not by this screen.
  *
  * A completed booking is consumed once before [onBooked] runs (D-12), so a recomposition can never navigate to
  * Request Sent twice. The shell maps [onBooked] to `replaceTop(RequestSentKey(id))`.
