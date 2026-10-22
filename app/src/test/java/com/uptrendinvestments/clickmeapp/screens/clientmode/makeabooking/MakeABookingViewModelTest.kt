@@ -436,6 +436,8 @@ class MakeABookingViewModelTest {
             runCurrent()
             assertNull(vm2.uiState.value.selectedSlotStart)
             assertFalse(handle.contains("booking_slot_start"))
+            // Unavailable, not past: dropped without the time-has-passed dialog (WR-02).
+            assertNull(vm2.uiState.value.dialogError)
         }
 
     @Test
@@ -518,8 +520,9 @@ class MakeABookingViewModelTest {
             assertEquals(callsBefore, api.expertAvailabilityCalls)
             assertTrue(s.slotsForSelectedDate.isEmpty())
             assertEquals(listOf(late), loadedSlots(vm).slotsByDate[LocalDate.of(2026, 10, 23)]?.map { it.start })
-            // The held slot is no longer on the selected day in the new zone, so it is dropped.
+            // The held slot is no longer on the selected day in the new zone, so it is dropped, and explained (WR-02).
             assertNull(s.selectedSlotStart)
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_slot_passed), s.dialogError)
         }
 
     @Test

@@ -27,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
 import java.time.Instant
+import java.time.LocalDate
 import java.util.TimeZone
 
 class MakeABookingViewModelBookTest {
@@ -416,6 +417,118 @@ class MakeABookingViewModelBookTest {
             // The other slot is untouched and still bookable.
             vm.selectSlot(slot21)
             assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+        }
+
+    // ---- WR-02: a slot that time moved past is cleared and explained wherever it is noticed ----
+
+    private val slotPassed = FieldError.Res(R.string.make_a_booking_error_slot_passed)
+
+    @Test
+    fun aResumeAfterTheSlotStartedClearsItAndSaysWhy() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = newViewModel(api, handle, clock)
+            runCurrent()
+            vm.selectSlot(slot20)
+            // Same day, the slot started while the app was in the background.
+            clock.instant = slot20.plusSeconds(60)
+            vm.refreshClock()
+            val s = vm.uiState.value
+            // Not stranded as selected with Book Now disabled: cleared, and the user is told why.
+            assertNull(s.selectedSlotStart)
+            assertFalse(handle.contains("booking_slot_start"))
+            assertEquals(slotPassed, s.dialogError)
+            assertEquals(BookDisabledReason.NoSlot, s.bookDisabledReason)
+            vm.dismissError()
+            vm.selectSlot(slot21)
+            assertEquals(slot21, vm.uiState.value.selectedSlotStart)
+        }
+
+    @Test
+    fun aResumeBeforeTheSlotStartsKeepsItWithoutADialog() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            clock.instant = slot20.minusSeconds(60)
+            vm.refreshClock()
+            assertEquals(slot20, vm.uiState.value.selectedSlotStart)
+            assertNull(vm.uiState.value.dialogError)
+            assertNull(vm.uiState.value.bookDisabledReason)
+        }
+
+    @Test
+    fun aBookAfterMidnightClearsTheSlotAndSaysWhy() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            // 2026-10-23 01:00 in Toronto: the selected day is now in the past.
+            clock.instant = Instant.parse("2026-10-23T05:00:00Z")
+            vm.book()
+            runCurrent()
+            val s = vm.uiState.value
+            assertEquals(0, api.requestBookingCalls)
+            assertFalse(s.isSubmitting)
+            assertEquals(LocalDate.of(2026, 10, 23), s.selectedDate)
+            assertNull(s.selectedSlotStart)
+            assertEquals(slotPassed, s.dialogError)
+        }
+
+    @Test
+    fun aBookAfterAZoneChangeThatMovesTheSlotsDayClearsItAndSaysWhy() =
+        runTest(main.testDispatcher) {
+            // 2026-10-22 22:00 in Toronto, but 2026-10-23 03:00 in London.
+            val late = Instant.parse("2026-10-23T02:00:00Z")
+            api.expertAvailabilityHandler = { _, _ -> availabilityOf(slotDto("2026-10-23T02:00:00Z")) }
+            val vm = newViewModel(api, clock = clock)
+            runCurrent()
+            vm.selectSlot(late)
+            assertEquals(late, vm.uiState.value.selectedSlotStart)
+
+            TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"))
+            vm.book()
+            runCurrent()
+            val s = vm.uiState.value
+            assertEquals(0, api.requestBookingCalls)
+            assertFalse(s.isSubmitting)
+            assertNull(s.selectedSlotStart)
+            assertEquals(slotPassed, s.dialogError)
+        }
+
+    @Test
+    fun aResumeAfterAZoneChangeThatMovesTheSlotsDayClearsItAndSaysWhy() =
+        runTest(main.testDispatcher) {
+            api.expertAvailabilityHandler = { _, _ -> availabilityOf(slotDto("2026-10-23T02:00:00Z")) }
+            val vm = newViewModel(api, clock = clock)
+            runCurrent()
+            vm.selectSlot(Instant.parse("2026-10-23T02:00:00Z"))
+            TimeZone.setDefault(TimeZone.getTimeZone("Europe/London"))
+            vm.refreshClock()
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertEquals(slotPassed, vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aZoneChangeThatKeepsTheSlotsDayKeepsItWithoutADialog() =
+        runTest(main.testDispatcher) {
+            val vm = readyVm()
+            // 20:00Z is still 2026-10-22 in Vancouver.
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Vancouver"))
+            vm.refreshClock()
+            assertEquals(slot20, vm.uiState.value.selectedSlotStart)
+            assertNull(vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aRestoredSlotThatHasStartedIsDroppedAndExplained() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm1 = newViewModel(api, handle, clock)
+            runCurrent()
+            vm1.selectSlot(slot20)
+            // Process death, restored after the slot started.
+            clock.instant = slot20.plusSeconds(60)
+            val vm2 = newViewModel(api, handle, clock)
+            runCurrent()
+            assertNull(vm2.uiState.value.selectedSlotStart)
+            assertEquals(slotPassed, vm2.uiState.value.dialogError)
         }
 
     // ---- Task 2: error handling ----

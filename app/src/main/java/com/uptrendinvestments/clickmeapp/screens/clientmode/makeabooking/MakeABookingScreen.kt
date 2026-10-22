@@ -69,7 +69,8 @@ fun MakeABookingScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // WR-03: "today" and the viewer's zone are re-derived whenever the screen comes back, e.g. after midnight or
-    // after the user changed the time zone setting.
+    // after the user changed the time zone setting. A selected slot that has started meanwhile is cleared and the
+    // time-has-passed dialog says why (WR-02).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshClock() }
     LaunchedEffect(state.completedBookingId) {
         val id = state.completedBookingId ?: return@LaunchedEffect

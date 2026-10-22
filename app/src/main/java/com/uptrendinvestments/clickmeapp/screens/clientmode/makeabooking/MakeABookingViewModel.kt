@@ -191,11 +191,10 @@ class MakeABookingViewModel
         /**
          * Port of iOS `book()` + `performFreeBooking`, free topics only (BOOK-03). A tap while a request is in
          * flight, or after one has succeeded, is ignored (D-11 single flight), and a paid topic never reaches the
-         * API: the paid path is Phase 7 (D-01), so there is no payment-methods gate here either. A slot that is no
-         * longer after now is cleared instead of sent, because the server does not reject a past `scheduled_start`,
-         * and the error dialog says the time has passed.
-         * The clock and zone are refreshed first (WR-03), and the request's `timezone` is the zone the slots were
-         * grouped in.
+         * API: the paid path is Phase 7 (D-01), so there is no payment-methods gate here either. The clock and zone
+         * are refreshed first (WR-03), which clears a slot that is no longer after now and says the time has passed
+         * (IN-09, WR-02), so a past `scheduled_start`, which the server does not reject, is never sent. The request's
+         * `timezone` is the zone the slots were grouped in.
          *
          * The body is the D-11 contract: `topic.durationMins` already defaults to 30 (06-04), notes are trimmed
          * and omitted when blank, and [Instant.toString] is ISO 8601 UTC ("2026-10-22T20:00:00Z"), accepted by
@@ -211,18 +210,10 @@ class MakeABookingViewModel
             val s = _uiState.value
             val topic = s.selectedTopic ?: return
             if (!topic.isFree) return
+            // refreshClock() has already cleared, and explained, a slot that time moved past (WR-02), so a selected
+            // slot here is selectable at `s.now`.
             val slot = s.selectedSlot ?: return
-            val now = clock.instant()
-            if (!slot.isSelectable(now)) {
-                // The slot started while the screen sat idle (`now` only moves on actions and resume): say why the
-                // selection disappeared instead of clearing it silently (IN-09).
-                _uiState.update {
-                    it.copy(now = now, dialogError = FieldError.Res(R.string.make_a_booking_error_slot_passed))
-                }
-                clearSlot()
-                return
-            }
-            _uiState.update { it.copy(isSubmitting = true, now = now) }
+            _uiState.update { it.copy(isSubmitting = true) }
             // Written while the screen is in the foreground, so always before the activity saves its state (WR-01).
             val attemptId = UUID.randomUUID().toString()
             savedStateHandle[KEY_ATTEMPT_ID] = attemptId
@@ -343,7 +334,9 @@ class MakeABookingViewModel
 
         /**
          * Stores freshly grouped slots, then reconciles the slot: a restored slot is applied only if it is present
-         * and selectable now (T-06-20); a held slot that has since become unavailable or past is dropped.
+         * and selectable now (T-06-20); a held slot that has since become unavailable or past is dropped. A slot
+         * dropped because it has already started (for example a selection restored after process death) is
+         * explained with the time-has-passed dialog (WR-02); one dropped as unavailable is not, as before.
          */
         private fun applyAvailability(
             grouped: Map<LocalDate, List<BookingTimeSlot>>,
@@ -351,6 +344,7 @@ class MakeABookingViewModel
         ) {
             val now = clock.instant()
             val pending = pendingSlotMillis?.let(Instant::ofEpochMilli)
+            val held = pending ?: _uiState.value.selectedSlotStart
             _uiState.update { s ->
                 val slots = grouped[s.selectedDate].orEmpty()
                 val selectable = { start: Instant? ->
@@ -373,6 +367,7 @@ class MakeABookingViewModel
             val slot = _uiState.value.selectedSlotStart
             if (slot == null) {
                 savedStateHandle.remove<Long>(KEY_SLOT_START)
+                if (held != null && !held.isAfter(now)) explainSlotPassed()
             } else {
                 savedStateHandle[KEY_SLOT_START] = slot.toEpochMilli()
             }
@@ -385,6 +380,10 @@ class MakeABookingViewModel
          * nor labels slots in one zone while grouping them in another. A selected day that is now past moves to
          * today and a past month to the current one (clearing the slot, as any day or month change does); a new
          * zone regroups the slots already loaded, without a request. Ignored while a booking is in flight.
+         *
+         * WR-02: the selected slot is then reconciled in this one place. If it is no longer selectable (it started,
+         * its day passed, or the new zone moved it to another day) it is cleared and the time-has-passed dialog
+         * (IN-09) says why, rather than the slot vanishing silently or staying selected with Book Now disabled.
          */
         fun refreshClock() {
             val s = _uiState.value
@@ -394,8 +393,25 @@ class MakeABookingViewModel
             val today = LocalDate.now(clock.withZone(zone))
             if (zone == s.zone && today == s.today) {
                 _uiState.update { it.copy(now = now) }
-                return
+            } else {
+                moveClock(s, zone, today, now)
             }
+            val held = s.selectedSlotStart ?: return
+            val after = _uiState.value
+            val stillSelectable = after.selectedSlotStart == held && after.selectedSlot?.isSelectable(after.now) == true
+            if (!stillSelectable) {
+                clearSlot()
+                explainSlotPassed()
+            }
+        }
+
+        /** The day or zone changed: moves a past day or month forward and regroups the loaded slots (WR-03). */
+        private fun moveClock(
+            s: MakeABookingUiState,
+            zone: ZoneId,
+            today: LocalDate,
+            now: Instant,
+        ) {
             val currentMonth = YearMonth.from(today)
             val date = if (isPastDay(s.selectedDate, today)) today else s.selectedDate
             val month = if (s.displayedMonth.isBefore(currentMonth)) currentMonth else s.displayedMonth
@@ -413,6 +429,11 @@ class MakeABookingViewModel
             } else if (zone != s.zone && s.availability is AvailabilityState.Loaded) {
                 applyAvailability(groupSlots(loadedDays, zone), loadedExpertTimezone)
             }
+        }
+
+        /** IN-09 / WR-02: tells the user that the slot they had picked was dropped because its time has passed. */
+        private fun explainSlotPassed() {
+            _uiState.update { it.copy(dialogError = FieldError.Res(R.string.make_a_booking_error_slot_passed)) }
         }
 
         private fun initialState(key: BookingKey): MakeABookingUiState {
