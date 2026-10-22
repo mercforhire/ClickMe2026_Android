@@ -12,10 +12,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
+import java.util.TimeZone
 
 class TodaysSessionsFilterTest {
     private val toronto = ZoneId.of("America/Toronto")
@@ -83,27 +85,41 @@ class TodaysSessionsFilterTest {
     private fun normalized(text: String) = text.replace(' ', ' ').replace(' ', ' ')
 
     @Test
-    fun formatsTimeRangeForUsLocale() {
+    fun formatsTimeRangeWithA12HourFormat() {
         val text =
             formatSessionTimeRange(
                 Instant.parse("2026-10-21T15:00:00Z"),
                 Instant.parse("2026-10-21T16:00:00Z"),
                 ZoneOffset.UTC,
-                Locale.US,
+                SimpleDateFormat("h:mm a", Locale.US),
             )
         assertEquals("3:00 PM – 4:00 PM", normalized(text))
     }
 
     @Test
-    fun formatsTimeRangeFor24HourLocale() {
+    fun formatsTimeRangeWithA24HourFormatEvenForAUsLocale() {
         val text =
             formatSessionTimeRange(
                 Instant.parse("2026-10-21T15:00:00Z"),
                 Instant.parse("2026-10-21T16:00:00Z"),
                 ZoneOffset.UTC,
-                Locale.GERMANY,
+                SimpleDateFormat("H:mm", Locale.US),
             )
         assertEquals("15:00 – 16:00", normalized(text))
+    }
+
+    @Test
+    fun formatsInTheGivenZoneWithoutMutatingTheFormat() {
+        val format = SimpleDateFormat("H:mm", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+        val text =
+            formatSessionTimeRange(
+                Instant.parse("2026-10-21T15:00:00Z"),
+                Instant.parse("2026-10-21T16:00:00Z"),
+                toronto,
+                format,
+            )
+        assertEquals("11:00 – 12:00", normalized(text))
+        assertEquals(TimeZone.getTimeZone("UTC"), format.timeZone)
     }
 
     @Test

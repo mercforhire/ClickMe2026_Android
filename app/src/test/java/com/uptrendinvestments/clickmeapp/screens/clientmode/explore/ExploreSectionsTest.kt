@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
+import android.content.Context
+import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -17,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.components.RATING_STAR_EMPTY_TAG
 import com.uptrendinvestments.clickmeapp.components.RATING_STAR_FILLED_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreCategoriesSection
@@ -25,6 +28,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.Exp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreHeroHeader
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreTodaysSessionsSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_TIME_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -33,6 +37,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @RunWith(RobolectricTestRunner::class)
 class ExploreSectionsTest {
@@ -56,14 +63,41 @@ class ExploreSectionsTest {
 
     // Today's Sessions
 
+    // 3 PM today in the device zone, which the card formats in.
+    private val threePm: Instant =
+        LocalDate
+            .of(2026, 10, 21)
+            .atTime(15, 0)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+
     private val ada =
         TodaysSessionUi(
             bookingId = "b1",
             expertName = "Ada Lovelace",
             expertAvatarUrl = null,
             topic = null,
-            timeRange = "3:00 PM – 4:00 PM",
+            startTime = threePm,
+            endTime = threePm.plusSeconds(3600),
         )
+
+    private fun sessionTimeText(): String =
+        rule
+            .onNodeWithTag(TODAYS_SESSION_TIME_TAG)
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.Text]
+            .joinToString("")
+            // ICU may put a narrow or regular no-break space before AM/PM.
+            .replace('\u202F', ' ')
+            .replace('\u00A0', ' ')
+
+    private fun setTime1224(value: String?) {
+        Settings.System.putString(
+            ApplicationProvider.getApplicationContext<Context>().contentResolver,
+            Settings.System.TIME_12_24,
+            value,
+        )
+    }
 
     @Test
     fun todaysSessions_showsCardWithFallbackTopicAndDisabledJoin() {
@@ -71,8 +105,20 @@ class ExploreSectionsTest {
         rule.onNodeWithText("Today's Sessions").assertExists()
         rule.onNodeWithText("Ada Lovelace").assertExists().assertHasNoClickAction()
         rule.onNodeWithText("Consultation").assertExists()
-        rule.onNodeWithText("3:00 PM – 4:00 PM").assertExists()
+        assertEquals("3:00 PM – 4:00 PM", sessionTimeText())
         rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun todaysSessions_honorsTheDevice24HourSettingOverTheLocaleDefault() {
+        // en-US defaults to 12 hour; the user's 24 hour setting must still win.
+        setTime1224("24")
+        try {
+            show { ExploreTodaysSessionsSection(sessions = listOf(ada)) }
+            assertEquals("15:00 – 16:00", sessionTimeText())
+        } finally {
+            setTime1224(null)
+        }
     }
 
     @Test

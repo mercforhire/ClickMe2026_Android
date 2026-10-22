@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -33,16 +35,23 @@ import com.uptrendinvestments.clickmeapp.components.SectionHeader
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.TodaysSessionUi
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import java.time.Instant
+import java.time.ZoneId
 
 /** Test tag on the (always disabled) Join Call button of a Today's Sessions card. */
 const val TODAYS_SESSION_JOIN_TAG = "todays_session_join"
 
+/** Test tag on the time range text of a Today's Sessions card. */
+const val TODAYS_SESSION_TIME_TAG = "todays_session_time"
+
 private val IconSize = 20.dp
 private val SessionAvatarSize = 40.dp
 private val JoinButtonMinHeight = 56.dp
+private val PREVIEW_START: Instant = Instant.parse("2026-10-21T19:00:00Z")
 
 /**
  * Today's Sessions strip (D-01). Renders nothing for an empty list. Cards are inert in Phase 5: no tap action
@@ -102,9 +111,10 @@ private fun TodaysSessionCard(session: TodaysSessionUi) {
                 )
                 Spacer(Modifier.width(Spacing.sm))
                 Text(
-                    text = session.timeRange,
+                    text = sessionTimeRange(session),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.testTag(TODAYS_SESSION_TIME_TAG),
                 )
             }
             Spacer(Modifier.height(Spacing.md))
@@ -132,6 +142,22 @@ private fun TodaysSessionCard(session: TodaysSessionUi) {
     }
 }
 
+/**
+ * The session's time range in the device time format, so the user's 12 or 24 hour setting applies, not only the
+ * locale default. Formatted in composition rather than in the ViewModel, which outlives the activity recreation a
+ * locale change causes, so the text follows the new locale at once.
+ */
+@Composable
+private fun sessionTimeRange(session: TodaysSessionUi): String {
+    val context = LocalContext.current
+    return formatSessionTimeRange(
+        start = session.startTime,
+        end = session.endTime,
+        zone = ZoneId.systemDefault(),
+        timeFormat = DateFormat.getTimeFormat(context),
+    )
+}
+
 @Preview(name = "ExploreTodaysSessionsSection")
 @Composable
 private fun ExploreTodaysSessionsSectionPreview() {
@@ -145,7 +171,8 @@ private fun ExploreTodaysSessionsSectionPreview() {
                             expertName = "Ada Lovelace",
                             expertAvatarUrl = null,
                             topic = "Algorithms",
-                            timeRange = "3:00 PM – 4:00 PM",
+                            startTime = PREVIEW_START,
+                            endTime = PREVIEW_START.plusSeconds(3600),
                         ),
                     ),
                 modifier = Modifier.padding(Spacing.md),

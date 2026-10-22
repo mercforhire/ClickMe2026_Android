@@ -14,7 +14,6 @@ import com.uptrendinvestments.clickmeapp.model.responses.MoneyDto
 import com.uptrendinvestments.clickmeapp.model.responses.RecommendedExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.TrendingCategoryDto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -34,7 +33,6 @@ import org.junit.Test
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Locale
 
 class ExploreViewModelTest {
     @get:Rule
@@ -134,10 +132,9 @@ class ExploreViewModelTest {
             assertEquals(1, (state.featuredTopics as SectionState.Loaded).data.size)
             assertEquals(listOf("e1"), (state.experts as SectionState.Loaded).data.map { it.expertId })
             assertEquals(listOf("b1"), state.todaysSessions.map { it.bookingId })
-            assertEquals(
-                formatSessionTimeRange(now, now.plusSeconds(3600), ZoneId.systemDefault(), Locale.getDefault()),
-                state.todaysSessions.single().timeRange,
-            )
+            // Raw times: the card formats them with the device 12/24 hour setting.
+            assertEquals(now, state.todaysSessions.single().startTime)
+            assertEquals(now.plusSeconds(3600), state.todaysSessions.single().endTime)
             assertFalse(state.hasFilter)
         }
 

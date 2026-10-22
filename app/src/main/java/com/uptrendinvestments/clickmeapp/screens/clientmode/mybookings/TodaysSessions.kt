@@ -1,13 +1,13 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
+import java.text.DateFormat
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
+import java.util.Date
+import java.util.TimeZone
 
 /** Booking statuses that can still be joined today (iOS `isJoinable`). Raw server strings, as in Phase 3. */
 val JOINABLE_BOOKING_STATUSES: Set<String> = setOf("confirmed", "in_progress", "pending_reschedule")
@@ -26,13 +26,17 @@ fun List<ClientBookingItem>.todaysSessions(
         .sortedBy { it.startTime }
 }
 
-/** "3:00 PM – 4:00 PM" in the device's 12 or 24 hour style for [locale]. */
+/**
+ * "3:00 PM – 4:00 PM": [start] and [end] in [zone], each formatted with [timeFormat]. Pass the device time format
+ * (`android.text.format.DateFormat.getTimeFormat(context)`) from the UI so the user's 12 or 24 hour setting wins over
+ * the locale default and a locale change takes effect on the next composition. [timeFormat] is not mutated.
+ */
 fun formatSessionTimeRange(
     start: Instant,
     end: Instant,
     zone: ZoneId,
-    locale: Locale,
+    timeFormat: DateFormat,
 ): String {
-    val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale).withZone(zone)
-    return "${formatter.format(start)} – ${formatter.format(end)}"
+    val format = (timeFormat.clone() as DateFormat).apply { timeZone = TimeZone.getTimeZone(zone) }
+    return "${format.format(Date.from(start))} – ${format.format(Date.from(end))}"
 }

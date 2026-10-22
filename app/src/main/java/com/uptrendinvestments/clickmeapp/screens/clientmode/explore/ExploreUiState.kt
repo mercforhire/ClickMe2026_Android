@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
+import java.time.Instant
 
 /** Load state of one Explore section; each home section fails and retries on its own (D-16). */
 sealed interface SectionState<out T> {
@@ -41,12 +42,14 @@ data class ExpertCardUi(
     val tags: List<String>,
 )
 
+/** A Today's Sessions card. The times stay raw; the card formats them so the device 12/24 hour setting applies. */
 data class TodaysSessionUi(
     val bookingId: String,
     val expertName: String?,
     val expertAvatarUrl: String?,
     val topic: String?,
-    val timeRange: String,
+    val startTime: Instant,
+    val endTime: Instant,
 )
 
 data class ExploreUiState(

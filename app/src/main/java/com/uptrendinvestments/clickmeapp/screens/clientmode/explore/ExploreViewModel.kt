@@ -10,7 +10,6 @@ import com.uptrendinvestments.clickmeapp.model.responses.RecommendedExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.TrendingCategoryDto
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.todaysSessions
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
-import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -185,13 +183,8 @@ class ExploreViewModel
                                         expertName = booking.expert.fullName,
                                         expertAvatarUrl = booking.expert.avatarUrl,
                                         topic = booking.topic,
-                                        timeRange =
-                                            formatSessionTimeRange(
-                                                booking.startTime,
-                                                booking.endTime,
-                                                zone,
-                                                Locale.getDefault(),
-                                            ),
+                                        startTime = booking.startTime,
+                                        endTime = booking.endTime,
                                     )
                                 }
                         } catch (_: ApiException) {

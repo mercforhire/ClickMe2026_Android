@@ -18,6 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 
 // A tall window composes every lazy item at once, so vertical positions can be compared.
 @RunWith(RobolectricTestRunner::class)
@@ -27,7 +28,14 @@ class ExploreScreenTest {
     val rule = createComposeRule()
 
     private val session =
-        TodaysSessionUi("b1", "Grace Hopper", null, "Compilers", "3:00 PM – 4:00 PM")
+        TodaysSessionUi(
+            "b1",
+            "Grace Hopper",
+            null,
+            "Compilers",
+            Instant.parse("2026-10-21T19:00:00Z"),
+            Instant.parse("2026-10-21T20:00:00Z"),
+        )
     private val chip = CategoryChipUi(slug = "tech", name = "Technology")
     private val topic =
         FeaturedTopicUi("t1", "Intro to ML", PriceDisplay.Paid("$50.00"), "e2", null, "v")
