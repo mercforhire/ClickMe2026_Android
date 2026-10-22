@@ -282,7 +282,42 @@ Plans:
   3. An Android client books a free topic and sees Request Sent, and the iOS expert receives the request. (PRD Week 3 checkpoint, free path)
 
 **Planning notes:** Highest-risk week. Regroup by `startUtc` into the client's local date. Test with the iOS app as the expert.
-**Plans:** TBD
+**Plans:** 14 plans
+Plans:
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Booking network contract: availability, booking request and booking detail DTOs, strict request body, three Retrofit calls (topic_id parameter, never sent), FakeClickMeApi, wire-format tests (BOOK-02, BOOK-03, BOOK-04)
+- [ ] 06-02-PLAN.md — Navigator.replaceTop and resetAndSelect, RequestSentKey, D-12/D-13 stack tests (BOOK-04)
+- [ ] 06-03-PLAN.md — Pure month grid, D-06 bounds, friendly timezone note, device-format time/date labels, surrogate-safe notes cap with golden tests (BOOK-01, BOOK-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 06-04-PLAN.md — groupSlots cross-timezone golden tests, booking error mapping, MeetingType, MakeABookingUiState contract, Make a Booking strings (BOOK-01, BOOK-02, BOOK-03)
+- [ ] 06-05-PLAN.md — Request Sent data: ClientBookingsRepository.detail, UI state, assisted ViewModel with Retry (BOOK-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-06-PLAN.md — SavedStateHandle + assisted-injection check, BookingRepository, MakeABookingViewModel loads (D-02 topics, three-month latest-wins availability) and selection rules (BOOK-01, BOOK-02)
+- [ ] 06-07-PLAN.md — Expert card, topic picker states, topic sheet with paid topics listed (BOOK-01)
+- [ ] 06-08-PLAN.md — Month calendar card (dots, D-06) and time slots card (timezone note, dimmed chips, load states) (BOOK-01, BOOK-02)
+- [ ] 06-09-PLAN.md — Meeting type, notes, summary and Book Now (paid note, in-flight state) (BOOK-01, BOOK-03)
+- [ ] 06-10-PLAN.md — Request Sent screen: loading/error/loaded, details card, actions, one-time entry animation (BOOK-04)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 06-11-PLAN.md — MakeABookingViewModel.book(): exact free-path body, single flight, guards, 409/422/D-10 error handling (BOOK-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 06-12-PLAN.md — MakeABookingScreen assembly (sheet, dialog, Back blocking, focus) and real-ViewModel free-path integration tests (BOOK-01, BOOK-02, BOOK-03)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 06-13-PLAN.md — Shell wiring of BookingKey and RequestSentKey (replace on success, View My Bookings, Back to Home), stub removal (BOOK-03, BOOK-04)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 06-14-PLAN.md — Phase gate (full suite + R8), scope sweeps, VALIDATION sign-off, deferred device checklist, Phase 7/8 hand-offs, backend notes and iOS follow-ups (all)
 **UI hint**: yes
 
 ### Phase 7: Payment Methods & Paid Booking
