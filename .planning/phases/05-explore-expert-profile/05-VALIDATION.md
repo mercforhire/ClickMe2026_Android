@@ -62,6 +62,11 @@ Filled at planning time (one row per plan task; tests are written first inside e
 | 05-10-T2 | 05-10 | 4 | DISC-01, DISC-03 | T-05-32, T-05-33, T-05-34 | Keys carry no secrets; R8 build | Compose + build | `./gradlew :app:testDevDebugUnitTest --tests '*HomeShellsTest'` + `assembleProdRelease` | ✅ extended | ✅ green |
 | 05-11-T1 | 05-11 | 5 | all | T-05-35, T-05-36, T-05-37 | Full gate + deferred-control sweeps | full suite | Full suite command (above) | n/a | ✅ green |
 | 05-11-T2 | 05-11 | 5 | all | — | — | doc check | `grep -c '\[Phase 5\] DEFERRED (human)' .planning/STATE.md` | n/a | ✅ green |
+| WR-01 | 05-REVIEW-FIX | — | DISC-02 | T-05-11 | DataStore IOException is a cache miss; network failure still surfaces | unit | `./gradlew :app:testDevDebugUnitTest --tests '*CategoryStoreTest'` | ✅ extended | ✅ green |
+| WR-02 | 05-REVIEW-FIX | — | DISC-01, DISC-03 | — | Double tap pushes one route | unit | `./gradlew :app:testDevDebugUnitTest --tests '*NavigatorTest'` | ✅ extended | ✅ green |
+| WR-03 | 05-REVIEW-FIX | — | DISC-01 | T-05-17 | Failed initial home keeps concurrently Loaded sections | unit (fake API) | `./gradlew :app:testDevDebugUnitTest --tests '*ExploreViewModelTest'` | ✅ extended | ✅ green |
+| WR-04 | 05-REVIEW-FIX | — | DISC-01, DISC-03 | — | Appear animation runs once per lazy item | Compose | `./gradlew :app:testDevDebugUnitTest --tests '*SectionAppearTest'` | ✅ new | ✅ green |
+| WR-05 | 05-REVIEW-FIX | — | DISC-01 | — | Session times follow device 12/24-hour format | unit + Compose | `./gradlew :app:testDevDebugUnitTest --tests '*TodaysSessionsFilterTest' --tests '*ExploreSectionsTest' --tests '*ExploreScreenTest'` | ✅ extended | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -98,3 +103,15 @@ Filled at planning time (one row per plan task; tests are written first inside e
 **Gate evidence (05-11):** 1056 tests per flavor, 0 failures (Phase 4 baseline 876); ktlint, lint, assembleDevDebug/ProdDebug/ProdRelease (R8) and design rules green.
 
 **Approval:** approved 2026-10-21 (automated gate green; device checks deferred, non-blocking)
+
+---
+
+## Validation Audit 2026-10-21
+
+Re-audit after the 05-REVIEW-FIX changes (WR-01 to WR-05, through commit 341817d). All 21 Phase 5 test classes, including the new `SectionAppearTest` and the extended `NavigatorTest`, were run on `testDevDebugUnitTest`: 304 tests, 0 failures, 0 skipped. Every requirement maps to a green automated test, so no new tests were generated.
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
