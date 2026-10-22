@@ -7,13 +7,18 @@ import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileReques
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
@@ -27,12 +32,15 @@ import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * Retrofit surface for the Phase 2 endpoints. Ports iOS ClickMeAPI+Auth, +Me and +UserProfile plus the two
  * expert lookups used by SplashViewModel and LoginView. It also covers the Phase 3 password-recovery
  * endpoints (iOS ClickMeAPI+Auth). Phase 4 adds signup, email verification, expert profile setup, meta
- * lookups and avatar upload/delete. Other API groups arrive with their features (ROADMAP Phase 2 planning
+ * lookups and avatar upload/delete. Phase 5 adds the discovery group (client home, client bookings,
+ * categories, expert details and reviews). Other API groups arrive with their features (ROADMAP Phase 2 planning
  * note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -110,4 +118,39 @@ interface ClickMeApi {
     /** Ports iOS ClickMeAPI+UserProfile avatar delete. */
     @DELETE(ApiRequestUrls.USER_AVATAR)
     suspend fun deleteAvatar(): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+Discovery getClientHome. [category] is one comma-joined list of slugs; null omits
+     * the parameter. Never send page or limit: the schema ignores them and the server defaults p_limit to 10.
+     */
+    @GET(ApiRequestUrls.CLIENT_HOME)
+    suspend fun getClientHome(
+        @Query("category") category: String?,
+    ): SuccessDataResponse<ClientHomeData>
+
+    /** Ports iOS ClickMeAPI+ClientBookings list. [type] is the server filter, e.g. `upcoming`. */
+    @GET(ApiRequestUrls.CLIENT_BOOKINGS)
+    suspend fun getClientBookings(
+        @Query("type") type: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ClientBookingsPayload>
+
+    /** Ports iOS ClickMeAPI+Discovery categories. Public on the backend; the bearer is ignored there. */
+    @GET(ApiRequestUrls.CATEGORIES)
+    suspend fun getCategories(): SuccessDataResponse<CategoriesPayload>
+
+    /** Ports iOS ClickMeAPI+Discovery getExpertDetails. */
+    @GET(ApiRequestUrls.EXPERT_DETAILS)
+    suspend fun getExpertDetails(
+        @Path("id") expertId: String,
+    ): SuccessDataResponse<PublicProfileDetailsData>
+
+    /** Ports iOS ClickMeAPI+Discovery getExpertReviews. */
+    @GET(ApiRequestUrls.EXPERT_REVIEWS)
+    suspend fun getExpertReviews(
+        @Path("id") expertId: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ExpertReviewsPayload>
 }

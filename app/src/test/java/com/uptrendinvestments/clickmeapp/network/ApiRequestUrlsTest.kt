@@ -79,4 +79,26 @@ class ApiRequestUrlsTest {
     fun publicPathSet_hasExactlyFiveEntries() {
         assertEquals(5, ApiRequestUrls.publicPaths.size)
     }
+
+    @Test
+    fun phaseFiveConstants_haveExactRelativeValues() {
+        assertEquals("client/home", ApiRequestUrls.CLIENT_HOME)
+        assertEquals("client/bookings", ApiRequestUrls.CLIENT_BOOKINGS)
+        assertEquals("categories", ApiRequestUrls.CATEGORIES)
+        assertEquals("experts/{id}/details", ApiRequestUrls.EXPERT_DETAILS)
+        assertEquals("experts/{id}/reviews", ApiRequestUrls.EXPERT_REVIEWS)
+    }
+
+    @Test
+    fun discoveryPaths_needAuthToken() {
+        listOf(
+            "/api/v1/client/home",
+            "/api/v1/client/bookings",
+            "/api/v1/categories",
+            "/api/v1/experts/e1/details",
+            "/api/v1/experts/e1/reviews",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+    }
 }

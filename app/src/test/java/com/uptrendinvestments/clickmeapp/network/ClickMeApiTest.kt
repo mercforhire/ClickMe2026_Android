@@ -17,6 +17,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -396,5 +397,101 @@ class ClickMeApiTest {
             val tags = server.takeRequest()
             assertEquals("GET", tags.method)
             assertEquals("/api/v1/meta/expertise-tags", tags.url.encodedPath)
+        }
+
+    @Test
+    fun getClientHomeUnfilteredSendsNoQuery() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"trending_categories":[{"id":"ai","name":"AI"}]}}""")
+
+            val data = api.getClientHome(null).data
+
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/client/home", request.url.encodedPath)
+            assertEquals(0, request.url.querySize)
+            assertEquals("ai", data.trendingCategories.single().id)
+        }
+
+    @Test
+    fun getClientHomeFilteredSendsOneCommaJoinedCategoryAndNoPaging() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{}}""")
+
+            api.getClientHome("ai,design")
+
+            val request = server.takeRequest()
+            assertEquals("/api/v1/client/home", request.url.encodedPath)
+            assertEquals("ai,design", request.url.queryParameter("category"))
+            assertEquals(1, request.url.querySize)
+            assertNull(request.url.queryParameter("page"))
+            assertNull(request.url.queryParameter("limit"))
+        }
+
+    @Test
+    fun getClientBookingsSendsTypeAndPaging() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"bookings":[{"booking_id":"b1","expert":{"id":"e1"},
+                 "start_time":"2026-10-21T19:00:00.000000Z","end_time":"2026-10-21T20:00:00.000000Z",
+                 "status":"confirmed"}],"pagination":{"current_page":1,"total_pages":1}}}
+                """.trimIndent(),
+            )
+
+            val data = api.getClientBookings("upcoming", 1, 20).data
+
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/client/bookings", request.url.encodedPath)
+            assertEquals("upcoming", request.url.queryParameter("type"))
+            assertEquals("1", request.url.queryParameter("page"))
+            assertEquals("20", request.url.queryParameter("limit"))
+            assertEquals("b1", data.bookings.single().bookingId)
+        }
+
+    @Test
+    fun getCategoriesIsAGetAndDecodesList() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"categories":[{"id":"ai","name":"AI"}]}}""")
+
+            val data = api.getCategories().data
+
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/categories", request.url.encodedPath)
+            assertEquals("AI", data.categories.single().name)
+        }
+
+    @Test
+    fun expertDetailsAndReviewsUseIdPathAndPaging() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"profile":{"name":"Ada"},"topics_of_discussion":[]}}""")
+            enqueue(200, """{"status":"success","data":{"summary":{"total_reviews":0},"reviews":[]}}""")
+
+            val details = api.getExpertDetails("e1").data
+            val detailsRequest = server.takeRequest()
+            assertEquals("GET", detailsRequest.method)
+            assertEquals("/api/v1/experts/e1/details", detailsRequest.url.encodedPath)
+            assertEquals("Ada", details.profile.name)
+
+            api.getExpertReviews("e1", 1, 3)
+            val reviewsRequest = server.takeRequest()
+            assertEquals("GET", reviewsRequest.method)
+            assertEquals("/api/v1/experts/e1/reviews", reviewsRequest.url.encodedPath)
+            assertEquals("1", reviewsRequest.url.queryParameter("page"))
+            assertEquals("3", reviewsRequest.url.queryParameter("limit"))
+        }
+
+    @Test
+    fun expertDetails404SurfacesAsApiExceptionHttp() =
+        runTest {
+            enqueue(404, """{"status":"error","code":"NOT_FOUND","message":"Expert not found"}""")
+
+            val error = runCatching { apiCall { api.getExpertDetails("missing") } }.exceptionOrNull()
+
+            assertTrue(error is ApiException.Http)
+            assertEquals(404, (error as ApiException.Http).status)
         }
 }
