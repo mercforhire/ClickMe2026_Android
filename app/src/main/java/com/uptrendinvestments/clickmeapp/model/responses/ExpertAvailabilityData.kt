@@ -7,9 +7,13 @@ import java.time.Instant
 /**
  * `GET /experts/{id}/availability?month=yyyy-MM` payload. Ports iOS `BookingCalendarPayload`.
  *
- * Every field is optional so one odd value cannot turn the booking screen into a decoding error. The
- * backend also sends the local-time label keys, which are deliberately not modelled: they are formatted in
- * the profile zone, not the zone the user picked (the UI formats `startUtc` itself).
+ * Every field is optional, so a missing or null value cannot turn the booking screen into a decoding error.
+ * A present but malformed timestamp still can: `start_utc`/`end_utc` go through the strict
+ * [com.uptrendinvestments.clickmeapp.network.InstantAdapter], so one bad value fails the whole month as
+ * `ApiException.Decoding` (the same as iOS, whose `Date` decoding throws too).
+ *
+ * The backend also sends the local-time label keys, which are deliberately not modelled: they are formatted
+ * in the profile zone, not the zone the user picked (the UI formats `startUtc` itself).
  *
  * @property clientTimezone decoded for parity with the iOS DTO but deliberately not read: slots are grouped and
  * labelled in the device zone (`MakeABookingUiState.zone`), not the zone saved on the profile.
