@@ -17,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -293,19 +294,71 @@ class HomeShellsTest {
         }
     }
 
-    @Test
-    fun bookingRouteShowsStubWithoutBottomBarAndBackRestoresIt() {
+    private fun setClientWithBookingFlow() {
         setClientWithExploreButton(
             label = "open booking",
             target = { it.navigate(BookingKey("e1", "Ada Lovelace", "Engineer", null)) },
+            detail = { nav ->
+                clientBookingFlowEntries(
+                    navigator = nav,
+                    booking = { _, onBack, onBooked ->
+                        Button(onClick = onBack) { Text("fake back") }
+                        Button(onClick = { onBooked("b1") }) { Text("fake book") }
+                    },
+                    requestSent = { key, onBack, onViewBookings, onBackToHome ->
+                        Text("sent ${key.bookingId}")
+                        Button(onClick = onBack) { Text("sent back") }
+                        Button(onClick = onViewBookings) { Text("sent bookings") }
+                        Button(onClick = onBackToHome) { Text("sent home") }
+                    },
+                )
+            },
         )
+    }
+
+    private fun openRequestSent() {
+        setClientWithBookingFlow()
         composeRule.onNodeWithText("open booking", substring = true).performClick()
-        composeRule.onNodeWithText("Book a Session").assertExists()
-        composeRule.onNodeWithText("Booking is coming soon").assertExists()
+        composeRule.onNodeWithText("fake book").performClick()
+        composeRule.onNodeWithText("sent b1").assertExists()
+    }
+
+    @Test
+    fun bookingRouteHidesBottomBarAndBackRestoresIt() {
+        setClientWithBookingFlow()
+        composeRule.onNodeWithText("open booking", substring = true).performClick()
+        composeRule.onNodeWithText("fake back").assertExists()
         composeRule.onNode(tab("Explore")).assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("Back").performClick()
+        composeRule.onNodeWithText("fake back").performClick()
         composeRule.onNodeWithText("open booking", substring = true).assertExists()
         composeRule.onNode(tab("Explore")).assertExists()
+    }
+
+    @Test
+    fun bookingSuccessReplacesBookingWithRequestSent() {
+        openRequestSent()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+        composeRule.onNodeWithText("sent back").performClick()
+        composeRule.onNodeWithText("open booking", substring = true).assertExists()
+        composeRule.onNodeWithText("fake back").assertDoesNotExist()
+    }
+
+    @Test
+    fun viewMyBookingsResetsExploreAndSelectsBookings() {
+        openRequestSent()
+        composeRule.onNodeWithText("sent bookings").performClick()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        tapTab("Explore")
+        composeRule.onNodeWithText("open booking", substring = true).assertExists()
+        composeRule.onNodeWithText("sent b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun backToHomeResetsExploreToRoot() {
+        openRequestSent()
+        composeRule.onNodeWithText("sent home").performClick()
+        composeRule.onNodeWithText("open booking", substring = true).assertExists()
+        composeRule.onNode(tab("Explore")).assertIsSelected()
     }
 
     @Test
