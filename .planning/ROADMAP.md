@@ -282,13 +282,13 @@ Plans:
   3. An Android client books a free topic and sees Request Sent, and the iOS expert receives the request. (PRD Week 3 checkpoint, free path)
 
 **Planning notes:** Highest-risk week. Regroup by `startUtc` into the client's local date. Test with the iOS app as the expert.
-**Plans:** 14 plans
+**Plans:** 3/14 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 06-01-PLAN.md — Booking network contract: availability, booking request and booking detail DTOs, strict request body, three Retrofit calls (topic_id parameter, never sent), FakeClickMeApi, wire-format tests (BOOK-02, BOOK-03, BOOK-04)
-- [ ] 06-02-PLAN.md — Navigator.replaceTop and resetAndSelect, RequestSentKey, D-12/D-13 stack tests (BOOK-04)
-- [ ] 06-03-PLAN.md — Pure month grid, D-06 bounds, friendly timezone note, device-format time/date labels, surrogate-safe notes cap with golden tests (BOOK-01, BOOK-02)
+- [x] 06-01-PLAN.md — Booking network contract: availability, booking request and booking detail DTOs, strict request body, three Retrofit calls (topic_id parameter, never sent), FakeClickMeApi, wire-format tests (BOOK-02, BOOK-03, BOOK-04)
+- [x] 06-02-PLAN.md — Navigator.replaceTop and resetAndSelect, RequestSentKey, D-12/D-13 stack tests (BOOK-04)
+- [x] 06-03-PLAN.md — Pure month grid, D-06 bounds, friendly timezone note, device-format time/date labels, surrogate-safe notes cap with golden tests (BOOK-01, BOOK-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -318,6 +318,7 @@ Plans:
 **Wave 7** *(blocked on Wave 6 completion)*
 
 - [ ] 06-14-PLAN.md — Phase gate (full suite + R8), scope sweeps, VALIDATION sign-off, deferred device checklist, Phase 7/8 hand-offs, backend notes and iOS follow-ups (all)
+
 **UI hint**: yes
 
 ### Phase 7: Payment Methods & Paid Booking
@@ -513,7 +514,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
-| 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
+| 6. Booking Flow & Free Bookings | 3/14 | In Progress|  |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
