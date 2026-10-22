@@ -1,17 +1,25 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.components.PickerSheetContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingExpertCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTopicPicker
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.TOPIC_PICKER_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.makeABookingTopicItems
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -133,5 +141,67 @@ class MakeABookingTopicCardsTest {
         rule.onNodeWithText("Expert not found").assertIsDisplayed()
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retries)
+    }
+
+    // Topic sheet
+
+    private val paidTopic =
+        BookingTopicUi("t2", "Deep dive", 30, "Long session", PriceDisplay.Paid("$50.00"), false)
+    private val sheetFreeTopic = BookingTopicUi("t1", "Intro", 60, null, PriceDisplay.Free, true)
+
+    private fun hasRole(role: Role) = SemanticsMatcher.expectValue(SemanticsProperties.Role, role)
+
+    private fun setSheet(
+        topics: List<BookingTopicUi>,
+        selectedId: String?,
+        onSelect: (String) -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                PickerSheetContent(title = "Choose a Topic") {
+                    makeABookingTopicItems(topics, selectedId, onSelect)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun sheet_listsEveryTopicIncludingPaidWithDetails() {
+        setSheet(listOf(sheetFreeTopic, paidTopic), "t1")
+        rule.onNodeWithText("Choose a Topic").assertIsDisplayed()
+        rule.onNodeWithText("Intro").assertIsDisplayed()
+        rule.onNodeWithText("Deep dive").assertIsDisplayed()
+        rule.onNodeWithText("Free").assertIsDisplayed()
+        rule.onNodeWithText("$50.00").assertIsDisplayed()
+        rule.onNodeWithText("60 min").assertIsDisplayed()
+        rule.onNodeWithText("30 min").assertIsDisplayed()
+        rule.onNodeWithText("Long session").assertIsDisplayed()
+    }
+
+    @Test
+    fun sheet_selectedCardIsSelectedRadioButton() {
+        setSheet(listOf(sheetFreeTopic, paidTopic), "t1")
+        val selected = rule.onNode(hasRole(Role.RadioButton) and hasText("Intro"))
+        selected.assertIsSelected()
+        rule.onNode(hasRole(Role.RadioButton) and hasText("Deep dive")).assertIsNotSelected()
+    }
+
+    @Test
+    fun sheet_clickingCardsReportsTheirIds() {
+        val selections = mutableListOf<String>()
+        setSheet(listOf(sheetFreeTopic, paidTopic), "t1") { selections += it }
+        rule.onNodeWithText("Deep dive").performClick()
+        assertEquals(listOf("t2"), selections)
+        rule.onNodeWithText("Intro").performClick()
+        assertEquals(listOf("t2", "t1"), selections)
+    }
+
+    @Test
+    fun sheet_blankOrNullDescription_showsNoDescriptionNode() {
+        val blank = BookingTopicUi("t3", "Blank desc", 15, "   ", PriceDisplay.Free, true)
+        setSheet(listOf(sheetFreeTopic, blank), null)
+        rule.onNodeWithText("Intro").assertIsDisplayed()
+        rule.onNodeWithText("Blank desc").assertIsDisplayed()
+        rule.onNodeWithText("   ").assertDoesNotExist()
     }
 }
