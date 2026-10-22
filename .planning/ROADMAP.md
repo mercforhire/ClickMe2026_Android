@@ -239,7 +239,7 @@ Plans:
   3. Tapping an expert card opens Expert Profile with the hero, stats, about, topics and reviews preview. Its Book button takes the client into the booking flow.
 
 **Planning notes:** If time runs short, simplify the hero and visuals. The Chat button and report/block on Expert Profile come in Phase 12.
-**Plans:** 9/11 plans executed
+**Plans:** 10/11 plans executed
 Plans:
 **Wave 1**
 
@@ -261,7 +261,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 05-10-PLAN.md — Explore screen assembly (pull-to-refresh, sheet wiring) and client-shell slots/routes for Explore, Expert Profile and BookingKey (DISC-01, DISC-02, DISC-03)
+- [x] 05-10-PLAN.md — Explore screen assembly (pull-to-refresh, sheet wiring) and client-shell slots/routes for Explore, Expert Profile and BookingKey (DISC-01, DISC-02, DISC-03)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -477,7 +477,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
-| 5. Explore & Expert Profile | 9/11 | In Progress|  |
+| 5. Explore & Expert Profile | 10/11 | In Progress|  |
 | 6. Booking Flow & Free Bookings | 0/TBD | Not started | - |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
