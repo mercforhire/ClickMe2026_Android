@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens
 
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
@@ -9,9 +10,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -262,5 +268,61 @@ class HomeShellsTest {
         composeRule.onNodeWithText("Refresh failed: boom").assertExists()
         composeRule.onNodeWithText("Force token refresh").performScrollTo().performClick()
         assertEquals(1, refreshCount)
+    }
+
+    private fun setClientWithExploreButton(
+        label: String,
+        target: (Navigator) -> Unit,
+        detail: EntryProviderScope<NavKey>.(Navigator) -> Unit = {},
+    ) {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = "https://example.com/me.png",
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, url ->
+                        Button(onClick = { target(navigator) }) { Text("$label $url") }
+                    },
+                    detailEntries = detail,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun bookingRouteShowsStubWithoutBottomBarAndBackRestoresIt() {
+        setClientWithExploreButton(
+            label = "open booking",
+            target = { it.navigate(BookingKey("e1", "Ada Lovelace", "Engineer", null)) },
+        )
+        composeRule.onNodeWithText("open booking", substring = true).performClick()
+        composeRule.onNodeWithText("Book a Session").assertExists()
+        composeRule.onNodeWithText("Booking is coming soon").assertExists()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Back").performClick()
+        composeRule.onNodeWithText("open booking", substring = true).assertExists()
+        composeRule.onNode(tab("Explore")).assertExists()
+    }
+
+    @Test
+    fun detailEntriesRouteKeepsBottomBar() {
+        setClientWithExploreButton(
+            label = "open profile",
+            target = { it.navigate(ExpertProfileKey("e7", "Ada", "Engineer", null)) },
+            detail = { entry<ExpertProfileKey> { Text("profile ${it.expertId}") } },
+        )
+        composeRule.onNodeWithText("open profile", substring = true).performClick()
+        composeRule.onNodeWithText("profile e7").assertExists()
+        composeRule.onNode(tab("Explore")).assertExists()
+    }
+
+    @Test
+    fun exploreRootReceivesShellAvatarUrl() {
+        setClientWithExploreButton(label = "root", target = {})
+        composeRule.onNodeWithText("root https://example.com/me.png").assertExists()
     }
 }

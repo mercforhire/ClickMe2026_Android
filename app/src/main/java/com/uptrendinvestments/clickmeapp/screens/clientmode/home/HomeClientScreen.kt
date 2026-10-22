@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
@@ -29,6 +30,10 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
@@ -36,6 +41,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Explor
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.SearchRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.clientStartTab
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.clientTabs
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingStubScreen
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
@@ -63,6 +70,26 @@ fun HomeClientScreen(
                 onLogout = viewModel::logout,
                 onDebugForceRefresh = viewModel::debugForceRefresh,
                 debugRefreshStatus = debugRefreshStatus,
+                exploreRoot = { navigator, url ->
+                    ExploreScreen(
+                        avatarUrl = url,
+                        onAvatarClick = { navigator.navigate(ModeSwitchKey) },
+                        onOpenExpert = { navigator.navigate(it) },
+                    )
+                },
+                detailEntries = { navigator ->
+                    entry<ExpertProfileKey> { key ->
+                        val profileViewModel =
+                            hiltViewModel<ExpertProfileViewModel, ExpertProfileViewModel.Factory>(
+                                creationCallback = { factory -> factory.create(key) },
+                            )
+                        ExpertProfileScreen(
+                            viewModel = profileViewModel,
+                            onBack = navigator::goBack,
+                            onBook = { navigator.navigate(it) },
+                        )
+                    }
+                },
             )
         },
     )
@@ -94,6 +121,11 @@ private const val ONBOARDING_FADE_MS = 200
 /**
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
+ *
+ * Two slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button), and
+ * [detailEntries] registers extra routes pushed on top of a tab, such as the Expert Profile. The
+ * booking stub route is registered here because it needs no injection.
  */
 @Composable
 fun HomeClientShell(
@@ -104,6 +136,13 @@ fun HomeClientShell(
     onDebugForceRefresh: () -> Unit,
     debugRefreshStatus: String?,
     modifier: Modifier = Modifier,
+    exploreRoot: @Composable (navigator: Navigator, avatarUrl: String?) -> Unit = { navigator, url ->
+        ClientTabRoot(
+            key = ExploreRoot,
+            actions = { TopBarAvatarButton(url, onClick = { navigator.navigate(ModeSwitchKey) }) },
+        )
+    },
+    detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
 ) {
     val state = rememberNavigationState(clientStartTab, clientTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
@@ -115,12 +154,7 @@ fun HomeClientShell(
         modifier = modifier,
         entryProvider =
             entryProvider<NavKey> {
-                entry<ExploreRoot> {
-                    ClientTabRoot(
-                        key = ExploreRoot,
-                        actions = { TopBarAvatarButton(avatarUrl, onClick = { navigator.navigate(ModeSwitchKey) }) },
-                    )
-                }
+                entry<ExploreRoot> { exploreRoot(navigator, avatarUrl) }
                 entry<SearchRoot> { ClientTabRoot(SearchRoot) }
                 entry<ClientBookingsRoot> { ClientTabRoot(ClientBookingsRoot) }
                 entry<ClientChatsRoot> { ClientTabRoot(ClientChatsRoot) }
@@ -157,6 +191,10 @@ fun HomeClientShell(
                 entry<DesignSystemGalleryKey> {
                     DesignSystemGalleryScreen(onBack = navigator::goBack)
                 }
+                entry<BookingKey>(metadata = BottomBar.hidden()) { key ->
+                    MakeABookingStubScreen(key = key, onBack = navigator::goBack)
+                }
+                detailEntries(navigator)
             },
     )
 }
