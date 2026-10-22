@@ -282,7 +282,7 @@ Plans:
   3. An Android client books a free topic and sees Request Sent, and the iOS expert receives the request. (PRD Week 3 checkpoint, free path)
 
 **Planning notes:** Highest-risk week. Regroup by `startUtc` into the client's local date. Test with the iOS app as the expert.
-**Plans:** 5/14 plans executed
+**Plans:** 10/14 plans executed
 Plans:
 **Wave 1**
 
@@ -297,11 +297,11 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 06-06-PLAN.md — SavedStateHandle + assisted-injection check, BookingRepository, MakeABookingViewModel loads (D-02 topics, three-month latest-wins availability) and selection rules (BOOK-01, BOOK-02)
-- [ ] 06-07-PLAN.md — Expert card, topic picker states, topic sheet with paid topics listed (BOOK-01)
-- [ ] 06-08-PLAN.md — Month calendar card (dots, D-06) and time slots card (timezone note, dimmed chips, load states) (BOOK-01, BOOK-02)
-- [ ] 06-09-PLAN.md — Meeting type, notes, summary and Book Now (paid note, in-flight state) (BOOK-01, BOOK-03)
-- [ ] 06-10-PLAN.md — Request Sent screen: loading/error/loaded, details card, actions, one-time entry animation (BOOK-04)
+- [x] 06-06-PLAN.md — SavedStateHandle + assisted-injection check, BookingRepository, MakeABookingViewModel loads (D-02 topics, three-month latest-wins availability) and selection rules (BOOK-01, BOOK-02)
+- [x] 06-07-PLAN.md — Expert card, topic picker states, topic sheet with paid topics listed (BOOK-01)
+- [x] 06-08-PLAN.md — Month calendar card (dots, D-06) and time slots card (timezone note, dimmed chips, load states) (BOOK-01, BOOK-02)
+- [x] 06-09-PLAN.md — Meeting type, notes, summary and Book Now (paid note, in-flight state) (BOOK-01, BOOK-03)
+- [x] 06-10-PLAN.md — Request Sent screen: loading/error/loaded, details card, actions, one-time entry animation (BOOK-04)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -514,7 +514,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
-| 6. Booking Flow & Free Bookings | 5/14 | In Progress|  |
+| 6. Booking Flow & Free Bookings | 10/14 | In Progress|  |
 | 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
