@@ -116,6 +116,8 @@ Carried forward (not re-opened):
   - A missing or empty `detail.stripe_account` is a hard failure with an alert (iOS).
 - **D-16: An unknown outcome on confirm shows the network copy and the payment reference.** A network error or timeout on `/bookings/confirm` shows the app's standard network-error copy plus "Payment reference: {pi_…}" when one exists. Keep the attempt id. No automatic retry.
 - **D-17: `bookingAttemptId` lives in memory only (iOS parity).** It is not saved in `SavedStateHandle`, so it is regenerated if the process dies. The rest of the form state keeps Phase 6's `SavedStateHandle` handling.
+- **D-18: Dismissing the FlowController sheet cancels silently, even with a saved card preselected.** Keep the form and the slot; no charge, no alert. This deliberately differs from iOS, which proceeds and authorizes the preselected card. (Decided 2026-10-22 during plan-phase, research A1.)
+- **D-19: When the same attempt id comes back as "slot just taken" after a confirm timeout, tell the user to check My Bookings.** The server sees the user's own pending booking from the timed-out attempt as a conflict. On this path (a `SLOT_UNAVAILABLE`-style conflict after a D-16 unknown outcome with the same `bookingAttemptId`), the alert copy adds a pointer to My Bookings instead of the plain locked copy. This deviates from iOS copy. (Decided 2026-10-22 during plan-phase.)
 
 ### Request Sent (paid)
 - Request Sent gets the paid payment-lifecycle card (iOS `PaymentLifecycleCard` in the hold-placed state) and the paid headline when `BookingRequestSentDetails.isFree == false`. The Phase 6 hand-off closes here.
