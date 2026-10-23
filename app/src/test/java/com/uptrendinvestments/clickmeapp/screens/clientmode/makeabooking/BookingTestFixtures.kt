@@ -1,18 +1,24 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.managers.MonotonicClock
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilitySlotDto
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.TopicOfDiscussionDto
 import com.uptrendinvestments.clickmeapp.model.responses.TopicPriceDto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
+import com.uptrendinvestments.clickmeapp.stripe.StripePaymentMethodReader
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeCompletedBookingStore
+import com.uptrendinvestments.clickmeapp.testing.FakeStripePaymentMethodReader
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import java.time.Clock
 import java.time.Instant
@@ -91,6 +97,8 @@ fun newViewModel(
     savedState: SavedStateHandle = SavedStateHandle(),
     clock: Clock = MutableClock(Instant.parse(NOW)),
     completedBookings: CompletedBookingStore = FakeCompletedBookingStore(),
+    reader: StripePaymentMethodReader = FakeStripePaymentMethodReader(),
+    monotonicClock: MonotonicClock = MonotonicClock { 0L },
 ): MakeABookingViewModel =
     MakeABookingViewModel(
         bookingKey(),
@@ -100,4 +108,27 @@ fun newViewModel(
         PaymentMethodsRepository(api),
         completedBookings,
         clock,
+        reader,
+        monotonicClock,
     )
+
+/**
+ * The paid booking context: topics [free t1 (60 min), paid t2 (60 min, 5000 CAD)], two slots (2026-10-22T20:00Z and
+ * 2026-10-23T01:00Z), cards [pm_default (default), pm_other], and a successful payment-intent, setup-intent and
+ * confirm.
+ */
+fun paidFixture(api: FakeClickMeApi) {
+    api.expertDetailsHandler = {
+        detailsWith(
+            topicDto("t1", isFree = true, durationMins = 60),
+            topicDto("t2", isFree = false, durationMins = 60, amount = 5000, currency = "CAD"),
+        )
+    }
+    api.expertAvailabilityHandler = { _, _ ->
+        availabilityOf(slotDto("2026-10-22T20:00:00Z"), slotDto("2026-10-23T01:00:00Z"))
+    }
+    api.stubCards(cardDto("pm_default", isDefault = true), cardDto("pm_other"))
+    api.paymentIntentHandler = { PaymentIntentResponse("pi_1", "pi_1_secret_x", "cad") }
+    api.setupIntentHandler = { PaymentMethodSetupData("seti_1_secret_x", "cus_1", "ek_1") }
+    api.confirmBookingHandler = { ConfirmBookingData("b9") }
+}
