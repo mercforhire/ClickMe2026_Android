@@ -72,4 +72,21 @@
     <string name="make_a_booking_error_needs_payment">This topic needs payment, which isn\'t available in the app yet.</string>
     <string name="make_a_booking_error_duplicate">A booking for this session already exists.</string>
     <string name="make_a_booking_error_unconfirmed">We couldn\'t confirm your last booking request. It may already have been sent, so please check My Bookings before booking again.</string>
+
+    <!-- Phase 7: paid flow errors (D-13 to D-16, D-19) -->
+    <string name="make_a_booking_error_try_again">Please try booking again.</string>
+    <string name="make_a_booking_error_invalid_payment_method">This payment method can\'t be used for this booking. Please choose another card.</string>
+    <string name="make_a_booking_error_payments_unavailable">Payments are temporarily unavailable. Please try again in a few minutes.</string>
+    <string name="make_a_booking_error_card_declined">Your card was declined. Please try another card.</string>
+    <string name="make_a_booking_error_amount_below_minimum">The session total is below the minimum charge amount.</string>
+    <string name="make_a_booking_error_invalid_promo">That promo code isn\'t valid.</string>
+    <string name="make_a_booking_error_slot_taken_check_bookings">That time slot is no longer available. Your last booking attempt may already have gone through, so please check My Bookings before booking again.</string>
+    <string name="make_a_booking_error_sca_unavailable">We couldn\'t start card verification. Please try a different card.</string>
+    <string name="make_a_booking_error_sca_canceled">Payment wasn\'t completed. Your card wasn\'t charged.</string>
+    <string name="make_a_booking_error_sca_failed">Card verification failed.</string>
+    <string name="make_a_booking_error_sheet_failed">Couldn\'t present the payment sheet.</string>
+    <string name="make_a_booking_error_pm_unreadable">Couldn\'t read the selected payment method. Please try again.</string>
+    <string name="make_a_booking_error_pm_unresolved">Payment method couldn\'t be resolved after verification.</string>
+    <string name="make_a_booking_error_no_saved_card">Please add a payment method before booking.</string>
+    <string name="make_a_booking_payment_reference">Payment reference: %1$s</string>
 </resources>
