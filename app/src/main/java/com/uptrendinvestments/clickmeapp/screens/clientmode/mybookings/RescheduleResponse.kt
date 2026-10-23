@@ -1,9 +1,17 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.capNotes
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Result of accepting a reschedule proposal. */
@@ -97,3 +105,85 @@ class RescheduleResponder
         private fun ApiException.isPaymentMethodRequired(): Boolean =
             this is ApiException.Http && code == ErrorCode.PaymentMethodRequired
     }
+
+/**
+ * In-flight, dialog and notice state for responding to a reschedule proposal. Both detail ViewModels create one in
+ * `init` with `viewModelScope` and their own quiet [reload], so the logic exists once (D-01). A result that arrives
+ * after the user left is dropped with `viewModelScope` (UI-SPEC navigation table).
+ *
+ * Not optimistic: no field of the booking is touched here. After any response the booking is reloaded first and only
+ * then is the dialog or notice set. `submitting` stays set until the reload finished, so the card and Cancel stay
+ * disabled, and a second accept or decline while one is in flight does nothing.
+ */
+class RescheduleResponseController(
+    private val scope: CoroutineScope,
+    private val responder: RescheduleResponder,
+    private val bookingId: String,
+    private val reload: suspend () -> Unit,
+) {
+    private val _state = MutableStateFlow(RescheduleUiState())
+    val state: StateFlow<RescheduleUiState> = _state.asStateFlow()
+
+    fun accept() {
+        if (_state.value.isSubmitting) return
+        _state.update { it.copy(submitting = RescheduleSubmitting.Accepting) }
+        scope.launch {
+            try {
+                when (val outcome = responder.accept(bookingId)) {
+                    AcceptOutcome.Accepted -> succeed(RescheduleNotice.Accepted)
+                    AcceptOutcome.NeedsPaymentMethod -> showDialog(RescheduleDialog.PaymentMethodNeeded)
+                    AcceptOutcome.CardUnusable -> showDialog(RescheduleDialog.CardUnusable)
+                    AcceptOutcome.CardsUnavailable ->
+                        showDialog(
+                            RescheduleDialog.Error(FieldError.Res(R.string.reschedule_error_cards_unavailable)),
+                        )
+                    is AcceptOutcome.Failed -> fail(outcome.failure)
+                }
+            } finally {
+                _state.update { it.copy(submitting = RescheduleSubmitting.None) }
+            }
+        }
+    }
+
+    fun decline(reason: String) {
+        if (_state.value.isSubmitting) return
+        _state.update { it.copy(submitting = RescheduleSubmitting.Declining) }
+        scope.launch {
+            try {
+                when (val outcome = responder.decline(bookingId, reason)) {
+                    DeclineOutcome.Declined -> succeed(RescheduleNotice.Declined)
+                    is DeclineOutcome.Failed -> fail(outcome.failure)
+                }
+            } finally {
+                _state.update { it.copy(submitting = RescheduleSubmitting.None) }
+            }
+        }
+    }
+
+    fun dismissDialog() {
+        _state.update { it.copy(dialog = null) }
+    }
+
+    fun consumeNotice() {
+        _state.update { it.copy(notice = null) }
+    }
+
+    private suspend fun succeed(notice: RescheduleNotice) {
+        reload()
+        _state.update { it.copy(dialog = null, notice = notice) }
+    }
+
+    private fun showDialog(dialog: RescheduleDialog) {
+        _state.update { it.copy(dialog = dialog) }
+    }
+
+    private suspend fun fail(failure: RescheduleFailure) {
+        when (failure) {
+            RescheduleFailure.Silent -> Unit
+            is RescheduleFailure.Show -> {
+                if (failure.reload) reload()
+                showDialog(RescheduleDialog.Error(failure.message, popOnDismiss = failure.pop))
+            }
+        }
+    }
+}
