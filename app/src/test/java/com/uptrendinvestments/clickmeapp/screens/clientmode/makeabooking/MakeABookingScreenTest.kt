@@ -85,6 +85,7 @@ class MakeABookingScreenTest {
 
     private var backCount = 0
     private var bookCount = 0
+    private var openPaymentMethodsCount = 0
     private var dismissCount = 0
     private val pickedTopics = mutableListOf<String>()
     private val formInputs = mutableListOf<String>()
@@ -145,6 +146,7 @@ class MakeABookingScreenTest {
                     onSelectMeetingType = { formInputs += "meeting $it" },
                     onNotesChange = { formInputs += "notes $it" },
                     onBook = { bookCount++ },
+                    onOpenPaymentMethods = { openPaymentMethodsCount++ },
                     onDismissError = { dismissCount++ },
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                 )
@@ -308,6 +310,7 @@ class MakeABookingScreenTest {
                     onSelectMeetingType = {},
                     onNotesChange = {},
                     onBook = {},
+                    onOpenPaymentMethods = {},
                     onDismissError = {},
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                 )
@@ -410,6 +413,8 @@ class MakeABookingScreenTest {
                         onSelectMeetingType = {},
                         onNotesChange = {},
                         onBook = {},
+                        onOpenPaymentMethods = {},
+                    onOpenPaymentMethods = {},
                         onDismissError = {},
                         timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     )
@@ -467,15 +472,21 @@ class MakeABookingScreenTest {
         api.requestBookingHandler = { BookingRequestData(bookingId = "b1") }
     }
 
+    /** Whether the screen is in composition; flipping it off and on simulates covering and uncovering the entry. */
+    private var screenShown by mutableStateOf(true)
+
     private fun setScreen(viewModel: MakeABookingViewModel) {
         composeRule.setContent {
             ClickMeTheme {
-                MakeABookingScreen(
-                    viewModel = viewModel,
-                    onBack = {},
-                    onBooked = { booked += it },
-                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
-                )
+                if (screenShown) {
+                    MakeABookingScreen(
+                        viewModel = viewModel,
+                        onBack = {},
+                        onBooked = { booked += it },
+                        onOpenPaymentMethods = { openPaymentMethodsCount++ },
+                        timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    )
+                }
             }
         }
         composeRule.waitForIdle()
@@ -578,5 +589,59 @@ class MakeABookingScreenTest {
         composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
         composeRule.onNodeWithText("Add a Payment Method").assertExists()
         assertEquals(0, api.requestBookingCalls)
+    }
+
+    // ---- D-08 / D-09: the gate opens Payment Methods; coming back reloads the cards and never books ----
+
+    @Test
+    fun addAPaymentMethodCtaOpensPaymentMethodsAndDoesNotBook() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.None))
+
+        composeRule.onNodeWithText("Add a Payment Method").performScrollTo().performClick()
+
+        assertEquals(1, openPaymentMethodsCount)
+        assertEquals(0, bookCount)
+    }
+
+    @Test
+    fun bookNowOnAPaidTopicWithCardsBooksAndDoesNotOpenPaymentMethods() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Available))
+
+        composeRule.onNodeWithText("Book Now").performScrollTo().performClick()
+
+        assertEquals(1, bookCount)
+        assertEquals(0, openPaymentMethodsCount)
+    }
+
+    @Test
+    fun comingBackFromPaymentMethodsReloadsTheCardsKeepsTheFormAndDoesNotBook() {
+        stubFreeAndPaidTopicsWithOneSlot()
+        val vm = newViewModel(api)
+        setScreen(vm)
+        vm.selectTopic("t2")
+        vm.onNotesChange("Please cover pricing")
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(slotChipTestTag(slot20)).performScrollTo().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Add a Payment Method").performScrollTo().performClick()
+        assertEquals(1, openPaymentMethodsCount)
+        val callsBefore = api.getPaymentMethodsCalls
+
+        // The covered entry leaves composition and re-enters when Payment Methods is popped; one card was added.
+        api.stubCards(cardDto("pm_1", isDefault = true))
+        screenShown = false
+        composeRule.waitForIdle()
+        screenShown = true
+        composeRule.waitForIdle()
+
+        assertTrue("cards must be reloaded on return", api.getPaymentMethodsCalls > callsBefore)
+        composeRule.onNodeWithText("Book Now").assertExists()
+        composeRule.onNodeWithText("Add a Payment Method").assertDoesNotExist()
+        assertEquals("t2", vm.uiState.value.selectedTopicId)
+        assertEquals("Please cover pricing", vm.uiState.value.notes)
+        assertEquals(slot20, vm.uiState.value.selectedSlotStart)
+        assertEquals(0, api.paymentIntentCalls)
+        assertEquals(0, api.requestBookingCalls)
+        assertTrue(booked.isEmpty())
     }
 }
