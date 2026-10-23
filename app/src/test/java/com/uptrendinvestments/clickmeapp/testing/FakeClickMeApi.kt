@@ -1,7 +1,10 @@
 package com.uptrendinvestments.clickmeapp.testing
 
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
@@ -11,6 +14,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
@@ -29,6 +33,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
@@ -78,6 +83,12 @@ class FakeClickMeApi : ClickMeApi {
     var setDefaultPaymentMethodHandler: suspend (String) -> SuccessMessageResponse = { notStubbed() }
     var paymentIntentHandler: suspend (PaymentIntentRequest) -> PaymentIntentResponse = { notStubbed() }
     var confirmBookingHandler: suspend (ConfirmBookingRequest) -> ConfirmBookingData = { notStubbed() }
+    var cancelClientBookingHandler: suspend (String, CancelBookingRequest) -> CancelBookingData =
+        { _, _ -> notStubbed() }
+    var acceptClientRescheduleHandler: suspend (String, AcceptRescheduleRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
+    var declineClientRescheduleHandler: suspend (String, DeclineRescheduleRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -169,6 +180,15 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var confirmBookingCalls = 0
         private set
 
+    @Volatile var cancelClientBookingCalls = 0
+        private set
+
+    @Volatile var acceptClientRescheduleCalls = 0
+        private set
+
+    @Volatile var declineClientRescheduleCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -203,6 +223,30 @@ class FakeClickMeApi : ClickMeApi {
 
     /** Every POST /bookings/confirm body received, in call order. */
     val confirmBookingRequests: List<ConfirmBookingRequest> get() = _confirmBookingRequests
+
+    private val _cancelClientBookingRequests = mutableListOf<Pair<String, CancelBookingRequest>>()
+
+    /** Every POST /client/bookings/{id}/cancel call (id, body), in call order. */
+    val cancelClientBookingRequests: List<Pair<String, CancelBookingRequest>>
+        get() = synchronized(_cancelClientBookingRequests) { _cancelClientBookingRequests.toList() }
+
+    private val _acceptClientRescheduleRequests = mutableListOf<Pair<String, AcceptRescheduleRequest>>()
+
+    /** Every POST /client/bookings/{id}/accept-reschedule call (id, body), in call order. */
+    val acceptClientRescheduleRequests: List<Pair<String, AcceptRescheduleRequest>>
+        get() = synchronized(_acceptClientRescheduleRequests) { _acceptClientRescheduleRequests.toList() }
+
+    private val _declineClientRescheduleRequests = mutableListOf<Pair<String, DeclineRescheduleRequest>>()
+
+    /** Every POST /client/bookings/{id}/decline-reschedule call (id, body), in call order. */
+    val declineClientRescheduleRequests: List<Pair<String, DeclineRescheduleRequest>>
+        get() = synchronized(_declineClientRescheduleRequests) { _declineClientRescheduleRequests.toList() }
+
+    private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
+
+    /** The (type, page, limit) of every getClientBookings call, in call order. */
+    val clientBookingsQueries: List<Triple<String, Int, Int>>
+        get() = synchronized(_clientBookingsQueries) { _clientBookingsQueries.toList() }
 
     private val _deletedPaymentMethodIds = mutableListOf<String>()
 
@@ -309,6 +353,7 @@ class FakeClickMeApi : ClickMeApi {
         limit: Int,
     ): SuccessDataResponse<ClientBookingsPayload> {
         clientBookingsCalls++
+        synchronized(_clientBookingsQueries) { _clientBookingsQueries += Triple(type, page, limit) }
         return ok(clientBookingsHandler(type))
     }
 
@@ -391,6 +436,33 @@ class FakeClickMeApi : ClickMeApi {
         confirmBookingCalls++
         _confirmBookingRequests += body
         return ok(confirmBookingHandler(body))
+    }
+
+    override suspend fun cancelClientBooking(
+        bookingId: String,
+        body: CancelBookingRequest,
+    ): SuccessDataResponse<CancelBookingData> {
+        cancelClientBookingCalls++
+        synchronized(_cancelClientBookingRequests) { _cancelClientBookingRequests += bookingId to body }
+        return ok(cancelClientBookingHandler(bookingId, body))
+    }
+
+    override suspend fun acceptClientReschedule(
+        bookingId: String,
+        body: AcceptRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        acceptClientRescheduleCalls++
+        synchronized(_acceptClientRescheduleRequests) { _acceptClientRescheduleRequests += bookingId to body }
+        return ok(acceptClientRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun declineClientReschedule(
+        bookingId: String,
+        body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        declineClientRescheduleCalls++
+        synchronized(_declineClientRescheduleRequests) { _declineClientRescheduleRequests += bookingId to body }
+        return ok(declineClientRescheduleHandler(bookingId, body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

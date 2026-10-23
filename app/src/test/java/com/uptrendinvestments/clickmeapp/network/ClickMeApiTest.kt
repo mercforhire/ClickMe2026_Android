@@ -1,8 +1,11 @@
 package com.uptrendinvestments.clickmeapp.network
 
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
@@ -755,5 +758,79 @@ class ClickMeApiTest {
             assertEquals(ErrorCode.PaymentRequiresAction, error.code)
             assertEquals("pi_1_secret_x", error.detail?.get("client_secret"))
             assertEquals("acct_1", error.detail?.get("stripe_account"))
+        }
+
+    @Test
+    fun cancelClientBookingPostsExactReasonBodyAndDecodes() =
+        runTest {
+            enqueue(
+                200,
+                """{"status":"success","message":"Booking cancelled.","data":{"refund_amount":12.5,"currency":"CAD"}}""",
+            )
+
+            val data = api.cancelClientBooking("b1", CancelBookingRequest("Change of plans")).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/client/bookings/b1/cancel", request.url.encodedPath)
+            assertEquals("""{"reason":"Change of plans"}""", request.body?.utf8())
+            assertEquals(12.5, data.refundAmount, 0.0)
+            assertEquals("CAD", data.currency)
+        }
+
+    @Test
+    fun acceptClientRescheduleWithoutCardSendsEmptyObject() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"booking_id":"b1","status":"confirmed"}}""")
+
+            val data = api.acceptClientReschedule("b1", AcceptRescheduleRequest()).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/client/bookings/b1/accept-reschedule", request.url.encodedPath)
+            assertEquals("{}", request.body?.utf8())
+            assertEquals("confirmed", data.status)
+        }
+
+    @Test
+    fun acceptClientRescheduleWithCardSendsPaymentMethodId() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"booking_id":"b1","status":"confirmed"}}""")
+
+            api.acceptClientReschedule("b1", AcceptRescheduleRequest("pm_x"))
+
+            val request = server.takeRequest()
+            assertEquals("""{"stripe_payment_method_id":"pm_x"}""", request.body?.utf8())
+        }
+
+    @Test
+    fun declineClientRescheduleSendsEmptyObjectOrReason() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"booking_id":"b1","status":"confirmed"}}""")
+            enqueue(200, """{"status":"success","data":{"booking_id":"b1","status":"confirmed"}}""")
+
+            api.declineClientReschedule("b1", DeclineRescheduleRequest())
+            val first = server.takeRequest()
+            api.declineClientReschedule("b1", DeclineRescheduleRequest("Busy that day"))
+            val second = server.takeRequest()
+
+            assertEquals("POST", first.method)
+            assertEquals("/api/v1/client/bookings/b1/decline-reschedule", first.url.encodedPath)
+            assertEquals("{}", first.body?.utf8())
+            assertEquals("""{"reason":"Busy that day"}""", second.body?.utf8())
+        }
+
+    @Test
+    fun acceptClientReschedule422SurfacesAsHttpException() =
+        runTest {
+            enqueue(
+                422,
+                """{"status":"error","code":"PAYMENT_METHOD_REQUIRED","message":"Add a card"}""",
+            )
+
+            val error = runCatching { api.acceptClientReschedule("b1", AcceptRescheduleRequest()) }.exceptionOrNull()
+
+            assertTrue(error is HttpException)
+            assertEquals(422, (error as HttpException).code())
         }
 }
