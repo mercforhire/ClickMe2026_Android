@@ -5,10 +5,12 @@ import com.squareup.moshi.JsonClass
 import java.time.Instant
 
 /**
- * `GET /client/bookings/{id}` payload. Returned by `mybookings/ClientBookingsRepository.detail`.
+ * `GET /client/bookings/{id}` payload. Returned by `mybookings/ClientBookingsRepository.detail`; used by Request
+ * Sent, Upcoming Booking Details, Cancellation and Booking Summary.
  *
- * Phase 6 only needs the fields shown on the Request Sent screen. Phase 8 (My Bookings) extends this class
- * with the join link, private note and reschedule data; unknown keys are ignored until then.
+ * [paymentStatus] is the server's derived display vocabulary `none | held | captured | refunded`. `private_note`
+ * is deliberately not declared (D-16). [authorizationExpiresAt] is informational only, used for the accept
+ * disclosure.
  */
 @JsonClass(generateAdapter = true)
 data class ClientBookingDetail(
@@ -22,6 +24,10 @@ data class ClientBookingDetail(
     val topic: BookingDetailTopicDto,
     val expert: BookingDetailExpertDto,
     @Json(name = "client_notes") val clientNotes: String? = null,
+    @Json(name = "authorization_expires_at") val authorizationExpiresAt: Instant? = null,
+    @Json(name = "join_link") val joinLink: String? = null,
+    @Json(name = "can_join") val canJoin: Boolean = false,
+    val reschedule: RescheduleDto? = null,
 )
 
 /**

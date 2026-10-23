@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Scriptable [RealtimeConnection]. Records every [connect] token and [disconnect] call; tests drive the
- * state with [setState] and handshake rejections with [emitFailure].
+ * state with [setState], handshake rejections with [emitFailure] and realtime events with [emit].
  */
 class FakeRealtimeConnection : RealtimeConnection {
     private val _events = MutableSharedFlow<RealtimeEvent>(extraBufferCapacity = 8)
@@ -39,6 +39,14 @@ class FakeRealtimeConnection : RealtimeConnection {
     override fun disconnect() {
         disconnectCalls++
         _state.value = ConnectionState.Disconnected
+    }
+
+    /**
+     * Emits [event] on [events]. Replay is 0, so a collector must already be subscribed (call `runCurrent()`
+     * after creating the ViewModel).
+     */
+    fun emit(event: RealtimeEvent) {
+        check(_events.tryEmit(event)) { "event buffer full" }
     }
 
     fun emitFailure(failure: HandshakeFailure) {

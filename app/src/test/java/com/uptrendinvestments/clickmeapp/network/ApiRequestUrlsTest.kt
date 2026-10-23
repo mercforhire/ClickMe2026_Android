@@ -145,4 +145,23 @@ class ApiRequestUrlsTest {
         }
         assertEquals(5, ApiRequestUrls.publicPaths.size)
     }
+
+    @Test
+    fun phaseEightConstants_haveExactRelativeValues() {
+        assertEquals("client/bookings/{id}/cancel", ApiRequestUrls.CLIENT_BOOKING_CANCEL)
+        assertEquals("client/bookings/{id}/accept-reschedule", ApiRequestUrls.CLIENT_BOOKING_ACCEPT_RESCHEDULE)
+        assertEquals("client/bookings/{id}/decline-reschedule", ApiRequestUrls.CLIENT_BOOKING_DECLINE_RESCHEDULE)
+    }
+
+    @Test
+    fun bookingActionPaths_needAuthToken() {
+        listOf(
+            "/api/v1/client/bookings/b1/cancel",
+            "/api/v1/client/bookings/b1/accept-reschedule",
+            "/api/v1/client/bookings/b1/decline-reschedule",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
 }

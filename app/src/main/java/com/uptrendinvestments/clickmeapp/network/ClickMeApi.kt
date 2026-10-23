@@ -1,7 +1,10 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
@@ -11,6 +14,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
@@ -29,6 +33,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
@@ -227,4 +232,32 @@ interface ClickMeApi {
     suspend fun confirmBooking(
         @Body body: ConfirmBookingRequest,
     ): SuccessDataResponse<ConfirmBookingData>
+
+    /**
+     * Ports iOS ClickMeAPI+Booking cancelClientBooking. The backend `cancelSchema` is `.strict()` with `reason` as
+     * its only key, so the comment travels inside [CancelBookingRequest.reason]. The refund is in MAJOR units.
+     */
+    @POST(ApiRequestUrls.CLIENT_BOOKING_CANCEL)
+    suspend fun cancelClientBooking(
+        @Path("id") bookingId: String,
+        @Body body: CancelBookingRequest,
+    ): SuccessDataResponse<CancelBookingData>
+
+    /**
+     * Ports iOS ClickMeAPI+Booking acceptClientReschedule. The backend schema is `.strict()`. An explicit body is
+     * always passed because Retrofit would otherwise send no body (Phase 7 RESEARCH Pitfall 13). A repeated accept
+     * on an already confirmed booking is an idempotent 200.
+     */
+    @POST(ApiRequestUrls.CLIENT_BOOKING_ACCEPT_RESCHEDULE)
+    suspend fun acceptClientReschedule(
+        @Path("id") bookingId: String,
+        @Body body: AcceptRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
+
+    /** Ports iOS ClickMeAPI+Booking declineClientReschedule. The backend schema is `.strict()` (`reason` only). */
+    @POST(ApiRequestUrls.CLIENT_BOOKING_DECLINE_RESCHEDULE)
+    suspend fun declineClientReschedule(
+        @Path("id") bookingId: String,
+        @Body body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
 }

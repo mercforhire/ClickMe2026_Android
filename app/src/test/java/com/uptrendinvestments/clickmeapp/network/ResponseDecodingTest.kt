@@ -3,8 +3,11 @@ package com.uptrendinvestments.clickmeapp.network
 import com.squareup.moshi.Types
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.UserRole
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RefreshTokenRequest
@@ -13,6 +16,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilitySlotDto
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CategoryItem
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
@@ -34,6 +38,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RefreshTokenData
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
@@ -770,5 +775,109 @@ class ResponseDecodingTest {
             """.trimIndent()
         val data = envelope(ConfirmBookingData::class.java).fromJson(json)!!.data
         assertEquals(ConfirmBookingData("b9", "pending_approval", "Sent", "24 hours"), data)
+    }
+
+    @Test
+    fun clientBookingRowDecodesSlimReschedule() {
+        val json =
+            """
+            {"bookings":[{"booking_id":"b1","expert":{"id":"e1"},"start_time":"2026-10-24T18:00:00Z",
+            "end_time":"2026-10-24T19:00:00Z","status":"pending_reschedule",
+            "reschedule":{"proposed_start":"2026-10-30T18:00:00Z","initiated_by":"expert"}}]}
+            """.trimIndent()
+        val reschedule =
+            moshi
+                .adapter(ClientBookingsPayload::class.java)
+                .fromJson(json)!!
+                .bookings
+                .single()
+                .reschedule!!
+        assertEquals(Instant.parse("2026-10-30T18:00:00Z"), reschedule.proposedStart)
+        assertEquals("expert", reschedule.initiatedBy)
+        assertNull(reschedule.proposedEnd)
+        assertNull(reschedule.proposedTimezone)
+        assertNull(reschedule.note)
+        assertNull(reschedule.createdAt)
+    }
+
+    @Test
+    fun clientBookingRowWithNullRescheduleAndPrivateNotePreviewDecodes() {
+        val json =
+            """
+            {"bookings":[{"booking_id":"b1","expert":{"id":"e1"},"start_time":"2026-10-24T18:00:00Z",
+            "end_time":"2026-10-24T19:00:00Z","status":"confirmed","reschedule":null,
+            "private_note_preview":"x"}]}
+            """.trimIndent()
+        val payload = moshi.adapter(ClientBookingsPayload::class.java).fromJson(json)!!
+        assertNull(payload.bookings.single().reschedule)
+    }
+
+    @Test
+    fun clientBookingDetailDecodesFullRescheduleAuthorizationAndJoin() {
+        val json =
+            """
+            {"booking_id":"b1","status":"pending_reschedule","start_time":"2026-10-24T18:00:00Z",
+            "payment_status":"held","topic":{"id":"t1","title":"Intro"},"expert":{"id":"e1"},
+            "authorization_expires_at":"2026-10-31T00:00:00Z","join_link":"https://zoom.us/j/1","can_join":true,
+            "private_note":"secret",
+            "reschedule":{"proposed_start":"2026-10-30T18:00:00Z","proposed_end":"2026-10-30T19:00:00Z",
+            "proposed_timezone":"America/Toronto","initiated_by":"expert","note":"Can we move?",
+            "created_at":"2026-10-23T12:00:00Z"}}
+            """.trimIndent()
+        val detail = moshi.adapter(ClientBookingDetail::class.java).fromJson(json)!!
+        assertEquals("held", detail.paymentStatus)
+        assertEquals(Instant.parse("2026-10-31T00:00:00Z"), detail.authorizationExpiresAt)
+        assertEquals("https://zoom.us/j/1", detail.joinLink)
+        assertTrue(detail.canJoin)
+        val reschedule = detail.reschedule!!
+        assertEquals(Instant.parse("2026-10-30T18:00:00Z"), reschedule.proposedStart)
+        assertEquals(Instant.parse("2026-10-30T19:00:00Z"), reschedule.proposedEnd)
+        assertEquals("America/Toronto", reschedule.proposedTimezone)
+        assertEquals("expert", reschedule.initiatedBy)
+        assertEquals("Can we move?", reschedule.note)
+        assertEquals(Instant.parse("2026-10-23T12:00:00Z"), reschedule.createdAt)
+    }
+
+    @Test
+    fun cancelBookingResponseDecodesMajorUnitDecimalAndIdempotentMessage() {
+        val cancelled =
+            """{"status":"success","message":"Booking cancelled.","data":{"refund_amount":12.5,"currency":"CAD"}}"""
+        assertEquals(
+            CancelBookingData(12.5, "CAD"),
+            envelope(CancelBookingData::class.java).fromJson(cancelled)!!.data,
+        )
+        val already =
+            """
+            {"status":"success","message":"Booking is already cancelled.",
+            "data":{"refund_amount":0,"currency":"JPY"}}
+            """.trimIndent()
+        assertEquals(
+            CancelBookingData(0.0, "JPY"),
+            envelope(CancelBookingData::class.java).fromJson(already)!!.data,
+        )
+    }
+
+    @Test
+    fun rescheduleResponseDecodes() {
+        val json = """{"status":"success","data":{"booking_id":"b1","status":"confirmed"}}"""
+        assertEquals(
+            RescheduleResponseData("b1", "confirmed"),
+            envelope(RescheduleResponseData::class.java).fromJson(json)!!.data,
+        )
+    }
+
+    @Test
+    fun bookingActionRequestsEncodeExactStrictBodies() {
+        assertEquals(
+            """{"reason":"Change of plans"}""",
+            moshi.adapter(CancelBookingRequest::class.java).toJson(CancelBookingRequest("Change of plans")),
+        )
+        val accept = moshi.adapter(AcceptRescheduleRequest::class.java)
+        assertEquals("{}", accept.toJson(AcceptRescheduleRequest()))
+        assertEquals("""{"stripe_payment_method_id":"pm_x"}""", accept.toJson(AcceptRescheduleRequest("pm_x")))
+        assertEquals(
+            "{}",
+            moshi.adapter(DeclineRescheduleRequest::class.java).toJson(DeclineRescheduleRequest()),
+        )
     }
 }
