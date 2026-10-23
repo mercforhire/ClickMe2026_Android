@@ -73,7 +73,10 @@ enum class BookCtaAction { Book, AddPaymentMethod }
  * labels and grouping always agree after a zone change. [meetingType] defaults to In-app
  * Voice (D-08); both meeting types are always offered. The expert fields come from `BookingKey` and have no
  * loading state. [dialogTitle] titles the [dialogError] dialog: "Couldn't book" for a booking that failed, and a
- * neutral title for a notice where no booking was attempted (WR-02).
+ * neutral title for a notice where no booking was attempted (WR-02). [isSubmitting] is true while [paidStep] is not
+ * [PaidStep.Idle] (research correction 6) and stays true after a success until the screen navigates on.
+ * [stripeRequest] is a one-shot request for the Compose host, consumed through `onStripeRequestLaunched`.
+ * [dialogPaymentReference] is the `pi_` the dialog appends as "Payment reference: ..." (D-13, D-16).
  */
 data class MakeABookingUiState(
     val expertId: String,
@@ -93,9 +96,12 @@ data class MakeABookingUiState(
     val meetingType: MeetingType = MeetingType.InAppVoice,
     val notes: String = "",
     val isSubmitting: Boolean = false,
+    val paidStep: PaidStep = PaidStep.Idle,
+    val stripeRequest: StripeRequest? = null,
     val paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
     val dialogError: FieldError? = null,
     @StringRes val dialogTitle: Int = R.string.make_a_booking_error_title,
+    val dialogPaymentReference: String? = null,
     val completedBookingId: String? = null,
 ) {
     /** The loaded topics, or empty while loading or failed. */

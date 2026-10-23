@@ -419,7 +419,7 @@ class MakeABookingViewModelBookTest {
         }
 
     @Test
-    fun paidTopicNeverReachesTheApi() =
+    fun paidTopicWithoutSavedCardNeverReachesTheApi() =
         runTest(main.testDispatcher) {
             val vm = readyVm()
             vm.selectTopic("t2")
@@ -427,6 +427,7 @@ class MakeABookingViewModelBookTest {
             vm.book()
             runCurrent()
             assertEquals(0, api.requestBookingCalls)
+            assertEquals(0, api.paymentIntentCalls)
             assertFalse(vm.uiState.value.isSubmitting)
         }
 
