@@ -19,6 +19,9 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -26,6 +29,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
@@ -823,6 +827,10 @@ class MakeABookingScreenTest {
 
         composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).performScrollTo().performClick()
         composeRule.onNodeWithText("What happens next").assertExists()
+        // "Got it" is the sheet list's last item; scroll the sheet's list, not the form behind it.
+        composeRule
+            .onNode(hasScrollAction() and !hasTestTag(MAKE_A_BOOKING_SCROLL_TAG))
+            .performScrollToNode(hasText("Got it"))
         composeRule.onNodeWithText("Got it").assertExists()
 
         composeRule.onNodeWithText("Got it").performClick()

@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -39,10 +40,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subview
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingExpertCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingMeetingTypeCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingNotesCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingPaymentInfoLink
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingSummarySection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTimeSlotsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTopicPicker
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTopicSheet
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.PaymentInfoSheet
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
@@ -148,6 +151,7 @@ fun MakeABookingContent(
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
 ) {
     var showTopicSheet by rememberSaveable { mutableStateOf(false) }
+    var showPaymentInfo by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
 
@@ -247,12 +251,22 @@ fun MakeABookingContent(
                     timeFormat = timeFormat,
                 )
             }
-            MakeABookingBookButton(
-                disabledReason = state.bookDisabledReason,
-                ctaAction = state.bookCtaAction,
-                isSubmitting = state.isSubmitting,
-                onClick = if (state.bookCtaAction == BookCtaAction.AddPaymentMethod) onOpenPaymentMethods else onBook,
-            )
+            // UI-SPEC: lg below the Summary (the form gap), md between the info link and the button.
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                if (state.selectedTopic?.isFree == false) {
+                    MakeABookingPaymentInfoLink(
+                        onClick = { showPaymentInfo = true },
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
+                }
+                MakeABookingBookButton(
+                    disabledReason = state.bookDisabledReason,
+                    ctaAction = state.bookCtaAction,
+                    isSubmitting = state.isSubmitting,
+                    onClick =
+                        if (state.bookCtaAction == BookCtaAction.AddPaymentMethod) onOpenPaymentMethods else onBook,
+                )
+            }
             Spacer(Modifier.navigationBarsPadding().padding(bottom = Spacing.xl))
         }
     }
@@ -269,11 +283,24 @@ fun MakeABookingContent(
         )
     }
 
+    if (showPaymentInfo) {
+        PaymentInfoSheet(onDismiss = { showPaymentInfo = false })
+    }
+
     state.dialogError?.let { error ->
+        // D-13, D-16: a confirm-step failure appends the pi_ as a copyable support reference.
+        val reference = state.dialogPaymentReference
+        val message =
+            if (reference == null) {
+                error.asString()
+            } else {
+                error.asString() + "\n\n" + stringResource(R.string.make_a_booking_payment_reference, reference)
+            }
         AuthErrorDialog(
-            message = error.asString(),
+            message = message,
             onDismiss = onDismissError,
             title = stringResource(state.dialogTitle),
+            selectable = reference != null,
         )
     }
 }
