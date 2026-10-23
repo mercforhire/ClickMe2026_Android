@@ -336,14 +336,14 @@ Plans:
   5. Paid-flow errors (the ~15 `handlePaidFlowError` codes) show the right message or next action. Prices display correctly in minor units, including JPY with no decimals.
 
 **Planning notes:** Reuse what the Phase 2 Stripe spike found. `payment-intent` amounts are the one exception to minor units. Never cut.
-**Plans:** 14 plans
+**Plans:** 4/14 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Stripe 23.24.0 in :app, PaymentConfiguration.init, R8 release, pm_ reader seam, shared ClickMe sheet configuration and dark appearance (PAY-02, PAY-03, PAY-05)
-- [ ] 07-02-PLAN.md — Payment network contract: DTOs (bare payment-intent, strict confirm), six endpoints with {} bodies, FakeClickMeApi, BookingRepository paid calls, PaymentMethodsRepository (PAY-01..PAY-04, PAY-07)
-- [ ] 07-03-PLAN.md — Pure paid-flow model (PaidStep, StripeRequest, UTC strings, Stripe outcomes) and the handlePaidFlowError table with D-13..D-16, D-19 copy (PAY-03..PAY-06)
-- [ ] 07-04-PLAN.md — Shared PaymentLifecycleCard, "How does payment work?" link and sheet, ProfileMenuRow (PAY-01, PAY-07)
+- [x] 07-01-PLAN.md — Stripe 23.24.0 in :app, PaymentConfiguration.init, R8 release, pm_ reader seam, shared ClickMe sheet configuration and dark appearance (PAY-02, PAY-03, PAY-05)
+- [x] 07-02-PLAN.md — Payment network contract: DTOs (bare payment-intent, strict confirm), six endpoints with {} bodies, FakeClickMeApi, BookingRepository paid calls, PaymentMethodsRepository (PAY-01..PAY-04, PAY-07)
+- [x] 07-03-PLAN.md — Pure paid-flow model (PaidStep, StripeRequest, UTC strings, Stripe outcomes) and the handlePaidFlowError table with D-13..D-16, D-19 copy (PAY-03..PAY-06)
+- [x] 07-04-PLAN.md — Shared PaymentLifecycleCard, "How does payment work?" link and sheet, ProfileMenuRow (PAY-01, PAY-07)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -369,6 +369,7 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [ ] 07-14-PLAN.md — Phase gate (full suite + R8 with Stripe), scope and safety sweeps, VALIDATION sign-off, deferred device checks, iOS follow-ups and backend notes (all)
+
 **UI hint**: yes
 
 ### Phase 8: Client Bookings & Cancellation
@@ -547,7 +548,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 0/14 | Not started | - |
+| 7. Payment Methods & Paid Booking | 4/14 | In Progress|  |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
