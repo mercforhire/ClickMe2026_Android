@@ -3,6 +3,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.network.ApiException
@@ -75,7 +76,8 @@ class MakeABookingViewModelScaTest {
         first: ApiException = requiresAction(),
         after: suspend () -> ConfirmBookingData = { ConfirmBookingData("b9") },
     ) {
-        api.confirmBookingHandler = { if (api.confirmBookingCalls == 1) throw first else after() }
+        val before = api.confirmBookingCalls
+        api.confirmBookingHandler = { if (api.confirmBookingCalls == before + 1) throw first else after() }
     }
 
     private fun TestScope.paidVm(saved: SavedStateHandle = SavedStateHandle()): MakeABookingViewModel {
@@ -206,4 +208,98 @@ class MakeABookingViewModelScaTest {
             runCurrent()
             assertEquals(2, api.confirmBookingCalls)
         }
+
+    // ---- Task 2: cancel, failure and hard failure (D-15) ----
+
+    @Test
+    fun aCancelledChallengeShowsTheNotChargedAlertAndKeepsTheSlotAndAttemptId() =
+        runTest(main.testDispatcher) {
+            scriptConfirm()
+            val vm = paidVm()
+            bookToChallenge(vm)
+            challenge(vm, ChallengeOutcome.Canceled)
+            val s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_sca_canceled), s.dialogError)
+            assertEquals(PaidStep.Idle, s.paidStep)
+            assertFalse(s.isSubmitting)
+            assertNull(s.challengeAccount)
+            assertNull(s.stripeRequest)
+            assertEquals(slotB, s.selectedSlotStart)
+            assertEquals(1, api.confirmBookingCalls)
+
+            vm.dismissError()
+            vm.book()
+            runCurrent()
+            assertEquals(2, api.paymentIntentRequests.size)
+            assertEquals(
+                api.paymentIntentRequests[0].bookingAttemptId,
+                api.paymentIntentRequests[1].bookingAttemptId,
+            )
+        }
+
+    @Test
+    fun aFailedChallengeShowsStripesMessageOrTheFallbackAndKeepsTheForm() =
+        runTest(main.testDispatcher) {
+            scriptConfirm()
+            val vm = paidVm()
+            bookToChallenge(vm)
+            challenge(vm, ChallengeOutcome.Failed("Your card was declined by the bank."))
+            var s = vm.uiState.value
+            assertEquals(FieldError.Text("Your card was declined by the bank."), s.dialogError)
+            assertEquals(PaidStep.Idle, s.paidStep)
+            assertFalse(s.isSubmitting)
+            assertNull(s.challengeAccount)
+            assertEquals(slotB, s.selectedSlotStart)
+
+            // Failed(null) uses the fallback copy.
+            api.confirmBookingHandler = { throw requiresAction() }
+            vm.dismissError()
+            bookToChallenge(vm)
+            challenge(vm, ChallengeOutcome.Failed(null))
+            s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_sca_failed), s.dialogError)
+            assertEquals(slotB, s.selectedSlotStart)
+            assertEquals(
+                api.paymentIntentRequests.first().bookingAttemptId,
+                api.paymentIntentRequests.last().bookingAttemptId,
+            )
+        }
+
+    @Test
+    fun aBlankOrMissingConnectedAccountNeverStartsAChallenge() =
+        runTest(main.testDispatcher) {
+            for (detail in listOf(challengeDetail(""), challengeDetail(null), null)) {
+                api.confirmBookingHandler = { throw requiresAction(detail) }
+                val vm = paidVm()
+                bookToChallenge(vm)
+                val s = vm.uiState.value
+                assertNull(s.stripeRequest)
+                assertNull(s.challengeAccount)
+                if (detail != null) {
+                    assertEquals(FieldError.Res(R.string.make_a_booking_error_sca_unavailable), s.dialogError)
+                }
+                assertEquals(PaidStep.Idle, s.paidStep)
+                assertFalse(s.isSubmitting)
+            }
+        }
+
+    @Test
+    fun noSecretReachesTheSavedStateHandle() =
+        runTest(main.testDispatcher) {
+            val outcomes = listOf(ChallengeOutcome.Completed, ChallengeOutcome.Canceled, ChallengeOutcome.Failed("x"))
+            for (outcome in outcomes) {
+                scriptConfirm()
+                val saved = SavedStateHandle()
+                val vm = paidVm(saved)
+                bookToChallenge(vm)
+                assertNoSecrets(saved)
+                challenge(vm, outcome)
+                assertNoSecrets(saved)
+            }
+        }
+
+    private fun assertNoSecrets(saved: SavedStateHandle) {
+        val secrets = setOf("acct_1", "pi_1_secret_x", "pi_1", "pm_new", "seti_1_secret_x")
+        saved.keys().forEach { key -> assertFalse("$key holds a secret", saved.get<Any>(key) in secrets) }
+    }
 }
