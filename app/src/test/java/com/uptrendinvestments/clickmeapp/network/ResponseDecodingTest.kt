@@ -4,7 +4,9 @@ import com.squareup.moshi.Types
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.UserRole
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RefreshTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
@@ -16,6 +18,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.CategoryItem
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
@@ -26,6 +29,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaginationMeta
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RefreshTokenData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
@@ -648,5 +654,120 @@ class ResponseDecodingTest {
                 """"duration_minutes":30,"meeting_type":"in_app_voice","timezone":"America/Toronto"}""",
             moshi.adapter(BookingRequestBody::class.java).toJson(body),
         )
+    }
+
+    @Test
+    fun paymentIntentRequestSerializesExactKeysAndNoPromoCode() {
+        val body =
+            PaymentIntentRequest(
+                expertId = "e1",
+                topicId = "t2",
+                selectedDate = "2026-10-23",
+                timeSlot = "01:00",
+                durationMinutes = 60,
+                bookingAttemptId = "6f1c0000-0000-4000-8000-000000000001",
+            )
+        assertEquals(
+            """{"expert_id":"e1","topic_id":"t2","selected_date":"2026-10-23","time_slot":"01:00",""" +
+                """"duration_minutes":60,"booking_attempt_id":"6f1c0000-0000-4000-8000-000000000001"}""",
+            moshi.adapter(PaymentIntentRequest::class.java).toJson(body),
+        )
+    }
+
+    @Test
+    fun confirmBookingRequestOmitsNullNotesAndNeverCarriesBookingAttemptId() {
+        val body =
+            ConfirmBookingRequest(
+                paymentIntentId = "pi_1",
+                expertId = "e1",
+                topicId = "t2",
+                startTime = "2026-10-23T01:00:00Z",
+                meetingType = "in_app_voice",
+                stripePaymentMethodId = "pm_1",
+            )
+        val json = moshi.adapter(ConfirmBookingRequest::class.java).toJson(body)
+        assertEquals(
+            """{"payment_intent_id":"pi_1","expert_id":"e1","topic_id":"t2","start_time":"2026-10-23T01:00:00Z",""" +
+                """"meeting_type":"in_app_voice","stripe_payment_method_id":"pm_1"}""",
+            json,
+        )
+        assertFalse(json, json.contains("client_notes"))
+        assertFalse(json, json.contains("booking_attempt_id"))
+    }
+
+    @Test
+    fun confirmBookingRequestOmitsPaymentIntentIdForLongLead() {
+        val body =
+            ConfirmBookingRequest(
+                expertId = "e1",
+                topicId = "t2",
+                startTime = "2026-12-23T01:00:00Z",
+                meetingType = "in_app_voice",
+                stripePaymentMethodId = "pm_1",
+                clientNotes = "Hi",
+            )
+        val json = moshi.adapter(ConfirmBookingRequest::class.java).toJson(body)
+        assertFalse(json, json.contains("payment_intent_id"))
+        assertTrue(json, json.contains(""""client_notes":"Hi""""))
+        assertFalse(json, json.contains("booking_attempt_id"))
+    }
+
+    @Test
+    fun paymentIntentBareBodyDecodesWithoutAmountAndRedactsSecret() {
+        val json =
+            """
+            {"payment_intent_id":"pi_1","client_secret":"pi_1_secret_x","customer_id":"cus_1","ephemeral_key":"ek_1",
+            "total_amount":42.5,"summary":{"subtotal":42.5,"discount":0,"total":42.5},"currency":"cad"}
+            """.trimIndent()
+        val response = moshi.adapter(PaymentIntentResponse::class.java).fromJson(json)!!
+        assertEquals(PaymentIntentResponse("pi_1", "pi_1_secret_x", "cad"), response)
+        assertFalse(response.toString(), response.toString().contains("pi_1_secret_x"))
+    }
+
+    @Test
+    fun paymentMethodsListDecodesInServerOrder() {
+        val json =
+            """
+            {"status":"success","data":{"payment_methods":[
+              {"id":"pm_1","brand":"visa","last4":"4242","exp_month":9,"exp_year":2028,"is_default":true},
+              {"id":"pm_2","brand":"unknown","last4":null,"is_default":false}]}}
+            """.trimIndent()
+        val items = envelope(PaymentMethodsData::class.java).fromJson(json)!!.data.paymentMethods
+        assertEquals(listOf("pm_1", "pm_2"), items.map { it.id })
+        assertEquals(9, items[0].expMonth)
+        assertEquals(2028, items[0].expYear)
+        assertTrue(items[0].isDefault)
+        assertNull(items[1].last4)
+        assertNull(items[1].expMonth)
+        assertNull(items[1].expYear)
+        assertFalse(items[1].isDefault)
+    }
+
+    @Test
+    fun paymentMethodsEmptyListDecodes() {
+        val json = """{"status":"success","data":{"payment_methods":[]}}"""
+        assertTrue(envelope(PaymentMethodsData::class.java).fromJson(json)!!.data.paymentMethods.isEmpty())
+    }
+
+    @Test
+    fun setupIntentDecodesAndRedactsSecrets() {
+        val json =
+            """{"status":"success","data":{"client_secret":"seti_1_secret_x","customer_id":"cus_1","ephemeral_key":"ek_1"}}"""
+        val data = envelope(PaymentMethodSetupData::class.java).fromJson(json)!!.data
+        assertEquals(PaymentMethodSetupData("seti_1_secret_x", "cus_1", "ek_1"), data)
+        val text = data.toString()
+        assertFalse(text, text.contains("seti_1_secret_x"))
+        assertFalse(text, text.contains("ek_1"))
+    }
+
+    @Test
+    fun confirmBookingEnvelopeDecodes() {
+        val json =
+            """
+            {"status":"success","data":{"booking_id":"b9","status":"pending_approval","message":"Sent",
+            "estimated_confirmation_time":"24 hours"}}
+            """.trimIndent()
+        val data = envelope(ConfirmBookingData::class.java).fromJson(json)!!.data
+        assertEquals(ConfirmBookingData("b9", "pending_approval", "Sent", "24 hours"), data)
     }
 }
