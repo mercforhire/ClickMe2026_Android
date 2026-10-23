@@ -18,6 +18,7 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
+import com.uptrendinvestments.clickmeapp.stripe.ChallengeOutcome
 import com.uptrendinvestments.clickmeapp.stripe.SETUP_INTENT_REUSE_WINDOW_MS
 import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
 import com.uptrendinvestments.clickmeapp.stripe.StripePaymentMethodReader
@@ -120,8 +121,15 @@ class MakeABookingViewModel
         /** A SetupIntent kept after a cancelled sheet, reused on the same attempt id (research correction 4). */
         private var reusableSetup: ReusableSetup? = null
 
-        /** The `pm_` being confirmed; read by the 3DS retry (07-11). */
+        /** The `pm_` being confirmed; the 3DS retry sends the same one (T-07-43). */
         private var pendingPaymentMethodId: String? = null
+
+        /**
+         * True once a 3DS challenge has been started for the current confirm attempt. A second 402 after a completed
+         * challenge is shown, not challenged again (RESEARCH Pitfall 10, T-07-41). Cleared by [resetPaidFlow] and
+         * [book]. Memory only.
+         */
+        private var scaAttempted: Boolean = false
 
         /**
          * The attempt id whose `/bookings/confirm` ended without an answer (D-16). While it is still the current
@@ -329,6 +337,7 @@ class MakeABookingViewModel
                 if (s.paymentMethods != PaymentMethodsAvailability.Available) return
                 val context = PaidContext(topic.id, topic.durationMins, slot.start, s.meetingType, s.notes)
                 paidContext = context
+                scaAttempted = false
                 _uiState.update { it.copy(isSubmitting = true, paidStep = PaidStep.CreatingIntent) }
                 viewModelScope.launch { beginPaidBooking(context) }
             }
@@ -523,7 +532,12 @@ class MakeABookingViewModel
                 savedStateHandle[KEY_COMPLETED_BOOKING_ID] = result.bookingId
                 clearPaidSecrets()
                 _uiState.update {
-                    it.copy(paidStep = PaidStep.Idle, stripeRequest = null, completedBookingId = result.bookingId)
+                    it.copy(
+                        paidStep = PaidStep.Idle,
+                        stripeRequest = null,
+                        challengeAccount = null,
+                        completedBookingId = result.bookingId,
+                    )
                 }
             } catch (e: ApiException) {
                 savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
@@ -540,13 +554,7 @@ class MakeABookingViewModel
             val afterUnknown = unknownOutcomeAttemptId != null && unknownOutcomeAttemptId == bookingAttemptId
             when (val failure = e.toPaidFailure(phase, piId, afterUnknownOutcome = afterUnknown)) {
                 PaidFailure.Silent -> resetPaidFlow()
-                is PaidFailure.StartChallenge ->
-                    _uiState.update {
-                        it.copy(
-                            paidStep = PaidStep.Confirming,
-                            stripeRequest = StripeRequest.RunChallenge(failure.clientSecret, failure.stripeAccount),
-                        )
-                    }
+                is PaidFailure.StartChallenge -> startChallenge(e, failure)
                 is PaidFailure.Show -> {
                     if (failure.newAttemptId) newBookingAttempt()
                     // D-16: the attempt id is kept so a retry is idempotent; nothing retries automatically.
@@ -565,10 +573,60 @@ class MakeABookingViewModel
             }
         }
 
+        /**
+         * PAY-05: hands one 3DS challenge to the host in a single state update, so the request and the account id it
+         * must be keyed to appear together. [toPaidFailure] only returns [PaidFailure.StartChallenge] for a non-blank
+         * connected account; a missing one is already a hard failure there and never falls back to the platform
+         * account (D-15). A second 402 in the same confirm attempt is shown instead of challenged again (T-07-41).
+         */
+        private fun startChallenge(
+            e: ApiException,
+            failure: PaidFailure.StartChallenge,
+        ) {
+            if (scaAttempted) {
+                val message =
+                    (e as? ApiException.Http)?.userMessage?.let(FieldError::Text)
+                        ?: FieldError.Res(R.string.login_error_unknown)
+                val reference = paymentIntentId
+                resetPaidFlow()
+                showPaidDialog(message, reference)
+                return
+            }
+            scaAttempted = true
+            _uiState.update {
+                it.copy(
+                    paidStep = PaidStep.Confirming,
+                    stripeRequest = StripeRequest.RunChallenge(failure.clientSecret, failure.stripeAccount),
+                    challengeAccount = failure.stripeAccount,
+                )
+            }
+        }
+
+        /**
+         * The 3DS challenge closed (iOS `retryConfirmAfterSCA`). Ignored unless a challenge is active. A completed
+         * challenge retries `/bookings/confirm` once with the same `pm_` and `pi_`: the server then sees
+         * `requires_capture` and only creates the booking.
+         */
+        fun onChallengeOutcome(outcome: ChallengeOutcome) {
+            if (_uiState.value.challengeAccount == null) return
+            if (outcome != ChallengeOutcome.Completed) return
+            _uiState.update { it.copy(challengeAccount = null) }
+            val context = paidContext
+            val paymentMethodId = pendingPaymentMethodId
+            if (context == null || paymentMethodId == null) {
+                resetPaidFlow()
+                return
+            }
+            viewModelScope.launch { confirmPaid(context, paymentMethodId, paymentIntentId) }
+        }
+
         /** Back to an idle form, slot and attempt id untouched. A cancelled sheet and every failure end here. */
         private fun resetPaidFlow() {
             clearPaidSecrets()
-            _uiState.update { it.copy(paidStep = PaidStep.Idle, stripeRequest = null, isSubmitting = false) }
+            scaAttempted = false
+            _uiState.update {
+                it.copy(paidStep = PaidStep.Idle, stripeRequest = null, challengeAccount = null, isSubmitting = false)
+            }
         }
 
         private fun clearPaidSecrets() {

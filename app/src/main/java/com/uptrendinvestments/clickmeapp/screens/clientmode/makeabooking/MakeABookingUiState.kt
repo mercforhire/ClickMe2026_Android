@@ -77,6 +77,9 @@ enum class BookCtaAction { Book, AddPaymentMethod }
  * [PaidStep.Idle] (research correction 6) and stays true after a success until the screen navigates on.
  * [stripeRequest] is a one-shot request for the Compose host, consumed through `onStripeRequestLaunched`.
  * [dialogPaymentReference] is the `pi_` the dialog appends as "Payment reference: ..." (D-13, D-16).
+ * [challengeAccount] is the connected account id from the 402, kept while a 3DS challenge runs so the PaymentLauncher
+ * host stays keyed to it across recomposition and rotation (`stripeAccountId` is a `remember` key inside
+ * `rememberPaymentLauncher`, RESEARCH Pattern 3). Memory only, never saved (Phase 2 D-12).
  */
 data class MakeABookingUiState(
     val expertId: String,
@@ -98,6 +101,7 @@ data class MakeABookingUiState(
     val isSubmitting: Boolean = false,
     val paidStep: PaidStep = PaidStep.Idle,
     val stripeRequest: StripeRequest? = null,
+    val challengeAccount: String? = null,
     val paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
     val dialogError: FieldError? = null,
     @StringRes val dialogTitle: Int = R.string.make_a_booking_error_title,
