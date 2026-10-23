@@ -386,14 +386,14 @@ Plans:
   4. When the iOS expert proposes a reschedule, the Android client accepts or declines it from Booking Summary, and the booking leaves `pending_reschedule`.
 
 **Planning notes:** The cancellation-comment open item is settled (D-05): the comment is sent inside `reason` as "label: comment", because `cancelSchema` is `{reason?: string<=500}.strict()`. My Bookings loads both buckets on every load (the rejoin rule needs `type=past`). Starting a reschedule is deferred (DEF-1). Only responding to one is in scope.
-**Plans:** 15 plans
+**Plans:** 4/15 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Network contract: reschedule / auth-expiry / join DTO fields, cancel and reschedule-response DTOs, 3 strict endpoints, repository methods, FakeClickMeApi and FakeRealtimeConnection.emit, shared fixtures (BOOK-05, BOOK-06, BOOK-07, BOOK-09)
-- [ ] 08-02-PLAN.md — Pure units: status / payment-pill / cancellable tables, two-bucket rejoin-rule lists, BookingsLaunchRequest one-shot holder (BOOK-05, BOOK-06, BOOK-08)
-- [ ] 08-03-PLAN.md — Pure cancellation units: reason labels and the D-05 reason string, D-06 refund preview, Money.formatMajor (BOOK-07)
-- [ ] 08-04-PLAN.md — Copy contract (5 string files), shared reschedule UI types, reschedule and cancel error mappers (BOOK-07, BOOK-09)
+- [x] 08-01-PLAN.md — Network contract: reschedule / auth-expiry / join DTO fields, cancel and reschedule-response DTOs, 3 strict endpoints, repository methods, FakeClickMeApi and FakeRealtimeConnection.emit, shared fixtures (BOOK-05, BOOK-06, BOOK-07, BOOK-09)
+- [x] 08-02-PLAN.md — Pure units: status / payment-pill / cancellable tables, two-bucket rejoin-rule lists, BookingsLaunchRequest one-shot holder (BOOK-05, BOOK-06, BOOK-08)
+- [x] 08-03-PLAN.md — Pure cancellation units: reason labels and the D-05 reason string, D-06 refund preview, Money.formatMajor (BOOK-07)
+- [x] 08-04-PLAN.md — Copy contract (5 string files), shared reschedule UI types, reschedule and cancel error mappers (BOOK-07, BOOK-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -583,7 +583,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
-| 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
+| 8. Client Bookings & Cancellation | 4/15 | In Progress|  |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
