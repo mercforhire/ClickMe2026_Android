@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Signup, Onboarding & Mode Switch** - Signup Initial → Overview hub → Review/Publish, resume, onboarding carousel, mode switch (Week 2) (completed 2026-10-21)
 - [x] **Phase 5: Explore & Expert Profile** - Client Explore home with category cache and the Expert Profile screen (Week 3) (completed 2026-10-22)
 - [x] **Phase 6: Booking Flow & Free Bookings** - Topic/calendar/slot picker with timezone regrouping, free booking, Request Sent (Week 3) (completed 2026-10-23)
-- [ ] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3)
+- [x] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3) (completed 2026-10-23)
 - [ ] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4)
 - [ ] **Phase 9: Voice Call** - Join, Agora call in a microphone foreground service, overlay/pill, rejoin semantics (Week 4)
 - [ ] **Phase 10: Expert Topics & Availability** - Topics + Topic Editor with price floor, weekly availability and timezone (Week 5)
@@ -336,7 +336,7 @@ Plans:
   5. Paid-flow errors (the ~15 `handlePaidFlowError` codes) show the right message or next action. Prices display correctly in minor units, including JPY with no decimals.
 
 **Planning notes:** Reuse what the Phase 2 Stripe spike found. `payment-intent` amounts are the one exception to minor units. Never cut.
-**Plans:** 13/14 plans executed
+**Plans:** 14/14 plans complete
 Plans:
 **Wave 1**
 
@@ -368,7 +368,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 07-14-PLAN.md — Phase gate (full suite + R8 with Stripe), scope and safety sweeps, VALIDATION sign-off, deferred device checks, iOS follow-ups and backend notes (all)
+- [x] 07-14-PLAN.md — Phase gate (full suite + R8 with Stripe), scope and safety sweeps, VALIDATION sign-off, deferred device checks, iOS follow-ups and backend notes (all)
 
 **UI hint**: yes
 
@@ -548,7 +548,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 13/14 | In Progress|  |
+| 7. Payment Methods & Paid Booking | 14/14 | Complete   | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |

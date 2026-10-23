@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 7 UI-SPEC approved
-last_updated: "2026-10-23T02:40:30.589Z"
-last_activity: 2026-10-23 -- Phase 07 execution started
+status: verifying
+stopped_at: Completed 07-14-PLAN.md
+last_updated: "2026-10-23T04:11:41.340Z"
+last_activity: 2026-10-23 -- Completed 07-14 phase gate
 progress:
   total_phases: 17
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 96
-  completed_plans: 78
-  percent: 29
+  completed_plans: 92
+  percent: 35
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 
 ## Current Position
 
-Phase: 07 (payment-methods-paid-booking) — EXECUTING
-Plan: 1 of 14
-Status: Executing Phase 07
-Last activity: 2026-10-23 -- Phase 07 execution started
+Phase: 07 (payment-methods-paid-booking) — EXECUTION COMPLETE
+Plan: 14 of 14
+Status: Phase 07 execution complete, pending deferred device checks and verification
+Last activity: 2026-10-23 -- Completed 07-14 phase gate
 
 Progress: [█████████░] 94%
 
@@ -58,6 +58,7 @@ Progress: [█████████░] 94%
 *Updated after each plan completion*
 | Phase 05 P11 | 15min | 2 tasks | 2 files |
 | Phase 06 P14 | 30min | 2 tasks | 2 files |
+| Phase 07 P14 | 40min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,10 +84,14 @@ Recent decisions affecting current work:
 - [Phase 6 hand-off] BookingKey(expertId, expertName, expertTitle, expertImageUrl) and its stub body are in screens/clientmode/makeabooking; Phase 6 replaces MakeABookingStubScreen's body, not the key or the shell entry. Recommended Experts does not exclude the caller (home_feed), so a multi-role tester can open their own profile and Book: map 422 CANNOT_BOOK_SELF in the Phase 6 booking flow. Money.format (util/Money.kt) is the shared formatter for Phases 6, 7, 11, 14.
 - [Phase 8/9 hand-off] Today's Sessions cards on Explore are inert (D-01): Phase 8 wires the card tap to Upcoming Booking Details (ExploreTodaysSessionsSection). Join Call is always disabled (D-02): Phase 9 finds "// PHASE-9: join window + click (D-02)" and test tag todays_session_join, adds the join window, the click and the STARTING NOW badge. ClientBookingsRepository and ClientBookingItem (screens/clientmode/mybookings, model/responses/ClientBookingsPayload.kt) are the base for My Bookings.
 - Report to the iOS side (found while porting Phase 5): Expert Profile fails silently on a 404 (suspended/deleted experts) and on network errors; empty Expertise/Topics/Reviews render blank headers and zero reviews shows "—"; featured topic cards ignore is_free; prices divide every currency by 100 (JPY shows 1/100 of the price) and drop decimals on whole amounts; Today's Sessions times use a fixed en_US "h:mm a".
-- [Phase 7 hand-off] Replace the `BookDisabledReason.PaidTopic` branch (MakeABookingBookButton note + the `!topic.isFree` early return in MakeABookingViewModel.book()) with the paid flow at the same footprint; add bookingAttemptId regeneration on topic and slot change (iOS); decide whether to keep the D-02 first-free default or revert to first; add the payment-lifecycle card to Request Sent for `BookingRequestSentDetails.isFree == false`.
+- [Phase 7 hand-off] DONE 2026-10-23 (Phase 7 plans 07-10, 07-07, 07-08): the paid branch replaced `BookDisabledReason.PaidTopic`, bookingAttemptId regenerates on topic and slot change, D-10 chose the first topic as the default, and Request Sent shows the payment-lifecycle card for paid bookings. Original note: replace the `BookDisabledReason.PaidTopic` branch with the paid flow at the same footprint; add bookingAttemptId regeneration; decide the first-topic default; add the lifecycle card to Request Sent.
 - [Phase 8 hand-off] `ClientBookingDetail` (model/responses) and `ClientBookingsRepository.detail(id)` are the base for Upcoming Booking Details; "View My Bookings" already selects `ClientBookingsRoot`, which is still the placeholder.
 - [Backend notes] `POST /bookings/request` trusts the client `duration_minutes` and does not reject a past `scheduled_start` (Android guards both on the client); `/experts/:id/details` already returns `available_meeting_types` (D-08's premise is stale; Phase 6 kept D-08 as written by user decision; a pre-filter is a later option); `/experts/:id/availability` accepts `topic_id` (Android's API method has the parameter and passes null).
 - [iOS follow-ups found while porting Phase 6] Request Sent is pushed on top of the booking form (re-submittable); a month change does not cancel the previous availability load (stale overwrite race); the slots card shows the raw IANA zone id; slot times are fixed to h:mm a; the Request Sent loading copy says "Sending your booking…" after the request was already sent.
+- [iOS follow-ups found while porting Phase 7] Dismissing the FlowController sheet with a preselected card still authorizes it on iOS (Android cancels, D-18); after a confirm timeout iOS shows a plain slot-taken message for the user's own pending booking (Android points to My Bookings, D-19); the lifecycle card says "A hold is placed" for long-lead bookings that are only saved and charged at T-24h (UI-SPEC Open Item 3); iOS shows no alert when 3DS is cancelled (Android does, D-15); the "TODO(backend): stripe_account" comment in MakeABookingViewModel.swift is stale (the backend sends it); iOS paid copy for slot taken / meeting link differs from its free path (Android uses one copy, D-14); iOS Payment Methods updates optimistically and can show a default the server rejected.
+- [Backend notes, Phase 7] Every short-lead attempt mints a SetupIntent against a 10 per 15 minutes limit (Android reuses an unconfirmed one for 10 minutes); a confirm timeout followed by a retry with the same booking_attempt_id returns SLOT_UNAVAILABLE for the user's own pending booking (an idempotent replay would be friendlier).
+- [Phase 9 note] The active-call guard on Add Payment Method (Phase 7 UI-SPEC Open Item 4) belongs to the call work.
+- [Phase 2 note] Phase 7's SC-1 to SC-4 device checks cover the goals of the open 02-09 Stripe spike run; the user decides whether 02-09 still needs its own run.
 
 ### Blockers/Concerns
 
@@ -125,6 +130,13 @@ Recent decisions affecting current work:
   - [x] SC-3 Free booking: book a free topic -> Request Sent loads the details ("Awaiting Approval"), the iOS expert receives the booking_request push and sees the request; Back from Request Sent lands on Expert Profile; View My Bookings selects the Bookings tab; Back to Home returns to Explore; a Skype/Zoom booking with an expert who has no link shows the D-08 alert and snaps back to In-app Voice; a slot taken from another account shows the D-09 alert and the slot turns dimmed.
   - [x] Visual and system: 200% font scale on both screens (06-10); rotation and "Don't keep activities" keep the topic, day, month, slot, meeting type and notes (confirms SavedStateHandle with assisted injection at runtime, research A1) and do not replay the Request Sent animation; animations off shows the final state at once (06-10, A2); system Back during an in-flight booking is ignored (06-12, BackHandler not JVM-tested); the topic sheet open state survives rotation (06-12, rememberSaveable not JVM-tested); prodRelease R8 smoke on a device (T-06-45, needs the deferred Phase 2 keystore).
 - [Phase 7] Stripe key and mode (D-01, D-02): OPEN (human, non-blocking). The backend's Stripe secret key belongs to the `51U8OTJ…` account (the same account as iOS prod's `pk_live_51U8OTJ…`). The Android dev flavor's `pk_test_51Tha0r…` key belongs to a different account, which is what caused the Phase 2 UAT 7-8 failure (see the "[Phase 2 UAT, 2026-10-21] OPEN" Pending Todo). Needed from the user: (a) the mode of the backend's Stripe account, test or live (the Railway env var prefix `sk_test_` / `sk_live_` answers this without revealing the key); (b) that account's publishable test key, which should start `pk_test_51U8OTJ`. If the backend is in live mode, device tests with cards stop until a test-mode path exists. Code and unit tests are not blocked. deferred 2026-10-22 (asked during 07-05; apply the answer per 07-05 Task 3).
+- [Phase 7] DEFERRED (human): non-blocking (D-03, user defers manual testing). Automated gate green (1535 tests per flavor, ktlint, lint, R8 `assembleProdRelease` with Stripe 23.24.0, design rules). Needs the D-01/D-02 key first (see "[Phase 7] Stripe key and mode"; never use real cards against a live backend). Run on the Samsung SM-A075F with the devDebug build, logged in as a client, with the iOS app signed in as the expert. Budget: setup-intent allows 10 calls per 15 minutes per user.
+  - [ ] SC-1 Payment Methods: Profile -> Payment Methods -> Add Payment Method -> PaymentSheet (setup mode, dark on a light-mode phone, "Save card") -> add 4242 4242 4242 4242 -> listed; Set as default moves the badge after the reload; Remove asks first and the list shows the server's default (none promoted).
+  - [ ] SC-2 Short-lead: book a paid slot within 6 days -> FlowController lists saved cards -> pick one -> Request Sent with the hold-placed card -> the iOS expert receives the request. Dismiss the sheet with a preselected card -> silent cancel, no charge (D-18). Force a failure (airplane mode during confirm) -> network copy with "Payment reference: pi_..."; Book Now again -> no duplicate booking; if the server already created it, the slot conflict says to check My Bookings (D-19).
+  - [ ] SC-3 Long-lead and gate: with no saved card a paid topic shows "Add a Payment Method" -> Payment Methods -> add a card -> Back -> the form keeps every selection and shows "Book Now" -> book a slot more than 6 days out -> confirms with the default card, no sheet.
+  - [ ] SC-4 3DS: 4000 0027 6000 3184 (then 4000 0025 0000 3155 as a second try, RESEARCH A2) -> challenge on the connected account -> passes -> booking confirms (A3); cancel the challenge -> "Payment wasn't completed. Your card wasn't charged." and Book Now retries.
+  - [ ] SC-5 Errors and money: a JPY topic shows no decimals; rotation while the sheet and the challenge are open launches neither twice (A4); 200% font scale on Payment Methods, the info sheet and paid Request Sent; process death during the 3DS bank step returns an idle form (accepted, D-17); prodRelease R8 smoke with Stripe (needs the deferred Phase 2 keystore).
+  - [ ] Also observed in 07-12 (A10): under Nav3 1.2.0 both LaunchedEffect(Unit) and ON_RESUME refresh on return from Payment Methods in Robolectric; confirm on device that returning refreshes the card list without a visible double load. The prodRelease APK grew about 10.4 MB with Stripe and gained the NFC permission (07-01): justify it in the Phase 13 data safety form and budget size in Phase 17.
 
 ## Deferred Items
 
@@ -136,6 +148,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-23T00:48:05.734Z
-Stopped at: Phase 7 UI-SPEC approved
+Last session: 2026-10-23T04:11:41.335Z
+Stopped at: Completed 07-14-PLAN.md
 Resume file: .planning/phases/07-payment-methods-paid-booking/07-UI-SPEC.md
