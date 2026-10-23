@@ -1,6 +1,9 @@
 package com.uptrendinvestments.clickmeapp.components
 
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -62,8 +65,11 @@ class BookingStatusBadgeTest {
                 "pending_reschedule" to "New time proposed",
                 "in_progress" to "In progress",
             )
+        var current by mutableStateOf(detailStatusDisplay("confirmed"))
+        rule.setContent { ClickMeTheme { BookingStatusBadge(status = current) } }
         for ((raw, text) in expected) {
-            setBadge(detailStatusDisplay(raw))
+            current = detailStatusDisplay(raw)
+            rule.waitForIdle()
             rule.onNodeWithText(text).assertExists()
         }
     }

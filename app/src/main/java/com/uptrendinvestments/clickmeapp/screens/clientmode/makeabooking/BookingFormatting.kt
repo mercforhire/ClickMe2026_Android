@@ -64,6 +64,24 @@ fun formatSessionWhen(
     return "$monthDay, ${formatSlotTime(start, zone, timeFormat)}"
 }
 
+/**
+ * "Wed, Oct 28 · 2:00 PM": a time shown on the reschedule card (iOS `formatSlot`, UI-SPEC A8). The date and time are
+ * both taken in [zone] and the time follows [timeFormat], so the viewer's zone and 12/24 hour setting win. Never reads
+ * `ZoneId.systemDefault()`.
+ */
+fun formatProposalSlot(
+    start: Instant,
+    zone: ZoneId,
+    locale: Locale,
+    timeFormat: java.text.DateFormat,
+): String {
+    val weekdayMonthDay =
+        DateTimeFormatter
+            .ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEMMMd"), locale)
+            .format(start.atZone(zone).toLocalDate())
+    return "$weekdayMonthDay · ${formatSlotTime(start, zone, timeFormat)}"
+}
+
 /** "Thursday, October 22". */
 fun formatSlotDateLine(
     date: LocalDate,
