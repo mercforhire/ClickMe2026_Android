@@ -336,7 +336,7 @@ Plans:
   5. Paid-flow errors (the ~15 `handlePaidFlowError` codes) show the right message or next action. Prices display correctly in minor units, including JPY with no decimals.
 
 **Planning notes:** Reuse what the Phase 2 Stripe spike found. `payment-intent` amounts are the one exception to minor units. Never cut.
-**Plans:** 8/14 plans executed
+**Plans:** 10/14 plans executed
 Plans:
 **Wave 1**
 
@@ -354,8 +354,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 07-09-PLAN.md — Payment Methods screen: states, rows, ⋮ menu, remove dialog, busy rows, add-card PaymentSheet host; Stripe result mapping and the D-18 rule (PAY-01, PAY-02)
-- [ ] 07-10-PLAN.md — Paid booking ViewModel: short-lead and long-lead paths, sheet outcomes, in-memory attempt id, failure semantics incl. D-16/D-19, recovery record (PAY-03, PAY-04, PAY-06)
+- [x] 07-09-PLAN.md — Payment Methods screen: states, rows, ⋮ menu, remove dialog, busy rows, add-card PaymentSheet host; Stripe result mapping and the D-18 rule (PAY-01, PAY-02)
+- [x] 07-10-PLAN.md — Paid booking ViewModel: short-lead and long-lead paths, sheet outcomes, in-memory attempt id, failure semantics incl. D-16/D-19, recovery record (PAY-03, PAY-04, PAY-06)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -548,7 +548,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 8/14 | In Progress|  |
+| 7. Payment Methods & Paid Booking | 10/14 | In Progress|  |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
