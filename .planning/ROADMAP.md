@@ -336,7 +336,39 @@ Plans:
   5. Paid-flow errors (the ~15 `handlePaidFlowError` codes) show the right message or next action. Prices display correctly in minor units, including JPY with no decimals.
 
 **Planning notes:** Reuse what the Phase 2 Stripe spike found. `payment-intent` amounts are the one exception to minor units. Never cut.
-**Plans:** TBD
+**Plans:** 14 plans
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Stripe 23.24.0 in :app, PaymentConfiguration.init, R8 release, pm_ reader seam, shared ClickMe sheet configuration and dark appearance (PAY-02, PAY-03, PAY-05)
+- [ ] 07-02-PLAN.md — Payment network contract: DTOs (bare payment-intent, strict confirm), six endpoints with {} bodies, FakeClickMeApi, BookingRepository paid calls, PaymentMethodsRepository (PAY-01..PAY-04, PAY-07)
+- [ ] 07-03-PLAN.md — Pure paid-flow model (PaidStep, StripeRequest, UTC strings, Stripe outcomes) and the handlePaidFlowError table with D-13..D-16, D-19 copy (PAY-03..PAY-06)
+- [ ] 07-04-PLAN.md — Shared PaymentLifecycleCard, "How does payment work?" link and sheet, ProfileMenuRow (PAY-01, PAY-07)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-05-PLAN.md — D-01/D-02 non-blocking human-action: backend Stripe mode and the matching pk_test key, dev key swap or recorded outcome (PAY-02, PAY-03, PAY-05)
+- [ ] 07-06-PLAN.md — Payment Methods key, state, strings and ViewModel: busy rule, server-truth reloads, add-card flow, setup-intent reuse (PAY-01, PAY-02)
+- [ ] 07-07-PLAN.md — Booking gate: saved-card load, CTA derivation (Checking / Add a Payment Method / Book Now), silent refresh, first-topic default, paid note removed (PAY-03, PAY-04, PAY-07)
+- [ ] 07-08-PLAN.md — Request Sent paid lifecycle card (hold placed) with the session time (PAY-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 07-09-PLAN.md — Payment Methods screen: states, rows, ⋮ menu, remove dialog, busy rows, add-card PaymentSheet host; Stripe result mapping and the D-18 rule (PAY-01, PAY-02)
+- [ ] 07-10-PLAN.md — Paid booking ViewModel: short-lead and long-lead paths, sheet outcomes, in-memory attempt id, failure semantics incl. D-16/D-19, recovery record (PAY-03, PAY-04, PAY-06)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 07-11-PLAN.md — 3DS in the ViewModel: challenge hand-off, single retry, loop guard, D-15 cancel/failure/hard failure (PAY-05, PAY-06)
+- [ ] 07-12-PLAN.md — Navigation: PaymentMethodsKey registered once, Profile row, CTA routing to Payment Methods, return refresh (PAY-01, PAY-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 07-13-PLAN.md — PaidFlowStripeHost (FlowController setup mode + PaymentLauncher on the connected account), info link and sheet on the form, copyable payment reference (PAY-03, PAY-05..PAY-07)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 07-14-PLAN.md — Phase gate (full suite + R8 with Stripe), scope and safety sweeps, VALIDATION sign-off, deferred device checks, iOS follow-ups and backend notes (all)
 **UI hint**: yes
 
 ### Phase 8: Client Bookings & Cancellation
@@ -515,7 +547,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 0/TBD | Not started | - |
+| 7. Payment Methods & Paid Booking | 0/14 | Not started | - |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
