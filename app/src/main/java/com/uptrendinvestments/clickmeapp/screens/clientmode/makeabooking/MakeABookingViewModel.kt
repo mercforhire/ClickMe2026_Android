@@ -145,12 +145,34 @@ class MakeABookingViewModel
 
         init {
             val attemptId = savedStateHandle.get<String>(KEY_ATTEMPT_ID)
+            val challengeInterrupted = savedStateHandle.remove<Boolean>(KEY_CHALLENGE_PENDING) == true
             when {
                 // A restored completed booking navigates straight to Request Sent, so there is nothing to load.
                 _uiState.value.completedBookingId != null -> Unit
                 // A booking was in flight when the state was saved: it may have succeeded after the save (WR-01).
                 attemptId != null -> recoverAttempt(attemptId)
-                else -> loadForm()
+                else -> {
+                    loadForm()
+                    if (challengeInterrupted) explainInterruptedChallenge()
+                }
+            }
+        }
+
+        /**
+         * WR-04: the process died while a 3DS challenge was open (the bank app or browser was in front). Its context
+         * (card, payment intent, account) lived in memory only, so the result Stripe still delivers cannot be acted
+         * on and is ignored by [onChallengeOutcome]. If the client finished verifying, the payment intent may be
+         * authorized with no booking, so instead of a silent idle form they are told their card may show a temporary
+         * hold and to check My Bookings before booking again. No secret is ever saved for this (D-17): the marker is
+         * a boolean.
+         */
+        private fun explainInterruptedChallenge() {
+            _uiState.update {
+                it.copy(
+                    dialogError = FieldError.Res(R.string.make_a_booking_error_challenge_interrupted),
+                    dialogTitle = R.string.make_a_booking_error_title,
+                    dialogPaymentReference = null,
+                )
             }
         }
 
@@ -594,6 +616,8 @@ class MakeABookingViewModel
                 return
             }
             scaAttempted = true
+            // WR-04: a non-secret marker, so a process death during the challenge is explained on restore.
+            savedStateHandle[KEY_CHALLENGE_PENDING] = true
             _uiState.update {
                 it.copy(
                     paidStep = PaidStep.Confirming,
@@ -618,6 +642,7 @@ class MakeABookingViewModel
          */
         fun onChallengeOutcome(outcome: ChallengeOutcome) {
             if (_uiState.value.challengeAccount == null) return
+            savedStateHandle.remove<Boolean>(KEY_CHALLENGE_PENDING)
             _uiState.update { it.copy(challengeAccount = null) }
             when (outcome) {
                 ChallengeOutcome.Completed -> {
@@ -651,6 +676,7 @@ class MakeABookingViewModel
         private fun resetPaidFlow() {
             clearPaidSecrets()
             scaAttempted = false
+            savedStateHandle.remove<Boolean>(KEY_CHALLENGE_PENDING)
             _uiState.update {
                 it.copy(paidStep = PaidStep.Idle, stripeRequest = null, challengeAccount = null, isSubmitting = false)
             }
@@ -1032,6 +1058,7 @@ class MakeABookingViewModel
             const val KEY_NOTES = "booking_notes"
             const val KEY_COMPLETED_BOOKING_ID = "booking_completed_id"
             const val KEY_ATTEMPT_ID = "booking_attempt_id"
+            const val KEY_CHALLENGE_PENDING = "booking_challenge_pending"
         }
     }
 

@@ -283,6 +283,67 @@ class MakeABookingViewModelScaTest {
             }
         }
 
+    // ---- WR-04: process death during the challenge ----
+
+    @Test
+    fun anOpenChallengeLeavesOnlyABooleanMarkerThatEveryOutcomeClears() =
+        runTest(main.testDispatcher) {
+            val outcomes = listOf(ChallengeOutcome.Completed, ChallengeOutcome.Canceled, ChallengeOutcome.Failed("x"))
+            for (outcome in outcomes) {
+                scriptConfirm()
+                val saved = SavedStateHandle()
+                val vm = paidVm(saved)
+                bookToChallenge(vm)
+                assertEquals(true, saved.get<Boolean>("booking_challenge_pending"))
+                challenge(vm, outcome)
+                assertFalse(outcome.toString(), saved.contains("booking_challenge_pending"))
+            }
+        }
+
+    @Test
+    fun aSecond402ClearsTheMarker() =
+        runTest(main.testDispatcher) {
+            api.confirmBookingHandler = { throw requiresAction() }
+            val saved = SavedStateHandle()
+            val vm = paidVm(saved)
+            bookToChallenge(vm)
+            challenge(vm, ChallengeOutcome.Completed)
+            assertFalse(saved.contains("booking_challenge_pending"))
+        }
+
+    @Test
+    fun aRestoreAfterDeathDuringTheChallengeExplainsThePossibleHoldAndIgnoresTheLateResult() =
+        runTest(main.testDispatcher) {
+            val saved = SavedStateHandle(mapOf("booking_challenge_pending" to true))
+            val vm = newViewModel(api, saved, clock, store, reader)
+            runCurrent()
+            var s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_challenge_interrupted), s.dialogError)
+            assertEquals(R.string.make_a_booking_error_title, s.dialogTitle)
+            assertFalse(s.isSubmitting)
+            assertTrue(s.availability is AvailabilityState.Loaded)
+            assertFalse(saved.contains("booking_challenge_pending"))
+
+            // The PaymentLauncher result Stripe delivers after the restore has no context to act on.
+            vm.onChallengeOutcome(ChallengeOutcome.Completed)
+            runCurrent()
+            assertEquals(0, api.confirmBookingCalls)
+            s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.make_a_booking_error_challenge_interrupted), s.dialogError)
+
+            // The notice is shown once: the form is usable after it is dismissed.
+            vm.dismissError()
+            assertNull(vm.uiState.value.dialogError)
+        }
+
+    @Test
+    fun aRestoreWithoutAnOpenChallengeShowsNoNotice() =
+        runTest(main.testDispatcher) {
+            val vm = newViewModel(api, SavedStateHandle(), clock, store, reader)
+            runCurrent()
+            assertNull(vm.uiState.value.dialogError)
+        }
+
     @Test
     fun noSecretReachesTheSavedStateHandle() =
         runTest(main.testDispatcher) {

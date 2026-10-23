@@ -84,6 +84,8 @@
     <string name="make_a_booking_error_sca_unavailable">We couldn\'t start card verification. Please try a different card.</string>
     <string name="make_a_booking_error_sca_canceled">Payment wasn\'t completed. Your card wasn\'t charged.</string>
     <string name="make_a_booking_error_sca_failed">Card verification failed.</string>
+    <!-- WR-04: the app was closed while card verification was open; Android only (no iOS copy). -->
+    <string name="make_a_booking_error_challenge_interrupted">Card verification was interrupted, so your booking wasn\'t completed. If you finished verifying, your card may show a temporary hold. Please check My Bookings before booking again.</string>
     <string name="make_a_booking_error_sheet_failed">Couldn\'t present the payment sheet.</string>
     <string name="make_a_booking_error_pm_unreadable">Couldn\'t read the selected payment method. Please try again.</string>
     <string name="make_a_booking_error_pm_unresolved">Payment method couldn\'t be resolved after verification.</string>
