@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Payment lifecycle card and "How does payment work?" sheet (Phase 7, PAY-01, PAY-07). iOS copy verbatim. -->
+    <string name="payment_lifecycle_header">What happens next</string>
+    <string name="payment_lifecycle_step_hold_title">A hold is placed on your card</string>
+    <string name="payment_lifecycle_step_hold_subtitle">No charge yet — funds are just reserved.</string>
+    <string name="payment_lifecycle_step_session_title">Your session runs on %1$s</string>
+    <string name="payment_lifecycle_step_session_title_fallback">Your session runs at the scheduled time</string>
+    <string name="payment_lifecycle_step_session_subtitle">You can join the call from My Bookings.</string>
+    <string name="payment_lifecycle_step_charge_title">Your card is charged after the session</string>
+    <string name="payment_lifecycle_step_charge_subtitle">Usually within 15 minutes of the session ending.</string>
+    <string name="payment_lifecycle_state_done">Done</string>
+    <string name="payment_info_link">How does payment work?</string>
+    <string name="payment_info_intro">You pay exactly the session price — no additional fees. Here\'s when your card is charged.</string>
+    <string name="payment_info_got_it">Got it</string>
+</resources>
