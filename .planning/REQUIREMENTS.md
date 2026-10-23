@@ -77,7 +77,7 @@ From the PRD's Explore and Expert Profile (Week 3).
 
 From the PRD's Make a Booking (booking flow and free path) and Request Sent (Week 3), and My Bookings, Upcoming Booking Details, Cancellation and Booking Summary (Week 4).
 
-- [ ] **BOOK-01**: Client can make a booking by picking a topic, then a day on a custom month calendar and a slot, then a meeting type and optional notes.
+- [x] **BOOK-01**: Client can make a booking by picking a topic, then a day on a custom month calendar and a slot, then a meeting type and optional notes.
 - [x] **BOOK-02**: Slots load for the previous, current and next month. They are regrouped by the client's local date using `startUtc`, with duplicates dropped. The expert's timezone is shown, and `held` slots can't be selected.
 - [x] **BOOK-03**: Client can book a free topic (`POST /bookings/request`).
 - [x] **BOOK-04**: After sending a booking request, the client sees the Request Sent confirmation screen. The staggered animation is optional.
@@ -283,7 +283,7 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | DISC-01 | Phase 5 | Complete |
 | DISC-02 | Phase 5 | Complete |
 | DISC-03 | Phase 5 | Complete |
-| BOOK-01 | Phase 6 | Pending (gap: CR-01 notes focus) |
+| BOOK-01 | Phase 6 | Complete |
 | BOOK-02 | Phase 6 | Complete |
 | BOOK-03 | Phase 6 | Complete |
 | BOOK-04 | Phase 6 | Complete |

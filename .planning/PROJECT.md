@@ -20,6 +20,7 @@ The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. An
 - AUTH-01, AUTH-02, RT-01, RT-02, RT-03: real Login, OTP password recovery (Forgot → Set New Password → Password Changed), and an authenticated socket.io connection with 2 s reconnect, token-refresh reconnect and an event `SharedFlow`. Validated in Phase 3: Login, Password Recovery & Realtime (2026-10-21; automated gate green, 436 unit tests; code-review warnings fixed; 6 device checks deferred in 03-HUMAN-UAT.md).
 - SIGN-01..SIGN-05, ONB-01, ONB-02: signup without username or phone, a five-step setup hub saving through `PATCH /expert/profile/setup` (send-on-tap email code with a 30 s resend cooldown, photo crop and upload), Review → Publish, resume into setup, the once-per-login onboarding carousel, and a persisted client/expert mode switch. A "Not now" setup exit is remembered per login (D-27). Validated in Phase 4: Signup, Onboarding & Mode Switch (2026-10-21; automated gate green, 876 unit tests; all 11 code-review blockers and warnings fixed; 6 device checks deferred in 04-HUMAN-UAT.md).
 - DISC-01, DISC-02, DISC-03: the Explore home (hero, Today's Sessions, Trending Categories with the All Categories multi-select sheet, Featured Topics, Recommended Experts, with separate states per section) from `GET /client/home`, a `CategoryStore` with a 7-day TTL in its own DataStore, and Expert Profile (hero, stats, about, expertise, topics, the first 3 reviews, unavailable on 404). Book Session lands on the real `BookingKey` route with a stub body that Phase 6 replaces. Validated in Phase 5: Explore & Expert Profile (2026-10-22; automated gate green, 1056 unit tests; 5 code-review warnings open in 05-REVIEW.md; 4 device checks deferred in 05-HUMAN-UAT.md).
+- BOOK-01..BOOK-04: Make a Booking (topic sheet, custom month calendar, slots for three months regrouped by the client's local date with dedup and held slots disabled, expert timezone note, meeting type with the meeting-link check, notes), the free path via `POST /bookings/request`, and Request Sent from `GET /client/bookings/:id`. A booking that succeeds after the app is backgrounded survives process death (attempt id in saved state plus a short-lived DataStore record). Validated in Phase 6: Booking Flow & Free Bookings (2026-10-22; 1340 unit tests; three code-review rounds fixed; device UAT 15/16 with the far-zone check skipped; security 47/47 closed).
 
 ### Active
 
@@ -159,4 +160,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-22 after Phase 5 completion*
+*Last updated: 2026-10-23 after Phase 6 completion*

@@ -1,12 +1,14 @@
 ---
 phase: 06-booking-flow-free-bookings
 verified: 2026-10-22T20:05:00Z
-status: gaps_found
-score: 2/3 must-haves verified
+status: passed
+score: 3/3 must-haves verified
+re_verified: 2026-10-22T23:45:00Z
 overrides_applied: 0
 gaps:
   - truth: "From Expert Profile, the client picks a topic, a day on the custom month calendar, a slot, a meeting type and optional notes. (SC-1 / BOOK-01, notes part)"
-    status: partial
+    status: resolved
+    resolved_by: "6166b0b (drag-only focus clearing + Robolectric regression test); device-confirmed in 06-UAT.md test 6"
     reason: "CR-01 is confirmed by a throwaway Robolectric test. MakeABookingScreen clears focus whenever scrollState.isScrollInProgress is true, which includes programmatic scrolls. When the viewport shrinks (the same thing imePadding does when the keyboard opens) the notes field loses focus. With the clearFocus effect disabled the same test passes, so the effect is the cause. On a device the keyboard should close as soon as it opens, so the client can't reliably type the message."
     artifacts:
       - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/makeabooking/MakeABookingScreen.kt"
@@ -33,8 +35,19 @@ human_verification:
 
 **Phase Goal:** A client can pick a topic and a correct local-time slot, then send a free booking request that reaches the expert.
 **Verified:** 2026-10-22
-**Status:** gaps_found (one confirmed blocker, CR-01; device checks deferred by the user and listed separately)
-**Re-verification:** No, initial verification
+**Status:** passed (re-verified 2026-10-22; originally gaps_found on CR-01)
+**Re-verification:** Yes. See "Re-verification" below.
+
+## Re-verification (2026-10-22)
+
+| Item | Result | Evidence |
+|------|--------|----------|
+| CR-01 notes focus (SC-1 / BOOK-01) | RESOLVED | Fix `6166b0b`: focus is cleared only on a user drag. Robolectric regression test focuses the notes field and shrinks the viewport (fails on the old code). Device: `06-UAT.md` test 6 passed (keyboard stays open). |
+| Review findings after verification | RESOLVED | Three review/fix rounds (`06-REVIEW.md`, `06-REVIEW-FIX.md`): CR-01, 8 warnings and 11 info items fixed; full gate green (1340 unit tests, ktlint, assembleDevDebug). Remaining info notes from the third review are non-blocking. |
+| Human verification (SC-1, SC-2, SC-3, visual/system, R8 smoke) | PASSED except SC-2 device check | `06-UAT.md`: 15/16 passed, 0 issues. Test 5 (SC-2 far-zone midnight/month-edge) skipped by the user: hard to set up, low priority (users mainly in Canada/US); covered by golden-data unit tests. |
+| Security | VERIFIED | `06-SECURITY.md`: 47/47 threats closed, threats_open 0. |
+
+**Score:** 3/3 truths verified.
 
 ## Goal Achievement
 
@@ -46,7 +59,7 @@ human_verification:
 | 2 | Slots for the previous, current and next month appear under the client's correct local date with no duplicates. The expert's timezone is shown, and `held` slots can't be selected. | VERIFIED in code (device check deferred) | `groupSlots` in `BookingSlots.kt` ignores the expert-local `day.date`. It keys each slot by `startUtc` and converts to the viewer zone, dedups by start instant with AND of availability, and treats `held == true` as unavailable. `MakeABookingViewModel.loadAvailability` fetches month-1, month and month+1 in parallel and calls `groupSlots` once over the flattened days. The latest load wins. `TimeSlotsCard` shows the timezone note (`timezoneNote`) and uses `enabled = slot.isSelectable(now)` on chips, and `selectSlot` re-checks selectability. |
 | 3 | An Android client books a free topic and sees Request Sent, and the iOS expert receives the request. | VERIFIED in code (iOS delivery is human-only) | `book()` guards single flight, free topics only, and a slot that is still in the future, then builds `BookingRequestBody` and posts to `bookings/request`. The body matches the backend strict `requestSchema` exactly: expert_id, topic_id, scheduled_start (ISO UTC), duration_minutes (multiple of 30, default 30), meeting_type, timezone, optional client_notes (null is omitted, never `""`). On success `completedBookingId` is consumed once and `navigator.replaceTop(RequestSentKey(id))` runs. `BookingRequestSentViewModel` loads `GET client/bookings/{id}`. Whether the iOS expert receives it needs a device. |
 
-**Score:** 2/3 truths verified. SC-1 fails on the notes part only.
+**Score (initial run):** 2/3 truths verified. SC-1 failed on the notes part only (since resolved; see Re-verification).
 
 ### Wiring and artifacts (levels 1-4)
 

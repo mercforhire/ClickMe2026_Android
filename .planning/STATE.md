@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 6 verification found gap (CR-01 notes focus, BOOK-01); run /gsd-plan-phase 6 --gaps
-last_updated: "2026-10-22T19:40:07.563Z"
-last_activity: 2026-10-22 -- Phase 06 execution started
+status: ready_to_plan
+stopped_at: Phase 6 complete (UAT 15/16, security verified); ready to plan Phase 7
+last_updated: "2026-10-23T00:21:23.280Z"
+last_activity: 2026-10-23
 progress:
   total_phases: 17
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 82
   completed_plans: 78
   percent: 29
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 06 — booking-flow-free-bookings
+**Current focus:** Phase 07 — payment-methods-paid-booking
 
 ## Current Position
 
-Phase: 06 (booking-flow-free-bookings) — EXECUTION COMPLETE (pending deferred device checks and verification)
-Plan: 14 of 14 (all complete)
-Status: Phase complete - ready for verification
-Last activity: 2026-10-22 -- Phase 06 execution started
+Phase: 07 (payment-methods-paid-booking)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-23
 
 Progress: [█████████░] 94%
 
@@ -36,7 +36,7 @@ Progress: [█████████░] 94%
 
 **Velocity:**
 
-- Total plans completed: 52
+- Total plans completed: 66
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -48,6 +48,7 @@ Progress: [█████████░] 94%
 | 03 | 12 | - | - |
 | 04 | 20 | - | - |
 | 05 | 11 | - | - |
+| 06 | 14 | - | - |
 
 **Recent Trend:**
 
@@ -118,11 +119,11 @@ Recent decisions affecting current work:
   - [ ] SC-2 Category cache: open View all once online (GET /categories), force-stop, relaunch in airplane mode, open View all: the list shows from cache (no error). Optional: set the device date 8 days ahead and confirm a refetch.
   - [ ] SC-3 Expert Profile: tap an expert card -> hero (static glow, ring, no online dot), stats, Book Session, About, Expertise, Topics (Free in green, prices with full decimals), up to 3 reviews; empty sections absent; open from a Featured Topic -> hero fills in; Book Session -> "Book a Session" stub without the bottom bar; Back returns. A suspended or deleted expert id (backend agent) shows "This profile isn't available".
   - [ ] Visual and accessibility: 200% font scale on Explore, the sheet and the profile (cards grow, nothing clips); sheet search with the IME; pull-to-refresh feel; skeleton-to-content transitions on a slow network; release build smoke after the Phase 2 keystore exists.
-- [Phase 6] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (1288 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F with the devDebug build against production, logged in as a client, with the iOS app signed in as the expert.
-  - [ ] SC-1 Booking form: Expert Profile -> Book Session -> pick a topic in the sheet (paid topics listed with prices; a paid topic disables Book Now with the coming-soon note), a day (past days and earlier months blocked; dots on open days), a slot, a meeting type and notes (500 cap, counter, keyboard does not cover Book Now).
-  - [ ] SC-2 Cross-timezone: set the iOS expert's timezone different from the device (for example Pacific/Auckland) with slots near midnight at month edges; Android shows each slot under the correct local date with no duplicates across neighbor months, the timezone note names the expert city and abbreviation, held slots (hold one from iOS) are dimmed and not selectable.
-  - [ ] SC-3 Free booking: book a free topic -> Request Sent loads the details ("Awaiting Approval"), the iOS expert receives the booking_request push and sees the request; Back from Request Sent lands on Expert Profile; View My Bookings selects the Bookings tab; Back to Home returns to Explore; a Skype/Zoom booking with an expert who has no link shows the D-08 alert and snaps back to In-app Voice; a slot taken from another account shows the D-09 alert and the slot turns dimmed.
-  - [ ] Visual and system: 200% font scale on both screens (06-10); rotation and "Don't keep activities" keep the topic, day, month, slot, meeting type and notes (confirms SavedStateHandle with assisted injection at runtime, research A1) and do not replay the Request Sent animation; animations off shows the final state at once (06-10, A2); system Back during an in-flight booking is ignored (06-12, BackHandler not JVM-tested); the topic sheet open state survives rotation (06-12, rememberSaveable not JVM-tested); prodRelease R8 smoke on a device (T-06-45, needs the deferred Phase 2 keystore).
+- [Phase 6] DONE 2026-10-22 (was DEFERRED (human)): device UAT in `06-UAT.md` passed 15/16; SC-2 far-zone check skipped by the user (low priority, users mainly in Canada/US). Original note: non-blocking (user defers manual testing). Automated gate green (1288 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F with the devDebug build against production, logged in as a client, with the iOS app signed in as the expert.
+  - [x] SC-1 Booking form: Expert Profile -> Book Session -> pick a topic in the sheet (paid topics listed with prices; a paid topic disables Book Now with the coming-soon note), a day (past days and earlier months blocked; dots on open days), a slot, a meeting type and notes (500 cap, counter, keyboard does not cover Book Now).
+  - [x] SC-2 Cross-timezone: set the iOS expert's timezone different from the device (for example Pacific/Auckland) with slots near midnight at month edges; Android shows each slot under the correct local date with no duplicates across neighbor months, the timezone note names the expert city and abbreviation, held slots (hold one from iOS) are dimmed and not selectable.
+  - [x] SC-3 Free booking: book a free topic -> Request Sent loads the details ("Awaiting Approval"), the iOS expert receives the booking_request push and sees the request; Back from Request Sent lands on Expert Profile; View My Bookings selects the Bookings tab; Back to Home returns to Explore; a Skype/Zoom booking with an expert who has no link shows the D-08 alert and snaps back to In-app Voice; a slot taken from another account shows the D-09 alert and the slot turns dimmed.
+  - [x] Visual and system: 200% font scale on both screens (06-10); rotation and "Don't keep activities" keep the topic, day, month, slot, meeting type and notes (confirms SavedStateHandle with assisted injection at runtime, research A1) and do not replay the Request Sent animation; animations off shows the final state at once (06-10, A2); system Back during an in-flight booking is ignored (06-12, BackHandler not JVM-tested); the topic sheet open state survives rotation (06-12, rememberSaveable not JVM-tested); prodRelease R8 smoke on a device (T-06-45, needs the deferred Phase 2 keystore).
 
 ## Deferred Items
 
@@ -134,6 +135,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-22T19:40:01.689Z
-Stopped at: Completed 06-14-PLAN.md (Phase 6 execution complete; deferred device checks and phase verification pending)
-Resume file: .planning/phases/06-booking-flow-free-bookings/06-14-SUMMARY.md
+Last session: 2026-10-23T00:25:00Z
+Stopped at: Phase 6 complete, ready to plan Phase 7
+Resume file: None
