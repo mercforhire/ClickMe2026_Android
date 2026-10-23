@@ -423,6 +423,74 @@ class MakeABookingViewModelPaidTest {
             assertNotEquals(ids[0], ids[1])
         }
 
+    /**
+     * WR-03: after a 409 the reload keeps the stale slots visible; the user picks one and books before it lands. The
+     * late answer must not drop the slot or rotate the attempt id while the flow runs.
+     */
+    @Test
+    fun aLateAvailabilityResponseDuringThePaidFlowKeepsTheSlotAndTheAttemptId() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            val reload = CompletableDeferred<Unit>()
+            api.paymentIntentHandler = { throw http(409, ErrorCode.SlotUnavailable) }
+            api.expertAvailabilityHandler = { _, _ ->
+                reload.await()
+                availabilityOf(slotDto("2026-10-22T20:00:00Z"))
+            }
+            bookAndRun(vm)
+            vm.dismissError()
+            assertTrue(vm.uiState.value.availability is AvailabilityState.Loaded)
+
+            vm.selectSlot(slotB)
+            api.paymentIntentHandler = { PaymentIntentResponse("pi_1", "pi_1_secret_x", "cad") }
+            val confirmGate = CompletableDeferred<ConfirmBookingData>()
+            api.confirmBookingHandler = { confirmGate.await() }
+            bookAndRun(vm)
+            vm.onStripeRequestLaunched()
+            vm.onSheetOutcome(SheetOutcome.Completed)
+            runCurrent()
+
+            reload.complete(Unit)
+            runCurrent()
+            var s = vm.uiState.value
+            assertEquals(slotB, s.selectedSlotStart)
+            assertTrue(s.isSubmitting)
+            assertEquals(PaidStep.Confirming, s.paidStep)
+
+            // The confirm then times out: D-16 records the id that was sent, and the slot that the refresh no longer
+            // offers is dropped once the form is editable again.
+            confirmGate.completeExceptionally(IOException("timeout"))
+            runCurrent()
+            s = vm.uiState.value
+            assertEquals(res(R.string.login_error_network), s.dialogError)
+            assertEquals("pi_1", s.dialogPaymentReference)
+            assertFalse(s.isSubmitting)
+            assertNull(s.selectedSlotStart)
+        }
+
+    @Test
+    fun aLateAvailabilityResponseAfterSuccessLeavesTheBookedSlot() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            val reload = CompletableDeferred<Unit>()
+            api.paymentIntentHandler = { throw http(409, ErrorCode.SlotUnavailable) }
+            api.expertAvailabilityHandler = { _, _ ->
+                reload.await()
+                availabilityOf(slotDto("2026-10-22T20:00:00Z"))
+            }
+            bookAndRun(vm)
+            vm.dismissError()
+            vm.selectSlot(slotB)
+            api.paymentIntentHandler = { PaymentIntentResponse("pi_1", "pi_1_secret_x", "cad") }
+            bookThroughTheSheet(vm)
+            assertEquals("b9", vm.uiState.value.completedBookingId)
+
+            reload.complete(Unit)
+            runCurrent()
+            assertEquals(slotB, vm.uiState.value.selectedSlotStart)
+            assertTrue(vm.uiState.value.isSubmitting)
+        }
+
     @Test
     fun aMissingMeetingLinkResetsTheMeetingTypeAndKeepsTheSlot() =
         runTest(main.testDispatcher) {

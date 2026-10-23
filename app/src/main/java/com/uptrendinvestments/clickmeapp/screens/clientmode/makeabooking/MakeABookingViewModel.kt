@@ -58,8 +58,9 @@ import java.util.UUID
  *   date; changing the month or the day clears the slot, changing the meeting type or the notes does not.
  *   iOS lets a slow response for an old month overwrite the new one; here every load cancels the previous.
  * - D-08: both meeting types are always offered; the expert's `available_meeting_types` is never read.
- * - While a booking is in flight (and after it succeeds) every selection setter is ignored, so the request, the
- *   Summary and the 409/422 side effects all refer to the same slot, topic and meeting type.
+ * - While a booking is in flight (and after it succeeds) every selection setter is ignored, and a late availability
+ *   response cannot drop the slot either (WR-03), so the request, the Summary and the 409/422 side effects all refer
+ *   to the same slot, topic and meeting type.
  * - Selection state (topic, day, month, slot, meeting type, notes) is mirrored to [SavedStateHandle] so it
  *   survives process death. A restored topic or slot is only applied if it is still present in the freshly
  *   loaded data (and, for a slot, still selectable). A completed booking id is persisted too, until the screen
@@ -643,13 +644,29 @@ class MakeABookingViewModel
             }
         }
 
-        /** Back to an idle form, slot and attempt id untouched. A cancelled sheet and every failure end here. */
+        /**
+         * Back to an idle form, slot and attempt id untouched unless a refresh that landed during the flow no longer
+         * offers the slot (WR-03). A cancelled sheet and every failure end here.
+         */
         private fun resetPaidFlow() {
             clearPaidSecrets()
             scaAttempted = false
             _uiState.update {
                 it.copy(paidStep = PaidStep.Idle, stripeRequest = null, challengeAccount = null, isSubmitting = false)
             }
+            reconcileSlotAfterSubmission()
+        }
+
+        /**
+         * WR-03: an availability response that landed while the booking was in flight refreshed only the list. Once
+         * the form is editable again the held slot is checked against it, exactly as a fresh load would, so a slot
+         * that has gone is dropped (and the attempt id rotated) now rather than on the next tap.
+         */
+        private fun reconcileSlotAfterSubmission() {
+            val s = _uiState.value
+            val loaded = s.availability as? AvailabilityState.Loaded ?: return
+            if (s.selectedSlotStart == null) return
+            applyAvailability(loaded.slotsByDate, s.expertTimezone, explainPassedSlot = false)
         }
 
         private fun clearPaidSecrets() {
@@ -680,7 +697,10 @@ class MakeABookingViewModel
         private fun handleBookingFailure(e: ApiException) {
             savedStateHandle.remove<String>(KEY_ATTEMPT_ID)
             when (val failure = e.toBookingFailure()) {
-                BookingFailure.Silent -> _uiState.update { it.copy(isSubmitting = false) }
+                BookingFailure.Silent -> {
+                    _uiState.update { it.copy(isSubmitting = false) }
+                    reconcileSlotAfterSubmission()
+                }
                 is BookingFailure.Show -> {
                     _uiState.update {
                         it.copy(
@@ -697,6 +717,8 @@ class MakeABookingViewModel
                         pendingSlotMillis = null
                         savedStateHandle.remove<Long>(KEY_SLOT_START)
                         loadAvailability(_uiState.value.displayedMonth, keepVisible = true)
+                    } else {
+                        reconcileSlotAfterSubmission()
                     }
                 }
             }
@@ -784,6 +806,11 @@ class MakeABookingViewModel
          * [explainPassedSlot], a slot dropped because it has already started (for example a selection restored after
          * process death) is explained with the time-has-passed notice (WR-02); one dropped as unavailable is not, as
          * before. The synchronous regroup inside [syncClock] passes false and leaves the decision to its caller.
+         *
+         * WR-03: while a booking is in flight (or after it succeeded) a late response only refreshes the slot list.
+         * The selection, its saved copy and the booking attempt id stay as they were, so the request, the Summary and
+         * the D-16/D-19 bookkeeping keep referring to the slot that was sent. If that slot has really gone, the
+         * server says so and the failure handling clears it.
          */
         private fun applyAvailability(
             grouped: Map<LocalDate, List<BookingTimeSlot>>,
@@ -791,6 +818,16 @@ class MakeABookingViewModel
             explainPassedSlot: Boolean,
         ) {
             val now = clock.instant()
+            if (_uiState.value.isSubmitting) {
+                _uiState.update {
+                    it.copy(
+                        availability = AvailabilityState.Loaded(grouped),
+                        expertTimezone = expertTimezone,
+                        now = now,
+                    )
+                }
+                return
+            }
             val pending = pendingSlotMillis?.let(Instant::ofEpochMilli)
             val previousSlot = _uiState.value.selectedSlotStart
             val held = pending ?: previousSlot
