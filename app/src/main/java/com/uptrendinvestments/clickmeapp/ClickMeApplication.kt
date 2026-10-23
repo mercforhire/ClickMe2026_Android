@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp
 
 import android.app.Application
+import com.stripe.android.PaymentConfiguration
+import com.uptrendinvestments.clickmeapp.config.AppConfig
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnectionManager
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeDebugLogger
@@ -11,7 +13,8 @@ import javax.inject.Inject
  * The realtime manager starts here, not in MainActivity, because an Activity can be recreated and the
  * socket must follow login state and process foreground without any screen involvement. Hilt injects the
  * fields in `super.onCreate()`. A process started by FCM is not STARTED, so nothing connects until the UI
- * is visible.
+ * is visible. Stripe's publishable key is registered once here, before any PaymentSheet, FlowController or
+ * PaymentLauncher can launch; Robolectric tests run `android.app.Application`, so this never runs under unit tests.
  */
 @HiltAndroidApp
 class ClickMeApplication : Application() {
@@ -23,6 +26,7 @@ class ClickMeApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        PaymentConfiguration.init(this, AppConfig.stripePublishableKey)
         realtimeConnectionManager.start()
         RealtimeDebugLogger.install(realtimeConnection)
     }
