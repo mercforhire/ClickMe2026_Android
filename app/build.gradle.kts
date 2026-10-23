@@ -38,7 +38,9 @@ android {
 
     flavorDimensions += "env"
     productFlavors {
-        // Day-to-day flavor: the backend Stripe account is in test mode, so the pk_test key is the one that works (D-05).
+        // Day-to-day flavor. The STRIPE_PUBLISHABLE_KEY below must be the publishable key of the same Stripe account
+        // and mode as the backend's secret key. The current pk_test_51Tha0r... value belongs to a different account
+        // (Phase 2 UAT tests 7-8); the swap is Phase 7 D-01/D-02 (plan 07-05).
         create("dev") {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"https://clickme-backend-production.up.railway.app/api/v1\"")
@@ -128,6 +130,7 @@ dependencies {
     debugImplementation(libs.okhttp.logging)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.moshi)
+    implementation(libs.stripe.paymentsheet)
     implementation(libs.moshi)
     // Android provides org.json; the 2009 jar would duplicate it.
     implementation(libs.socket.io.client) { exclude(group = "org.json", module = "json") }
