@@ -222,6 +222,7 @@ fun MakeABookingContent(
             }
             MakeABookingBookButton(
                 disabledReason = state.bookDisabledReason,
+                ctaAction = state.bookCtaAction,
                 isSubmitting = state.isSubmitting,
                 onClick = onBook,
             )

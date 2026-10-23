@@ -172,12 +172,18 @@ class MakeABookingFormCardsTest {
 
     private fun setBookButton(
         reason: BookDisabledReason?,
+        ctaAction: BookCtaAction = BookCtaAction.Book,
         submitting: Boolean = false,
         onClick: () -> Unit = {},
     ) {
         rule.setContent {
             ClickMeTheme {
-                MakeABookingBookButton(disabledReason = reason, isSubmitting = submitting, onClick = onClick)
+                MakeABookingBookButton(
+                    disabledReason = reason,
+                    ctaAction = ctaAction,
+                    isSubmitting = submitting,
+                    onClick = onClick,
+                )
             }
         }
     }
@@ -196,7 +202,7 @@ class MakeABookingFormCardsTest {
     }
 
     @Test
-    fun bookNowWithoutSlotOrTopicIsDisabledWithReasonAndNoPaidNote() {
+    fun bookNowWithoutSlotOrTopicIsDisabledWithReason() {
         setBookButton(reason = BookDisabledReason.NoSlot)
         rule.onNodeWithTag(BOOK_NOW_TAG).assertIsNotEnabled().assert(stateIs("Choose a time slot to continue"))
         rule.onAllNodesWithText("coming soon", substring = true).assertCountEquals(0)
@@ -209,15 +215,23 @@ class MakeABookingFormCardsTest {
     }
 
     @Test
-    fun bookNowForPaidTopicIsDisabledWithComingSoonNoteOnly() {
-        setBookButton(reason = BookDisabledReason.PaidTopic)
+    fun addPaymentMethodIsEnabledAndCallsBackOnce() {
+        var clicks = 0
+        setBookButton(reason = null, ctaAction = BookCtaAction.AddPaymentMethod, onClick = { clicks++ })
 
-        rule.onNodeWithTag(BOOK_NOW_TAG).assertIsNotEnabled().assert(stateIs("Paid booking is coming soon"))
-        rule
-            .onNodeWithText("Booking paid sessions is coming soon. Choose a free topic to book now.")
-            .assertExists()
-        rule.onAllNodesWithText("payment work", substring = true).assertCountEquals(0)
-        rule.onAllNodesWithText("Add a Payment Method", substring = true).assertCountEquals(0)
+        rule.onNodeWithText("Add a Payment Method").assertExists()
+        rule.onAllNodesWithText("Book Now").assertCountEquals(0)
+        rule.onNodeWithTag(BOOK_NOW_TAG).assertIsEnabled().performClick()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun checkingPaymentMethodsIsDisabledAndExplainsWhy() {
+        setBookButton(reason = BookDisabledReason.CheckingPaymentMethods)
+
+        rule.onNodeWithText("Book Now").assertExists()
+        rule.onNodeWithTag(BOOK_NOW_TAG).assertIsNotEnabled().assert(stateIs("Checking your payment methods"))
+        rule.onAllNodesWithText("coming soon", substring = true).assertCountEquals(0)
     }
 
     @Test
