@@ -25,8 +25,10 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 internal const val NAME_MARKER = "\u0000"
 
 /**
- * "Request Sent!" heading and the body naming the expert. The same copy is used for free bookings and never
- * mentions payment (D-14). The name is a format argument (never a pattern) and rendered as a plain span.
+ * "Request Sent!" heading and the body naming the expert. The same copy is used for free and paid bookings and
+ * never mentions payment (D-14, iOS parity, UI-SPEC A2): the paid difference is the lifecycle card below the details
+ * card, so CONTEXT's "paid headline" is this unchanged headline plus that card. The name is a format argument
+ * (never a pattern) and rendered as a plain span.
  */
 @Composable
 fun BookingRequestSentHeadline(
