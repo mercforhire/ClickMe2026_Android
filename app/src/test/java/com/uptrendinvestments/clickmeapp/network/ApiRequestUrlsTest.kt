@@ -120,4 +120,29 @@ class ApiRequestUrlsTest {
         }
         assertEquals(5, ApiRequestUrls.publicPaths.size)
     }
+
+    @Test
+    fun phaseSevenConstants_haveExactRelativeValues() {
+        assertEquals("me/payment-methods", ApiRequestUrls.PAYMENT_METHODS)
+        assertEquals("me/payment-methods/setup-intent", ApiRequestUrls.PAYMENT_METHODS_SETUP_INTENT)
+        assertEquals("me/payment-methods/{id}", ApiRequestUrls.PAYMENT_METHOD)
+        assertEquals("me/payment-methods/{id}/default", ApiRequestUrls.PAYMENT_METHOD_DEFAULT)
+        assertEquals("bookings/payment-intent", ApiRequestUrls.PAYMENT_INTENT)
+        assertEquals("bookings/confirm", ApiRequestUrls.BOOKING_CONFIRM)
+    }
+
+    @Test
+    fun paymentPaths_needAuthToken() {
+        listOf(
+            "/api/v1/me/payment-methods",
+            "/api/v1/me/payment-methods/setup-intent",
+            "/api/v1/me/payment-methods/pm_1",
+            "/api/v1/me/payment-methods/pm_1/default",
+            "/api/v1/bookings/payment-intent",
+            "/api/v1/bookings/confirm",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
 }

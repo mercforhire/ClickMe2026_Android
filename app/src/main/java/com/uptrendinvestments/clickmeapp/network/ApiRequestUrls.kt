@@ -5,7 +5,8 @@ package com.uptrendinvestments.clickmeapp.network
  * Port of iOS APIRequestURLs.needAuthToken, fixed to test the encoded path rather than the full URL
  * string so a query string cannot change the answer. Phase 4 adds the signup, email-verification, expert
  * setup, meta and avatar groups. Phase 5 adds the discovery group (home, client bookings, categories, expert
- * details and reviews). Phase 6 adds the booking group (availability, booking request, booking detail).
+ * details and reviews). Phase 6 adds the booking group (availability, booking request, booking detail). Phase 7 adds the payment
+ * group (saved cards, setup and payment intents, booking confirm).
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -38,6 +39,14 @@ object ApiRequestUrls {
     const val EXPERT_AVAILABILITY = "experts/{id}/availability"
     const val BOOKING_REQUEST = "bookings/request"
     const val CLIENT_BOOKING_DETAIL = "client/bookings/{id}"
+
+    // Phase 7: payment methods and paid booking.
+    const val PAYMENT_METHODS = "me/payment-methods"
+    const val PAYMENT_METHODS_SETUP_INTENT = "me/payment-methods/setup-intent"
+    const val PAYMENT_METHOD = "me/payment-methods/{id}"
+    const val PAYMENT_METHOD_DEFAULT = "me/payment-methods/{id}/default"
+    const val PAYMENT_INTENT = "bookings/payment-intent"
+    const val BOOKING_CONFIRM = "bookings/confirm"
 
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
