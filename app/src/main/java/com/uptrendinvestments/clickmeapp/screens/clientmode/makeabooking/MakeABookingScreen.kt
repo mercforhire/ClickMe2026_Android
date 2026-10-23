@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,11 +92,15 @@ fun MakeABookingScreen(
     // after the user changed the time zone setting. A selected slot that has started meanwhile is cleared and a
     // "Time slot unavailable" notice says why (WR-02).
     // D-09: the cards are reloaded on every resume too (back from Payment Methods or a Stripe activity). The call is
-    // ignored while a load runs or a booking is in flight (RESEARCH Pitfall 9), so first composition is safe.
+    // ignored while a booking is in flight, and while a load started since the screen was last hidden is running
+    // (RESEARCH Pitfall 9), so first composition is safe.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshClock()
         viewModel.refreshPaymentMethods()
     }
+    // WR-06: leaving the screen marks a still-running card load as possibly stale, so the return restarts it.
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
+    DisposableEffect(viewModel) { onDispose { viewModel.onScreenHidden() } }
     // RESEARCH A10: Nav3 may not deliver ON_RESUME to the covered entry. The covered entry leaves composition and
     // re-enters when Payment Methods is popped, so this effect runs on return as well.
     LaunchedEffect(Unit) { viewModel.refreshPaymentMethods() }

@@ -103,6 +103,9 @@ class MakeABookingViewModel
         private var availabilityJob: Job? = null
         private var paymentMethodsJob: Job? = null
 
+        /** False once the screen was hidden after the running card load started (WR-06). */
+        private var paymentMethodsLoadIsCurrent: Boolean = false
+
         /** The cards of the last successful load, kept for the long-lead card choice; memory only. */
         private var savedPaymentMethods: List<PaymentMethodItem> = emptyList()
 
@@ -191,6 +194,7 @@ class MakeABookingViewModel
          */
         private fun loadPaymentMethods() {
             paymentMethodsJob?.cancel()
+            paymentMethodsLoadIsCurrent = true
             paymentMethodsJob =
                 viewModelScope.launch {
                     try {
@@ -211,14 +215,27 @@ class MakeABookingViewModel
         }
 
         /**
-         * D-09: the screen calls this on resume (so on return from Payment Methods or a Stripe activity). Ignored
-         * while a booking is in flight or a load is already running, because ON_RESUME also fires on first
-         * composition (RESEARCH Pitfall 9). It touches no selection and never books; the client taps again.
-         * The screen's resume hook is wired by plan 07-12.
+         * D-09: the screen calls this on resume and when it re-enters composition (so on return from Payment Methods
+         * or a Stripe activity). It touches no selection and never books; the client taps again. Ignored while a
+         * booking is in flight.
+         *
+         * A load that is already running is kept only if the screen has not been hidden since it started: ON_RESUME
+         * and the composition effect both fire on first composition, right after the initial load (RESEARCH Pitfall
+         * 9). WR-06: a load started before the client left (for example the slow first load, still running when they
+         * tapped "Add a Payment Method") may predate the new card, so it is restarted instead of trusted.
          */
         fun refreshPaymentMethods() {
-            if (_uiState.value.isSubmitting || paymentMethodsJob?.isActive == true) return
+            if (_uiState.value.isSubmitting) return
+            if (paymentMethodsJob?.isActive == true && paymentMethodsLoadIsCurrent) return
             loadPaymentMethods()
+        }
+
+        /**
+         * WR-06: the screen was paused or left composition (Payment Methods pushed on top, another tab, a Stripe
+         * activity). A card list still loading may now be out of date, so the next [refreshPaymentMethods] restarts.
+         */
+        fun onScreenHidden() {
+            paymentMethodsLoadIsCurrent = false
         }
 
         /**

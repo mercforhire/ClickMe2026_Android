@@ -613,6 +613,53 @@ class MakeABookingViewModelTest {
             runCurrent()
         }
 
+    /**
+     * WR-06: the slow first load is still running when the client leaves for Payment Methods and adds a card. On
+     * return the old load is restarted, so its stale empty answer can never land as "Add a Payment Method".
+     */
+    @Test
+    fun refreshAfterTheScreenWasHiddenRestartsARunningLoad() =
+        runTest(main.testDispatcher) {
+            val first = CompletableDeferred<PaymentMethodsData>()
+            val second = CompletableDeferred<PaymentMethodsData>()
+            api.getPaymentMethodsHandler = { if (api.getPaymentMethodsCalls == 1) first.await() else second.await() }
+            val vm = vm()
+            runCurrent()
+
+            vm.onScreenHidden()
+            vm.refreshPaymentMethods()
+            runCurrent()
+            assertEquals(2, api.getPaymentMethodsCalls)
+
+            // The first request was cancelled: even if its answer arrives, it is never applied.
+            first.complete(PaymentMethodsData(emptyList()))
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.Unknown, vm.uiState.value.paymentMethods)
+
+            second.complete(PaymentMethodsData(listOf(cardDto("pm_1", isDefault = true))))
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.Available, vm.uiState.value.paymentMethods)
+        }
+
+    @Test
+    fun aRefreshRightAfterARestartIsDeduplicated() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.getPaymentMethodsHandler = {
+                gate.await()
+                PaymentMethodsData(emptyList())
+            }
+            val vm = vm()
+            runCurrent()
+            vm.onScreenHidden()
+            vm.refreshPaymentMethods()
+            vm.refreshPaymentMethods()
+            runCurrent()
+            assertEquals(2, api.getPaymentMethodsCalls)
+            gate.complete(Unit)
+            runCurrent()
+        }
+
     @Test
     fun refreshReloadsSilentlyKeepsEverySelectionAndNeverBooks() =
         runTest(main.testDispatcher) {
