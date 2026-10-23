@@ -8,7 +8,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +28,7 @@ import androidx.navigation3.runtime.entryProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.PlaceholderTabContent
+import com.uptrendinvestments.clickmeapp.components.ProfileMenuRow
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
@@ -50,6 +55,8 @@ import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Hilt-aware entry for the client shell: supplies the avatar URL, session actions and the debug gate. */
@@ -93,12 +100,17 @@ fun HomeClientScreen(
                     }
                     clientBookingFlowEntries(
                         navigator = navigator,
-                        booking = { key, onBack, onBooked ->
+                        booking = { key, onBack, onBooked, onOpenPaymentMethods ->
                             val bookingViewModel =
                                 hiltViewModel<MakeABookingViewModel, MakeABookingViewModel.Factory>(
                                     creationCallback = { it.create(key) },
                                 )
-                            MakeABookingScreen(viewModel = bookingViewModel, onBack = onBack, onBooked = onBooked)
+                            MakeABookingScreen(
+                                viewModel = bookingViewModel,
+                                onBack = onBack,
+                                onBooked = onBooked,
+                                onOpenPaymentMethods = onOpenPaymentMethods,
+                            )
                         },
                         requestSent = { key, onBack, onViewBookings, onBackToHome ->
                             val sentViewModel =
@@ -113,6 +125,9 @@ fun HomeClientScreen(
                             )
                         },
                     )
+                    clientPaymentMethodsEntry(navigator) { onBack ->
+                        PaymentMethodsScreen(viewModel = hiltViewModel(), onBack = onBack)
+                    }
                 },
             )
         },
@@ -148,8 +163,8 @@ private const val ONBOARDING_FADE_MS = 200
  *
  * Two slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button), and
- * [detailEntries] registers extra routes pushed on top of a tab, such as the Expert Profile and the booking
- * flow routes (see [clientBookingFlowEntries]).
+ * [detailEntries] registers extra routes pushed on top of a tab, such as the Expert Profile, the booking
+ * flow routes (see [clientBookingFlowEntries]) and Payment Methods (see [clientPaymentMethodsEntry]).
  */
 @Composable
 fun HomeClientShell(
@@ -186,6 +201,14 @@ fun HomeClientShell(
                     ClientTabRoot(
                         key = ClientProfileRoot,
                         footer = {
+                            // Throwaway entry point, replaced by the Phase 14 Profile hub (D-04).
+                            ProfileMenuRow(
+                                title = stringResource(R.string.payment_methods_title),
+                                icon = Icons.Outlined.CreditCard,
+                                onClick = { navigator.navigate(PaymentMethodsKey) },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md),
+                            )
+                            Spacer(Modifier.height(Spacing.lg))
                             OutlinedButton(onClick = onLogout) {
                                 Text(stringResource(R.string.profile_log_out))
                             }

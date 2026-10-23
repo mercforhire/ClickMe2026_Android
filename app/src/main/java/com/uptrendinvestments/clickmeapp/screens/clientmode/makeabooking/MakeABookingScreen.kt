@@ -53,17 +53,22 @@ import java.time.LocalDate
 const val MAKE_A_BOOKING_SCROLL_TAG = "make_a_booking_scroll"
 
 /**
- * Make a Booking, free path. Port of iOS `Make a Booking/MakeABookingView.swift`; it is the body of the
+ * Make a Booking. Port of iOS `Make a Booking/MakeABookingView.swift`; it is the body of the
  * unchanged [BookingKey] route (Phase 5 D-04). The bottom bar is hidden by the route metadata, not by this screen.
  *
  * A completed booking is consumed once before [onBooked] runs (D-12), so a recomposition can never navigate to
  * Request Sent twice. The shell maps [onBooked] to `replaceTop(RequestSentKey(id))`.
+ *
+ * D-08: the "Add a Payment Method" CTA calls [onOpenPaymentMethods] instead of booking; the shell pushes Payment
+ * Methods on top of this form. D-09: when the form comes back the saved cards are reloaded silently, the form keeps
+ * every selection and the client taps the CTA again; nothing continues automatically.
  */
 @Composable
 fun MakeABookingScreen(
     viewModel: MakeABookingViewModel,
     onBack: () -> Unit,
     onBooked: (bookingId: String) -> Unit,
+    onOpenPaymentMethods: () -> Unit,
     modifier: Modifier = Modifier,
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
 ) {
@@ -71,7 +76,15 @@ fun MakeABookingScreen(
     // WR-03: "today" and the viewer's zone are re-derived whenever the screen comes back, e.g. after midnight or
     // after the user changed the time zone setting. A selected slot that has started meanwhile is cleared and a
     // "Time slot unavailable" notice says why (WR-02).
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshClock() }
+    // D-09: the cards are reloaded on every resume too (back from Payment Methods or a Stripe activity). The call is
+    // ignored while a load runs or a booking is in flight (RESEARCH Pitfall 9), so first composition is safe.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshClock()
+        viewModel.refreshPaymentMethods()
+    }
+    // RESEARCH A10: Nav3 may not deliver ON_RESUME to the covered entry. The covered entry leaves composition and
+    // re-enters when Payment Methods is popped, so this effect runs on return as well.
+    LaunchedEffect(Unit) { viewModel.refreshPaymentMethods() }
     LaunchedEffect(state.completedBookingId) {
         val id = state.completedBookingId ?: return@LaunchedEffect
         viewModel.consumeCompletedBooking()
@@ -90,6 +103,7 @@ fun MakeABookingScreen(
         onSelectMeetingType = viewModel::selectMeetingType,
         onNotesChange = viewModel::onNotesChange,
         onBook = viewModel::book,
+        onOpenPaymentMethods = onOpenPaymentMethods,
         onDismissError = viewModel::dismissError,
         modifier = modifier,
         timeFormat = timeFormat,
@@ -116,6 +130,7 @@ fun MakeABookingContent(
     onSelectMeetingType: (MeetingType) -> Unit,
     onNotesChange: (String) -> Unit,
     onBook: () -> Unit,
+    onOpenPaymentMethods: () -> Unit,
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
@@ -224,7 +239,7 @@ fun MakeABookingContent(
                 disabledReason = state.bookDisabledReason,
                 ctaAction = state.bookCtaAction,
                 isSubmitting = state.isSubmitting,
-                onClick = onBook,
+                onClick = if (state.bookCtaAction == BookCtaAction.AddPaymentMethod) onOpenPaymentMethods else onBook,
             )
             Spacer(Modifier.navigationBarsPadding().padding(bottom = Spacing.xl))
         }
