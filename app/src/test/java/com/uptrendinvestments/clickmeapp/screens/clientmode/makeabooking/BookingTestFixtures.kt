@@ -4,10 +4,13 @@ import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilitySlotDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.TopicOfDiscussionDto
 import com.uptrendinvestments.clickmeapp.model.responses.TopicPriceDto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeCompletedBookingStore
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
@@ -62,6 +65,27 @@ fun availabilityOf(
         days = listOf(AvailabilityDayDto(date = "2026-10-22", slots = slots.toList())),
     )
 
+fun cardDto(
+    id: String,
+    isDefault: Boolean = false,
+    brand: String = "visa",
+    last4: String = "4242",
+    expMonth: Int = 9,
+    expYear: Int = 2028,
+): PaymentMethodItem =
+    PaymentMethodItem(
+        id = id,
+        brand = brand,
+        last4 = last4,
+        expMonth = expMonth,
+        expYear = expYear,
+        isDefault = isDefault,
+    )
+
+fun FakeClickMeApi.stubCards(vararg cards: PaymentMethodItem) {
+    getPaymentMethodsHandler = { PaymentMethodsData(cards.toList()) }
+}
+
 fun newViewModel(
     api: FakeClickMeApi,
     savedState: SavedStateHandle = SavedStateHandle(),
@@ -73,6 +97,7 @@ fun newViewModel(
         savedState,
         ExpertProfileRepository(api),
         BookingRepository(api),
+        PaymentMethodsRepository(api),
         completedBookings,
         clock,
     )

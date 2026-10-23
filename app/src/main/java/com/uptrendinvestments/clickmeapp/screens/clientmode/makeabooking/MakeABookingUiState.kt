@@ -58,8 +58,11 @@ sealed interface AvailabilityState {
     ) : AvailabilityState
 }
 
-/** Why Book Now is disabled; each maps to a UI-SPEC Book Now `stateDescription`. */
-enum class BookDisabledReason { NoTopic, PaidTopic, NoSlot }
+/** Why the booking CTA is disabled; each maps to a UI-SPEC CTA `stateDescription`. */
+enum class BookDisabledReason { NoTopic, CheckingPaymentMethods, NoSlot }
+
+/** What the enabled CTA does (D-08): book, or send a paid-topic client without a saved card to Payment Methods. */
+enum class BookCtaAction { Book, AddPaymentMethod }
 
 /**
  * Everything the Make a Booking screen renders, plus the rules derived from it.
@@ -90,6 +93,7 @@ data class MakeABookingUiState(
     val meetingType: MeetingType = MeetingType.InAppVoice,
     val notes: String = "",
     val isSubmitting: Boolean = false,
+    val paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
     val dialogError: FieldError? = null,
     @StringRes val dialogTitle: Int = R.string.make_a_booking_error_title,
     val completedBookingId: String? = null,
@@ -117,12 +121,30 @@ data class MakeABookingUiState(
     val isSelectedDateLoaded: Boolean
         get() = isInLoadedWindow(selectedDate, displayedMonth)
 
-    /** D-01 and D-06: no topic first, then a paid topic (display gate), then a missing or stale slot. */
+    /**
+     * D-08: no topic first. For a paid topic, unknown saved cards disable the CTA, and no cards leave it enabled
+     * without a slot (it routes to Payment Methods, iOS `canBook`). Otherwise a missing or stale slot (D-06).
+     */
     val bookDisabledReason: BookDisabledReason?
         get() {
             val topic = selectedTopic ?: return BookDisabledReason.NoTopic
-            if (!topic.isFree) return BookDisabledReason.PaidTopic
+            if (!topic.isFree) {
+                when (paymentMethods) {
+                    PaymentMethodsAvailability.Unknown -> return BookDisabledReason.CheckingPaymentMethods
+                    PaymentMethodsAvailability.None -> return null
+                    PaymentMethodsAvailability.Available -> Unit
+                }
+            }
             val slot = selectedSlot
             return if (slot == null || !slot.isSelectable(now)) BookDisabledReason.NoSlot else null
         }
+
+    /** iOS `requiresPaymentMethodSetup`: a paid topic with no saved card. */
+    val bookCtaAction: BookCtaAction
+        get() =
+            if (selectedTopic?.isFree == false && paymentMethods == PaymentMethodsAvailability.None) {
+                BookCtaAction.AddPaymentMethod
+            } else {
+                BookCtaAction.Book
+            }
 }

@@ -8,9 +8,11 @@ import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -32,10 +34,13 @@ import java.time.format.DateTimeParseException
 import java.util.UUID
 
 /**
- * Make a Booking state machine, free path. Port of iOS `MakeABookingViewModel`; `book()` is the free booking action (BOOK-03).
+ * Make a Booking state machine. Port of iOS `MakeABookingViewModel`; `book()` is the free booking action (BOOK-03),
+ * and the paid path is added to it by plan 07-10.
  *
- * - D-02: the first free topic is preselected, else the first topic, else none. Phase 7 may revert this to
- *   the plain first topic, and iOS regenerates its booking attempt id on a topic change, which Phase 7 owns.
+ * - D-10: the first topic is preselected, paid or free (iOS parity), else none.
+ * - D-08: the client's saved cards load with the form. A paid topic is gated on them: nothing known yet disables
+ *   the CTA, no cards (or a failed load) turns it into "Add a Payment Method", at least one card is "Book Now".
+ *   D-09: [refreshPaymentMethods] reloads the cards silently on return from Payment Methods and never books.
  * - D-03: opens on today with no auto-jump to the first open day. D-06: no month before the current one and
  *   no past day. D-07: the displayed month plus both neighbours load in parallel and are regrouped by local
  *   date; changing the month or the day clears the slot, changing the meeting type or the notes does not.
@@ -59,6 +64,7 @@ class MakeABookingViewModel
         private val savedStateHandle: SavedStateHandle,
         private val profiles: ExpertProfileRepository,
         private val repository: BookingRepository,
+        private val paymentMethodsRepository: PaymentMethodsRepository,
         private val completedBookings: CompletedBookingStore,
         private val clock: Clock,
     ) : ViewModel() {
@@ -80,6 +86,10 @@ class MakeABookingViewModel
 
         private var topicsJob: Job? = null
         private var availabilityJob: Job? = null
+        private var paymentMethodsJob: Job? = null
+
+        /** The cards of the last successful load, kept for the long-lead card choice (07-10); memory only. */
+        private var savedPaymentMethods: List<PaymentMethodItem> = emptyList()
 
         /** The raw days of the last applied availability load, kept so a zone change can regroup without a request. */
         private var loadedDays: List<AvailabilityDayDto> = emptyList()
@@ -99,6 +109,43 @@ class MakeABookingViewModel
         private fun loadForm() {
             loadTopics()
             loadAvailability(_uiState.value.displayedMonth, keepVisible = false)
+            loadPaymentMethods()
+        }
+
+        /**
+         * D-08: no cards, or a failed load, is [PaymentMethodsAvailability.None] (iOS parity; Payment Methods has its
+         * own error state and Retry). The value is never reset to Unknown, so a silent refresh cannot flicker the CTA.
+         */
+        private fun loadPaymentMethods() {
+            paymentMethodsJob?.cancel()
+            paymentMethodsJob =
+                viewModelScope.launch {
+                    try {
+                        val cards = paymentMethodsRepository.list()
+                        savedPaymentMethods = cards
+                        val availability =
+                            if (cards.isEmpty()) {
+                                PaymentMethodsAvailability.None
+                            } else {
+                                PaymentMethodsAvailability.Available
+                            }
+                        _uiState.update { it.copy(paymentMethods = availability) }
+                    } catch (e: ApiException) {
+                        savedPaymentMethods = emptyList()
+                        _uiState.update { it.copy(paymentMethods = PaymentMethodsAvailability.None) }
+                    }
+                }
+        }
+
+        /**
+         * D-09: the screen calls this on resume (so on return from Payment Methods or a Stripe activity). Ignored
+         * while a booking is in flight or a load is already running, because ON_RESUME also fires on first
+         * composition (RESEARCH Pitfall 9). It touches no selection and never books; the client taps again.
+         * The screen's resume hook is wired by plan 07-12.
+         */
+        fun refreshPaymentMethods() {
+            if (_uiState.value.isSubmitting || paymentMethodsJob?.isActive == true) return
+            loadPaymentMethods()
         }
 
         /**
@@ -540,9 +587,7 @@ class MakeABookingViewModel
                         val topics = profiles.details(expertId).topicsOfDiscussion.map { it.toBookingTopicUi() }
                         val preferred = pendingTopicId ?: _uiState.value.selectedTopicId
                         val chosen =
-                            topics.firstOrNull { it.id == preferred }
-                                ?: topics.firstOrNull { it.isFree }
-                                ?: topics.firstOrNull()
+                            topics.firstOrNull { it.id == preferred } ?: topics.firstOrNull()
                         _uiState.update { it.copy(topics = TopicsState.Loaded(topics), selectedTopicId = chosen?.id) }
                         persistTopic(chosen?.id)
                     } catch (e: ApiException) {

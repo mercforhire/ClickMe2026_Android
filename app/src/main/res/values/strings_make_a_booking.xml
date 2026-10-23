@@ -55,9 +55,9 @@
 
     <!-- Book Now -->
     <string name="make_a_booking_book_now">Book Now</string>
-    <string name="make_a_booking_paid_note">Booking paid sessions is coming soon. Choose a free topic to book now.</string>
+    <string name="make_a_booking_add_payment_method">Add a Payment Method</string>
     <string name="make_a_booking_state_no_slot">Choose a time slot to continue</string>
-    <string name="make_a_booking_state_paid">Paid booking is coming soon</string>
+    <string name="make_a_booking_state_checking_payment_methods">Checking your payment methods</string>
     <string name="make_a_booking_state_no_topic">Choose a topic to continue</string>
     <string name="make_a_booking_state_booking">Booking</string>
 
@@ -69,7 +69,7 @@
     <string name="make_a_booking_error_not_bookable">This expert isn\'t accepting bookings right now.</string>
     <string name="make_a_booking_error_no_link">This expert hasn\'t set up a Skype/Zoom link. Please choose In-app Voice instead.</string>
     <string name="make_a_booking_error_self">You can\'t book yourself.</string>
-    <string name="make_a_booking_error_needs_payment">This topic needs payment, which isn\'t available in the app yet.</string>
+    <string name="make_a_booking_error_needs_payment">This topic needs payment. Please try booking again.</string>
     <string name="make_a_booking_error_duplicate">A booking for this session already exists.</string>
     <string name="make_a_booking_error_unconfirmed">We couldn\'t confirm your last booking request. It may already have been sent, so please check My Bookings before booking again.</string>
 

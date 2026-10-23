@@ -9,11 +9,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -92,11 +94,13 @@ class MakeABookingScreenTest {
         isSubmitting: Boolean = false,
         dialogError: FieldError? = null,
         dialogTitle: Int = R.string.make_a_booking_error_title,
+        paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
     ): MakeABookingUiState {
         val topics =
             listOf(
                 topicDto("t1", isFree = true, durationMins = 60).toBookingTopicUi(),
                 topicDto("t2", isFree = false, amount = 5000, currency = "CAD").toBookingTopicUi(),
+                topicDto("t3", isFree = false, amount = 1500, currency = "JPY").toBookingTopicUi(),
             )
         val date = LocalDate.of(2026, 10, 22)
         return MakeABookingUiState(
@@ -119,6 +123,7 @@ class MakeABookingScreenTest {
             selectedSlotStart = slot20,
             meetingType = MeetingType.InAppVoice,
             isSubmitting = isSubmitting,
+            paymentMethods = paymentMethods,
             dialogError = dialogError,
             dialogTitle = dialogTitle,
         )
@@ -193,13 +198,36 @@ class MakeABookingScreenTest {
     }
 
     @Test
-    fun paidTopicDisablesBookNowAndShowsThePaidNote() {
-        setContent(loadedState(selectedTopicId = "t2"))
+    fun paidTopicWithoutCardsShowsAddAPaymentMethodEnabled() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.None))
+
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithText("Add a Payment Method").assertExists()
+        composeRule.onNodeWithText("Book Now").assertDoesNotExist()
+    }
+
+    @Test
+    fun paidTopicWithCardsAndASlotShowsBookNowEnabled() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Available))
+
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithText("Book Now").assertExists()
+    }
+
+    @Test
+    fun paidTopicWhileCheckingCardsShowsBookNowDisabled() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Unknown))
 
         composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsNotEnabled()
-        composeRule
-            .onNodeWithText("Booking paid sessions is coming soon. Choose a free topic to book now.")
-            .assertExists()
+        composeRule.onNodeWithText("Book Now").assertExists()
+    }
+
+    @Test
+    fun aPaidJpyTopicShowsTheSummaryPriceWithoutDecimals() {
+        setContent(loadedState(selectedTopicId = "t3", paymentMethods = PaymentMethodsAvailability.Available))
+
+        composeRule.onAllNodesWithText("¥1,500", substring = true).assertCountEquals(2)
+        composeRule.onAllNodesWithText("¥15.00", substring = true).assertCountEquals(0)
     }
 
     @Test
@@ -520,18 +548,35 @@ class MakeABookingScreenTest {
     }
 
     @Test
-    fun paidTopicShowsTheNoteAndKeepsBookNowDisabled() {
+    fun paidTopicWithCardsBooksNowOnceASlotIsPickedWithoutAnyRequest() {
         stubFreeAndPaidTopicsWithOneSlot()
+        api.stubCards(cardDto("pm_1", isDefault = true))
+        val vm = newViewModel(api)
+        setScreen(vm)
+
+        vm.selectTopic("t2")
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag(slotChipTestTag(slot20)).performScrollTo().performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithText("Book Now").assertExists()
+        assertEquals(0, api.requestBookingCalls)
+    }
+
+    @Test
+    fun paidTopicWithoutCardsShowsAddAPaymentMethodWithoutAnyRequest() {
+        stubFreeAndPaidTopicsWithOneSlot()
+        api.stubCards()
         val vm = newViewModel(api)
         setScreen(vm)
 
         vm.selectTopic("t2")
         composeRule.waitForIdle()
 
-        composeRule
-            .onNodeWithText("Booking paid sessions is coming soon. Choose a free topic to book now.")
-            .assertExists()
-        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithText("Add a Payment Method").assertExists()
         assertEquals(0, api.requestBookingCalls)
     }
 }

@@ -39,6 +39,7 @@ class MakeABookingUiStateTest {
         selectedSlotStart: Instant? = null,
         isSubmitting: Boolean = false,
         displayedMonth: YearMonth = YearMonth.from(today),
+        paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
     ) = MakeABookingUiState(
         expertId = "e1",
         expertName = "Expert",
@@ -54,6 +55,7 @@ class MakeABookingUiStateTest {
         availability = availability,
         selectedSlotStart = selectedSlotStart,
         isSubmitting = isSubmitting,
+        paymentMethods = paymentMethods,
     )
 
     @Test
@@ -124,9 +126,52 @@ class MakeABookingUiStateTest {
     }
 
     @Test
-    fun disabled_reason_paid_topic_wins_over_a_selected_slot() {
+    fun paid_topic_with_unknown_cards_is_checking_and_books() {
         val s = state(selectedTopicId = "paid", selectedSlotStart = futureStart)
-        assertEquals(BookDisabledReason.PaidTopic, s.bookDisabledReason)
+        assertEquals(BookDisabledReason.CheckingPaymentMethods, s.bookDisabledReason)
+        assertEquals(BookCtaAction.Book, s.bookCtaAction)
+    }
+
+    @Test
+    fun paid_topic_without_cards_needs_no_slot_and_adds_a_payment_method() {
+        val s = state(selectedTopicId = "paid", paymentMethods = PaymentMethodsAvailability.None)
+        assertNull(s.bookDisabledReason)
+        assertEquals(BookCtaAction.AddPaymentMethod, s.bookCtaAction)
+    }
+
+    @Test
+    fun paid_topic_with_cards_needs_a_slot() {
+        val noSlot = state(selectedTopicId = "paid", paymentMethods = PaymentMethodsAvailability.Available)
+        assertEquals(BookDisabledReason.NoSlot, noSlot.bookDisabledReason)
+        assertEquals(BookCtaAction.Book, noSlot.bookCtaAction)
+
+        val withSlot =
+            state(
+                selectedTopicId = "paid",
+                selectedSlotStart = futureStart,
+                paymentMethods = PaymentMethodsAvailability.Available,
+            )
+        assertNull(withSlot.bookDisabledReason)
+        assertEquals(BookCtaAction.Book, withSlot.bookCtaAction)
+    }
+
+    @Test
+    fun free_topic_ignores_the_cards() {
+        val s =
+            state(
+                selectedTopicId = "free",
+                selectedSlotStart = futureStart,
+                paymentMethods = PaymentMethodsAvailability.None,
+            )
+        assertNull(s.bookDisabledReason)
+        assertEquals(BookCtaAction.Book, s.bookCtaAction)
+    }
+
+    @Test
+    fun no_topic_books_and_is_disabled() {
+        val s = state(paymentMethods = PaymentMethodsAvailability.None)
+        assertEquals(BookDisabledReason.NoTopic, s.bookDisabledReason)
+        assertEquals(BookCtaAction.Book, s.bookCtaAction)
     }
 
     @Test

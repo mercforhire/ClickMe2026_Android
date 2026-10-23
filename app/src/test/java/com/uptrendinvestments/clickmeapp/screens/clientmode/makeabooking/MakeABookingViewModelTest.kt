@@ -7,6 +7,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -74,7 +75,7 @@ class MakeABookingViewModelTest {
         }
 
     @Test
-    fun firstFreeTopicIsPreselected() =
+    fun firstTopicIsPreselectedEvenWhenPaid() =
         runTest(main.testDispatcher) {
             api.expertDetailsHandler = {
                 detailsWith(
@@ -87,7 +88,7 @@ class MakeABookingViewModelTest {
             runCurrent()
             val s = vm.uiState.value
             assertEquals(3, s.topicList.size)
-            assertEquals("t2", s.selectedTopicId)
+            assertEquals("t1", s.selectedTopicId)
         }
 
     @Test
@@ -166,7 +167,7 @@ class MakeABookingViewModelTest {
             }
             val vm = vm(SavedStateHandle(mapOf("booking_topic_id" to "gone")))
             runCurrent()
-            assertEquals("t2", vm.uiState.value.selectedTopicId)
+            assertEquals("t1", vm.uiState.value.selectedTopicId)
         }
 
     // ---- Task 2: availability, navigation, selection, persistence ----
@@ -539,5 +540,134 @@ class MakeABookingViewModelTest {
             vm.book()
             runCurrent()
             assertEquals("America/Vancouver", api.requestBookingRequests.single().timezone)
+        }
+
+    // ---- Phase 7: saved-card gate (D-08, D-09) ----
+
+    @Test
+    fun cardsLoadWithTheFormAndMakeThePaymentMethodsAvailable() =
+        runTest(main.testDispatcher) {
+            api.stubCards(cardDto("pm_1", isDefault = true), cardDto("pm_2"))
+            val vm = vm()
+            assertEquals(PaymentMethodsAvailability.Unknown, vm.uiState.value.paymentMethods)
+            runCurrent()
+            assertEquals(1, api.getPaymentMethodsCalls)
+            assertEquals(PaymentMethodsAvailability.Available, vm.uiState.value.paymentMethods)
+        }
+
+    @Test
+    fun noCardsIsNone() =
+        runTest(main.testDispatcher) {
+            api.stubCards()
+            val vm = vm()
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.None, vm.uiState.value.paymentMethods)
+        }
+
+    @Test
+    fun aFailedCardLoadIsNone() =
+        runTest(main.testDispatcher) {
+            api.getPaymentMethodsHandler = { throw IOException("offline") }
+            val vm = vm()
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.None, vm.uiState.value.paymentMethods)
+
+            api.getPaymentMethodsHandler = { throw api.httpError(500, """{"status":"error","code":"SERVER"}""") }
+            vm.refreshPaymentMethods()
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.None, vm.uiState.value.paymentMethods)
+        }
+
+    @Test
+    fun cardsAreUnknownWhileTheLoadIsSuspendedButTheRestStillLoads() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.getPaymentMethodsHandler = {
+                gate.await()
+                PaymentMethodsData(listOf(cardDto("pm_1")))
+            }
+            val vm = vm()
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.Unknown, vm.uiState.value.paymentMethods)
+            assertTrue(vm.uiState.value.topics is TopicsState.Loaded)
+            assertTrue(vm.uiState.value.availability is AvailabilityState.Loaded)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(PaymentMethodsAvailability.Available, vm.uiState.value.paymentMethods)
+        }
+
+    @Test
+    fun refreshWhileTheInitialLoadRunsMakesNoSecondCall() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.getPaymentMethodsHandler = {
+                gate.await()
+                PaymentMethodsData(emptyList())
+            }
+            val vm = vm()
+            runCurrent()
+            vm.refreshPaymentMethods()
+            runCurrent()
+            assertEquals(1, api.getPaymentMethodsCalls)
+            gate.complete(Unit)
+            runCurrent()
+        }
+
+    @Test
+    fun refreshReloadsSilentlyKeepsEverySelectionAndNeverBooks() =
+        runTest(main.testDispatcher) {
+            api.expertDetailsHandler = {
+                detailsWith(
+                    topicDto("t1", isFree = true),
+                    topicDto("t2", isFree = false, amount = 5000, currency = "CAD"),
+                )
+            }
+            api.expertAvailabilityHandler = { _, _ ->
+                availabilityOf(slotDto("2026-10-22T20:00:00Z"))
+            }
+            api.stubCards()
+            val vm = vm()
+            runCurrent()
+            vm.selectTopic("t2")
+            val slot = Instant.parse("2026-10-22T20:00:00Z")
+            vm.selectSlot(slot)
+            vm.selectMeetingType(MeetingType.InAppVoice)
+            vm.onNotesChange("hello")
+            assertEquals(PaymentMethodsAvailability.None, vm.uiState.value.paymentMethods)
+
+            api.stubCards(cardDto("pm_1", isDefault = true))
+            vm.refreshPaymentMethods()
+            runCurrent()
+
+            val s = vm.uiState.value
+            assertEquals(2, api.getPaymentMethodsCalls)
+            assertEquals(PaymentMethodsAvailability.Available, s.paymentMethods)
+            assertEquals("t2", s.selectedTopicId)
+            assertEquals(slot, s.selectedSlotStart)
+            assertEquals(MeetingType.InAppVoice, s.meetingType)
+            assertEquals("hello", s.notes)
+            assertFalse(s.isSubmitting)
+            assertEquals(0, api.requestBookingCalls)
+        }
+
+    @Test
+    fun refreshIsIgnoredWhileABookingIsInFlight() =
+        runTest(main.testDispatcher) {
+            api.expertAvailabilityHandler = { _, _ -> availabilityOf(slotDto("2026-10-22T20:00:00Z")) }
+            val gate = CompletableDeferred<BookingRequestData>()
+            api.requestBookingHandler = { gate.await() }
+            api.stubCards()
+            val vm = vm()
+            runCurrent()
+            vm.selectSlot(Instant.parse("2026-10-22T20:00:00Z"))
+            vm.book()
+            runCurrent()
+            assertTrue(vm.uiState.value.isSubmitting)
+            val before = api.getPaymentMethodsCalls
+
+            vm.refreshPaymentMethods()
+            runCurrent()
+            assertEquals(before, api.getPaymentMethodsCalls)
+            gate.cancel()
         }
 }
