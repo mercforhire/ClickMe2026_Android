@@ -603,21 +603,44 @@ class MakeABookingViewModel
         }
 
         /**
-         * The 3DS challenge closed (iOS `retryConfirmAfterSCA`). Ignored unless a challenge is active. A completed
-         * challenge retries `/bookings/confirm` once with the same `pm_` and `pi_`: the server then sees
-         * `requires_capture` and only creates the booking.
+         * The 3DS challenge closed (iOS `retryConfirmAfterSCA` / `cancelSCA`). Ignored unless a challenge is active.
+         *
+         * - Completed: retries `/bookings/confirm` once with the same `pm_` and `pi_`; the server then sees
+         *   `requires_capture` and only creates the booking. Without a `pm_` the flow ends with the "couldn't be
+         *   resolved" notice and no request. That guard is defensive and has no unit test: [confirmPaid] always sets
+         *   the `pm_` before a 402 can arrive.
+         * - Canceled: an alert that the card wasn't charged (D-15; iOS `cancelSCA()` shows none).
+         * - Failed: Stripe's message, else a generic one.
+         *
+         * Canceled and Failed reset the paid flow and keep the slot and the booking attempt id, so Book Now again is
+         * an idempotent retry (D-15).
          */
         fun onChallengeOutcome(outcome: ChallengeOutcome) {
             if (_uiState.value.challengeAccount == null) return
-            if (outcome != ChallengeOutcome.Completed) return
             _uiState.update { it.copy(challengeAccount = null) }
-            val context = paidContext
-            val paymentMethodId = pendingPaymentMethodId
-            if (context == null || paymentMethodId == null) {
-                resetPaidFlow()
-                return
+            when (outcome) {
+                ChallengeOutcome.Completed -> {
+                    val context = paidContext
+                    val paymentMethodId = pendingPaymentMethodId
+                    if (context == null || paymentMethodId == null) {
+                        showPaidDialog(FieldError.Res(R.string.make_a_booking_error_pm_unresolved))
+                        resetPaidFlow()
+                    } else {
+                        viewModelScope.launch { confirmPaid(context, paymentMethodId, paymentIntentId) }
+                    }
+                }
+                ChallengeOutcome.Canceled -> {
+                    showPaidDialog(FieldError.Res(R.string.make_a_booking_error_sca_canceled))
+                    resetPaidFlow()
+                }
+                is ChallengeOutcome.Failed -> {
+                    showPaidDialog(
+                        outcome.message?.let(FieldError::Text)
+                            ?: FieldError.Res(R.string.make_a_booking_error_sca_failed),
+                    )
+                    resetPaidFlow()
+                }
             }
-            viewModelScope.launch { confirmPaid(context, paymentMethodId, paymentIntentId) }
         }
 
         /** Back to an idle form, slot and attempt id untouched. A cancelled sheet and every failure end here. */
