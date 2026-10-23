@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -11,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
@@ -19,10 +22,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.Expert
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMethodsEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,6 +45,7 @@ class HomeShellsTest {
     private fun setClient(
         showDebug: Boolean,
         refreshStatus: String? = null,
+        paymentMethods: Boolean = false,
     ) {
         composeRule.setContent {
             ClickMeTheme {
@@ -50,6 +56,7 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
+                    detailEntries = { navigator -> if (paymentMethods) fakePaymentMethodsEntry(navigator) },
                 )
             }
         }
@@ -295,6 +302,19 @@ class HomeShellsTest {
         }
     }
 
+    /** Fake Payment Methods content registered through the real [clientPaymentMethodsEntry]. */
+    private fun EntryProviderScope<NavKey>.fakePaymentMethodsEntry(navigator: Navigator) {
+        clientPaymentMethodsEntry(navigator) { onBack ->
+            Column {
+                Text("fake payment methods")
+                Button(onClick = onBack) { Text("pm back") }
+            }
+        }
+    }
+
+    private var bookingEntered = 0
+    private var bookingResumed = 0
+
     private fun setClientWithBookingFlow() {
         setClientWithExploreButton(
             label = "open booking",
@@ -302,10 +322,13 @@ class HomeShellsTest {
             detail = { nav ->
                 clientBookingFlowEntries(
                     navigator = nav,
-                    booking = { _, onBack, onBooked ->
+                    booking = { _, onBack, onBooked, onOpenPaymentMethods ->
+                        LaunchedEffect(Unit) { bookingEntered++ }
+                        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { bookingResumed++ }
                         Column {
                             Button(onClick = onBack) { Text("fake back") }
                             Button(onClick = { onBooked("b1") }) { Text("fake book") }
+                            Button(onClick = onOpenPaymentMethods) { Text("fake add card") }
                         }
                     },
                     requestSent = { key, onBack, onViewBookings, onBackToHome ->
@@ -317,6 +340,7 @@ class HomeShellsTest {
                         }
                     },
                 )
+                fakePaymentMethodsEntry(nav)
             },
         )
     }
@@ -382,5 +406,67 @@ class HomeShellsTest {
     fun exploreRootReceivesShellAvatarUrl() {
         setClientWithExploreButton(label = "root", target = {})
         composeRule.onNodeWithText("root https://example.com/me.png").assertExists()
+    }
+
+    @Test
+    fun profileShowsPaymentMethodsAboveLogOutAndOpensItWithoutTheBar() {
+        setClient(showDebug = false, paymentMethods = true)
+        tapTab("Profile")
+        val rowTop = composeRule.onNodeWithText("Payment Methods").fetchSemanticsNode().positionInRoot.y
+        val logOutTop = composeRule.onNodeWithText("Log out").fetchSemanticsNode().positionInRoot.y
+        assertTrue("Payment Methods ($rowTop) must be above Log out ($logOutTop)", rowTop < logOutTop)
+
+        composeRule.onNodeWithText("Payment Methods").performClick()
+
+        composeRule.onNodeWithText("fake payment methods").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+        composeRule.onNodeWithText("pm back").performClick()
+        composeRule.onNodeWithText("fake payment methods").assertDoesNotExist()
+        composeRule.onNode(tab("Profile")).assertIsSelected()
+        composeRule.onNodeWithText("Payment Methods").assertExists()
+    }
+
+    @Test
+    fun bookingGateOpensPaymentMethodsOnTheExploreStackAndBackReturnsToTheForm() {
+        setClientWithBookingFlow()
+        composeRule.onNodeWithText("open booking", substring = true).performClick()
+        composeRule.onNodeWithText("fake add card").performClick()
+
+        composeRule.onNodeWithText("fake payment methods").assertExists()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+
+        composeRule.onNodeWithText("pm back").performClick()
+
+        composeRule.onNodeWithText("fake payment methods").assertDoesNotExist()
+        composeRule.onNodeWithText("fake add card").assertExists()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+        composeRule.onNodeWithText("fake back").performClick()
+        composeRule.onNodeWithText("open booking", substring = true).assertExists()
+        composeRule.onNode(tab("Explore")).assertExists()
+    }
+
+    /**
+     * RESEARCH A10: the covered booking entry re-enters composition when Payment Methods is popped, so a
+     * `LaunchedEffect(Unit)` refresh runs again. Whether ON_RESUME also reaches it is recorded, not asserted
+     * (see the plan 07-12 SUMMARY).
+     */
+    @Test
+    fun theCoveredBookingEntryReentersCompositionWhenPaymentMethodsIsPopped() {
+        setClientWithBookingFlow()
+        composeRule.onNodeWithText("open booking", substring = true).performClick()
+        composeRule.waitForIdle()
+        val enteredBefore = bookingEntered
+        val resumedBefore = bookingResumed
+        assertEquals(1, enteredBefore)
+
+        composeRule.onNodeWithText("fake add card").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("pm back").performClick()
+        composeRule.waitForIdle()
+
+        val reentered = bookingEntered - enteredBefore
+        val resumed = bookingResumed - resumedBefore
+        println("A10 observed: LaunchedEffect runs +$reentered, ON_RESUME +$resumed")
+        assertEquals(enteredBefore + 1, bookingEntered)
     }
 }
