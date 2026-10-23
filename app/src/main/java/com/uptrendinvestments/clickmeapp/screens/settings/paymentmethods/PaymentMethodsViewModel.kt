@@ -21,7 +21,8 @@ import javax.inject.Inject
 
 /**
  * State holder for Payment Methods. Port of iOS `PaymentMethodsViewModel` without its optimistic updates
- * (D-06, D-07): the list always shows what the server returned, reloaded after every successful change.
+ * (D-06, D-07): the list shows what the server returned, reloaded after every successful change. Only when that
+ * reload fails is the confirmed change applied locally (WR-07).
  *
  * One busy operation (set-default or remove) at a time (D-06). The ViewModel is Stripe-SDK free: the screen's
  * Stripe host consumes [PaymentMethodsUiState.addCardRequest] and reports a [SheetOutcome] back.
@@ -38,6 +39,9 @@ class PaymentMethodsViewModel
 
         private var loadJob: Job? = null
 
+        /** Bumped by every list fetch; only the newest fetch may apply its answer (WR-07). */
+        private var listGeneration = 0
+
         /** A SetupIntent minted but not yet used (sheet cancelled), with its monotonic mint time (research 4). */
         private var reusableSetup: Pair<AddCardRequest, Long>? = null
 
@@ -47,29 +51,71 @@ class PaymentMethodsViewModel
 
         fun retry() = load(showLoading = true)
 
+        /**
+         * [showLoading] is the first load and Retry: the list shows the spinner, a failure the error state. Without
+         * it this is the reload after a card was added: the current list stays, and a failure says the card was
+         * saved but the list could not be refreshed, instead of silently leaving the new card out (WR-07).
+         */
         private fun load(showLoading: Boolean) {
             loadJob?.cancel()
+            val generation = ++listGeneration
             if (showLoading) _uiState.update { it.copy(list = PaymentMethodsListState.Loading) }
             loadJob =
                 viewModelScope.launch {
                     try {
                         val cards = repository.list()
-                        _uiState.update { it.copy(list = PaymentMethodsListState.Loaded(cards)) }
+                        if (generation == listGeneration) {
+                            _uiState.update { it.copy(list = PaymentMethodsListState.Loaded(cards)) }
+                        }
                     } catch (e: ApiException) {
+                        if (generation != listGeneration) return@launch
                         if (showLoading) {
                             _uiState.update { it.copy(list = PaymentMethodsListState.Failed(e.toSectionMessage())) }
+                        } else if (e.toDialogError() != null) {
+                            _uiState.update {
+                                it.copy(
+                                    dialog =
+                                        PaymentMethodsDialog(
+                                            R.string.payment_methods_error_load_heading,
+                                            FieldError.Res(R.string.payment_methods_error_refresh_after_add),
+                                        ),
+                                )
+                            }
                         }
                     }
                 }
         }
 
-        /** Reloads the list after a mutation; a failure keeps the current list and shows nothing. */
-        private suspend fun reloadSilently() {
+        /**
+         * Reloads the list after a successful set-default or remove (D-07: the server's answer, including its
+         * default). WR-07: it supersedes any older load, and a load started after it supersedes it, so an older
+         * answer can never put a removed card back. If the reload fails, the change the server already confirmed is
+         * shown anyway (as iOS does locally): a removed card disappears, a new default gets the badge. Another card
+         * is never promoted to default by the app (D-07).
+         */
+        private suspend fun reloadAfter(operation: CardOperation) {
+            loadJob?.cancel()
+            val generation = ++listGeneration
             try {
                 val cards = repository.list()
-                _uiState.update { it.copy(list = PaymentMethodsListState.Loaded(cards)) }
+                if (generation == listGeneration) {
+                    _uiState.update { it.copy(list = PaymentMethodsListState.Loaded(cards)) }
+                }
             } catch (e: ApiException) {
-                // Keep the previous list; the next open or retry reloads it.
+                if (generation == listGeneration) applyConfirmedChange(operation)
+            }
+        }
+
+        private fun applyConfirmedChange(operation: CardOperation) {
+            _uiState.update { state ->
+                val list = state.list as? PaymentMethodsListState.Loaded ?: return@update state
+                val id = operation.cardId
+                val cards =
+                    when (operation.kind) {
+                        CardOperationKind.Remove -> list.cards.filterNot { it.id == id }
+                        CardOperationKind.SetDefault -> list.cards.map { it.copy(isDefault = it.id == id) }
+                    }
+                state.copy(list = PaymentMethodsListState.Loaded(cards))
             }
         }
 
@@ -107,7 +153,7 @@ class PaymentMethodsViewModel
             viewModelScope.launch {
                 try {
                     call()
-                    reloadSilently()
+                    reloadAfter(operation)
                     _uiState.update { it.copy(busy = null) }
                 } catch (e: ApiException) {
                     _uiState.update { state ->

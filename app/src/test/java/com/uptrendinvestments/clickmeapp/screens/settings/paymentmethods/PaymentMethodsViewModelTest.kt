@@ -211,19 +211,110 @@ class PaymentMethodsViewModelTest {
             assertNull(vm.uiState.value.busy)
         }
 
+    /** WR-07: the DELETE succeeded, so the removed card disappears even when the reload fails; nothing is promoted. */
     @Test
-    fun failedSilentReloadKeepsPreviousListWithoutDialog() =
+    fun failedReloadAfterRemoveDropsTheRemovedCardWithoutDialog() =
         runTest(main.testDispatcher) {
             val vm = vm()
             runCurrent()
             api.getPaymentMethodsHandler = { throw IOException("offline") }
 
+            vm.remove("pm_1")
+            runCurrent()
+
+            assertEquals(listOf(master), vm.cards())
+            assertEquals(false, vm.cards().single().isDefault)
+            assertNull(vm.uiState.value.dialog)
+            assertNull(vm.uiState.value.busy)
+        }
+
+    @Test
+    fun failedReloadAfterSetDefaultMovesTheBadgeToTheConfirmedCard() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            api.getPaymentMethodsHandler = { throw IOException("offline") }
+
+            vm.setDefault("pm_2")
+            runCurrent()
+
+            assertEquals(listOf(visa.copy(isDefault = false), master.copy(isDefault = true)), vm.cards())
+            assertNull(vm.uiState.value.dialog)
+            assertNull(vm.uiState.value.busy)
+        }
+
+    /** WR-07: an add-card reload still in flight cannot put a card back after the post-delete reload. */
+    @Test
+    fun anOlderLoadCannotOverwriteThePostDeleteReload() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            val olderLoad = CompletableDeferred<PaymentMethodsData>()
+            api.getPaymentMethodsHandler = {
+                if (api.getPaymentMethodsCalls == 2) olderLoad.await() else PaymentMethodsData(listOf(visa))
+            }
+            vm.addCard()
+            runCurrent()
+            vm.onAddCardLaunched()
+            vm.onAddCardResult(SheetOutcome.Completed)
+            runCurrent()
+
             vm.remove("pm_2")
+            runCurrent()
+            assertEquals(listOf(visa), vm.cards())
+
+            olderLoad.complete(PaymentMethodsData(listOf(visa, master)))
+            runCurrent()
+            assertEquals(listOf(visa), vm.cards())
+        }
+
+    @Test
+    fun aSlowPostDeleteReloadCannotOverwriteANewerLoad() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            val slowReload = CompletableDeferred<PaymentMethodsData>()
+            val added = PaymentMethodItem("pm_3", "amex", "0005", 1, 2030, isDefault = false)
+            api.getPaymentMethodsHandler = {
+                if (api.getPaymentMethodsCalls == 2) slowReload.await() else PaymentMethodsData(listOf(visa, added))
+            }
+            vm.remove("pm_2")
+            runCurrent()
+            vm.addCard()
+            runCurrent()
+            vm.onAddCardLaunched()
+            vm.onAddCardResult(SheetOutcome.Completed)
+            runCurrent()
+            assertEquals(listOf(visa, added), vm.cards())
+
+            slowReload.complete(PaymentMethodsData(listOf(visa)))
+            runCurrent()
+            assertEquals(listOf(visa, added), vm.cards())
+            assertNull(vm.uiState.value.busy)
+        }
+
+    @Test
+    fun failedReloadAfterAddingACardSaysTheCardWasSaved() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            api.getPaymentMethodsHandler = { throw IOException("offline") }
+
+            vm.addCard()
+            runCurrent()
+            vm.onAddCardLaunched()
+            vm.onAddCardResult(SheetOutcome.Completed)
             runCurrent()
 
             assertEquals(listOf(visa, master), vm.cards())
-            assertNull(vm.uiState.value.dialog)
-            assertNull(vm.uiState.value.busy)
+            assertEquals(
+                PaymentMethodsDialog(
+                    R.string.payment_methods_error_load_heading,
+                    FieldError.Res(R.string.payment_methods_error_refresh_after_add),
+                ),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(false, vm.uiState.value.isAddingCard)
         }
 
     @Test

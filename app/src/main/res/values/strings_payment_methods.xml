@@ -15,6 +15,8 @@
     <string name="payment_methods_error_add_title">Couldn\'t add card</string>
     <string name="payment_methods_error_update_title">Couldn\'t update</string>
     <string name="payment_methods_error_remove_title">Couldn\'t remove</string>
+    <!-- WR-07: shown under payment_methods_error_load_heading when the reload after adding a card fails. -->
+    <string name="payment_methods_error_refresh_after_add">Your card was saved, but the list couldn\'t be refreshed. Open Payment Methods again to see it.</string>
 
     <string name="payment_methods_remove_title">Remove this card?</string>
     <string name="payment_methods_remove_message">%1$s •••• %2$s will no longer be available at checkout.</string>
