@@ -98,7 +98,12 @@ fun HomeClientScreen(
                                 hiltViewModel<MakeABookingViewModel, MakeABookingViewModel.Factory>(
                                     creationCallback = { it.create(key) },
                                 )
-                            MakeABookingScreen(viewModel = bookingViewModel, onBack = onBack, onBooked = onBooked)
+                            MakeABookingScreen(
+                                viewModel = bookingViewModel,
+                                onBack = onBack,
+                                onBooked = onBooked,
+                                onOpenPaymentMethods = {},
+                            )
                         },
                         requestSent = { key, onBack, onViewBookings, onBackToHome ->
                             val sentViewModel =

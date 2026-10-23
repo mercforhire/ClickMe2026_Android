@@ -414,7 +414,6 @@ class MakeABookingScreenTest {
                         onNotesChange = {},
                         onBook = {},
                         onOpenPaymentMethods = {},
-                    onOpenPaymentMethods = {},
                         onDismissError = {},
                         timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     )
