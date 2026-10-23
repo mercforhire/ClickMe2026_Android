@@ -560,20 +560,25 @@ enum class PaymentMethodsAvailability { Unknown, None, Available }   // load fai
 | A10 | The Make a Booking nav entry receives ON_RESUME when Payment Methods is popped (Nav3 lifecycle decorator) | Pitfall 9 | Card list would not refresh on return; fall back to a nav-result or `onCleared`-style signal |
 | A11 | `com.stripe:paymentsheet` coordinates are legitimate (slopcheck did not run) | Package Legitimacy | Negligible: first-party, already building |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Backend Stripe mode and the right test key (D-01, D-02).**
    - What we know: dev key and backend account differ; backend secret key is for the `51U8OTJ…` account.
    - What's unclear: test vs live mode; the correct `pk_test_…`.
    - Recommendation: early non-blocking `checkpoint:human-action`; code and unit tests proceed regardless (D-03).
+   - **RESOLVED:** deferred by D-03; non-blocking checkpoint in plan 07-05.
 
 2. **Long-lead Request Sent copy.** The lifecycle card says "A hold is placed on your card" and step 1 done, which is wrong for a > 6 day booking (card saved, charged ~T-24h). iOS has the same gap. UI-SPEC Open Item 3 says port iOS as is. Recommendation: port, log it for the iOS side.
+   - **RESOLVED:** ported as-is from iOS (07-08); logged as an iOS follow-up in 07-14.
 
 3. **Misleading `SLOT_UNAVAILABLE` after an ambiguous confirm timeout (Pitfall 11a).** Locked copy (D-16) does not tell the user to check My Bookings. Recommendation: implement as locked; add a note to the manual-check list; consider adding "check My Bookings" copy later.
+   - **RESOLVED:** superseded by D-19 (user decision 2026-10-22); implemented in 07-03 / 07-10.
 
 4. **Paid-path recovery record.** Recommendation in Pitfall 11b (reuse `CompletedBookingStore`). Planner decides whether this is in scope for Phase 7 or a documented gap.
+   - **RESOLVED:** in scope; 07-10 saves a successful paid confirm to `CompletedBookingStore` under a recovery id.
 
 5. **Active-call guard on Add Payment Method** is Phase 9's (UI-SPEC Open Item 4). No action.
+   - **RESOLVED:** out of scope for Phase 7; owned by Phase 9.
 
 ## Environment Availability
 
