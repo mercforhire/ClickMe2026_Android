@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Reschedule response card, dialogs and errors (Phase 8, BOOK-09). -->
+    <string name="reschedule_title_expert">Expert proposed a new time</string>
+    <string name="reschedule_title_client">You proposed a new time</string>
+    <string name="reschedule_current_time">Current time</string>
+    <string name="reschedule_proposed_time">Proposed time</string>
+    <string name="reschedule_note_expert">Expert\'s message</string>
+    <string name="reschedule_note_client">Your message</string>
+    <string name="reschedule_awaiting_expert">Awaiting expert\'s response</string>
+    <string name="reschedule_accept">Accept</string>
+    <string name="reschedule_decline">Decline</string>
+    <string name="reschedule_accepting">Accepting</string>
+    <string name="reschedule_declining">Declining</string>
+    <string name="reschedule_accept_dialog_title">Accept the proposed reschedule?</string>
+    <string name="reschedule_accept_dialog_message">The session will move to the new time the expert proposed.</string>
+    <string name="reschedule_accept_dialog_disclosure">Your card hold will be released. Because the new time is more than a few days out, we\'ll release the current payment hold on your card and instead charge it automatically about 24 hours before your new session time. You won\'t be charged today.</string>
+    <string name="reschedule_accept_dialog_charges_soon">If your new session is coming up soon, your card may be charged sooner than 24 hours from now.</string>
+    <string name="reschedule_dialog_cancel">Cancel</string>
+    <string name="reschedule_decline_dialog_title">Decline reschedule</string>
+    <string name="reschedule_decline_dialog_message">The booking will revert to its original time.</string>
+    <string name="reschedule_decline_reason_label">Optional reason</string>
+    <string name="reschedule_decline_reason_counter">%1$d/500</string>
+    <string name="reschedule_decline_keep">Keep</string>
+    <string name="reschedule_payment_needed_title">Add a payment method</string>
+    <string name="reschedule_payment_needed_message">Please add a payment method before accepting this reschedule.</string>
+    <string name="reschedule_card_unusable_message">The card on file can\'t be used for this reschedule. Please add a new payment method and try again.</string>
+    <string name="reschedule_add_payment_method">Add a Payment Method</string>
+    <string name="reschedule_not_now">Not now</string>
+    <string name="reschedule_accepted">Reschedule accepted</string>
+    <string name="reschedule_declined">Reschedule declined</string>
+    <string name="reschedule_error_title">Couldn\'t update booking</string>
+    <string name="reschedule_error_forbidden">You can\'t respond to this reschedule.</string>
+    <string name="reschedule_error_not_pending">This reschedule is no longer pending.</string>
+    <string name="reschedule_error_time_passed">The proposed time has already passed. Ask the expert to propose a new time.</string>
+    <string name="reschedule_error_expert_unavailable">The expert is no longer available at the proposed time.</string>
+    <string name="reschedule_error_cards_unavailable">Couldn\'t check your saved payment methods. Please try again.</string>
+    <string name="reschedule_error_not_found">This booking could not be found.</string>
+    <!-- Android-only: used when RESCHEDULE_OUTSIDE_AUTH_WINDOW carries no server message. -->
+    <string name="reschedule_error_outside_window">This new time can\'t be accepted with your current payment. You can cancel and book the new time instead.</string>
+</resources>

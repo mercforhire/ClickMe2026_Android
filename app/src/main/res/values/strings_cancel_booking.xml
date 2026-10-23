@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cancel Booking flow (Phase 8, BOOK-07). -->
+    <string name="cancel_booking_title">Cancel Booking</string>
+    <string name="cancel_booking_load_error_title">Couldn\'t load booking</string>
+    <string name="cancel_booking_headline">Why are you cancelling?</string>
+    <string name="cancel_booking_subhead">We\'re sorry to see you go. Please let us know the reason so we can improve our service.</string>
+    <string name="cancel_booking_reason_change_of_plans">Change of plans</string>
+    <string name="cancel_booking_reason_found_another_expert">Found another expert</string>
+    <string name="cancel_booking_reason_schedule_conflict">Schedule conflict</string>
+    <string name="cancel_booking_reason_personal_emergency">Personal emergency</string>
+    <string name="cancel_booking_reason_other">Other</string>
+    <string name="cancel_booking_comment_label">Additional Comments (Optional)</string>
+    <string name="cancel_booking_comment_placeholder">Help us understand better...</string>
+    <string name="cancel_booking_comment_counter">%1$d/450</string>
+    <string name="cancel_booking_continue">Continue</string>
+    <string name="cancel_booking_confirm_title">Confirm Cancellation?</string>
+    <string name="cancel_booking_confirm_body">Please review the booking details below before confirming.</string>
+    <string name="cancel_booking_keep">Keep Booking</string>
+    <string name="cancel_booking_confirm">Confirm Cancellation</string>
+    <string name="cancel_booking_cancelling">Cancelling</string>
+    <string name="cancel_booking_refund_full">Full refund: %1$s</string>
+    <string name="cancel_booking_refund_none_24h">No refund — cancelling within 24 hours of the session</string>
+    <string name="cancel_booking_refund_hold">The hold on your card will be released</string>
+    <string name="cancel_booking_refund_policy">Any refund follows our cancellation policy.</string>
+    <string name="cancel_booking_refund_note">Refunds typically appear in your account within 3–5 business days.</string>
+    <string name="cancel_booking_date_time">%1$s, %2$s</string>
+    <string name="cancel_booking_result_cancelled">Booking cancelled</string>
+    <string name="cancel_booking_result_refunded">Booking cancelled. %1$s will be refunded</string>
+    <string name="cancel_booking_error_title">Couldn\'t cancel booking</string>
+    <string name="cancel_booking_error_not_found">This booking could not be found.</string>
+    <string name="cancel_booking_error_not_cancellable">This booking can no longer be cancelled.</string>
+</resources>

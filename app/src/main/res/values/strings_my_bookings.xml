@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- My Bookings (Phase 8, BOOK-07). -->
+    <string name="my_bookings_title">My Bookings</string>
+    <string name="my_bookings_tab_upcoming">Upcoming</string>
+    <string name="my_bookings_tab_past">Past</string>
+    <string name="my_bookings_load_error_title">Couldn\'t load bookings</string>
+    <string name="my_bookings_empty_upcoming_title">No Bookings Yet!</string>
+    <string name="my_bookings_empty_upcoming_body">Start your learning journey by finding an expert that suits your needs.</string>
+    <string name="my_bookings_empty_upcoming_action">Explore Experts</string>
+    <string name="my_bookings_empty_past_title">No past bookings yet</string>
+    <string name="my_bookings_empty_past_body">Completed, cancelled and missed sessions will show up here.</string>
+    <string name="my_bookings_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
+    <string name="my_bookings_view_details">View booking details</string>
+    <string name="my_bookings_view_summary">View summary</string>
+    <string name="my_bookings_badge_expert_proposed">Expert proposed a new time · Tap to review</string>
+    <string name="my_bookings_badge_client_proposed">Reschedule pending expert\'s response</string>
+    <string name="my_bookings_pending_banner">Waiting for expert to accept</string>
+    <string name="my_bookings_past_topic_label">Topic:</string>
+    <string name="my_bookings_date_time">%1$s, %2$s</string>
+    <string name="booking_status_completed">Completed</string>
+    <string name="booking_status_cancelled">Cancelled</string>
+    <string name="booking_status_missed">Missed</string>
+    <string name="booking_status_confirmed">Confirmed</string>
+    <string name="booking_status_pending_approval">Pending approval</string>
+    <string name="booking_status_new_time_proposed">New time proposed</string>
+    <string name="booking_status_in_progress">In progress</string>
+</resources>

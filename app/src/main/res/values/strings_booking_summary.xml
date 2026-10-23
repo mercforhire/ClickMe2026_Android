@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Booking Summary for past bookings (Phase 8, BOOK-07). -->
+    <string name="booking_summary_title">Session Summary</string>
+    <string name="booking_summary_load_error_title">Couldn\'t load session</string>
+    <string name="booking_summary_topic">Topic</string>
+    <string name="booking_summary_price_paid">Price paid</string>
+    <string name="booking_summary_session_fee">Session fee</string>
+    <string name="booking_summary_refunded">Refunded</string>
+    <string name="booking_summary_book_again">Book Again</string>
+    <string name="booking_summary_date_time">%1$s, %2$s</string>
+</resources>
