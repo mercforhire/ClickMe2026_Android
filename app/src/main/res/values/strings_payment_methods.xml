@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="payment_methods_title">Payment Methods</string>
+    <string name="payment_methods_saved_cards">Saved cards</string>
+    <string name="payment_methods_add">Add Payment Method</string>
+    <string name="payment_methods_trust">Cards are securely stored by Stripe. ClickMe never sees your full card number.</string>
+
+    <string name="payment_methods_loading">Loading payment methods…</string>
+    <string name="payment_methods_loading_a11y">Loading</string>
+
+    <string name="payment_methods_empty_heading">No saved cards yet</string>
+    <string name="payment_methods_empty_body">Add your first card to book faster next time.</string>
+
+    <string name="payment_methods_error_load_heading">Couldn\'t load payment methods</string>
+    <string name="payment_methods_error_add_title">Couldn\'t add card</string>
+    <string name="payment_methods_error_update_title">Couldn\'t update</string>
+    <string name="payment_methods_error_remove_title">Couldn\'t remove</string>
+
+    <string name="payment_methods_remove_title">Remove this card?</string>
+    <string name="payment_methods_remove_message">%1$s •••• %2$s will no longer be available at checkout.</string>
+    <string name="payment_methods_remove_confirm">Remove</string>
+    <string name="payment_methods_remove_cancel">Cancel</string>
+
+    <string name="payment_methods_menu_set_default">Set as default</string>
+    <string name="payment_methods_menu_remove">Remove</string>
+    <string name="payment_methods_more_options">More options for %1$s •••• %2$s</string>
+
+    <string name="payment_methods_default_badge">Default</string>
+    <string name="payment_methods_card_name">%1$s •••• %2$s</string>
+    <string name="payment_methods_expires">Expires %1$s/%2$s</string>
+
+    <string name="payment_methods_row_a11y">%1$s ending %2$s, expires %3$s/%4$s</string>
+    <string name="payment_methods_row_a11y_default">%1$s ending %2$s, expires %3$s/%4$s, default card</string>
+
+    <string name="payment_methods_state_updating">Updating</string>
+    <string name="payment_methods_state_removing">Removing</string>
+    <string name="payment_methods_state_adding">Adding</string>
+
+    <string name="payment_methods_sheet_save">Save card</string>
+
+    <string name="payment_methods_brand_visa">Visa</string>
+    <string name="payment_methods_brand_mastercard">Mastercard</string>
+    <string name="payment_methods_brand_amex">American Express</string>
+    <string name="payment_methods_brand_discover">Discover</string>
+    <string name="payment_methods_brand_diners">Diners Club</string>
+    <string name="payment_methods_brand_jcb">JCB</string>
+    <string name="payment_methods_brand_unionpay">UnionPay</string>
+    <string name="payment_methods_brand_card">Card</string>
+</resources>
