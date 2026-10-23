@@ -746,7 +746,8 @@ class ResponseDecodingTest {
     @Test
     fun paymentMethodsEmptyListDecodes() {
         val json = """{"status":"success","data":{"payment_methods":[]}}"""
-        assertTrue(envelope(PaymentMethodsData::class.java).fromJson(json)!!.data.paymentMethods.isEmpty())
+        val data = envelope(PaymentMethodsData::class.java).fromJson(json)!!.data
+        assertTrue(data.paymentMethods.isEmpty())
     }
 
     @Test

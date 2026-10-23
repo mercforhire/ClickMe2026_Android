@@ -733,7 +733,8 @@ class ClickMeApiTest {
             val request = server.takeRequest()
             assertEquals("POST", request.method)
             assertEquals("/api/v1/bookings/confirm", request.url.encodedPath)
-            assertFalse(request.body?.utf8().orEmpty().contains("booking_attempt_id"))
+            val sent = request.body?.utf8().orEmpty()
+            assertFalse(sent, sent.contains("booking_attempt_id"))
             assertEquals("b9", data.bookingId)
         }
 
