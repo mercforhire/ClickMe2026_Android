@@ -385,8 +385,42 @@ Plans:
   3. The client cancels with a reason after seeing the refund preview. The booking moves to Past as cancelled, and the iOS expert sees the cancellation.
   4. When the iOS expert proposes a reschedule, the Android client accepts or declines it from Booking Summary, and the booking leaves `pending_reschedule`.
 
-**Planning notes:** OPEN ITEM to settle in planning: should Android collect and send the cancellation comment? iOS collects it but never sends it. Check the `cancelClientBooking` contract in `backend-reference/` first. Starting a reschedule is deferred (DEF-1). Only responding to one is in scope.
-**Plans:** TBD
+**Planning notes:** The cancellation-comment open item is settled (D-05): the comment is sent inside `reason` as "label: comment", because `cancelSchema` is `{reason?: string<=500}.strict()`. My Bookings loads both buckets on every load (the rejoin rule needs `type=past`). Starting a reschedule is deferred (DEF-1). Only responding to one is in scope.
+**Plans:** 15 plans
+Plans:
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Network contract: reschedule / auth-expiry / join DTO fields, cancel and reschedule-response DTOs, 3 strict endpoints, repository methods, FakeClickMeApi and FakeRealtimeConnection.emit, shared fixtures (BOOK-05, BOOK-06, BOOK-07, BOOK-09)
+- [ ] 08-02-PLAN.md — Pure units: status / payment-pill / cancellable tables, two-bucket rejoin-rule lists, BookingsLaunchRequest one-shot holder (BOOK-05, BOOK-06, BOOK-08)
+- [ ] 08-03-PLAN.md — Pure cancellation units: reason labels and the D-05 reason string, D-06 refund preview, Money.formatMajor (BOOK-07)
+- [ ] 08-04-PLAN.md — Copy contract (5 string files), shared reschedule UI types, reschedule and cancel error mappers (BOOK-07, BOOK-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-05-PLAN.md — Reschedule responder (D-02 one-shot card recovery, D-04 reason), shared controller, disclosure and proposal model (BOOK-09)
+- [ ] 08-06-PLAN.md — Shared components: RescheduleResponseCard and dialogs, BookingStatusBadge, DestructiveOutlinedButton, formatProposalSlot (BOOK-05, BOOK-08, BOOK-09)
+- [ ] 08-07-PLAN.md — My Bookings ViewModel: combined two-bucket load, pull-to-refresh, D-10 triggers with coalescing, post-cancel launch, saved tab (BOOK-05)
+- [ ] 08-08-PLAN.md — Cancellation ViewModel: load, two steps with saved state, single-flight cancel, D-07 result hand-off, errors (BOOK-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 08-09-PLAN.md — My Bookings screen: tabs, cards, skeleton / empty / error, pull-to-refresh, snackbars, lifecycle reloads (BOOK-05)
+- [ ] 08-10-PLAN.md — Upcoming Booking Details key, display model and ViewModel (quiet reloads, own-id realtime, reschedule delegation) (BOOK-06, BOOK-09)
+- [ ] 08-11-PLAN.md — Cancel Booking screen: reason and confirm steps, refund line, Back rules, in-flight lock (BOOK-07)
+- [ ] 08-12-PLAN.md — Booking Summary: key, model, ViewModel, screen with badge, price labels, Book Again and the reschedule card (BOOK-08, BOOK-09)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 08-13-PLAN.md — Upcoming Booking Details screen: status row, cards, payment pill, pending banner or inert join card, Cancel Booking, reschedule card (BOOK-06, BOOK-09)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 08-14-PLAN.md — Shell wiring: My Bookings as the Bookings root, 3 routes with hidden bottom bar, Today's Sessions tap, post-cancel reset, Payment Methods, Book Again (BOOK-05..BOOK-09)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 08-15-PLAN.md — Phase gate (both flavors + R8), scope audit, VALIDATION sign-off, STATE follow-ups, hand-offs and deferred device checks (all)
+
 **UI hint**: yes
 
 ### Phase 9: Voice Call
