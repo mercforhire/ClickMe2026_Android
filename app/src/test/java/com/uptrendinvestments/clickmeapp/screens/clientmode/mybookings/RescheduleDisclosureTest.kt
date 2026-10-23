@@ -81,7 +81,8 @@ class RescheduleDisclosureTest {
 
     @Test
     fun client_or_unknown_initiator_is_not_actionable() {
-        val client = bookingDetail(status = STATUS_PENDING_RESCHEDULE, reschedule = rescheduleDto(initiatedBy = "client"))
+        val client =
+            bookingDetail(status = STATUS_PENDING_RESCHEDULE, reschedule = rescheduleDto(initiatedBy = "client"))
         val unknown = bookingDetail(status = STATUS_PENDING_RESCHEDULE, reschedule = rescheduleDto(initiatedBy = null))
         assertFalse(client.toRescheduleProposalUi(now)!!.initiatedByExpert)
         assertFalse(unknown.toRescheduleProposalUi(now)!!.initiatedByExpert)
