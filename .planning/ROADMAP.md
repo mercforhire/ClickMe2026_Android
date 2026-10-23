@@ -336,7 +336,7 @@ Plans:
   5. Paid-flow errors (the ~15 `handlePaidFlowError` codes) show the right message or next action. Prices display correctly in minor units, including JPY with no decimals.
 
 **Planning notes:** Reuse what the Phase 2 Stripe spike found. `payment-intent` amounts are the one exception to minor units. Never cut.
-**Plans:** 4/14 plans executed
+**Plans:** 8/14 plans executed
 Plans:
 **Wave 1**
 
@@ -347,10 +347,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 07-05-PLAN.md — D-01/D-02 non-blocking human-action: backend Stripe mode and the matching pk_test key, dev key swap or recorded outcome (PAY-02, PAY-03, PAY-05)
-- [ ] 07-06-PLAN.md — Payment Methods key, state, strings and ViewModel: busy rule, server-truth reloads, add-card flow, setup-intent reuse (PAY-01, PAY-02)
-- [ ] 07-07-PLAN.md — Booking gate: saved-card load, CTA derivation (Checking / Add a Payment Method / Book Now), silent refresh, first-topic default, paid note removed (PAY-03, PAY-04, PAY-07)
-- [ ] 07-08-PLAN.md — Request Sent paid lifecycle card (hold placed) with the session time (PAY-07)
+- [x] 07-05-PLAN.md — D-01/D-02 non-blocking human-action: backend Stripe mode and the matching pk_test key, dev key swap or recorded outcome (PAY-02, PAY-03, PAY-05)
+- [x] 07-06-PLAN.md — Payment Methods key, state, strings and ViewModel: busy rule, server-truth reloads, add-card flow, setup-intent reuse (PAY-01, PAY-02)
+- [x] 07-07-PLAN.md — Booking gate: saved-card load, CTA derivation (Checking / Add a Payment Method / Book Now), silent refresh, first-topic default, paid note removed (PAY-03, PAY-04, PAY-07)
+- [x] 07-08-PLAN.md — Request Sent paid lifecycle card (hold placed) with the session time (PAY-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -548,7 +548,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 4/14 | In Progress|  |
+| 7. Payment Methods & Paid Booking | 8/14 | In Progress|  |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
