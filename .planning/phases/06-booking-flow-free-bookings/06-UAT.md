@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 06-booking-flow-free-bookings
 source: [06-01-SUMMARY.md, 06-02-SUMMARY.md, 06-03-SUMMARY.md, 06-04-SUMMARY.md, 06-05-SUMMARY.md, 06-06-SUMMARY.md, 06-07-SUMMARY.md, 06-08-SUMMARY.md, 06-09-SUMMARY.md, 06-10-SUMMARY.md, 06-11-SUMMARY.md, 06-12-SUMMARY.md, 06-13-SUMMARY.md, 06-14-SUMMARY.md, 06-VERIFICATION.md, 06-REVIEW-FIX.md]
 started: 2026-10-22T22:00:00Z
-updated: 2026-10-22T23:10:00Z
+updated: 2026-10-22T23:40:00Z
 ---
 
 ## Current Test
 
-[testing paused — 1 items outstanding]
+[testing complete]
 
 ## Tests
 
@@ -31,6 +31,7 @@ result: pass
 ### 5. Cross-timezone slots near midnight (SC-2)
 expected: With the iOS expert set to a far zone (e.g. Pacific/Auckland) and slots near midnight at a month edge, each slot appears under the correct local date, with no duplicates across neighbouring months.
 result: skipped
+reason: "Difficult to set up a far-zone expert; low priority since most users are in Canada and the US. Covered by golden-data unit tests (BookingSlotsTest)."
 
 ### 6. Meeting type and notes keyboard (CR-01 re-check)
 expected: Meeting type can be switched. Tapping Notes opens the keyboard and it STAYS open while you type (the CR-01 fix). The counter counts up to 500 and stops there. The keyboard doesn't cover Book Now. Swiping the form with your finger dismisses the keyboard.
