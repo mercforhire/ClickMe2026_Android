@@ -30,7 +30,7 @@ Full checkable list with IDs: `.planning/REQUIREMENTS.md` (99 v1 requirements).
 - [x] Authentication, signup, onboarding and mode switch (AUTH-01 to AUTH-02, SIGN-01 to SIGN-05, ONB-01 to ONB-02), Phases 3–4
 - [x] Realtime socket plumbing (RT-01 to RT-03), Phase 3
 - [ ] Client booking: calendar and slot picker, free booking, My Bookings, details, cancellation, responding to reschedules (BOOK-01 to BOOK-09)
-- [ ] Payments: saved cards, short-lead, long-lead and 3DS paid paths (PAY-01 to PAY-07)
+- [ ] Payments: saved cards, short-lead, long-lead and 3DS paid paths (PAY-01 to PAY-07). Code complete in Phase 7 (2026-10-23; 1556 unit tests; WR-02..07 fixed). Not validated: every card device check is blocked because the only backend runs Stripe in live mode and the dev `pk_test_` key is a sandbox. CR-01 (3DS reachability under off_session + error_on_requires_action) is an open cross-platform design risk. See 07-HUMAN-UAT.md.
 - [ ] Voice call: Agora in a microphone foreground service, overlay/pill, rejoin semantics (CALL-01 to CALL-08)
 - [ ] Expert core: topics, availability, dashboard, requests, expert bookings (EXP-01 to EXP-09)
 - [ ] Chat, report/block/unblock (CHAT-01 to CHAT-05, SAFE-01 to SAFE-04)
@@ -160,4 +160,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-23 after Phase 6 completion*
+*Last updated: 2026-10-23 after Phase 7 completion*
