@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Upcoming Booking Details (Phase 8, BOOK-07). -->
+    <string name="upcoming_booking_title">Upcoming Booking</string>
+    <string name="upcoming_booking_load_error_title">Couldn\'t load booking</string>
+    <string name="upcoming_booking_id">ID: %1$s</string>
+    <string name="upcoming_booking_session_topic">Session topic</string>
+    <string name="upcoming_booking_session_fee">Session fee</string>
+    <string name="upcoming_booking_date">Date</string>
+    <string name="upcoming_booking_time">Time</string>
+    <string name="upcoming_booking_expert_timezone">Expert timezone: %1$s (%2$s)</string>
+    <string name="upcoming_booking_payment_held">Card hold placed</string>
+    <string name="upcoming_booking_payment_paid">Paid</string>
+    <string name="upcoming_booking_payment_refunded">Refunded</string>
+    <string name="upcoming_booking_pending_title">Waiting for expert to accept</string>
+    <string name="upcoming_booking_pending_body">You\'ll get a notification once %1$s confirms this session. The Join Call option unlocks then.</string>
+    <string name="upcoming_booking_pending_expert_fallback">the expert</string>
+    <string name="upcoming_booking_meeting_link">Meeting link</string>
+    <string name="upcoming_booking_meeting_link_unavailable">Not available yet</string>
+    <string name="upcoming_booking_copy_link">Copy meeting link</string>
+    <string name="upcoming_booking_link_copied">Copied</string>
+    <string name="upcoming_booking_your_message">Your message</string>
+    <string name="upcoming_booking_cancel">Cancel Booking</string>
+</resources>
