@@ -5,15 +5,23 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -21,21 +29,29 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
+import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.BOOK_NOW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.NOTES_FIELD_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.PAYMENT_INFO_LINK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.TOPIC_PICKER_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.stripe.ChallengeOutcome
+import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeStripePaymentMethodReader
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -96,6 +112,7 @@ class MakeABookingScreenTest {
         dialogError: FieldError? = null,
         dialogTitle: Int = R.string.make_a_booking_error_title,
         paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
+        dialogPaymentReference: String? = null,
     ): MakeABookingUiState {
         val topics =
             listOf(
@@ -127,6 +144,7 @@ class MakeABookingScreenTest {
             paymentMethods = paymentMethods,
             dialogError = dialogError,
             dialogTitle = dialogTitle,
+            dialogPaymentReference = dialogPaymentReference,
         )
     }
 
@@ -474,9 +492,31 @@ class MakeABookingScreenTest {
     /** Whether the screen is in composition; flipping it off and on simulates covering and uncovering the entry. */
     private var screenShown by mutableStateOf(true)
 
+    /** Stripe requests the fake paid host received, in order. The host consumes each one like the real host does. */
+    private val hostRequests = mutableListOf<StripeRequest>()
+    private val hostAccounts = mutableListOf<String?>()
+    private var navBacks = 0
+    private var dispatcher: OnBackPressedDispatcher? = null
+
+    /** Stands in for [PaidFlowStripeHost]: records every request, then consumes it (consume-before-launch). */
+    @Composable
+    private fun RecordingHost(
+        state: MakeABookingUiState,
+        viewModel: MakeABookingViewModel,
+    ) {
+        LaunchedEffect(state.stripeRequest) {
+            val request = state.stripeRequest ?: return@LaunchedEffect
+            hostRequests += request
+            hostAccounts += state.challengeAccount
+            viewModel.onStripeRequestLaunched()
+        }
+    }
+
     private fun setScreen(viewModel: MakeABookingViewModel) {
         composeRule.setContent {
             ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
                 if (screenShown) {
                     MakeABookingScreen(
                         viewModel = viewModel,
@@ -484,6 +524,7 @@ class MakeABookingScreenTest {
                         onBooked = { booked += it },
                         onOpenPaymentMethods = { openPaymentMethodsCount++ },
                         timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                        paidFlowHost = { state -> RecordingHost(state, viewModel) },
                     )
                 }
             }
@@ -642,5 +683,184 @@ class MakeABookingScreenTest {
         assertEquals(0, api.paymentIntentCalls)
         assertEquals(0, api.requestBookingCalls)
         assertTrue(booked.isEmpty())
+    }
+
+    // ---- 07-13 Task 1: the paid host slot, driven by a fake host ----
+
+    private fun requiresAction() =
+        ApiException.Http(
+            status = 402,
+            code = ErrorCode.PaymentRequiresAction,
+            rawCode = ErrorCode.PaymentRequiresAction.wire,
+            serverMessage = "Authentication required",
+            fieldErrors = emptyList(),
+            detail = mapOf("client_secret" to "pi_1_secret_x", "stripe_account" to "acct_1"),
+        )
+
+    private fun paidViewModel(): MakeABookingViewModel {
+        paidFixture(api)
+        val vm = newViewModel(api, reader = FakeStripePaymentMethodReader().apply { result = "pm_new" })
+        setScreen(vm)
+        vm.selectTopic("t2")
+        composeRule.waitForIdle()
+        return vm
+    }
+
+    @Test
+    fun paidBookNowHandsExactlyOneSheetRequestToTheHostAndLocksTheScreen() {
+        val vm = paidViewModel()
+
+        pickSlotAndBook()
+
+        assertEquals(1, hostRequests.count { it is StripeRequest.PresentSheet })
+        assertEquals(1, hostRequests.size)
+        assertNull(vm.uiState.value.stripeRequest)
+        assertEquals(PaidStep.CollectingPaymentMethod, vm.uiState.value.paidStep)
+        composeRule
+            .onNodeWithTag(BOOK_NOW_TAG)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Booking"))
+        composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        composeRule.waitForIdle()
+        assertEquals(0, navBacks)
+    }
+
+    @Test
+    fun aCanceledSheetShowsNoDialogAndBookNowIsEnabledAgain() {
+        val vm = paidViewModel()
+        pickSlotAndBook()
+
+        vm.onSheetOutcome(SheetOutcome.Canceled)
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Couldn't book").assertDoesNotExist()
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithText("Book Now").assertExists()
+        assertEquals(slot20, vm.uiState.value.selectedSlotStart)
+        assertEquals(PaidStep.Idle, vm.uiState.value.paidStep)
+    }
+
+    @Test
+    fun a402HandsTheChallengeToTheHostWithTheConnectedAccountAndBooksOnCompletion() {
+        val vm = paidViewModel()
+        api.confirmBookingHandler = {
+            if (api.confirmBookingCalls == 1) throw requiresAction() else ConfirmBookingData("b9")
+        }
+        pickSlotAndBook()
+
+        vm.onSheetOutcome(SheetOutcome.Completed)
+        composeRule.waitForIdle()
+
+        val challenge = hostRequests.last()
+        assertEquals(StripeRequest.RunChallenge("pi_1_secret_x", "acct_1"), challenge)
+        assertEquals("acct_1", hostAccounts.last())
+        assertTrue(booked.isEmpty())
+
+        vm.onChallengeOutcome(ChallengeOutcome.Completed)
+        composeRule.waitForIdle()
+
+        assertEquals(listOf("b9"), booked)
+        assertEquals(2, api.confirmBookingCalls)
+    }
+
+    @Test
+    fun recompositionNeverDeliversAConsumedRequestToTheHostAgain() {
+        val vm = paidViewModel()
+        pickSlotAndBook()
+        vm.onSheetOutcome(SheetOutcome.Canceled)
+        composeRule.waitForIdle()
+        assertEquals(1, hostRequests.size)
+
+        vm.onNotesChange("force a state change")
+        composeRule.waitForIdle()
+        screenShown = false
+        composeRule.waitForIdle()
+        screenShown = true
+        composeRule.waitForIdle()
+
+        assertEquals(1, hostRequests.size)
+        assertNull(vm.uiState.value.stripeRequest)
+    }
+
+    // ---- 07-13 Task 2: the payment info link and sheet, and the payment reference in the dialog ----
+
+    private fun paymentInfoLinkTop(): Float =
+        composeRule
+            .onNodeWithTag(PAYMENT_INFO_LINK_TAG)
+            .fetchSemanticsNode()
+            .positionInRoot.y
+
+    @Test
+    fun paidTopicShowsThePaymentInfoLinkDirectlyAboveBookNow() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Available))
+
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo()
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).assertExists()
+        val linkTop = paymentInfoLinkTop()
+        val linkBottom =
+            composeRule
+                .onNodeWithTag(PAYMENT_INFO_LINK_TAG)
+                .fetchSemanticsNode()
+                .boundsInRoot.bottom
+        assertTrue("link above the CTA", linkTop < bookNowTop())
+        assertTrue("link directly above the CTA", linkBottom <= bookNowTop())
+        assertTrue("link below the Summary", linkTop > top("Summary"))
+    }
+
+    @Test
+    fun freeTopicHasNoPaymentInfoLink() {
+        setContent(loadedState(selectedTopicId = "t1"))
+
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun noTopicHasNoPaymentInfoLink() {
+        setContent(loadedState(selectedTopicId = ""))
+
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun theLinkOpensTheInfoSheetAndGotItClosesIt() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Available))
+        composeRule.onNodeWithText("What happens next").assertDoesNotExist()
+
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).performScrollTo().performClick()
+        composeRule.onNodeWithText("What happens next").assertExists()
+        // "Got it" is the sheet list's last item; scroll the sheet's list, not the form behind it.
+        composeRule
+            .onNode(hasScrollAction() and !hasTestTag(MAKE_A_BOOKING_SCROLL_TAG))
+            .performScrollToNode(hasText("Got it"))
+        composeRule.onNodeWithText("Got it").assertExists()
+
+        composeRule.onNodeWithText("Got it").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("What happens next").assertDoesNotExist()
+        composeRule.onNodeWithText("Got it").assertDoesNotExist()
+    }
+
+    @Test
+    fun aPaymentReferenceIsAppendedToTheDialogMessage() {
+        setContent(
+            loadedState(
+                dialogError = FieldError.Text("Boom"),
+                dialogPaymentReference = "pi_1",
+            ),
+        )
+
+        composeRule.onNodeWithText("Boom", substring = true).assertExists()
+        composeRule.onNodeWithText("Payment reference: pi_1", substring = true).assertExists()
+
+        composeRule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissCount)
+    }
+
+    @Test
+    fun withoutAReferenceTheDialogHasNoPaymentReferenceText() {
+        setContent(loadedState(dialogError = FieldError.Text("Boom")))
+
+        composeRule.onNodeWithText("Boom").assertExists()
+        composeRule.onNodeWithText("Payment reference", substring = true).assertDoesNotExist()
     }
 }

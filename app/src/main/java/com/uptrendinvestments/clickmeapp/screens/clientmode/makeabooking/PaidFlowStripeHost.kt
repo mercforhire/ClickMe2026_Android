@@ -1,0 +1,109 @@
+package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import com.stripe.android.payments.paymentlauncher.rememberPaymentLauncher
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.uptrendinvestments.clickmeapp.config.AppConfig
+import com.uptrendinvestments.clickmeapp.stripe.ChallengeOutcome
+import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
+import com.uptrendinvestments.clickmeapp.stripe.clickMeSheetConfiguration
+import com.uptrendinvestments.clickmeapp.stripe.rememberClickMePaymentSheetAppearance
+import com.uptrendinvestments.clickmeapp.stripe.shouldConfirmSelection
+import com.uptrendinvestments.clickmeapp.stripe.toChallengeOutcome
+import com.uptrendinvestments.clickmeapp.stripe.toSheetOutcome
+
+/** Holds the controller so the option callback, built before the controller exists, can confirm on it. */
+private class FlowControllerHolder {
+    var controller: PaymentSheet.FlowController? = null
+}
+
+/**
+ * The only place the paid booking flow touches the Stripe SDK. It turns the ViewModel's one-shot [StripeRequest]s
+ * into Stripe UI and reports what happened as SDK-free outcomes.
+ *
+ * - [StripeRequest.PresentSheet]: `PaymentSheet.FlowController` in setup mode (RESEARCH Pattern 2). The controller
+ *   is configured with the SetupIntent secret and the ClickMe configuration, then `presentPaymentOptions()` runs
+ *   from the configure callback (never during configuration). When the sheet closes, [shouldConfirmSelection]
+ *   decides whether `confirm()` runs: a dismissal reports [SheetOutcome.Canceled] even when a saved card is
+ *   preselected (D-18, unlike iOS), so a dismissal can never authorize a card.
+ * - [StripeRequest.RunChallenge]: `PaymentLauncher.handleNextActionForPaymentIntent` on the expert's connected
+ *   account (RESEARCH Pattern 3). The launcher is keyed by [challengeAccount], which the ViewModel keeps set until
+ *   the outcome arrives, so a rotation rebuilds the launcher with the same account. It is never the platform
+ *   account (D-15).
+ *
+ * Each request is consumed through [onRequestLaunched] before it is launched, so a rotation or recomposition cannot
+ * launch a second sheet or challenge (RESEARCH Pattern 1, correction 6). Results arrive through
+ * `rememberUpdatedState`, so a callback built before a rotation still reaches the current ViewModel.
+ *
+ * Path A: the app never confirms the booking PaymentIntent. The only client-side PaymentIntent call is
+ * `handleNextActionForPaymentIntent` after the server answered 402. Device-unproven (RESEARCH Pitfall 16); A3
+ * (`PaymentResult.Completed` for a `requires_capture` PaymentIntent) and A4 (FlowController state across rotation)
+ * are device checks. Secrets are never logged.
+ */
+@Composable
+fun PaidFlowStripeHost(
+    request: StripeRequest?,
+    paidStep: PaidStep,
+    challengeAccount: String?,
+    onRequestLaunched: () -> Unit,
+    onSheetOutcome: (SheetOutcome) -> Unit,
+    onChallengeOutcome: (ChallengeOutcome) -> Unit,
+) {
+    val latestStep by rememberUpdatedState(paidStep)
+    val latestSheet by rememberUpdatedState(onSheetOutcome)
+    val latestChallenge by rememberUpdatedState(onChallengeOutcome)
+    val appearance = rememberClickMePaymentSheetAppearance()
+
+    val holder = remember { FlowControllerHolder() }
+    val flowController =
+        remember {
+            PaymentSheet.FlowController.Builder(
+                resultCallback = { latestSheet(it.toSheetOutcome()) },
+                paymentOptionResultCallback = { result ->
+                    // The ViewModel's step stands in for a "sheet presented" flag and survives rotation.
+                    if (latestStep == PaidStep.CollectingPaymentMethod) {
+                        if (shouldConfirmSelection(result.didCancel, result.paymentOption != null)) {
+                            holder.controller?.confirm()
+                        } else {
+                            latestSheet(SheetOutcome.Canceled)
+                        }
+                    }
+                },
+            )
+        }.build()
+    holder.controller = flowController
+
+    LaunchedEffect(request) {
+        val r = request as? StripeRequest.PresentSheet ?: return@LaunchedEffect
+        onRequestLaunched()
+        flowController.configureWithSetupIntent(
+            setupIntentClientSecret = r.setupIntentClientSecret,
+            configuration = clickMeSheetConfiguration(r.customerId, r.ephemeralKey, appearance),
+        ) { success, error ->
+            if (success) {
+                flowController.presentPaymentOptions()
+            } else {
+                latestSheet(SheetOutcome.Failed(error?.message))
+            }
+        }
+    }
+
+    val launcher =
+        rememberPaymentLauncher(
+            publishableKey = AppConfig.stripePublishableKey,
+            stripeAccountId = challengeAccount,
+            callback = { latestChallenge(it.toChallengeOutcome()) },
+        )
+
+    LaunchedEffect(request, challengeAccount) {
+        val r = request as? StripeRequest.RunChallenge ?: return@LaunchedEffect
+        // The launcher in this composition is keyed to the 402's account; wait for it, never use another account.
+        if (challengeAccount != r.stripeAccount) return@LaunchedEffect
+        onRequestLaunched()
+        launcher.handleNextActionForPaymentIntent(r.clientSecret)
+    }
+}
