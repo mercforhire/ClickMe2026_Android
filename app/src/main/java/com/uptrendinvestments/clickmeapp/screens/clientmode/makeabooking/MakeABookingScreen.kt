@@ -71,6 +71,16 @@ fun MakeABookingScreen(
     onOpenPaymentMethods: () -> Unit,
     modifier: Modifier = Modifier,
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
+    paidFlowHost: @Composable (MakeABookingUiState) -> Unit = { s ->
+        PaidFlowStripeHost(
+            request = s.stripeRequest,
+            paidStep = s.paidStep,
+            challengeAccount = s.challengeAccount,
+            onRequestLaunched = viewModel::onStripeRequestLaunched,
+            onSheetOutcome = viewModel::onSheetOutcome,
+            onChallengeOutcome = viewModel::onChallengeOutcome,
+        )
+    },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // WR-03: "today" and the viewer's zone are re-derived whenever the screen comes back, e.g. after midnight or
@@ -90,6 +100,8 @@ fun MakeABookingScreen(
         viewModel.consumeCompletedBooking()
         onBooked(id)
     }
+    // The paid flow's Stripe UI host sits outside the content; it renders nothing and is swappable in tests.
+    paidFlowHost(state)
     MakeABookingContent(
         state = state,
         onBack = onBack,
