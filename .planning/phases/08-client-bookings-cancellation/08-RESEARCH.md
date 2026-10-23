@@ -513,16 +513,21 @@ Not a rename/refactor/migration phase. Omitted.
 | A4 | I did not read the iOS Upcoming/Cancellation/Booking Summary view files line by line; the layouts, copy and ordering come from CONTEXT, UI-SPEC and the booking view models/APIs I read | Whole phase | Layout detail drift. UI-SPEC is the contract and was approved against the iOS files |
 | A5 | `SuccessDataResponse` decodes the idempotent-cancel 200 (it has an extra `message`) | Finding 3 | Moshi ignores unknown keys by default in this project, but confirm in the DTO test |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Dormant refund copy (Finding 2).**
    - Known: for every cancellable status the derived `payment_status` is `held` or `none`; the backend voids holds on a pre-session cancel; `refund_amount` will be 0.
    - Unclear: whether the user wants D-06's "Full refund / No refund within 24h" kept as dormant defensive code (recommended: yes, it is small and tested) or dropped.
    - Recommendation: keep it as specified, test it, and log the iOS note: "iOS promises a full refund; the backend voids the hold instead".
+   - RESOLVED: kept as dormant defensive code, built and tested (plan 08-03).
 2. **Paid long-lead booking in `scheduled` state** (derived `none`) has no payment pill and no refund line. D-15 and D-06 imply that. Optionally add "You haven't been charged" copy later; not required.
+   - RESOLVED: deferred. No extra copy this phase.
 3. **`RESCHEDULE_OUTSIDE_AUTH_WINDOW` copy.** Not in the UI-SPEC error table. Recommendation: show the server message in "Couldn't update booking", reload, and stay (Claude's discretion area).
+   - RESOLVED: server message in "Couldn't update booking", then reload (plan 08-04).
 4. **Where the one-shot "select Past + snackbar" lives.** Recommendation: a `@Singleton` holder. A shell-level `rememberSaveable` also works but loses the value if the shell recomposes before My Bookings reads it. The planner picks; the requirement is that Explore-stack and Bookings-stack cancels behave identically.
+   - RESOLVED: `@Singleton` `BookingsLaunchRequest` holder (plan 08-02).
 5. **Manual checks deferred** (project preference, Phase 2 rule): all device checks, and anything touching a card, is blocked until a test-mode Stripe backend exists (STATE "[Phase 7] Stripe key and mode"). Reschedule accept/decline needs the iOS expert to propose one.
+   - RESOLVED: deferred, logged as open items in STATE (plan 08-15).
 
 ## Environment Availability
 
