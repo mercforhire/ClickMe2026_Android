@@ -108,7 +108,7 @@ Plans:
 - [x] 02-06-PLAN.md — SecureTokenStore/EncryptedSharedPreferences, SessionEvents, bearer interceptor, ACCOUNT_SUSPENDED trap, single-flight TokenAuthenticator (FND-05, FND-06)
 - [x] 02-07-PLAN.md — Retrofit ClickMeApi (auth, /me, /user/profile, expert lookups), DataStore SessionStore, session Hilt module (FND-03, FND-07)
 - [x] 02-08-PLAN.md — Agora spike: microphone foreground service + join via POST /bookings/:id/join (FND-14 code)
-- [ ] 02-09-PLAN.md — Stripe spike device run with the user and Phase 7 findings (FND-13, user checkpoint)
+- [x] 02-09-PLAN.md — Stripe spike device run with the user and Phase 7 findings (FND-13, user checkpoint) (completed 2026-10-23)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -548,7 +548,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 14/14 | Complete   | 2026-10-23 |
+| 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |

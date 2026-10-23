@@ -292,13 +292,13 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | BOOK-07 | Phase 8 | Pending |
 | BOOK-08 | Phase 8 | Pending |
 | BOOK-09 | Phase 8 | Pending |
-| PAY-01 | Phase 7 | Pending |
-| PAY-02 | Phase 7 | Pending |
-| PAY-03 | Phase 7 | Pending |
-| PAY-04 | Phase 7 | Pending |
-| PAY-05 | Phase 7 | Pending |
-| PAY-06 | Phase 7 | Pending |
-| PAY-07 | Phase 7 | Pending |
+| PAY-01 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-02 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-03 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-04 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-05 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-06 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-07 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | CALL-01 | Phase 9 | Pending |
 | CALL-02 | Phase 9 | Pending |
 | CALL-03 | Phase 9 | Pending |
