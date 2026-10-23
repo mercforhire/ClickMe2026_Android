@@ -40,6 +40,14 @@ metrics:
 
 To resolve it, reply with `test: pk_test_51U8OTJ…`, `live`, or keep deferring. Then apply Task 3: swap only the dev key after checking it against the `^pk_test_51U8OTJ[A-Za-z0-9]+$` pattern, or record a device-test stop if the backend is live. Until then, no PaymentSheet or 3DS flow can succeed on a device with the dev build.
 
+## Outcome update (2026-10-23)
+
+The user confirmed that `pk_test_` keys are sandbox mode. Every build targets the single production backend, and that backend is set up for live mode (`.env.production.example`: "Stripe — LIVE mode"). So the Task 3 **live** branch applies:
+- The STATE entry is now `BLOCKED (device tests) 2026-10-23`. No device test may use cards until a test-mode backend path exists.
+- No key was changed.
+- There is no `pk_test_51U8OTJ…` key to swap in, because the dev `pk_test_51Tha0r…` key is a Stripe sandbox with its own account id.
+- The user chose to keep this deferred and close Phase 7 with the device checks open.
+
 ## Deviations from Plan
 
 None. This plan ran inline in the orchestrator rather than in a worktree executor, because it writes STATE.md and needs user input.
