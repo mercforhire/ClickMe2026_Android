@@ -808,8 +808,8 @@ class ResponseDecodingTest {
             "end_time":"2026-10-24T19:00:00Z","status":"confirmed","reschedule":null,
             "private_note_preview":"x"}]}
             """.trimIndent()
-        val booking = moshi.adapter(ClientBookingsPayload::class.java).fromJson(json)!!.bookings.single()
-        assertNull(booking.reschedule)
+        val payload = moshi.adapter(ClientBookingsPayload::class.java).fromJson(json)!!
+        assertNull(payload.bookings.single().reschedule)
     }
 
     @Test

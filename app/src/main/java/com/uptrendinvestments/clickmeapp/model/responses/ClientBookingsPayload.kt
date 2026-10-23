@@ -12,9 +12,9 @@ data class ClientBookingsPayload(
 )
 
 /**
- * One client booking row. Phase 5 only needs today's upcoming sessions for the home screen. Phase 8
- * (My Bookings) extends this class with `reschedule` and `private_note_preview`; unknown keys are ignored
- * until then.
+ * One client booking row (My Bookings, Explore Today's Sessions). [reschedule] is non-null only while the booking
+ * is `pending_reschedule` and carries the slim block. `private_note_preview` is deliberately not declared (D-16);
+ * unknown keys are ignored.
  */
 @JsonClass(generateAdapter = true)
 data class ClientBookingItem(
@@ -25,6 +25,26 @@ data class ClientBookingItem(
     @Json(name = "end_time") val endTime: Instant,
     @Json(name = "meeting_type") val meetingType: String? = null,
     val status: String,
+    val reschedule: RescheduleDto? = null,
+)
+
+/** Wire value of [RescheduleDto.initiatedBy] for a proposal the client may accept or decline (D-03). */
+const val RESCHEDULE_INITIATED_BY_EXPERT = "expert"
+
+/**
+ * One DTO for the slim list block (`proposed_start`, `initiated_by`) and the full detail block (all six keys),
+ * since the two share names (RESEARCH Pitfall 5). [proposedStart] is nullable on purpose so one malformed row can
+ * never fail the whole list decode; the UI shows the proposal only when it is present. Any [initiatedBy] other
+ * than [RESCHEDULE_INITIATED_BY_EXPERT] (including null) is not actionable (D-03; the server answers 403).
+ */
+@JsonClass(generateAdapter = true)
+data class RescheduleDto(
+    @Json(name = "proposed_start") val proposedStart: Instant? = null,
+    @Json(name = "proposed_end") val proposedEnd: Instant? = null,
+    @Json(name = "proposed_timezone") val proposedTimezone: String? = null,
+    @Json(name = "initiated_by") val initiatedBy: String? = null,
+    val note: String? = null,
+    @Json(name = "created_at") val createdAt: Instant? = null,
 )
 
 @JsonClass(generateAdapter = true)
