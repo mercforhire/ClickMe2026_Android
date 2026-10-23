@@ -83,11 +83,17 @@ class HomeShellsTest {
     // Tab names also appear as TopAppBar titles and empty-state headings, so match the bar item.
     private fun tab(label: String) = hasText(label) and isSelectable()
 
+    private fun topOf(text: String): Float {
+        val node = composeRule.onNodeWithText(text).fetchSemanticsNode()
+        return node.positionInRoot.y
+    }
+
     private fun tapTab(label: String) = composeRule.onNode(tab(label)).performClick()
 
     private fun openGalleryFromProfile() {
         tapTab("Profile")
-        composeRule.onNodeWithText("Design system gallery").performClick()
+        // The Payment Methods row pushes the gallery button below the fold of the small test window.
+        composeRule.onNodeWithText("Design system gallery").performScrollTo().performClick()
         composeRule.onNodeWithContentDescription("Back").assertExists()
     }
 
@@ -412,11 +418,11 @@ class HomeShellsTest {
     fun profileShowsPaymentMethodsAboveLogOutAndOpensItWithoutTheBar() {
         setClient(showDebug = false, paymentMethods = true)
         tapTab("Profile")
-        val rowTop = composeRule.onNodeWithText("Payment Methods").fetchSemanticsNode().positionInRoot.y
-        val logOutTop = composeRule.onNodeWithText("Log out").fetchSemanticsNode().positionInRoot.y
+        val rowTop = topOf("Payment Methods")
+        val logOutTop = topOf("Log out")
         assertTrue("Payment Methods ($rowTop) must be above Log out ($logOutTop)", rowTop < logOutTop)
 
-        composeRule.onNodeWithText("Payment Methods").performClick()
+        composeRule.onNodeWithText("Payment Methods").performScrollTo().performClick()
 
         composeRule.onNodeWithText("fake payment methods").assertExists()
         composeRule.onNode(tab("Profile")).assertDoesNotExist()

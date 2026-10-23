@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestSentKey
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
 
 /**
  * Registers the booking flow routes ([BookingKey] and [RequestSentKey]) in the client shell, both with the
@@ -17,6 +18,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestS
  *
  * - D-12: [booking]'s `onBooked` replaces Make a Booking with Request Sent (`replaceTop`), so Back from Request
  *   Sent lands on Expert Profile and the filled form cannot be re-submitted.
+ * - D-08: `onOpenPaymentMethods` pushes [PaymentMethodsKey] on top of the booking form; Back pops to the form, which
+ *   reloads its cards (D-09).
  * - D-13: `onViewBookings` mirrors iOS `showMyBookings` (reset the Explore and Bookings paths, then select
  *   Bookings); `onBackToHome` mirrors iOS `returnToHome` (reset Explore to its root, then select Explore), so it
  *   lands on Explore even if a future entry point starts the flow from another tab.
@@ -29,6 +32,7 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
         key: BookingKey,
         onBack: () -> Unit,
         onBooked: (bookingId: String) -> Unit,
+        onOpenPaymentMethods: () -> Unit,
     ) -> Unit,
     requestSent: @Composable (
         key: RequestSentKey,
@@ -38,7 +42,12 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
     ) -> Unit,
 ) {
     entry<BookingKey>(metadata = BottomBar.hidden()) { key ->
-        booking(key, navigator::goBack) { id -> navigator.replaceTop(RequestSentKey(id)) }
+        booking(
+            key,
+            navigator::goBack,
+            { id -> navigator.replaceTop(RequestSentKey(id)) },
+            { navigator.navigate(PaymentMethodsKey) },
+        )
     }
     entry<RequestSentKey>(metadata = BottomBar.hidden()) { key ->
         requestSent(
@@ -48,4 +57,16 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
             { navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot)) },
         )
     }
+}
+
+/**
+ * Registers [PaymentMethodsKey] once for the client shell, with the bottom bar hidden. One destination serves both
+ * entry points (D-04): it is pushed on whichever tab is selected, the Explore stack from the booking gate and the
+ * Profile stack from the Profile row. Hilt-free so HomeShellsTest can drive it with fake content.
+ */
+fun EntryProviderScope<NavKey>.clientPaymentMethodsEntry(
+    navigator: Navigator,
+    paymentMethods: @Composable (onBack: () -> Unit) -> Unit,
+) {
+    entry<PaymentMethodsKey>(metadata = BottomBar.hidden()) { paymentMethods(navigator::goBack) }
 }
