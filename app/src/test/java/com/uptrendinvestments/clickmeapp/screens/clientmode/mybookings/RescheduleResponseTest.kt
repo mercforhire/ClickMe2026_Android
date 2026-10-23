@@ -121,7 +121,8 @@ class RescheduleResponseTest {
     @Test
     fun accept_first_call_failures_do_not_list_cards() =
         runTest {
-            api.acceptClientRescheduleHandler = { _, _ -> throw api.httpError(409, """{"code":"EXPERT_UNAVAILABLE"}""") }
+            api.acceptClientRescheduleHandler =
+                { _, _ -> throw api.httpError(409, """{"code":"EXPERT_UNAVAILABLE"}""") }
             assertEquals(
                 AcceptOutcome.Failed(show(R.string.reschedule_error_expert_unavailable, reload = true)),
                 responder.accept("b1"),
