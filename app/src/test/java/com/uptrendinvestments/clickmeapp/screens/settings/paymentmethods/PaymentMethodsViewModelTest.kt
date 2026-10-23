@@ -45,8 +45,9 @@ class PaymentMethodsViewModelTest {
 
     private fun PaymentMethodsViewModel.cards() = (uiState.value.list as PaymentMethodsListState.Loaded).cards
 
-    private fun serverError(message: String?) =
-        api.httpError(500, if (message == null) """{"status":"error"}""" else """{"status":"error","message":"$message"}""")
+    private fun serverError(message: String) = api.httpError(500, """{"status":"error","message":"$message"}""")
+
+    private fun addDialog(message: FieldError) = PaymentMethodsDialog(R.string.payment_methods_error_add_title, message)
 
     @Test
     fun loadsServerCardsInServerOrder() =
@@ -278,19 +279,13 @@ class PaymentMethodsViewModelTest {
             runCurrent()
             vm.onAddCardLaunched()
             vm.onAddCardResult(SheetOutcome.Failed("Your card was declined."))
-            assertEquals(
-                PaymentMethodsDialog(R.string.payment_methods_error_add_title, FieldError.Text("Your card was declined.")),
-                vm.uiState.value.dialog,
-            )
+            assertEquals(addDialog(FieldError.Text("Your card was declined.")), vm.uiState.value.dialog)
 
             vm.addCard()
             runCurrent()
             vm.onAddCardLaunched()
             vm.onAddCardResult(SheetOutcome.Failed(null))
-            assertEquals(
-                PaymentMethodsDialog(R.string.payment_methods_error_add_title, FieldError.Res(R.string.login_error_unknown)),
-                vm.uiState.value.dialog,
-            )
+            assertEquals(addDialog(FieldError.Res(R.string.login_error_unknown)), vm.uiState.value.dialog)
         }
 
     @Test
@@ -351,10 +346,7 @@ class PaymentMethodsViewModelTest {
             vm.addCard()
             runCurrent()
 
-            assertEquals(
-                PaymentMethodsDialog(R.string.payment_methods_error_add_title, FieldError.Text(text)),
-                vm.uiState.value.dialog,
-            )
+            assertEquals(addDialog(FieldError.Text(text)), vm.uiState.value.dialog)
             assertEquals(false, vm.uiState.value.isAddingCard)
             assertEquals(1, api.setupIntentCalls)
         }
