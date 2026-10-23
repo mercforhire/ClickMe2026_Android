@@ -8,19 +8,38 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StripeResultMappingTest {
+    /**
+     * Stripe 23.24.0 gives the PaymentSheetResult classes internal constructors, which are public in bytecode, so the
+     * tests build real results through reflection and still exercise the production mapping.
+     */
+    private fun completedResult(): PaymentSheetResult =
+        PaymentSheetResult.Completed::class.java
+            .getConstructor(Boolean::class.javaPrimitiveType)
+            .newInstance(true)
+
+    private fun canceledResult(): PaymentSheetResult =
+        PaymentSheetResult.Canceled::class.java
+            .getConstructor(Boolean::class.javaPrimitiveType)
+            .newInstance(true)
+
+    private fun failedResult(error: Throwable): PaymentSheetResult =
+        PaymentSheetResult.Failed::class.java
+            .getConstructor(Throwable::class.java)
+            .newInstance(error)
+
     @Test
     fun paymentSheetCompletedMapsToCompleted() {
-        assertEquals(SheetOutcome.Completed, PaymentSheetResult.Completed.toSheetOutcome())
+        assertEquals(SheetOutcome.Completed, completedResult().toSheetOutcome())
     }
 
     @Test
     fun paymentSheetCanceledMapsToCanceled() {
-        assertEquals(SheetOutcome.Canceled, PaymentSheetResult.Canceled.toSheetOutcome())
+        assertEquals(SheetOutcome.Canceled, canceledResult().toSheetOutcome())
     }
 
     @Test
     fun paymentSheetFailedCarriesTheErrorMessage() {
-        val result = PaymentSheetResult.Failed(IllegalStateException("Card declined"))
+        val result = failedResult(IllegalStateException("Card declined"))
         assertEquals(SheetOutcome.Failed("Card declined"), result.toSheetOutcome())
     }
 
