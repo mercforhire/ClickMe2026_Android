@@ -11,7 +11,10 @@ sealed interface SheetOutcome {
     /** The user dismissed the sheet. */
     data object Canceled : SheetOutcome
 
-    /** The sheet could not be configured, presented or completed; [message] is Stripe's text when there is one. */
+    /**
+     * The sheet could not be configured, presented or completed; [message] is Stripe's text for a card error, else
+     * null (WR-05: developer text never reaches the user).
+     */
     data class Failed(
         val message: String?,
     ) : SheetOutcome
@@ -28,7 +31,7 @@ sealed interface ChallengeOutcome {
     /** The user closed the challenge without finishing (D-15). */
     data object Canceled : ChallengeOutcome
 
-    /** Verification failed; [message] is Stripe's text when there is one (D-15). */
+    /** Verification failed; [message] is Stripe's text for a card error, else null (D-15, WR-05). */
     data class Failed(
         val message: String?,
     ) : ChallengeOutcome

@@ -122,6 +122,9 @@ class MakeABookingViewModel
         /** A SetupIntent kept after a cancelled sheet, reused on the same attempt id (research correction 4). */
         private var reusableSetup: ReusableSetup? = null
 
+        /** True once [StripeRequest.PresentOptions] was published for the current sheet request (WR-05). */
+        private var sheetOptionsRequested: Boolean = false
+
         /** The `pm_` being confirmed; the 3DS retry sends the same one (T-07-43). */
         private var pendingPaymentMethodId: String? = null
 
@@ -439,6 +442,7 @@ class MakeABookingViewModel
                     return
                 }
             setupIntentClientSecret = setup.clientSecret
+            sheetOptionsRequested = false
             _uiState.update {
                 it.copy(
                     paidStep = PaidStep.CollectingPaymentMethod,
@@ -464,6 +468,20 @@ class MakeABookingViewModel
         /** The host has taken the request and is presenting the sheet; a recreation must not launch it twice. */
         fun onStripeRequestLaunched() {
             _uiState.update { it.copy(stripeRequest = null) }
+        }
+
+        /**
+         * WR-05: the FlowController is configured. The host presents its options from the composition that is
+         * current when it sees [StripeRequest.PresentOptions], never from the configure callback, which may belong
+         * to a composition a rotation has disposed. Ignored unless the sheet step is active, and published at most
+         * once per sheet request, so the options can never be presented twice.
+         */
+        fun onSheetConfigured() {
+            val s = _uiState.value
+            val ready = s.paidStep == PaidStep.CollectingPaymentMethod && s.stripeRequest == null
+            if (!ready || sheetOptionsRequested) return
+            sheetOptionsRequested = true
+            _uiState.update { it.copy(stripeRequest = StripeRequest.PresentOptions) }
         }
 
         /**

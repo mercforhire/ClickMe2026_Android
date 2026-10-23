@@ -15,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.stripe.rememberClickMePaymentSheetAppea
 import com.uptrendinvestments.clickmeapp.stripe.shouldConfirmSelection
 import com.uptrendinvestments.clickmeapp.stripe.toChallengeOutcome
 import com.uptrendinvestments.clickmeapp.stripe.toSheetOutcome
+import com.uptrendinvestments.clickmeapp.stripe.userFacingStripeMessage
 
 /** Holds the controller so the option callback, built before the controller exists, can confirm on it. */
 private class FlowControllerHolder {
@@ -26,8 +27,12 @@ private class FlowControllerHolder {
  * into Stripe UI and reports what happened as SDK-free outcomes.
  *
  * - [StripeRequest.PresentSheet]: `PaymentSheet.FlowController` in setup mode (RESEARCH Pattern 2). The controller
- *   is configured with the SetupIntent secret and the ClickMe configuration, then `presentPaymentOptions()` runs
- *   from the configure callback (never during configuration). When the sheet closes, [shouldConfirmSelection]
+ *   is configured with the SetupIntent secret and the ClickMe configuration. The configure callback runs in Stripe's
+ *   ViewModel scope and can outlive this composition (a rotation during the network round trip), so it never
+ *   presents on the controller it captured: it reports [onSheetConfigured], the ViewModel answers with
+ *   [StripeRequest.PresentOptions], and `presentPaymentOptions()` runs on the controller of the composition that is
+ *   current then (WR-05). The configuration itself lives in Stripe's activity-scoped FlowController ViewModel, so
+ *   the new controller sees it. When the sheet closes, [shouldConfirmSelection]
  *   decides whether `confirm()` runs: a dismissal reports [SheetOutcome.Canceled] even when a saved card is
  *   preselected (D-18, unlike iOS), so a dismissal can never authorize a card.
  * - [StripeRequest.RunChallenge]: `PaymentLauncher.handleNextActionForPaymentIntent` on the expert's connected
@@ -50,10 +55,12 @@ fun PaidFlowStripeHost(
     paidStep: PaidStep,
     challengeAccount: String?,
     onRequestLaunched: () -> Unit,
+    onSheetConfigured: () -> Unit,
     onSheetOutcome: (SheetOutcome) -> Unit,
     onChallengeOutcome: (ChallengeOutcome) -> Unit,
 ) {
     val latestStep by rememberUpdatedState(paidStep)
+    val latestConfigured by rememberUpdatedState(onSheetConfigured)
     val latestSheet by rememberUpdatedState(onSheetOutcome)
     val latestChallenge by rememberUpdatedState(onChallengeOutcome)
     val appearance = rememberClickMePaymentSheetAppearance()
@@ -78,17 +85,26 @@ fun PaidFlowStripeHost(
     holder.controller = flowController
 
     LaunchedEffect(request) {
-        val r = request as? StripeRequest.PresentSheet ?: return@LaunchedEffect
-        onRequestLaunched()
-        flowController.configureWithSetupIntent(
-            setupIntentClientSecret = r.setupIntentClientSecret,
-            configuration = clickMeSheetConfiguration(r.customerId, r.ephemeralKey, appearance),
-        ) { success, error ->
-            if (success) {
-                flowController.presentPaymentOptions()
-            } else {
-                latestSheet(SheetOutcome.Failed(error?.message))
+        when (val r = request) {
+            is StripeRequest.PresentSheet -> {
+                onRequestLaunched()
+                flowController.configureWithSetupIntent(
+                    setupIntentClientSecret = r.setupIntentClientSecret,
+                    configuration = clickMeSheetConfiguration(r.customerId, r.ephemeralKey, appearance),
+                ) { success, error ->
+                    // Never touch the captured flowController here: it may belong to a disposed composition.
+                    if (success) {
+                        latestConfigured()
+                    } else {
+                        latestSheet(SheetOutcome.Failed(error.userFacingStripeMessage()))
+                    }
+                }
             }
+            StripeRequest.PresentOptions -> {
+                onRequestLaunched()
+                flowController.presentPaymentOptions()
+            }
+            else -> Unit
         }
     }
 

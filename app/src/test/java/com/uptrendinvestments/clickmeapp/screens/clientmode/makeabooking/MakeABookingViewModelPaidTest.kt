@@ -168,6 +168,42 @@ class MakeABookingViewModelPaidTest {
             assertEquals("skype_zoom", body.meetingType)
         }
 
+    /** WR-05: the configure callback reports to the ViewModel; the current composition presents, exactly once. */
+    @Test
+    fun aConfiguredSheetPublishesPresentOptionsOncePerSheetRequest() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            vm.onSheetConfigured()
+            assertNull(vm.uiState.value.stripeRequest)
+
+            bookAndRun(vm)
+            // Not before the configure request itself has been taken by the host.
+            vm.onSheetConfigured()
+            assertTrue(vm.uiState.value.stripeRequest is StripeRequest.PresentSheet)
+            vm.onStripeRequestLaunched()
+
+            vm.onSheetConfigured()
+            assertEquals(StripeRequest.PresentOptions, vm.uiState.value.stripeRequest)
+            assertEquals(PaidStep.CollectingPaymentMethod, vm.uiState.value.paidStep)
+            vm.onStripeRequestLaunched()
+            vm.onSheetConfigured()
+            assertNull(vm.uiState.value.stripeRequest)
+
+            // A new sheet request (after a cancel) may present again.
+            vm.onSheetOutcome(SheetOutcome.Canceled)
+            vm.onSheetConfigured()
+            assertNull(vm.uiState.value.stripeRequest)
+            bookAndRun(vm)
+            vm.onStripeRequestLaunched()
+            vm.onSheetConfigured()
+            assertEquals(StripeRequest.PresentOptions, vm.uiState.value.stripeRequest)
+        }
+
+    @Test
+    fun presentOptionsCarriesNoSecret() {
+        assertEquals("PresentOptions", StripeRequest.PresentOptions.toString())
+    }
+
     @Test
     fun anUnreadablePaymentMethodShowsTheDialogAndKeepsTheSlot() =
         runTest(main.testDispatcher) {

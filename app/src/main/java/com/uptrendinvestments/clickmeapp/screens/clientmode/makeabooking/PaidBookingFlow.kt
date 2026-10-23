@@ -33,6 +33,13 @@ sealed interface StripeRequest {
         override fun toString(): String = "PresentSheet"
     }
 
+    /**
+     * The FlowController finished configuring: present its options from the controller of the current composition
+     * (WR-05). The configure callback may outlive the composition that started it (a rotation), so it reports to the
+     * ViewModel instead of presenting on the controller it captured. Carries no secret.
+     */
+    data object PresentOptions : StripeRequest
+
     /** Run the 3DS challenge on the expert's connected account. */
     data class RunChallenge(
         val clientSecret: String,

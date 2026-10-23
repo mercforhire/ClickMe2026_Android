@@ -80,6 +80,7 @@ fun MakeABookingScreen(
             paidStep = s.paidStep,
             challengeAccount = s.challengeAccount,
             onRequestLaunched = viewModel::onStripeRequestLaunched,
+            onSheetConfigured = viewModel::onSheetConfigured,
             onSheetOutcome = viewModel::onSheetOutcome,
             onChallengeOutcome = viewModel::onChallengeOutcome,
         )

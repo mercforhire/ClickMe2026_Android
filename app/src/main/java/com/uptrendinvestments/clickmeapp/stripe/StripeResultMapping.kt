@@ -1,14 +1,31 @@
 package com.uptrendinvestments.clickmeapp.stripe
 
+import com.stripe.android.core.exception.StripeException
 import com.stripe.android.payments.paymentlauncher.PaymentResult
 import com.stripe.android.paymentsheet.PaymentSheetResult
+
+/** Stripe's `StripeError.type` for errors written for the card holder (declines, failed authentication). */
+private const val STRIPE_CARD_ERROR = "card_error"
+
+/**
+ * WR-05: the text of a Stripe failure that may be shown to the user, or null. Only card errors qualify: their
+ * message is written for card holders ("Your card was declined."), the same rule the Stripe SDK applies to its own
+ * error text. Every other failure (SDK state such as "The host activity is not in a valid state (DESTROYED).", an
+ * unconfigured FlowController, network or API errors) carries developer text, so it maps to null and the caller
+ * shows the app's own copy instead.
+ */
+fun Throwable?.userFacingStripeMessage(): String? {
+    val stripe = this as? StripeException ?: return null
+    if (stripe.stripeError?.type != STRIPE_CARD_ERROR) return null
+    return stripe.message?.takeIf { it.isNotBlank() }
+}
 
 /** Maps the PaymentSheet result to the SDK-free [SheetOutcome] the ViewModels understand. */
 fun PaymentSheetResult.toSheetOutcome(): SheetOutcome =
     when (this) {
         is PaymentSheetResult.Completed -> SheetOutcome.Completed
         is PaymentSheetResult.Canceled -> SheetOutcome.Canceled
-        is PaymentSheetResult.Failed -> SheetOutcome.Failed(error.message)
+        is PaymentSheetResult.Failed -> SheetOutcome.Failed(error.userFacingStripeMessage())
     }
 
 /** Maps the PaymentLauncher (3DS challenge) result to the SDK-free [ChallengeOutcome]. */
@@ -16,7 +33,7 @@ fun PaymentResult.toChallengeOutcome(): ChallengeOutcome =
     when (this) {
         is PaymentResult.Completed -> ChallengeOutcome.Completed
         is PaymentResult.Canceled -> ChallengeOutcome.Canceled
-        is PaymentResult.Failed -> ChallengeOutcome.Failed(throwable.message)
+        is PaymentResult.Failed -> ChallengeOutcome.Failed(throwable.userFacingStripeMessage())
     }
 
 /**
