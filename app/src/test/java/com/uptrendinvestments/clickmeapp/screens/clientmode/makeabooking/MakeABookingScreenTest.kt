@@ -39,6 +39,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.BOOK_NOW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.NOTES_FIELD_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.PAYMENT_INFO_LINK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.TOPIC_PICKER_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
@@ -107,6 +108,7 @@ class MakeABookingScreenTest {
         dialogError: FieldError? = null,
         dialogTitle: Int = R.string.make_a_booking_error_title,
         paymentMethods: PaymentMethodsAvailability = PaymentMethodsAvailability.Unknown,
+        dialogPaymentReference: String? = null,
     ): MakeABookingUiState {
         val topics =
             listOf(
@@ -138,6 +140,7 @@ class MakeABookingScreenTest {
             paymentMethods = paymentMethods,
             dialogError = dialogError,
             dialogTitle = dialogTitle,
+            dialogPaymentReference = dialogPaymentReference,
         )
     }
 
@@ -772,5 +775,84 @@ class MakeABookingScreenTest {
 
         assertEquals(1, hostRequests.size)
         assertNull(vm.uiState.value.stripeRequest)
+    }
+
+    // ---- 07-13 Task 2: the payment info link and sheet, and the payment reference in the dialog ----
+
+    private fun paymentInfoLinkTop(): Float =
+        composeRule
+            .onNodeWithTag(PAYMENT_INFO_LINK_TAG)
+            .fetchSemanticsNode()
+            .positionInRoot.y
+
+    @Test
+    fun paidTopicShowsThePaymentInfoLinkDirectlyAboveBookNow() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Available))
+
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo()
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).assertExists()
+        val linkTop = paymentInfoLinkTop()
+        val linkBottom =
+            composeRule
+                .onNodeWithTag(PAYMENT_INFO_LINK_TAG)
+                .fetchSemanticsNode()
+                .boundsInRoot.bottom
+        assertTrue("link above the CTA", linkTop < bookNowTop())
+        assertTrue("link directly above the CTA", linkBottom <= bookNowTop())
+        assertTrue("link below the Summary", linkTop > top("Summary"))
+    }
+
+    @Test
+    fun freeTopicHasNoPaymentInfoLink() {
+        setContent(loadedState(selectedTopicId = "t1"))
+
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun noTopicHasNoPaymentInfoLink() {
+        setContent(loadedState(selectedTopicId = ""))
+
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun theLinkOpensTheInfoSheetAndGotItClosesIt() {
+        setContent(loadedState(selectedTopicId = "t2", paymentMethods = PaymentMethodsAvailability.Available))
+        composeRule.onNodeWithText("What happens next").assertDoesNotExist()
+
+        composeRule.onNodeWithTag(PAYMENT_INFO_LINK_TAG).performScrollTo().performClick()
+        composeRule.onNodeWithText("What happens next").assertExists()
+        composeRule.onNodeWithText("Got it").assertExists()
+
+        composeRule.onNodeWithText("Got it").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("What happens next").assertDoesNotExist()
+        composeRule.onNodeWithText("Got it").assertDoesNotExist()
+    }
+
+    @Test
+    fun aPaymentReferenceIsAppendedToTheDialogMessage() {
+        setContent(
+            loadedState(
+                dialogError = FieldError.Text("Boom"),
+                dialogPaymentReference = "pi_1",
+            ),
+        )
+
+        composeRule.onNodeWithText("Boom", substring = true).assertExists()
+        composeRule.onNodeWithText("Payment reference: pi_1", substring = true).assertExists()
+
+        composeRule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissCount)
+    }
+
+    @Test
+    fun withoutAReferenceTheDialogHasNoPaymentReferenceText() {
+        setContent(loadedState(dialogError = FieldError.Text("Boom")))
+
+        composeRule.onNodeWithText("Boom").assertExists()
+        composeRule.onNodeWithText("Payment reference", substring = true).assertDoesNotExist()
     }
 }
