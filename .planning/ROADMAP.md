@@ -336,7 +336,7 @@ Plans:
   5. Paid-flow errors (the ~15 `handlePaidFlowError` codes) show the right message or next action. Prices display correctly in minor units, including JPY with no decimals.
 
 **Planning notes:** Reuse what the Phase 2 Stripe spike found. `payment-intent` amounts are the one exception to minor units. Never cut.
-**Plans:** 10/14 plans executed
+**Plans:** 12/14 plans executed
 Plans:
 **Wave 1**
 
@@ -359,8 +359,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 07-11-PLAN.md — 3DS in the ViewModel: challenge hand-off, single retry, loop guard, D-15 cancel/failure/hard failure (PAY-05, PAY-06)
-- [ ] 07-12-PLAN.md — Navigation: PaymentMethodsKey registered once, Profile row, CTA routing to Payment Methods, return refresh (PAY-01, PAY-04)
+- [x] 07-11-PLAN.md — 3DS in the ViewModel: challenge hand-off, single retry, loop guard, D-15 cancel/failure/hard failure (PAY-05, PAY-06)
+- [x] 07-12-PLAN.md — Navigation: PaymentMethodsKey registered once, Profile row, CTA routing to Payment Methods, return refresh (PAY-01, PAY-04)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -548,7 +548,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
-| 7. Payment Methods & Paid Booking | 10/14 | In Progress|  |
+| 7. Payment Methods & Paid Booking | 12/14 | In Progress|  |
 | 8. Client Bookings & Cancellation | 0/TBD | Not started | - |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
