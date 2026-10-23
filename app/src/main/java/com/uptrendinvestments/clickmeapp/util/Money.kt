@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.util
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
@@ -14,9 +15,32 @@ import java.util.Locale
  * the caller.
  *
  * `payment-intent` amounts are the one non-minor-unit exception (ROADMAP Phase 7 note) and must not be passed here.
+ * The cancel response `refund_amount` (major units) is the second exception and must go through [formatMajor] only.
  */
 object Money {
     private const val DEFAULT_DIGITS = 2
+
+    private fun currencyOrNull(code: String): Currency? =
+        try {
+            Currency.getInstance(code)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+
+    private fun fractionDigits(currency: Currency?): Int =
+        (currency?.defaultFractionDigits ?: DEFAULT_DIGITS).takeIf { it >= 0 } ?: DEFAULT_DIGITS
+
+    /** Formats a major-unit [major] amount (e.g. the cancel response `refund_amount`) through [format]. */
+    fun formatMajor(
+        major: Double,
+        currencyCode: String,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val digits = fractionDigits(currencyOrNull(currencyCode.uppercase(Locale.ROOT)))
+        val scaled = BigDecimal.valueOf(major).movePointRight(digits)
+        val minor = scaled.setScale(0, RoundingMode.HALF_UP).toLong()
+        return format(minor, currencyCode, locale)
+    }
 
     fun format(
         minorUnits: Long,
@@ -24,13 +48,8 @@ object Money {
         locale: Locale = Locale.getDefault(),
     ): String {
         val code = currencyCode.uppercase(Locale.ROOT)
-        val currency =
-            try {
-                Currency.getInstance(code)
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-        val digits = (currency?.defaultFractionDigits ?: DEFAULT_DIGITS).takeIf { it >= 0 } ?: DEFAULT_DIGITS
+        val currency = currencyOrNull(code)
+        val digits = fractionDigits(currency)
         val major = BigDecimal.valueOf(minorUnits).movePointLeft(digits)
         if (currency == null) return "$code ${major.setScale(digits).toPlainString()}"
         val formatter =

@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Currency
 import java.util.Locale
 
 class MoneyTest {
@@ -57,5 +58,34 @@ class MoneyTest {
     @Test
     fun largeAmount_usesGroupingWithoutOverflow() {
         assertEquals("$1,234,567,890.12", Money.format(123456789012, "USD", Locale.US))
+    }
+
+    @Test
+    fun formatMajor_decimalCurrencies() {
+        assertEquals("CA$0.00", Money.formatMajor(0.0, "CAD", Locale.US))
+        assertEquals("CA$12.50", Money.formatMajor(12.5, "CAD", Locale.US))
+        assertEquals("$75.00", Money.formatMajor(75.0, "USD", Locale.US))
+    }
+
+    @Test
+    fun formatMajor_zeroDecimalCurrency_isNotRescaled() {
+        assertEquals("¥1,000", Money.formatMajor(1000.0, "JPY", Locale.US))
+    }
+
+    @Test
+    fun formatMajor_unknownCode_fallsBackToTwoDigits() {
+        assertEquals("ZZZ 12.50", Money.formatMajor(12.5, "zzz", Locale.US))
+    }
+
+    @Test
+    fun formatMajor_roundsHalfUp() {
+        assertEquals("$0.13", Money.formatMajor(0.125, "USD", Locale.US))
+    }
+
+    @Test
+    fun backendZeroDecimalSet_hasZeroFractionDigitsOnThisJvm() {
+        listOf("JPY", "KRW", "VND", "CLP", "ISK", "XOF", "XAF").forEach { code ->
+            assertEquals(code, 0, Currency.getInstance(code).defaultFractionDigits)
+        }
     }
 }
