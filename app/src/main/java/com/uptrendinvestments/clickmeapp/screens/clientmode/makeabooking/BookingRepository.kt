@@ -1,8 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
 import com.uptrendinvestments.clickmeapp.network.apiCall
 import java.time.YearMonth
@@ -15,6 +19,10 @@ import javax.inject.Singleton
  * `topic_id` is never sent on the availability call: the backend would narrow the grid to the topic duration,
  * but iOS never sends it (D-07 iOS parity, user decision on research Open Question 2), so the grid always
  * shows the expert's base slots and the server re-checks the duration when the booking is requested.
+ *
+ * Three booking writes: the free request ([requestBooking]), the payment-intent call for short-lead paid
+ * bookings ([paymentIntent], PAY-03; a 422 LONG_LEAD_REQUIRES_SAVED_CARD routes to [confirm] without a
+ * PaymentIntent, PAY-04) and the server-side confirm ([confirm], Path A).
  */
 @Singleton
 class BookingRepository
@@ -28,7 +36,18 @@ class BookingRepository
             month: YearMonth,
         ): ExpertAvailabilityData = apiCall { api.getExpertAvailability(expertId, month.toString(), null) }.data
 
-        /** `POST /bookings/request`, free path. The paid Stripe path (`POST /bookings/confirm`) is Phase 7. */
+        /** `POST /bookings/request`, free path. Paid bookings go through [paymentIntent] and [confirm]. */
         suspend fun requestBooking(body: BookingRequestBody): BookingRequestData =
             apiCall { api.requestBooking(body) }.data
+
+        /** `POST /bookings/payment-intent`. The response is a bare body (no envelope, no amounts). */
+        suspend fun paymentIntent(request: PaymentIntentRequest): PaymentIntentResponse =
+            apiCall { api.createPaymentIntent(request) }
+
+        /**
+         * `POST /bookings/confirm`, 201 on success. A 402 PAYMENT_REQUIRES_ACTION surfaces as
+         * `ApiException.Http` with `detail["client_secret"]` and `detail["stripe_account"]` for 3DS (PAY-05).
+         */
+        suspend fun confirm(request: ConfirmBookingRequest): ConfirmBookingData =
+            apiCall { api.confirmBooking(request) }.data
     }

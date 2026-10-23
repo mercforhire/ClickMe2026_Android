@@ -1,8 +1,10 @@
 package com.uptrendinvestments.clickmeapp.network
 
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
@@ -13,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
@@ -22,6 +25,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
@@ -45,7 +51,8 @@ import retrofit2.http.Query
  * endpoints (iOS ClickMeAPI+Auth). Phase 4 adds signup, email verification, expert profile setup, meta
  * lookups and avatar upload/delete. Phase 5 adds the discovery group (client home, client bookings,
  * categories, expert details and reviews). Phase 6 adds the booking group (availability, free booking
- * request, client booking detail). Other API groups arrive with their features (ROADMAP Phase 2 planning
+ * request, client booking detail). Phase 7 adds the payment group (saved cards, setup and payment intents,
+ * booking confirm). Other API groups arrive with their features (ROADMAP Phase 2 planning
  * note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -171,7 +178,7 @@ interface ClickMeApi {
         @Query("topic_id") topicId: String?,
     ): SuccessDataResponse<ExpertAvailabilityData>
 
-    /** Ports iOS ClickMeAPI+Booking requestBooking. Free path only; 201 on success. */
+    /** Ports iOS ClickMeAPI+Booking requestBooking. Free path only (the paid path is [confirmBooking]); 201 on success. */
     @POST(ApiRequestUrls.BOOKING_REQUEST)
     suspend fun requestBooking(
         @Body body: BookingRequestBody,
@@ -182,4 +189,42 @@ interface ClickMeApi {
     suspend fun getClientBookingDetail(
         @Path("id") bookingId: String,
     ): SuccessDataResponse<ClientBookingDetail>
+
+    /** Ports iOS ClickMeAPI+PaymentMethods getPaymentMethods. */
+    @GET(ApiRequestUrls.PAYMENT_METHODS)
+    suspend fun getPaymentMethods(): SuccessDataResponse<PaymentMethodsData>
+
+    /**
+     * Ports iOS ClickMeAPI+PaymentMethods createSetupIntent. The backend schema is `z.object({}).strict()`
+     * and Retrofit would otherwise send no body, so the `{}` body is explicit (RESEARCH Pitfall 13).
+     */
+    @POST(ApiRequestUrls.PAYMENT_METHODS_SETUP_INTENT)
+    suspend fun createPaymentMethodSetupIntent(
+        @Body body: Map<String, String> = emptyMap(),
+    ): SuccessDataResponse<PaymentMethodSetupData>
+
+    /** Ports iOS ClickMeAPI+PaymentMethods deletePaymentMethod. */
+    @DELETE(ApiRequestUrls.PAYMENT_METHOD)
+    suspend fun deletePaymentMethod(
+        @Path("id") paymentMethodId: String,
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+PaymentMethods setDefaultPaymentMethod. Explicit `{}` body, as for setup-intent. */
+    @PATCH(ApiRequestUrls.PAYMENT_METHOD_DEFAULT)
+    suspend fun setDefaultPaymentMethod(
+        @Path("id") paymentMethodId: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+Booking createPaymentIntent. The response is a bare body, not enveloped. */
+    @POST(ApiRequestUrls.PAYMENT_INTENT)
+    suspend fun createPaymentIntent(
+        @Body body: PaymentIntentRequest,
+    ): PaymentIntentResponse
+
+    /** Ports iOS ClickMeAPI+Booking confirmBooking. 201 on success; 402 PAYMENT_REQUIRES_ACTION carries 3DS detail. */
+    @POST(ApiRequestUrls.BOOKING_CONFIRM)
+    suspend fun confirmBooking(
+        @Body body: ConfirmBookingRequest,
+    ): SuccessDataResponse<ConfirmBookingData>
 }

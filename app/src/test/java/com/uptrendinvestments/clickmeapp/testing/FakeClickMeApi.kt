@@ -1,8 +1,10 @@
 package com.uptrendinvestments.clickmeapp.testing
 
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
@@ -13,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
@@ -22,6 +25,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
@@ -66,6 +72,12 @@ class FakeClickMeApi : ClickMeApi {
         { _, _ -> notStubbed() }
     var requestBookingHandler: suspend (BookingRequestBody) -> BookingRequestData = { notStubbed() }
     var clientBookingDetailHandler: suspend (String) -> ClientBookingDetail = { notStubbed() }
+    var getPaymentMethodsHandler: suspend () -> PaymentMethodsData = { notStubbed() }
+    var setupIntentHandler: suspend () -> PaymentMethodSetupData = { notStubbed() }
+    var deletePaymentMethodHandler: suspend (String) -> SuccessMessageResponse = { notStubbed() }
+    var setDefaultPaymentMethodHandler: suspend (String) -> SuccessMessageResponse = { notStubbed() }
+    var paymentIntentHandler: suspend (PaymentIntentRequest) -> PaymentIntentResponse = { notStubbed() }
+    var confirmBookingHandler: suspend (ConfirmBookingRequest) -> ConfirmBookingData = { notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -139,6 +151,24 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var clientBookingDetailCalls = 0
         private set
 
+    @Volatile var getPaymentMethodsCalls = 0
+        private set
+
+    @Volatile var setupIntentCalls = 0
+        private set
+
+    @Volatile var deletePaymentMethodCalls = 0
+        private set
+
+    @Volatile var setDefaultPaymentMethodCalls = 0
+        private set
+
+    @Volatile var paymentIntentCalls = 0
+        private set
+
+    @Volatile var confirmBookingCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -163,6 +193,26 @@ class FakeClickMeApi : ClickMeApi {
 
     /** Every POST /bookings/request body received, in call order. */
     val requestBookingRequests: List<BookingRequestBody> get() = _requestBookingRequests
+
+    private val _paymentIntentRequests = mutableListOf<PaymentIntentRequest>()
+
+    /** Every POST /bookings/payment-intent body received, in call order. */
+    val paymentIntentRequests: List<PaymentIntentRequest> get() = _paymentIntentRequests
+
+    private val _confirmBookingRequests = mutableListOf<ConfirmBookingRequest>()
+
+    /** Every POST /bookings/confirm body received, in call order. */
+    val confirmBookingRequests: List<ConfirmBookingRequest> get() = _confirmBookingRequests
+
+    private val _deletedPaymentMethodIds = mutableListOf<String>()
+
+    /** The id of every DELETE /me/payment-methods/{id} call, in call order. */
+    val deletedPaymentMethodIds: List<String> get() = _deletedPaymentMethodIds
+
+    private val _defaultedPaymentMethodIds = mutableListOf<String>()
+
+    /** The id of every PATCH /me/payment-methods/{id}/default call, in call order. */
+    val defaultedPaymentMethodIds: List<String> get() = _defaultedPaymentMethodIds
 
     override suspend fun login(body: LoginRequest): SuccessDataResponse<LoginData> {
         loginCalls++
@@ -301,6 +351,46 @@ class FakeClickMeApi : ClickMeApi {
     override suspend fun getClientBookingDetail(bookingId: String): SuccessDataResponse<ClientBookingDetail> {
         clientBookingDetailCalls++
         return ok(clientBookingDetailHandler(bookingId))
+    }
+
+    override suspend fun getPaymentMethods(): SuccessDataResponse<PaymentMethodsData> {
+        getPaymentMethodsCalls++
+        return ok(getPaymentMethodsHandler())
+    }
+
+    override suspend fun createPaymentMethodSetupIntent(
+        body: Map<String, String>,
+    ): SuccessDataResponse<PaymentMethodSetupData> {
+        setupIntentCalls++
+        return ok(setupIntentHandler())
+    }
+
+    override suspend fun deletePaymentMethod(paymentMethodId: String): SuccessMessageResponse {
+        deletePaymentMethodCalls++
+        _deletedPaymentMethodIds += paymentMethodId
+        return deletePaymentMethodHandler(paymentMethodId)
+    }
+
+    override suspend fun setDefaultPaymentMethod(
+        paymentMethodId: String,
+        body: Map<String, String>,
+    ): SuccessMessageResponse {
+        setDefaultPaymentMethodCalls++
+        _defaultedPaymentMethodIds += paymentMethodId
+        return setDefaultPaymentMethodHandler(paymentMethodId)
+    }
+
+    /** Bare body: returns the handler result without the success envelope. */
+    override suspend fun createPaymentIntent(body: PaymentIntentRequest): PaymentIntentResponse {
+        paymentIntentCalls++
+        _paymentIntentRequests += body
+        return paymentIntentHandler(body)
+    }
+
+    override suspend fun confirmBooking(body: ConfirmBookingRequest): SuccessDataResponse<ConfirmBookingData> {
+        confirmBookingCalls++
+        _confirmBookingRequests += body
+        return ok(confirmBookingHandler(body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

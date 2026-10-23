@@ -2,8 +2,10 @@ package com.uptrendinvestments.clickmeapp.network
 
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
+import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupLocation
@@ -618,5 +620,140 @@ class ClickMeApiTest {
             assertEquals("GET", request.method)
             assertEquals("/api/v1/client/bookings/b1", request.url.encodedPath)
             assertEquals("b1", detail.bookingId)
+        }
+
+    @Test
+    fun getPaymentMethodsIssuesGetAndDecodesList() =
+        runTest {
+            enqueue(
+                200,
+                """{"status":"success","data":{"payment_methods":[""" +
+                    """{"id":"pm_1","brand":"visa","last4":"4242","exp_month":9,"exp_year":2028,"is_default":true}]}}""",
+            )
+
+            val items = api.getPaymentMethods().data.paymentMethods
+
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/me/payment-methods", request.url.encodedPath)
+            assertEquals("pm_1", items.single().id)
+        }
+
+    @Test
+    fun createPaymentMethodSetupIntentPostsEmptyJsonObject() =
+        runTest {
+            enqueue(
+                200,
+                """{"status":"success","data":{"client_secret":"seti_1_secret_x","customer_id":"cus_1",""" +
+                    """"ephemeral_key":"ek_1"}}""",
+            )
+
+            val data = api.createPaymentMethodSetupIntent().data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/me/payment-methods/setup-intent", request.url.encodedPath)
+            assertEquals("{}", request.body?.utf8())
+            assertEquals("cus_1", data.customerId)
+        }
+
+    @Test
+    fun setDefaultPaymentMethodPatchesWithEmptyJsonObject() =
+        runTest {
+            enqueue(200, """{"status":"success","message":"Default updated"}""")
+
+            api.setDefaultPaymentMethod("pm_1")
+
+            val request = server.takeRequest()
+            assertEquals("PATCH", request.method)
+            assertEquals("/api/v1/me/payment-methods/pm_1/default", request.url.encodedPath)
+            assertEquals("{}", request.body?.utf8())
+        }
+
+    @Test
+    fun deletePaymentMethodIssuesDeleteWithEmptyBody() =
+        runTest {
+            enqueue(200, """{"status":"success","message":"Removed"}""")
+
+            api.deletePaymentMethod("pm_1")
+
+            val request = server.takeRequest()
+            assertEquals("DELETE", request.method)
+            assertEquals("/api/v1/me/payment-methods/pm_1", request.url.encodedPath)
+            assertEquals(0L, request.body?.size ?: 0L)
+        }
+
+    @Test
+    fun createPaymentIntentPostsStrictBodyAndDecodesBareResponse() =
+        runTest {
+            enqueue(
+                200,
+                """{"payment_intent_id":"pi_1","client_secret":"pi_1_secret_x","customer_id":"cus_1",""" +
+                    """"ephemeral_key":"ek_1","total_amount":42.5,"summary":{"total":42.5},"currency":"cad"}""",
+            )
+
+            val response =
+                api.createPaymentIntent(
+                    PaymentIntentRequest("e1", "t2", "2026-10-23", "01:00", 60, "attempt-1"),
+                )
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/bookings/payment-intent", request.url.encodedPath)
+            assertEquals(
+                """{"expert_id":"e1","topic_id":"t2","selected_date":"2026-10-23","time_slot":"01:00",""" +
+                    """"duration_minutes":60,"booking_attempt_id":"attempt-1"}""",
+                request.body?.utf8(),
+            )
+            assertEquals("pi_1", response.paymentIntentId)
+            assertEquals("cad", response.currency)
+        }
+
+    private fun sampleConfirmBody() =
+        ConfirmBookingRequest(
+            paymentIntentId = "pi_1",
+            expertId = "e1",
+            topicId = "t2",
+            startTime = "2026-10-23T01:00:00Z",
+            meetingType = "in_app_voice",
+            stripePaymentMethodId = "pm_1",
+        )
+
+    @Test
+    fun confirmBookingPostsAndDecodes201Envelope() =
+        runTest {
+            enqueue(
+                201,
+                """{"status":"success","data":{"booking_id":"b9","status":"pending_approval",""" +
+                    """"message":"Sent","estimated_confirmation_time":"24 hours"}}""",
+            )
+
+            val data = api.confirmBooking(sampleConfirmBody()).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/bookings/confirm", request.url.encodedPath)
+            val sent = request.body?.utf8().orEmpty()
+            assertFalse(sent, sent.contains("booking_attempt_id"))
+            assertEquals("b9", data.bookingId)
+        }
+
+    @Test
+    fun confirmBooking402SurfacesDetailThroughApiCall() =
+        runTest {
+            enqueue(
+                402,
+                """{"status":"error","code":"PAYMENT_REQUIRES_ACTION","message":"Authentication required",""" +
+                    """"detail":{"client_secret":"pi_1_secret_x","stripe_account":"acct_1"}}""",
+            )
+
+            val error = runCatching { apiCall { api.confirmBooking(sampleConfirmBody()) } }.exceptionOrNull()
+
+            assertTrue(error is ApiException.Http)
+            error as ApiException.Http
+            assertEquals(402, error.status)
+            assertEquals(ErrorCode.PaymentRequiresAction, error.code)
+            assertEquals("pi_1_secret_x", error.detail?.get("client_secret"))
+            assertEquals("acct_1", error.detail?.get("stripe_account"))
         }
 }
