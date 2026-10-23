@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -39,6 +42,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.PaymentLifecycleCard
+import com.uptrendinvestments.clickmeapp.components.PaymentLifecycleStage
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSessionWhen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentCheckIcon
@@ -58,6 +64,9 @@ private const val CARD_DELAY_MS = 250
 private const val ACTIONS_DELAY_MS = 400
 private const val ICON_START_SCALE = 0.6f
 private val SlideDistance = 16.dp
+
+/** Test tag on the paid-booking [PaymentLifecycleCard] shown below the details card. */
+internal const val REQUEST_SENT_PAYMENT_CARD_TAG = "request_sent_payment_card"
 
 /**
  * Port of iOS BookingRequestSentView. Unlike iOS it replaces the booking screen in the back stack (D-12), so Back
@@ -186,6 +195,7 @@ private fun LoadedBody(
 
     val actionsVisible by remember { derivedStateOf { progress[ACTIONS_INDEX].value >= 1f } }
     val expertName = details.expertName ?: stringResource(R.string.request_sent_label_expert)
+    val locale = LocalConfiguration.current.locales[0]
 
     Column(
         modifier =
@@ -216,6 +226,18 @@ private fun LoadedBody(
             zone = zone,
             timeFormat = timeFormat,
         )
+        // Paid bookings only (iOS `!viewModel.isFree`). Enters with the details card, not as a fifth stage.
+        if (!details.isFree) {
+            PaymentLifecycleCard(
+                stage = PaymentLifecycleStage.HoldPlaced,
+                sessionWhen = formatSessionWhen(details.start, zone, locale, timeFormat),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(REQUEST_SENT_PAYMENT_CARD_TAG)
+                        .fadeSlideUp { progress[CARD_INDEX].value },
+            )
+        }
         BookingRequestSentActions(
             onViewBookings = onViewBookings,
             onBackToHome = onBackToHome,

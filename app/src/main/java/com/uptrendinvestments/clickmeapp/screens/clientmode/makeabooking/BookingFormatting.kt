@@ -45,6 +45,25 @@ fun formatSlotTime(
     return format.format(Date.from(start))
 }
 
+/**
+ * "Oct 24, 2:00 PM": the short session time shown in step 2 of the payment lifecycle card (iOS `sessionWhenLabel`,
+ * "Aug 15, 2:00 PM"). No year, because the details card above it already shows the full date (UI-SPEC section 4).
+ * The date and time are both taken in [zone] and the time follows [timeFormat], so the viewer's zone and 12/24 hour
+ * setting win. Never reads `ZoneId.systemDefault()` (Phase 6 WR-05 rule for pure formatters).
+ */
+fun formatSessionWhen(
+    start: Instant,
+    zone: ZoneId,
+    locale: Locale,
+    timeFormat: java.text.DateFormat,
+): String {
+    val monthDay =
+        DateTimeFormatter
+            .ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale)
+            .format(start.atZone(zone).toLocalDate())
+    return "$monthDay, ${formatSlotTime(start, zone, timeFormat)}"
+}
+
 /** "Thursday, October 22". */
 fun formatSlotDateLine(
     date: LocalDate,

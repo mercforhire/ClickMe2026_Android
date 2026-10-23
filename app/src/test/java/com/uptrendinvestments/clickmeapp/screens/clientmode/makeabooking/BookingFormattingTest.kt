@@ -61,6 +61,33 @@ class BookingFormattingTest {
     }
 
     @Test
+    fun formatSessionWhenUses12HourFormat() {
+        val format = SimpleDateFormat("h:mm a", Locale.US)
+        assertEquals(
+            "Oct 24, 2:00 PM",
+            formatSessionWhen(Instant.parse("2026-10-24T18:00:00Z"), toronto, Locale.US, format),
+        )
+    }
+
+    @Test
+    fun formatSessionWhenUses24HourFormat() {
+        val format = SimpleDateFormat("HH:mm", Locale.US)
+        assertEquals(
+            "Oct 24, 14:00",
+            formatSessionWhen(Instant.parse("2026-10-24T18:00:00Z"), toronto, Locale.US, format),
+        )
+    }
+
+    @Test
+    fun formatSessionWhenTakesTheDateInTheViewersZone() {
+        val format = SimpleDateFormat("h:mm a", Locale.US)
+        assertEquals(
+            "Oct 22, 10:30 PM",
+            formatSessionWhen(Instant.parse("2026-10-23T02:30:00Z"), toronto, Locale.US, format),
+        )
+    }
+
+    @Test
     fun formatSlotDateLine() {
         assertEquals("Thursday, October 22", formatSlotDateLine(LocalDate.of(2026, 10, 22), Locale.US))
     }

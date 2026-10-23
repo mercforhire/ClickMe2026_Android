@@ -47,8 +47,8 @@ import java.time.ZoneId
 private const val EXPERT_NAME_MAX_LINES = 2
 
 /**
- * "Booking Details" card: Expert, Topic, Date & Time and the "Awaiting Approval" status (D-14). No payment
- * lifecycle card: Phase 7 adds it for paid bookings.
+ * "Booking Details" card: Expert, Topic, Date & Time and the "Awaiting Approval" status (D-14). Never mentions
+ * payment itself: for paid bookings the payment lifecycle card is a sibling shown below this card.
  */
 @Composable
 fun BookingRequestSentDetailsCard(

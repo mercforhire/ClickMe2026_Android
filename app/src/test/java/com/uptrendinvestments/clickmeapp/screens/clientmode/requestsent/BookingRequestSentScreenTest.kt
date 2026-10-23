@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent
 
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -23,6 +25,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.requestSentBody
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -275,13 +278,92 @@ class BookingRequestSentScreenTest {
         rule.onNodeWithText("View My Bookings").assertIsEnabled()
     }
 
+    private val paidDetails =
+        details.copy(
+            start = Instant.parse("2026-10-22T20:00:00Z"),
+            end = Instant.parse("2026-10-22T21:00:00Z"),
+            isFree = false,
+        )
+
     @Test
-    fun paidBookingRendersSameBlocksWithoutPaymentWording() {
-        setContent(BookingRequestSentUiState.Loaded(details.copy(isFree = false)))
+    fun paidBookingShowsTheHoldPlacedLifecycleCard() {
+        setContent(BookingRequestSentUiState.Loaded(paidDetails))
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(REQUEST_SENT_PAYMENT_CARD_TAG).assertExists()
+        rule.onNodeWithText("What happens next").assertExists()
+        rule
+            .onNodeWithText("A hold is placed on your card")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Done"))
+        rule.onNodeWithText("Your session runs on Oct 22, 4:00 PM").assertExists()
+    }
+
+    @Test
+    fun paidLifecycleCardSitsBetweenTheDetailsCardAndTheActions() {
+        setContent(BookingRequestSentUiState.Loaded(paidDetails))
+        rule.waitForIdle()
+
+        val detailsTop =
+            rule
+                .onNodeWithText("Booking Details")
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val cardTop =
+            rule
+                .onNodeWithTag(REQUEST_SENT_PAYMENT_CARD_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val actionsTop =
+            rule
+                .onNodeWithText("View My Bookings")
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        assertTrue(detailsTop < cardTop)
+        assertTrue(cardTop < actionsTop)
+    }
+
+    @Test
+    fun paidBookingKeepsTheSameHeadline() {
+        setContent(BookingRequestSentUiState.Loaded(paidDetails))
         rule.waitForIdle()
 
         rule.onNodeWithText("Request Sent!").assertExists()
         rule.onNodeWithText("Awaiting Approval").assertExists()
+    }
+
+    @Test
+    fun freeBookingShowsNoLifecycleCardAndNoPaymentWording() {
+        setContent(BookingRequestSentUiState.Loaded(details))
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(REQUEST_SENT_PAYMENT_CARD_TAG).assertDoesNotExist()
         rule.onAllNodesWithText("payment", substring = true, ignoreCase = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun entryAnimationIsNotReplayedAfterRestorationForPaidBooking() {
+        val restorer = StateRestorationTester(rule)
+        restorer.setContent {
+            ClickMeTheme {
+                BookingRequestSentContent(
+                    state = BookingRequestSentUiState.Loaded(paidDetails),
+                    onBack = {},
+                    onRetry = {},
+                    onViewBookings = {},
+                    onBackToHome = {},
+                    zone = zone,
+                    timeFormat = time12,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("View My Bookings").assertIsEnabled()
+
+        rule.mainClock.autoAdvance = false
+        restorer.emulateSavedInstanceStateRestore()
+        rule.mainClock.advanceTimeByFrame()
+
+        rule.onNodeWithText("View My Bookings").assertIsEnabled()
+        rule.onNodeWithTag(REQUEST_SENT_PAYMENT_CARD_TAG).assertExists()
     }
 }
