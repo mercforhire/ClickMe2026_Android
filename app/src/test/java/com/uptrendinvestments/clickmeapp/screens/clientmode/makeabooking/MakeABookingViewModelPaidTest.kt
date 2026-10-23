@@ -500,6 +500,22 @@ class MakeABookingViewModelPaidTest {
         }
 
     @Test
+    fun aSlotConflictAfterAConfirmServerErrorOnTheSameAttemptPointsToMyBookings() =
+        runTest(main.testDispatcher) {
+            api.confirmBookingHandler = { throw http(502, null) }
+            val vm = paidVm()
+            bookThroughTheSheet(vm)
+            assertEquals("pi_1", vm.uiState.value.dialogPaymentReference)
+            vm.dismissError()
+
+            api.paymentIntentHandler = { throw http(409, ErrorCode.SlotUnavailable) }
+            bookAndRun(vm)
+            assertEquals(res(R.string.make_a_booking_error_slot_taken_check_bookings), dialog(vm))
+            val ids = api.paymentIntentRequests.map { it.bookingAttemptId }
+            assertEquals(ids[0], ids[1])
+        }
+
+    @Test
     fun aLongLeadConfirmTimeoutHasNoPaymentReference() =
         runTest(main.testDispatcher) {
             api.paymentIntentHandler = { throw http(422, ErrorCode.LongLeadRequiresSavedCard) }

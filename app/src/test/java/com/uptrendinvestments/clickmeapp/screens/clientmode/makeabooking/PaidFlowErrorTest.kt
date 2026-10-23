@@ -150,14 +150,50 @@ class PaidFlowErrorTest {
     fun unmapped_code_in_confirm_with_a_payment_intent_carries_the_reference() {
         assertEquals(
             PaidFailure.Show(FieldError.Text("Boom"), paymentReference = "pi_1"),
-            confirm(http(500, null, "Boom")),
+            confirm(http(422, null, "Boom")),
         )
     }
 
     @Test
     fun unmapped_code_has_no_reference_in_create_intent_or_without_a_payment_intent() {
         assertEquals(PaidFailure.Show(FieldError.Text("Boom")), createIntent(http(500, null, "Boom")))
-        assertEquals(PaidFailure.Show(FieldError.Text("Boom")), confirm(http(500, null, "Boom"), pi = null))
+        assertEquals(PaidFailure.Show(FieldError.Text("Boom")), confirm(http(422, null, "Boom"), pi = null))
+    }
+
+    @Test
+    fun unmapped_server_error_in_confirm_is_an_unknown_outcome_with_the_reference() {
+        listOf(500, 502, 503, 504).forEach { status ->
+            assertEquals(
+                "HTTP $status",
+                PaidFailure.Show(FieldError.Text("Boom"), paymentReference = "pi_1", outcomeUnknown = true),
+                confirm(http(status, null, "Boom")),
+            )
+        }
+        // A gateway error without a body falls back to the unknown copy, still flagged.
+        assertEquals(
+            PaidFailure.Show(res(R.string.login_error_unknown), paymentReference = "pi_1", outcomeUnknown = true),
+            confirm(http(502, null)),
+        )
+        // Long-lead confirm (no payment intent) is unknown too.
+        assertEquals(
+            PaidFailure.Show(FieldError.Text("Boom"), outcomeUnknown = true),
+            confirm(http(500, null, "Boom"), pi = null),
+        )
+    }
+
+    @Test
+    fun unmapped_client_error_in_confirm_and_server_error_in_create_intent_are_not_unknown() {
+        assertFalse((confirm(http(422, null, "Boom")) as PaidFailure.Show).outcomeUnknown)
+        assertFalse((confirm(http(499, null, "Boom")) as PaidFailure.Show).outcomeUnknown)
+        assertFalse((createIntent(http(502, null, "Boom")) as PaidFailure.Show).outcomeUnknown)
+    }
+
+    @Test
+    fun mapped_server_error_codes_keep_their_row_in_confirm() {
+        assertEquals(
+            PaidFailure.Show(res(R.string.make_a_booking_error_payments_unavailable)),
+            confirm(http(503, ErrorCode.DirectChargeDisabled)),
+        )
     }
 
     @Test

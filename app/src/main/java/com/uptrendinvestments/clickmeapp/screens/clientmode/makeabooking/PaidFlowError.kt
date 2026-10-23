@@ -67,7 +67,7 @@ fun ApiException.toPaidFailure(
     val confirming = phase == PaidPhase.Confirm
     val reference = if (confirming) paymentIntentId else null
     return when (this) {
-        is ApiException.Http -> toHttpPaidFailure(reference, afterUnknownOutcome)
+        is ApiException.Http -> toHttpPaidFailure(confirming, reference, afterUnknownOutcome)
         is ApiException.Network ->
             PaidFailure.Show(
                 FieldError.Res(R.string.login_error_network),
@@ -83,7 +83,13 @@ fun ApiException.toPaidFailure(
     }
 }
 
+/**
+ * WR-02: an unmapped 5xx on `/bookings/confirm` (a 500 raised after Stripe already authorized, or a proxy 502/504)
+ * is an unknown outcome like a timeout (D-16): the booking or the hold may exist, so the attempt id is remembered
+ * and a later slot-taken answer points to My Bookings (D-19). Mapped codes keep their own rows.
+ */
 private fun ApiException.Http.toHttpPaidFailure(
+    confirming: Boolean,
     reference: String?,
     afterUnknownOutcome: Boolean,
 ): PaidFailure {
@@ -119,9 +125,16 @@ private fun ApiException.Http.toHttpPaidFailure(
         ErrorCode.AmountBelowMinimum -> res(R.string.make_a_booking_error_amount_below_minimum)
         ErrorCode.InvalidPromo -> res(R.string.make_a_booking_error_invalid_promo)
         ErrorCode.CannotBookSelf -> res(R.string.make_a_booking_error_self)
-        else -> PaidFailure.Show(serverText, paymentReference = reference)
+        else ->
+            PaidFailure.Show(
+                serverText,
+                paymentReference = reference,
+                outcomeUnknown = confirming && status >= HTTP_SERVER_ERROR,
+            )
     }
 }
+
+private const val HTTP_SERVER_ERROR = 500
 
 /** PAY-05 / D-15: a usable 402 needs both the client secret and the connected account. */
 private fun ApiException.Http.challengeOrFailure(serverText: FieldError): PaidFailure {
