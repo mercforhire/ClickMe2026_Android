@@ -5,10 +5,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
@@ -28,7 +33,12 @@ import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
+import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.stripe.ChallengeOutcome
+import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.BOOK_NOW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.NOTES_FIELD_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.TOPIC_PICKER_TAG
@@ -36,6 +46,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subview
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeStripePaymentMethodReader
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -474,9 +485,31 @@ class MakeABookingScreenTest {
     /** Whether the screen is in composition; flipping it off and on simulates covering and uncovering the entry. */
     private var screenShown by mutableStateOf(true)
 
+    /** Stripe requests the fake paid host received, in order. The host consumes each one like the real host does. */
+    private val hostRequests = mutableListOf<StripeRequest>()
+    private val hostAccounts = mutableListOf<String?>()
+    private var navBacks = 0
+    private var dispatcher: OnBackPressedDispatcher? = null
+
+    /** Stands in for [PaidFlowStripeHost]: records every request, then consumes it (consume-before-launch). */
+    @Composable
+    private fun RecordingHost(
+        state: MakeABookingUiState,
+        viewModel: MakeABookingViewModel,
+    ) {
+        LaunchedEffect(state.stripeRequest) {
+            val request = state.stripeRequest ?: return@LaunchedEffect
+            hostRequests += request
+            hostAccounts += state.challengeAccount
+            viewModel.onStripeRequestLaunched()
+        }
+    }
+
     private fun setScreen(viewModel: MakeABookingViewModel) {
         composeRule.setContent {
             ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
                 if (screenShown) {
                     MakeABookingScreen(
                         viewModel = viewModel,
@@ -484,6 +517,7 @@ class MakeABookingScreenTest {
                         onBooked = { booked += it },
                         onOpenPaymentMethods = { openPaymentMethodsCount++ },
                         timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                        paidFlowHost = { state -> RecordingHost(state, viewModel) },
                     )
                 }
             }
@@ -642,5 +676,101 @@ class MakeABookingScreenTest {
         assertEquals(0, api.paymentIntentCalls)
         assertEquals(0, api.requestBookingCalls)
         assertTrue(booked.isEmpty())
+    }
+
+    // ---- 07-13 Task 1: the paid host slot, driven by a fake host ----
+
+    private fun requiresAction() =
+        ApiException.Http(
+            status = 402,
+            code = ErrorCode.PaymentRequiresAction,
+            rawCode = ErrorCode.PaymentRequiresAction.wire,
+            serverMessage = "Authentication required",
+            fieldErrors = emptyList(),
+            detail = mapOf("client_secret" to "pi_1_secret_x", "stripe_account" to "acct_1"),
+        )
+
+    private fun paidViewModel(): MakeABookingViewModel {
+        paidFixture(api)
+        val vm = newViewModel(api, reader = FakeStripePaymentMethodReader().apply { result = "pm_new" })
+        setScreen(vm)
+        vm.selectTopic("t2")
+        composeRule.waitForIdle()
+        return vm
+    }
+
+    @Test
+    fun paidBookNowHandsExactlyOneSheetRequestToTheHostAndLocksTheScreen() {
+        val vm = paidViewModel()
+
+        pickSlotAndBook()
+
+        assertEquals(1, hostRequests.count { it is StripeRequest.PresentSheet })
+        assertEquals(1, hostRequests.size)
+        assertNull(vm.uiState.value.stripeRequest)
+        assertEquals(PaidStep.CollectingPaymentMethod, vm.uiState.value.paidStep)
+        composeRule
+            .onNodeWithTag(BOOK_NOW_TAG)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Booking"))
+        composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        composeRule.waitForIdle()
+        assertEquals(0, navBacks)
+    }
+
+    @Test
+    fun aCanceledSheetShowsNoDialogAndBookNowIsEnabledAgain() {
+        val vm = paidViewModel()
+        pickSlotAndBook()
+
+        vm.onSheetOutcome(SheetOutcome.Canceled)
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Couldn't book").assertDoesNotExist()
+        composeRule.onNodeWithTag(BOOK_NOW_TAG).performScrollTo().assertIsEnabled()
+        composeRule.onNodeWithText("Book Now").assertExists()
+        assertEquals(slot20, vm.uiState.value.selectedSlotStart)
+        assertEquals(PaidStep.Idle, vm.uiState.value.paidStep)
+    }
+
+    @Test
+    fun a402HandsTheChallengeToTheHostWithTheConnectedAccountAndBooksOnCompletion() {
+        val vm = paidViewModel()
+        api.confirmBookingHandler = {
+            if (api.confirmBookingCalls == 1) throw requiresAction() else ConfirmBookingData("b9")
+        }
+        pickSlotAndBook()
+
+        vm.onSheetOutcome(SheetOutcome.Completed)
+        composeRule.waitForIdle()
+
+        val challenge = hostRequests.last()
+        assertEquals(StripeRequest.RunChallenge("pi_1_secret_x", "acct_1"), challenge)
+        assertEquals("acct_1", hostAccounts.last())
+        assertTrue(booked.isEmpty())
+
+        vm.onChallengeOutcome(ChallengeOutcome.Completed)
+        composeRule.waitForIdle()
+
+        assertEquals(listOf("b9"), booked)
+        assertEquals(2, api.confirmBookingCalls)
+    }
+
+    @Test
+    fun recompositionNeverDeliversAConsumedRequestToTheHostAgain() {
+        val vm = paidViewModel()
+        pickSlotAndBook()
+        vm.onSheetOutcome(SheetOutcome.Canceled)
+        composeRule.waitForIdle()
+        assertEquals(1, hostRequests.size)
+
+        vm.onNotesChange("force a state change")
+        composeRule.waitForIdle()
+        screenShown = false
+        composeRule.waitForIdle()
+        screenShown = true
+        composeRule.waitForIdle()
+
+        assertEquals(1, hostRequests.size)
+        assertNull(vm.uiState.value.stripeRequest)
     }
 }
