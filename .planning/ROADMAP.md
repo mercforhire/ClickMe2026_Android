@@ -438,7 +438,7 @@ Plans:
   5. An Android client and an iOS expert finish a full paid session end to end, and `confirm-connection` is sent exactly once. (PRD Week 4 checkpoint: the client side is complete)
 
 **Planning notes:** Second-biggest schedule risk (background audio, keeping the call across navigation). Don't port `Call/Ready`. Use 3600s, not the iOS 5-minute test value. Hang-up semantics follow CALL-END-SEMANTICS.md. Never cut.
-**Plans:** 4/17 plans executed
+**Plans:** 10/17 plans executed
 Plans:
 **Wave 1**
 
@@ -449,12 +449,12 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 09-05-PLAN.md — CallCenter core: startCall (both variants), permission -> FGS -> engine order, join / mic failures, guard API, derived status, confirm-once, peer left (CALL-01..CALL-06)
-- [ ] 09-06-PLAN.md — AgoraManager (CallEngine over RtcEngine) with iOS audio defaults and tested callback mapping; :app Agora dependency (CALL-03, CALL-06)
-- [ ] 09-07-PLAN.md — Microphone foreground service, bridge, isolated ongoing-call notification, manifest permissions and singleTop (CALL-03)
-- [ ] 09-08-PLAN.md — Call UI A: background, hero (single / pair, pulse), external hero, info with timer and status, minimized pill (CALL-04, CALL-07)
-- [ ] 09-09-PLAN.md — Call UI B: ending-soon banner, control row (Chat disabled), End button, external Open / Copy Link / status (CALL-01, CALL-07, CALL-08)
-- [ ] 09-10-PLAN.md — Root call dialogs and the mic permission requester (rationale, Open Settings, POST_NOTIFICATIONS non-blocking) (CALL-02, CALL-04)
+- [x] 09-05-PLAN.md — CallCenter core: startCall (both variants), permission -> FGS -> engine order, join / mic failures, guard API, derived status, confirm-once, peer left (CALL-01..CALL-06)
+- [x] 09-06-PLAN.md — AgoraManager (CallEngine over RtcEngine) with iOS audio defaults and tested callback mapping; :app Agora dependency (CALL-03, CALL-06)
+- [x] 09-07-PLAN.md — Microphone foreground service, bridge, isolated ongoing-call notification, manifest permissions and singleTop (CALL-03)
+- [x] 09-08-PLAN.md — Call UI A: background, hero (single / pair, pulse), external hero, info with timer and status, minimized pill (CALL-04, CALL-07)
+- [x] 09-09-PLAN.md — Call UI B: ending-soon banner, control row (Chat disabled), End button, external Open / Copy Link / status (CALL-01, CALL-07, CALL-08)
+- [x] 09-10-PLAN.md — Root call dialogs and the mic permission requester (rationale, Open Settings, POST_NOTIFICATIONS non-blocking) (CALL-02, CALL-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -617,7 +617,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
-| 9. Voice Call | 4/17 | In Progress|  |
+| 9. Voice Call | 10/17 | In Progress|  |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
