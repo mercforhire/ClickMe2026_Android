@@ -25,21 +25,32 @@ class ExternalMeetingProviderTest {
     }
 
     @Test
-    fun hosts_areMatchedBySubstring() {
+    fun hosts_matchTheProviderDomainOrASubdomain() {
         assertDetects(Skype, "https://join.skype.com/abc")
         assertDetects(Zoom, "https://us02web.zoom.us/j/1")
+        assertDetects(Zoom, "https://zoom.us/j/1")
         assertDetects(Zoom, "https://zoom.com/j/1")
+        assertDetects(Zoom, "https://user@us02web.zoom.us:443/j/1")
         assertDetects(GoogleMeet, "https://meet.google.com/abc-defg-hij")
         assertDetects(MicrosoftTeams, "https://teams.microsoft.com/l/x")
         assertDetects(MicrosoftTeams, "https://teams.live.com/meet/x")
     }
 
     @Test
-    fun substringFallback_matchesIosBehavior() {
-        assertDetects(Zoom, "https://example.com/zoom-room")
-        assertDetects(Skype, "https://example.com/skype")
-        assertDetects(GoogleMeet, "https://example.com/meet.google")
-        assertDetects(MicrosoftTeams, "https://example.com/teams.x")
+    fun lookalikeHosts_areUnknown() {
+        assertDetects(Unknown, "https://zoom.us.attacker.example/j/1")
+        assertDetects(Unknown, "https://notzoom.us/j/1")
+        assertDetects(Unknown, "https://myskype.com/abc")
+        assertDetects(Unknown, "https://meet.google.com.evil.example/x")
+        assertDetects(Unknown, "https://zoom.us@evil.example/j/1")
+    }
+
+    @Test
+    fun pathOrQueryMentions_neverLabelALink() {
+        assertDetects(Unknown, "https://evil.example/?q=skype")
+        assertDetects(Unknown, "https://example.com/zoom-room")
+        assertDetects(Unknown, "https://example.com/meet.google")
+        assertDetects(Unknown, "https://example.com/teams.x")
     }
 
     @Test
@@ -57,8 +68,9 @@ class ExternalMeetingProviderTest {
     }
 
     @Test
-    fun unparseableUrl_stillRunsTheSubstringRules() {
-        assertDetects(Zoom, "https://example.com/my zoom room")
+    fun unparseableUrl_isReadLenientlyAndStillMatchedByDomain() {
+        assertDetects(Zoom, "https://us02web.zoom.us/my room")
+        assertDetects(Unknown, "https://example.com/my zoom room")
         assertDetects(Unknown, "not a url at all")
     }
 
