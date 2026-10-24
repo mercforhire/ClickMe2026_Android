@@ -43,6 +43,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsEmptyState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsError
@@ -53,6 +55,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import java.text.DateFormat
+import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 
@@ -77,6 +80,7 @@ fun MyBookingsScreen(
     viewModel: MyBookingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
     DisposableEffect(viewModel) { onDispose { viewModel.onScreenHidden() } }
@@ -93,6 +97,8 @@ fun MyBookingsScreen(
         onExploreExperts = onExploreExperts,
         onNoticeConsumed = viewModel::consumeNotice,
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
+        joinNow = joinNow,
+        onJoin = viewModel::join,
         modifier = modifier,
     )
 }
@@ -103,7 +109,7 @@ fun MyBookingsScreen(
  *
  * Both tabs load together (RESEARCH Finding 1), so the skeleton shows on the first load only and not per tab (this
  * replaces the UI-SPEC per-tab lazy load). States follow D-11: skeleton, error with Retry, per-tab empty copy. Cards
- * offer the D-12 actions only: tapping opens details or summary, Join is a placeholder. Pull-to-refresh also works from
+ * offer the D-12 actions only: tapping opens details or summary, and Join Call is live within the join window (D-01). Pull-to-refresh also works from
  * the empty and error states because they scroll. A failed pull and the post-cancel notice (D-07) show as snackbars.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -118,6 +124,8 @@ fun MyBookingsContent(
     onExploreExperts: () -> Unit,
     onNoticeConsumed: () -> Unit,
     onRefreshFailureConsumed: () -> Unit,
+    joinNow: Instant,
+    onJoin: (ClientBookingItem) -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
@@ -223,6 +231,8 @@ fun MyBookingsContent(
                         onOpenUpcoming = onOpenUpcoming,
                         onOpenPast = onOpenPast,
                         onExploreExperts = onExploreExperts,
+                        joinNow = joinNow,
+                        onJoin = onJoin,
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -243,6 +253,8 @@ private fun TabBody(
     onOpenUpcoming: (String) -> Unit,
     onOpenPast: (String) -> Unit,
     onExploreExperts: () -> Unit,
+    joinNow: Instant,
+    onJoin: (ClientBookingItem) -> Unit,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
@@ -273,6 +285,14 @@ private fun TabBody(
                                 UpcomingBookingCard(
                                     item = item,
                                     onClick = { onOpenUpcoming(item.bookingId) },
+                                    joinEnabled =
+                                        isWithinJoinWindow(
+                                            item.status,
+                                            item.startTime,
+                                            item.endTime,
+                                            joinNow,
+                                        ),
+                                    onJoin = { onJoin(item) },
                                     modifier = Modifier.animateItem(),
                                     zone = zone,
                                     timeFormat = timeFormat,

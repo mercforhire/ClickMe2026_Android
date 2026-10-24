@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Update
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,14 +29,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
-import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.model.responses.BookingExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.RESCHEDULE_INITIATED_BY_EXPERT
@@ -56,22 +52,23 @@ import java.util.Locale
 /** Test tag on an Upcoming card. */
 const val UPCOMING_BOOKING_CARD_TAG = "my_bookings_upcoming_card"
 
-/** Test tag on the (always disabled) Join placeholder of an Upcoming card. */
+/** Test tag on the Join Call button of an Upcoming card: live, enabled by the join window (D-01..D-03). */
 const val MY_BOOKINGS_JOIN_TAG = "my_bookings_join"
 
 private val IconSize = 20.dp
 private val SmallIconSize = 16.dp
 private val AvatarSize = 56.dp
-private val JoinButtonMinHeight = 56.dp
 private const val BADGE_FILL_ALPHA = 0.10f
 private const val BADGE_BORDER_ALPHA = 0.45f
 private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
 
 /**
  * An Upcoming booking card (iOS `UpcomingBookingCard`). The whole card opens Upcoming Booking Details (D-12). The only
- * action is the Join placeholder: Reschedule, Message and Private Note are not on the card (D-12, D-16), and Join stays
- * disabled until Phase 9 adds the join window.
+ * action is Join Call, live within the join window; Android goes beyond iOS here, whose card passes an empty
+ * `onJoinCall` (D-01). Reschedule, Message and Private Note are not on the card (D-12, D-16).
  *
+ * @param joinEnabled whether the booking is inside the join window (`isWithinJoinWindow`).
+ * @param onJoin starts the call; tapping Join does not open the details.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
  */
@@ -80,6 +77,8 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
 fun UpcomingBookingCard(
     item: ClientBookingItem,
     onClick: () -> Unit,
+    joinEnabled: Boolean,
+    onJoin: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
@@ -156,7 +155,7 @@ fun UpcomingBookingCard(
                     text = stringResource(R.string.my_bookings_pending_banner),
                 )
             } else {
-                JoinPlaceholder()
+                JoinCallButton(joinEnabled, onJoin, Modifier.testTag(MY_BOOKINGS_JOIN_TAG))
             }
         }
     }
@@ -216,30 +215,6 @@ private fun TintedNotice(
     }
 }
 
-@Composable
-private fun JoinPlaceholder() {
-    val joinState = stringResource(R.string.explore_join_call_state)
-    // PHASE-9: join window + click (D-02, D-12)
-    PressScaleButton(
-        onClick = {},
-        enabled = false,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = JoinButtonMinHeight)
-                .testTag(MY_BOOKINGS_JOIN_TAG)
-                .semantics { stateDescription = joinState },
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Videocam,
-            contentDescription = null,
-            modifier = Modifier.size(IconSize),
-        )
-        Spacer(Modifier.width(Spacing.sm))
-        Text(stringResource(R.string.explore_join_call))
-    }
-}
-
 private fun previewItem(status: String): ClientBookingItem =
     ClientBookingItem(
         bookingId = "b1",
@@ -255,7 +230,13 @@ private fun previewItem(status: String): ClientBookingItem =
 private fun UpcomingBookingCardConfirmedPreview() {
     ClickMeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
-            UpcomingBookingCard(item = previewItem("confirmed"), onClick = {}, modifier = Modifier.padding(Spacing.md))
+            UpcomingBookingCard(
+                item = previewItem("confirmed"),
+                onClick = {},
+                joinEnabled = true,
+                onJoin = {},
+                modifier = Modifier.padding(Spacing.md),
+            )
         }
     }
 }
@@ -268,6 +249,8 @@ private fun UpcomingBookingCardPendingPreview() {
             UpcomingBookingCard(
                 item = previewItem(STATUS_PENDING_APPROVAL),
                 onClick = {},
+                joinEnabled = false,
+                onJoin = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }
