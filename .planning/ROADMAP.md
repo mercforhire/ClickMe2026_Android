@@ -438,7 +438,40 @@ Plans:
   5. An Android client and an iOS expert finish a full paid session end to end, and `confirm-connection` is sent exactly once. (PRD Week 4 checkpoint: the client side is complete)
 
 **Planning notes:** Second-biggest schedule risk (background audio, keeping the call across navigation). Don't port `Call/Ready`. Use 3600s, not the iOS 5-minute test value. Hang-up semantics follow CALL-END-SEMANTICS.md. Never cut.
-**Plans:** TBD
+**Plans:** 17 plans
+Plans:
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — Call network contract: join (dual shape), confirm-connection and end endpoints, strict bodies, redacted RTC config, FakeClickMeApi handlers (CALL-01, CALL-05, CALL-08)
+- [ ] 09-02-PLAN.md — Copy contract strings_call.xml and the pure schedule-anchored CallTimer with the 3600 s cutoff and timer labels (CALL-07)
+- [ ] 09-03-PLAN.md — Join window + 30 s JoinClock, shared JoinCallButton, ExternalMeetingProvider, hardened app-first external link launcher (CALL-01)
+- [ ] 09-04-PLAN.md — Call contracts: ports (CallEngine, CallForegroundController, CallPermissionGate + broker), CallSession and status derivation, typed dialogs, CallGuard / CallStarter, fakes (CALL-02..CALL-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-05-PLAN.md — CallCenter core: startCall (both variants), permission -> FGS -> engine order, join / mic failures, guard API, derived status, confirm-once, peer left (CALL-01..CALL-06)
+- [ ] 09-06-PLAN.md — AgoraManager (CallEngine over RtcEngine) with iOS audio defaults and tested callback mapping; :app Agora dependency (CALL-03, CALL-06)
+- [ ] 09-07-PLAN.md — Microphone foreground service, bridge, isolated ongoing-call notification, manifest permissions and singleTop (CALL-03)
+- [ ] 09-08-PLAN.md — Call UI A: background, hero (single / pair, pulse), external hero, info with timer and status, minimized pill (CALL-04, CALL-07)
+- [ ] 09-09-PLAN.md — Call UI B: ending-soon banner, control row (Chat disabled), End button, external Open / Copy Link / status (CALL-01, CALL-07, CALL-08)
+- [ ] 09-10-PLAN.md — Root call dialogs and the mic permission requester (rationale, Open Settings, POST_NOTIFICATIONS non-blocking) (CALL-02, CALL-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 09-11-PLAN.md — CallCenter lifecycle: hang-up (leave -> /end -> teardown), notification hang-up, rejoin, 3600 s cutoff, logout teardown, Hilt CallModule, realtime keep-alive (CALL-03, CALL-06, CALL-07, CALL-08)
+- [ ] 09-12-PLAN.md — MeetingCallUiState and the expanded MeetingCallScreen for both variants with its own insets (CALL-04, CALL-07, CALL-08)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 09-13-PLAN.md — Root CallOverlayHost in ClickMeApp (layer, pill, Back minimizes, dialogs, mic requester), MeetingCallViewModel, notification tap in MainActivity (CALL-02, CALL-03, CALL-04)
+- [ ] 09-14-PLAN.md — Join on Upcoming Booking Details and the My Bookings card, client cancel guard (CALL-01, CALL-04, CALL-08)
+- [ ] 09-15-PLAN.md — Join on Explore Today's Sessions and the Starting now badge (CALL-01)
+- [ ] 09-16-PLAN.md — Guard sites: mode switch, every user logout, add payment method, cancel confirm (CALL-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 09-17-PLAN.md — Phase gate (both flavors, lint, R8 with Agora), delete :spikes:agora, sweeps, deferred D-16 device UAT, open items, follow-ups and hand-offs (all)
+
 **UI hint**: yes
 
 ### Phase 10: Expert Topics & Availability
