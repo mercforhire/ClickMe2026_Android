@@ -41,6 +41,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.Exp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreTodaysSessionsSection
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /** Test tag on the Explore home list. */
 const val EXPLORE_LIST_TAG = "explore_list"
@@ -60,6 +61,7 @@ fun ExploreScreen(
     sheetViewModel: CategoriesSheetViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
     var showSheet by rememberSaveable { mutableStateOf(false) }
     val nameFallback = stringResource(R.string.explore_expert_name_fallback)
 
@@ -78,6 +80,8 @@ fun ExploreScreen(
         onExpertClick = { onOpenExpert(it.toProfileKey(nameFallback)) },
         onFeaturedTopicClick = { onOpenExpert(it.toProfileKey(nameFallback)) },
         onSessionClick = onOpenBooking,
+        joinNow = joinNow,
+        onJoinSession = viewModel::join,
         onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         modifier = modifier,
     )
@@ -109,6 +113,8 @@ fun ExploreContent(
     onExpertClick: (ExpertCardUi) -> Unit,
     onFeaturedTopicClick: (FeaturedTopicUi) -> Unit,
     onSessionClick: (bookingId: String) -> Unit,
+    joinNow: Instant,
+    onJoinSession: (TodaysSessionUi) -> Unit,
     onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -170,7 +176,14 @@ fun ExploreContent(
                 item(key = "hero") { ExploreHeroHeader() }
                 if (showToday) {
                     item(key = "today") {
-                        SectionAppear { ExploreTodaysSessionsSection(state.todaysSessions, onSessionClick) }
+                        SectionAppear {
+                            ExploreTodaysSessionsSection(
+                                sessions = state.todaysSessions,
+                                now = joinNow,
+                                onSessionClick = onSessionClick,
+                                onJoin = onJoinSession,
+                            )
+                        }
                     }
                 }
                 item(key = "categories") {

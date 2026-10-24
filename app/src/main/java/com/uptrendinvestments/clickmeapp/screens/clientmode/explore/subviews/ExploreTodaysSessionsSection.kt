@@ -5,17 +5,17 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,15 +27,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.SectionHeader
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
-import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
+import com.uptrendinvestments.clickmeapp.managers.isStartingNow
+import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.TodaysSessionUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -44,7 +44,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import java.time.Instant
 import java.time.ZoneId
 
-/** Test tag on the (always disabled) Join Call button of a Today's Sessions card. */
+/** Test tag on the Join Call button of a Today's Sessions card. */
 const val TODAYS_SESSION_JOIN_TAG = "todays_session_join"
 
 /** Test tag on the time range text of a Today's Sessions card. */
@@ -52,18 +52,21 @@ const val TODAYS_SESSION_TIME_TAG = "todays_session_time"
 
 private val IconSize = 20.dp
 private val SessionAvatarSize = 40.dp
-private val JoinButtonMinHeight = 56.dp
 private val PREVIEW_START: Instant = Instant.parse("2026-10-21T19:00:00Z")
 
 /**
  * Today's Sessions strip (D-01). Renders nothing for an empty list. Each card is one click target that reports its
- * booking id through [onSessionClick] (Phase 8: Upcoming Booking Details). The Join Call button inside it stays
- * permanently disabled (D-02, Phase 9 adds the join window).
+ * booking id through [onSessionClick] (Phase 8: Upcoming Booking Details). The Join Call button inside it is live
+ * (D-01..D-03): enabled by the shared join window evaluated at [now], it reports the session through [onJoin] and
+ * consumes its own click, so the card click never fires for a Join tap. A "Starting now" badge sits beside the
+ * expert name while the start is within the window.
  */
 @Composable
 fun ExploreTodaysSessionsSection(
     sessions: List<TodaysSessionUi>,
+    now: Instant,
     onSessionClick: (bookingId: String) -> Unit,
+    onJoin: (TodaysSessionUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (sessions.isEmpty()) return
@@ -72,16 +75,24 @@ fun ExploreTodaysSessionsSection(
         Spacer(Modifier.height(Spacing.md))
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             sessions.forEach { session ->
-                TodaysSessionCard(session, onClick = { onSessionClick(session.bookingId) })
+                TodaysSessionCard(
+                    session = session,
+                    now = now,
+                    onClick = { onSessionClick(session.bookingId) },
+                    onJoin = { onJoin(session) },
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TodaysSessionCard(
     session: TodaysSessionUi,
+    now: Instant,
     onClick: () -> Unit,
+    onJoin: () -> Unit,
 ) {
     Surface(
         modifier =
@@ -101,13 +112,21 @@ private fun TodaysSessionCard(
                 Avatar(url = session.expertAvatarUrl, contentDescription = null, size = SessionAvatarSize)
                 Spacer(Modifier.width(Spacing.md))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = session.expertName ?: stringResource(R.string.explore_expert_name_fallback),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    // FlowRow so the badge wraps below the name at large font scales.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = session.expertName ?: stringResource(R.string.explore_expert_name_fallback),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (isStartingNow(session.startTime, now)) StartingNowBadge()
+                    }
                     Text(
                         text = session.topic ?: stringResource(R.string.explore_session_topic_fallback),
                         style = MaterialTheme.typography.bodyLarge,
@@ -134,26 +153,11 @@ private fun TodaysSessionCard(
                 )
             }
             Spacer(Modifier.height(Spacing.md))
-            val joinState = stringResource(R.string.explore_join_call_state)
-            // PHASE-9: join window + click (D-02)
-            PressScaleButton(
-                onClick = {},
-                enabled = false,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = JoinButtonMinHeight)
-                        .testTag(TODAYS_SESSION_JOIN_TAG)
-                        .semantics { stateDescription = joinState },
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Videocam,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSize),
-                )
-                Spacer(Modifier.width(Spacing.sm))
-                Text(stringResource(R.string.explore_join_call))
-            }
+            JoinCallButton(
+                enabled = isWithinJoinWindow(session.status, session.startTime, session.endTime, now),
+                onClick = onJoin,
+                modifier = Modifier.testTag(TODAYS_SESSION_JOIN_TAG),
+            )
         }
     }
 }
@@ -191,7 +195,9 @@ private fun ExploreTodaysSessionsSectionPreview() {
                             endTime = PREVIEW_START.plusSeconds(3600),
                         ),
                     ),
+                now = PREVIEW_START.minusSeconds(600),
                 onSessionClick = {},
+                onJoin = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }

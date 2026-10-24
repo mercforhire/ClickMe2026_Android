@@ -8,6 +8,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -29,6 +31,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.Exp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreFeaturedTopicsSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreHeroHeader
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreTodaysSessionsSection
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.STARTING_NOW_BADGE_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.StartingNowBadge
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_TIME_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -83,6 +87,9 @@ class ExploreSectionsTest {
             endTime = threePm.plusSeconds(3600),
         )
 
+    // Ten minutes before the session: inside the join window.
+    private val soon: Instant = threePm.minusSeconds(600)
+
     private fun sessionTimeText(): String =
         rule
             // The clickable card merges its descendants, so read the time text from the unmerged tree.
@@ -103,13 +110,13 @@ class ExploreSectionsTest {
     }
 
     @Test
-    fun todaysSessions_showsCardWithFallbackTopicAndDisabledJoin() {
-        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = {}) }
+    fun todaysSessions_showsCardWithFallbackTopicAndEnabledJoin() {
+        show { ExploreTodaysSessionsSection(sessions = listOf(ada), now = soon, onSessionClick = {}, onJoin = {}) }
         rule.onNodeWithText("Today's Sessions").assertExists()
         rule.onNodeWithText("Ada Lovelace").assertExists()
         rule.onNodeWithText("Consultation").assertExists()
         assertEquals("3:00 PM – 4:00 PM", sessionTimeText())
-        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled()
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsEnabled()
     }
 
     @Test
@@ -117,7 +124,7 @@ class ExploreSectionsTest {
         // en-US defaults to 12 hour; the user's 24 hour setting must still win.
         setTime1224("24")
         try {
-            show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = {}) }
+            show { ExploreTodaysSessionsSection(sessions = listOf(ada), now = soon, onSessionClick = {}, onJoin = {}) }
             assertEquals("15:00 – 16:00", sessionTimeText())
         } finally {
             setTime1224(null)
@@ -126,21 +133,28 @@ class ExploreSectionsTest {
 
     @Test
     fun todaysSessions_empty_rendersNothing() {
-        show { ExploreTodaysSessionsSection(sessions = emptyList(), onSessionClick = {}) }
+        show { ExploreTodaysSessionsSection(sessions = emptyList(), now = soon, onSessionClick = {}, onJoin = {}) }
         assertEquals(false, exists("Today's Sessions"))
     }
 
     @Test
     fun todaysSessions_tappingTheCardReportsTheBookingIdOnce() {
         val clicked = mutableListOf<String>()
-        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = { clicked += it }) }
+        show {
+            ExploreTodaysSessionsSection(
+                sessions = listOf(ada),
+                now = soon,
+                onSessionClick = { clicked += it },
+                onJoin = {},
+            )
+        }
         rule.onNodeWithText("Ada Lovelace").performClick()
         assertEquals(listOf("b1"), clicked)
     }
 
     @Test
     fun todaysSessions_cardExposesAViewBookingDetailsClickAction() {
-        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = {}) }
+        show { ExploreTodaysSessionsSection(sessions = listOf(ada), now = soon, onSessionClick = {}, onJoin = {}) }
         val hasLabel =
             SemanticsMatcher("OnClick label is View booking details") { node ->
                 node.config.getOrNull(SemanticsActions.OnClick)?.label == "View booking details"
@@ -149,11 +163,76 @@ class ExploreSectionsTest {
     }
 
     @Test
-    fun todaysSessions_joinStaysDisabledAndTappingItDoesNotOpenTheBooking() {
+    fun todaysSessions_joinTapStartsTheCallAndDoesNotOpenTheBooking() {
         val clicked = mutableListOf<String>()
-        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = { clicked += it }) }
-        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled().performClick()
+        val joined = mutableListOf<TodaysSessionUi>()
+        show {
+            ExploreTodaysSessionsSection(
+                sessions = listOf(ada),
+                now = soon,
+                onSessionClick = { clicked += it },
+                onJoin = { joined += it },
+            )
+        }
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsEnabled().performClick()
+        assertEquals(listOf(ada), joined)
         assertEquals(emptyList<String>(), clicked)
+    }
+
+    @Test
+    fun todaysSessions_joinIsDisabledOutsideTheWindowAndNoBadge() {
+        val joined = mutableListOf<TodaysSessionUi>()
+        show {
+            ExploreTodaysSessionsSection(
+                sessions = listOf(ada),
+                now = threePm.minusSeconds(3 * 3600L),
+                onSessionClick = {},
+                onJoin = { joined += it },
+            )
+        }
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled().performClick()
+        assertEquals(emptyList<TodaysSessionUi>(), joined)
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assert(
+            SemanticsMatcher("stateDescription explains why") {
+                it.config.getOrNull(SemanticsProperties.StateDescription) == "Available closer to the session start"
+            },
+        )
+        rule.onAllNodesWithTag(STARTING_NOW_BADGE_TAG, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun todaysSessions_startedHalfAnHourAgoShowsTheBadgeAndEnabledJoin() {
+        show {
+            ExploreTodaysSessionsSection(
+                sessions = listOf(ada),
+                now = threePm.plusSeconds(1800),
+                onSessionClick = {},
+                onJoin = {},
+            )
+        }
+        rule.onNodeWithText("Starting now").assertExists()
+        rule.onNodeWithTag(STARTING_NOW_BADGE_TAG, useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun todaysSessions_pendingApprovalNeverEnablesJoin() {
+        show {
+            ExploreTodaysSessionsSection(
+                sessions = listOf(ada.copy(status = "pending_approval")),
+                now = soon,
+                onSessionClick = {},
+                onJoin = {},
+            )
+        }
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun startingNowBadge_showsSentenceCaseText() {
+        show { StartingNowBadge() }
+        rule.onNodeWithText("Starting now").assertExists()
+        rule.onNodeWithTag(STARTING_NOW_BADGE_TAG).assertExists()
     }
 
     // Trending Categories

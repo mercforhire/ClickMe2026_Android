@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import org.junit.Assert.assertEquals
@@ -56,6 +57,7 @@ class ExploreScreenTest {
     private var chipTapped: String? = null
     private var consumedCount = 0
     private var sessionClicked: String? = null
+    private var sessionJoined: TodaysSessionUi? = null
 
     private fun show(state: ExploreUiState) {
         rule.setContent {
@@ -72,6 +74,8 @@ class ExploreScreenTest {
                     onExpertClick = { expertClicked = it },
                     onFeaturedTopicClick = { topicClicked = it },
                     onSessionClick = { sessionClicked = it },
+                    joinNow = Instant.parse("2026-10-21T18:50:00Z"),
+                    onJoinSession = { sessionJoined = it },
                     onRefreshFailureConsumed = { consumedCount++ },
                 )
             }
@@ -107,6 +111,14 @@ class ExploreScreenTest {
         show(fullState)
         rule.onNodeWithText("Grace Hopper").performClick()
         assertEquals("b1", sessionClicked)
+    }
+
+    @Test
+    fun todaysSessionJoinForwardsTheSessionAndDoesNotOpenTheBooking() {
+        show(fullState)
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).performClick()
+        assertEquals(session, sessionJoined)
+        assertEquals(null, sessionClicked)
     }
 
     @Test
