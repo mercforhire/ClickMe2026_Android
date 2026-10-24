@@ -68,4 +68,35 @@ class JoinWindowTest {
         assertFalse(isStartingNow(now.minusSeconds(3601), now))
         assertTrue(isStartingNow(now, now))
     }
+
+    // ---- WR-09: the window stays open until the later of start + 3600 s and the scheduled end ----
+
+    @Test
+    fun longSession_staysJoinableUntilItsEnd() {
+        val start = now.minusSeconds(2 * 3600)
+        listOf("confirmed", "in_progress", "pending_reschedule").forEach { status ->
+            assertTrue(status, isWithinJoinWindow(status, start, now.plusSeconds(60), now))
+            assertTrue(status, isWithinJoinWindow(status, start, now, now))
+            assertFalse(status, isWithinJoinWindow(status, start, now.minusSeconds(1), now))
+        }
+    }
+
+    @Test
+    fun shortSession_stillGetsTheFullHourAfterStart() {
+        val start = now.minusSeconds(3600)
+        assertTrue(isWithinJoinWindow("in_progress", start, start.plusSeconds(1800), now))
+        assertFalse(isWithinJoinWindow("in_progress", start.minusSeconds(1), start.plusSeconds(1800), now))
+    }
+
+    @Test
+    fun longSession_opensNoEarlierThanAnHourBeforeStart() {
+        val longEnd = now.plusSeconds(6 * 3600)
+        assertTrue(isWithinJoinWindow("confirmed", now.plusSeconds(3600), longEnd, now))
+        assertFalse(isWithinJoinWindow("confirmed", now.plusSeconds(3601), longEnd, now))
+    }
+
+    @Test
+    fun pendingApproval_isNeverJoinableEvenForALongSession() {
+        assertFalse(isWithinJoinWindow("pending_approval", now.minusSeconds(2 * 3600), now.plusSeconds(3600), now))
+    }
 }
