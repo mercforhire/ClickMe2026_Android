@@ -46,7 +46,7 @@ internal fun buildExternalMeetingIntent(
  * Opens an expert-supplied meeting link app-first (D-06): an installed Zoom/Skype/Teams app claims it,
  * otherwise http(s) falls back to [customTab] (the Custom Tab launcher) and any other scheme calls
  * [onFailure]. The URL is expert-controlled server data (T-09-07), so it is checked against
- * [isAllowedMeetingUri] first; this never uses `Intent.parseUri` and never launches a server-built Intent.
+ * [isAllowedMeetingUri] first; this never parses an Intent from a URI string and never launches a server-built Intent.
  * The try/catch avoids needing `<queries>` package-visibility entries.
  */
 fun Context.openExternalMeeting(

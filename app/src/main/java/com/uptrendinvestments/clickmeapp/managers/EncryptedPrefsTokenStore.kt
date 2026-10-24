@@ -73,7 +73,7 @@ class EncryptedPrefsTokenStore(
                 ?.putString(KEY_REFRESH, tokens.refreshToken)
                 ?.putLong(KEY_EXPIRES_AT, tokens.expiresAt)
                 ?.commit()
-        if (ok == false) Log.w(TAG, "Token write did not commit; keeping tokens in memory only")
+        if (ok == false) Log.w(TAG, "Credential write did not commit; keeping them in memory only")
         cachedAccess = tokens.accessToken
         cachedRefresh = tokens.refreshToken
         cachedExpiresAt = tokens.expiresAt

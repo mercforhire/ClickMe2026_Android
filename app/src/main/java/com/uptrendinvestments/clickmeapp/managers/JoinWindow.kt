@@ -28,7 +28,7 @@ private const val MILLIS_PER_SECOND = 1000L
  * never for `pending_approval`; for `completed` while [end] is still in the future (someone may have hung up
  * early and want to resume); otherwise within +-[JOIN_WINDOW_SECONDS] of [start], inclusive.
  *
- * The server's `can_join` (`ClientBookingDetail.canJoin`) is deliberately ignored because its window is too
+ * The server's join flag (the booking detail DTO field) is deliberately ignored because its window is too
  * tight (D-02). The backend join window (120 min before / after in code, 10 / 0 in docs, "tighten before
  * launch") still has the final say on `POST /join`, so this rule is a UX gate and never an authorization
  * decision (RESEARCH Pitfall 5, ASVS V4).

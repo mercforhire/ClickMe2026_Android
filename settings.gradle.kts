@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ClickMe_Android"
 include(":app")
-include(":spikes:stripe", ":spikes:agora")
+include(":spikes:stripe")

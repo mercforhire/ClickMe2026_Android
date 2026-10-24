@@ -2,12 +2,12 @@ package com.uptrendinvestments.clickmeapp.managers
 
 import java.time.Instant
 
-/** Remaining time at or under which the call enters the amber "ending soon" stretch (iOS `5 * 60`). */
+/** Remaining time at or under which the call enters the amber "ending soon" stretch (same as iOS). */
 const val FINAL_STRETCH_SECONDS = 300L
 
 /**
  * How long after the scheduled end `CallCenter` lets a call run before cutting it off (CALL-07). Replaces the iOS
- * `5 * 60` TEMP test value.
+ * five-minute TEMP test value.
  */
 const val OVERTIME_CUTOFF_SECONDS = 3600L
 
@@ -67,6 +67,6 @@ private const val MILLIS_PER_SECOND = 1000L
 
 /**
  * The instant at which a call still running is ended locally: [scheduledEnd] plus [OVERTIME_CUTOFF_SECONDS] (CALL-07).
- * Enforced by `CallCenter` (plan 09-11), never by a UI ticker. 3600 s replaces the iOS `5 * 60` TEMP value.
+ * Enforced by `CallCenter` (plan 09-11), never by a UI ticker. 3600 s replaces the iOS five-minute TEMP value.
  */
 fun overtimeCutoff(scheduledEnd: Instant): Instant = scheduledEnd.plusSeconds(OVERTIME_CUTOFF_SECONDS)

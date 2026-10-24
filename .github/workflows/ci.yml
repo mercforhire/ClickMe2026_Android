@@ -27,7 +27,7 @@ jobs:
       - name: Design rules for throwaway spikes (hex colors, *Brand, secrets)
         run: bash scripts/check-design-rules.sh spikes
       - name: ktlint, lint, unit tests, both flavors
-        run: ./gradlew ktlintCheck lintDevDebug lintProdDebug testDevDebugUnitTest testProdDebugUnitTest assembleDevDebug assembleProdDebug :spikes:stripe:assembleDebug :spikes:agora:assembleDebug --stacktrace
+        run: ./gradlew ktlintCheck lintDevDebug lintProdDebug testDevDebugUnitTest testProdDebugUnitTest assembleDevDebug assembleProdDebug :spikes:stripe:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
