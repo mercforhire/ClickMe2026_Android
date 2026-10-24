@@ -35,6 +35,10 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileViewModel
@@ -48,8 +52,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.clientTabs
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.MyBookingsScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingViewModel
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
@@ -84,7 +91,14 @@ fun HomeClientScreen(
                         avatarUrl = url,
                         onAvatarClick = { navigator.navigate(ModeSwitchKey) },
                         onOpenExpert = { navigator.navigate(it) },
-                        onOpenBooking = {},
+                        onOpenBooking = navigator::openUpcomingBooking,
+                    )
+                },
+                bookingsRoot = { navigator ->
+                    MyBookingsScreen(
+                        onOpenUpcoming = navigator::openUpcomingBooking,
+                        onOpenPast = navigator::openBookingSummary,
+                        onExploreExperts = navigator::showExplore,
                     )
                 },
                 detailEntries = { navigator ->
@@ -126,6 +140,44 @@ fun HomeClientScreen(
                             )
                         },
                     )
+                    clientBookingManagementEntries(
+                        navigator = navigator,
+                        upcoming = { key, onBack, onCancel, onOpenPaymentMethods ->
+                            val upcomingViewModel =
+                                hiltViewModel<UpcomingBookingViewModel, UpcomingBookingViewModel.Factory>(
+                                    creationCallback = { it.create(key) },
+                                )
+                            UpcomingBookingScreen(
+                                viewModel = upcomingViewModel,
+                                onBack = onBack,
+                                onCancel = onCancel,
+                                onOpenPaymentMethods = onOpenPaymentMethods,
+                            )
+                        },
+                        cancel = { key, onBack, onCancelled ->
+                            val cancelViewModel =
+                                hiltViewModel<ClientCancellationViewModel, ClientCancellationViewModel.Factory>(
+                                    creationCallback = { it.create(key) },
+                                )
+                            ClientCancellationScreen(
+                                viewModel = cancelViewModel,
+                                onBack = onBack,
+                                onCancelled = onCancelled,
+                            )
+                        },
+                        summary = { key, onBack, onBookAgain, onOpenPaymentMethods ->
+                            val summaryViewModel =
+                                hiltViewModel<BookingSummaryViewModel, BookingSummaryViewModel.Factory>(
+                                    creationCallback = { it.create(key) },
+                                )
+                            BookingSummaryScreen(
+                                viewModel = summaryViewModel,
+                                onBack = onBack,
+                                onBookAgain = onBookAgain,
+                                onOpenPaymentMethods = onOpenPaymentMethods,
+                            )
+                        },
+                    )
                     clientPaymentMethodsEntry(navigator) { onBack ->
                         PaymentMethodsScreen(viewModel = hiltViewModel(), onBack = onBack)
                     }
@@ -162,10 +214,12 @@ private const val ONBOARDING_FADE_MS = 200
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Two slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
- * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button), and
- * [detailEntries] registers extra routes pushed on top of a tab, such as the Expert Profile, the booking
- * flow routes (see [clientBookingFlowEntries]) and Payment Methods (see [clientPaymentMethodsEntry]).
+ * Three slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button),
+ * [bookingsRoot] renders the Bookings tab root (default: the placeholder), and [detailEntries] registers extra
+ * routes pushed on top of a tab, such as the Expert Profile, the booking flow routes (see
+ * [clientBookingFlowEntries]), the booking-management routes (see [clientBookingManagementEntries]) and Payment
+ * Methods (see [clientPaymentMethodsEntry]).
  */
 @Composable
 fun HomeClientShell(
@@ -182,6 +236,7 @@ fun HomeClientShell(
             actions = { TopBarAvatarButton(url, onClick = { navigator.navigate(ModeSwitchKey) }) },
         )
     },
+    bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientBookingsRoot) },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
 ) {
     val state = rememberNavigationState(clientStartTab, clientTabs.map { it.key }.toSet())
@@ -196,7 +251,7 @@ fun HomeClientShell(
             entryProvider<NavKey> {
                 entry<ExploreRoot> { exploreRoot(navigator, avatarUrl) }
                 entry<SearchRoot> { ClientTabRoot(SearchRoot) }
-                entry<ClientBookingsRoot> { ClientTabRoot(ClientBookingsRoot) }
+                entry<ClientBookingsRoot> { bookingsRoot(navigator) }
                 entry<ClientChatsRoot> { ClientTabRoot(ClientChatsRoot) }
                 entry<ClientProfileRoot> {
                     ClientTabRoot(

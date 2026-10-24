@@ -5,8 +5,6 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
-import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
-import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestSentKey
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
@@ -24,7 +22,8 @@ import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.Payment
  *   Bookings); `onBackToHome` mirrors iOS `returnToHome` (reset Explore to its root, then select Explore), so it
  *   lands on Explore even if a future entry point starts the flow from another tab.
  *
- * The Bookings tab stays the placeholder until Phase 8 builds My Bookings; the wiring is final now.
+ * The Bookings tab is My Bookings since Phase 8 (see [clientBookingManagementEntries]), so "View My Bookings" lands
+ * on the real list.
  */
 fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
     navigator: Navigator,
@@ -53,8 +52,8 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
         requestSent(
             key,
             navigator::goBack,
-            { navigator.resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, ClientBookingsRoot)) },
-            { navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot)) },
+            navigator::showMyBookings,
+            navigator::showExplore,
         )
     }
 }
