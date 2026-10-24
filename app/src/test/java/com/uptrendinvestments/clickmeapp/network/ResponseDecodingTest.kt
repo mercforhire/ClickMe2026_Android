@@ -7,11 +7,14 @@ import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RefreshTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.responses.AgoraConfig
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilitySlotDto
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -23,11 +26,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
@@ -878,6 +884,92 @@ class ResponseDecodingTest {
         assertEquals(
             "{}",
             moshi.adapter(DeclineRescheduleRequest::class.java).toJson(DeclineRescheduleRequest()),
+        )
+    }
+
+    @Test
+    fun joinCallDecodesInAppVoiceShape() {
+        val json =
+            """
+            {"status":"success","data":{"booking_id":"b1","connection_type":"in_app_voice",
+            "agora_config":{"rtc_token":"tok","uid":12345,"channel_name":"b1"},"external_config":null}}
+            """.trimIndent()
+        assertEquals(
+            JoinCallResponse("b1", "in_app_voice", AgoraConfig("tok", 12345, "b1"), null),
+            envelope(JoinCallResponse::class.java).fromJson(json)!!.data,
+        )
+    }
+
+    @Test
+    fun joinCallDecodesSkypeZoomShapeWithNullJoinUrl() {
+        val json =
+            """
+            {"status":"success","data":{"booking_id":"b1","connection_type":"skype_zoom","agora_config":null,
+            "external_config":{"join_url":null,"message":"No meeting link configured for this session yet."}}}
+            """.trimIndent()
+        val data = envelope(JoinCallResponse::class.java).fromJson(json)!!.data
+        assertNull(data.agoraConfig)
+        assertNull(data.externalConfig!!.joinUrl)
+        assertEquals("No meeting link configured for this session yet.", data.externalConfig.message)
+    }
+
+    @Test
+    fun joinCallDecodesExternalConfigWithoutMessageAndIgnoresUnknownKeys() {
+        val json =
+            """
+            {"status":"success","data":{"booking_id":"b1","connection_type":"skype_zoom","extra":1,
+            "external_config":{"join_url":"https://zoom.us/j/1"}}}
+            """.trimIndent()
+        val data = envelope(JoinCallResponse::class.java).fromJson(json)!!.data
+        assertEquals("https://zoom.us/j/1", data.externalConfig!!.joinUrl)
+        assertNull(data.externalConfig.message)
+        assertNull(data.agoraConfig)
+    }
+
+    @Test
+    fun agoraConfigToStringNeverRevealsTheTokenOrChannel() {
+        val text = AgoraConfig("secret-token", 987654, "room-xyz").toString()
+        assertFalse(text.contains("secret-token"))
+        assertFalse(text.contains("room-xyz"))
+        assertFalse(text.contains("987654"))
+    }
+
+    @Test
+    fun callRequestsEncodeExactStrictBodies() {
+        val confirm = moshi.adapter(ConfirmConnectionRequest::class.java)
+        assertEquals(
+            """{"connection_status":"connected","timestamp":"2026-10-24T14:00:00Z","method":"in_app_voice"}""",
+            confirm.toJson(ConfirmConnectionRequest(timestamp = "2026-10-24T14:00:00Z", method = "in_app_voice")),
+        )
+        assertEquals(
+            """{"connection_status":"connected","timestamp":"2026-10-24T14:00:00Z"}""",
+            confirm.toJson(ConfirmConnectionRequest(timestamp = "2026-10-24T14:00:00Z")),
+        )
+        assertEquals(
+            """{"actual_duration":42,"end_reason":"manual_exit"}""",
+            moshi.adapter(EndCallRequest::class.java).toJson(EndCallRequest(42, "manual_exit")),
+        )
+    }
+
+    @Test
+    fun endCallAndConfirmConnectionDataDecode() {
+        val end =
+            """
+            {"status":"success","data":{"booking_id":"b1","status":"in_progress","actual_duration_secs":42,
+            "end_reason":"completed","review_seam_triggered":false}}
+            """.trimIndent()
+        assertEquals(
+            EndCallData("b1", "in_progress", 42, "completed", false),
+            envelope(EndCallData::class.java).fromJson(end)!!.data,
+        )
+        val confirm =
+            """
+            {"status":"success","data":{"booking_id":"b1","status":"in_progress","connection_status":"connected",
+            "method":null}}
+            """.trimIndent()
+        assertEquals(
+            ConfirmConnectionData("b1", "in_progress", "connected", null),
+            envelope(ConfirmConnectionData::class.java).fromJson(confirm)!!.data,
         )
     }
 }

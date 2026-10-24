@@ -5,7 +5,9 @@ import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
@@ -832,5 +834,85 @@ class ClickMeApiTest {
 
             assertTrue(error is HttpException)
             assertEquals(422, (error as HttpException).code())
+        }
+
+    @Test
+    fun joinCallPostsWithoutBodyAndDecodesInAppVoice() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"booking_id":"b1","connection_type":"in_app_voice",
+                "agora_config":{"rtc_token":"tok","uid":12345,"channel_name":"b1"},"external_config":null}}
+                """.trimIndent(),
+            )
+
+            val data = api.joinCall("b1").data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/bookings/b1/join", request.url.encodedPath)
+            val joinBody = request.body?.utf8().orEmpty()
+            assertTrue(joinBody.isEmpty())
+            assertEquals("in_app_voice", data.connectionType)
+            assertEquals("tok", data.agoraConfig?.rtcToken)
+            assertEquals(12345, data.agoraConfig?.uid)
+            assertNull(data.externalConfig)
+        }
+
+    @Test
+    fun confirmCallConnectionPatchesExactStrictBody() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"booking_id":"b1","status":"in_progress",
+                "connection_status":"connected","method":"skype_zoom"}}
+                """.trimIndent(),
+            )
+
+            val body = ConfirmConnectionRequest(timestamp = "2026-10-24T14:00:00Z", method = "skype_zoom")
+            val data = api.confirmCallConnection("b1", body).data
+
+            val request = server.takeRequest()
+            assertEquals("PATCH", request.method)
+            assertEquals("/api/v1/bookings/b1/confirm-connection", request.url.encodedPath)
+            assertEquals(
+                """{"connection_status":"connected","timestamp":"2026-10-24T14:00:00Z","method":"skype_zoom"}""",
+                request.body?.utf8(),
+            )
+            assertEquals("connected", data.connectionStatus)
+        }
+
+    @Test
+    fun endCallPostsExactStrictBodyAndDecodes() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"booking_id":"b1","status":"in_progress","actual_duration_secs":42,
+                "end_reason":"completed","review_seam_triggered":false}}
+                """.trimIndent(),
+            )
+
+            val data = api.endCall("b1", EndCallRequest(42, "completed")).data
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/bookings/b1/end", request.url.encodedPath)
+            assertEquals("""{"actual_duration":42,"end_reason":"completed"}""", request.body?.utf8())
+            assertEquals(42, data.actualDurationSecs)
+            assertEquals("completed", data.endReason)
+        }
+
+    @Test
+    fun endCall409SurfacesAsApiExceptionHttp() =
+        runTest {
+            enqueue(409, """{"status":"error","code":"INVALID_STATUS","message":"Booking is not in progress"}""")
+
+            val error = runCatching { apiCall { api.endCall("b1", EndCallRequest(1, "dropped")) } }.exceptionOrNull()
+
+            assertTrue(error is ApiException.Http)
+            assertEquals(409, (error as ApiException.Http).status)
         }
 }

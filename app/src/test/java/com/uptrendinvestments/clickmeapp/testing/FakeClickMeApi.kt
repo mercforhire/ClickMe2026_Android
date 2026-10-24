@@ -4,7 +4,9 @@ import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
@@ -20,11 +22,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
@@ -89,6 +94,10 @@ class FakeClickMeApi : ClickMeApi {
         { _, _ -> notStubbed() }
     var declineClientRescheduleHandler: suspend (String, DeclineRescheduleRequest) -> RescheduleResponseData =
         { _, _ -> notStubbed() }
+    var joinCallHandler: suspend (String) -> JoinCallResponse = { notStubbed() }
+    var confirmCallConnectionHandler: suspend (String, ConfirmConnectionRequest) -> ConfirmConnectionData =
+        { _, _ -> notStubbed() }
+    var endCallHandler: suspend (String, EndCallRequest) -> EndCallData = { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -189,6 +198,15 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var declineClientRescheduleCalls = 0
         private set
 
+    @Volatile var joinCallCalls = 0
+        private set
+
+    @Volatile var confirmCallConnectionCalls = 0
+        private set
+
+    @Volatile var endCallCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -241,6 +259,24 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /client/bookings/{id}/decline-reschedule call (id, body), in call order. */
     val declineClientRescheduleRequests: List<Pair<String, DeclineRescheduleRequest>>
         get() = synchronized(_declineClientRescheduleRequests) { _declineClientRescheduleRequests.toList() }
+
+    private val _joinCallRequests = mutableListOf<String>()
+
+    /** Every POST /bookings/{id}/join booking id, in call order. */
+    val joinCallRequests: List<String>
+        get() = synchronized(_joinCallRequests) { _joinCallRequests.toList() }
+
+    private val _confirmCallConnectionRequests = mutableListOf<Pair<String, ConfirmConnectionRequest>>()
+
+    /** Every PATCH /bookings/{id}/confirm-connection call (id, body), in call order. */
+    val confirmCallConnectionRequests: List<Pair<String, ConfirmConnectionRequest>>
+        get() = synchronized(_confirmCallConnectionRequests) { _confirmCallConnectionRequests.toList() }
+
+    private val _endCallRequests = mutableListOf<Pair<String, EndCallRequest>>()
+
+    /** Every POST /bookings/{id}/end call (id, body), in call order. */
+    val endCallRequests: List<Pair<String, EndCallRequest>>
+        get() = synchronized(_endCallRequests) { _endCallRequests.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -463,6 +499,30 @@ class FakeClickMeApi : ClickMeApi {
         declineClientRescheduleCalls++
         synchronized(_declineClientRescheduleRequests) { _declineClientRescheduleRequests += bookingId to body }
         return ok(declineClientRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun joinCall(bookingId: String): SuccessDataResponse<JoinCallResponse> {
+        joinCallCalls++
+        synchronized(_joinCallRequests) { _joinCallRequests += bookingId }
+        return ok(joinCallHandler(bookingId))
+    }
+
+    override suspend fun confirmCallConnection(
+        bookingId: String,
+        body: ConfirmConnectionRequest,
+    ): SuccessDataResponse<ConfirmConnectionData> {
+        confirmCallConnectionCalls++
+        synchronized(_confirmCallConnectionRequests) { _confirmCallConnectionRequests += bookingId to body }
+        return ok(confirmCallConnectionHandler(bookingId, body))
+    }
+
+    override suspend fun endCall(
+        bookingId: String,
+        body: EndCallRequest,
+    ): SuccessDataResponse<EndCallData> {
+        endCallCalls++
+        synchronized(_endCallRequests) { _endCallRequests += bookingId to body }
+        return ok(endCallHandler(bookingId, body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

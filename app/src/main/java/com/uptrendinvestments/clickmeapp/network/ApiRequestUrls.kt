@@ -7,7 +7,7 @@ package com.uptrendinvestments.clickmeapp.network
  * setup, meta and avatar groups. Phase 5 adds the discovery group (home, client bookings, categories, expert
  * details and reviews). Phase 6 adds the booking group (availability, booking request, booking detail). Phase 7 adds the payment
  * group (saved cards, setup and payment intents, booking confirm). Phase 8 adds the client booking actions
- * (cancel, accept and decline a reschedule).
+ * (cancel, accept and decline a reschedule). Phase 9 adds the call group (join, confirm connection, end).
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -53,6 +53,11 @@ object ApiRequestUrls {
     const val CLIENT_BOOKING_CANCEL = "client/bookings/{id}/cancel"
     const val CLIENT_BOOKING_ACCEPT_RESCHEDULE = "client/bookings/{id}/accept-reschedule"
     const val CLIENT_BOOKING_DECLINE_RESCHEDULE = "client/bookings/{id}/decline-reschedule"
+
+    // Phase 9: calls (join, confirm connection, end).
+    const val BOOKING_JOIN = "bookings/{id}/join"
+    const val BOOKING_CONFIRM_CONNECTION = "bookings/{id}/confirm-connection"
+    const val BOOKING_END = "bookings/{id}/end"
 
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
