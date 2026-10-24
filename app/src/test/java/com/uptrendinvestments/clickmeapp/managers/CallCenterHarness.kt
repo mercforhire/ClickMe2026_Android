@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.managers
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.AgoraConfig
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
+import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExternalConfig
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.testing.FakeCallEngine
@@ -13,6 +14,9 @@ import com.uptrendinvestments.clickmeapp.testing.FakeProcessForeground
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import java.time.Duration
 import java.time.Instant
 
@@ -41,6 +45,27 @@ class CallCenterHarness(
 
     init {
         api.confirmCallConnectionHandler = { _, _ -> ConfirmConnectionData() }
+        api.endCallHandler = { _, _ ->
+            synchronized(log) { log += "end" }
+            EndCallData()
+        }
+    }
+
+    /**
+     * Starts an in-app call and drives it to LocalJoined, plus RemoteJoined (so Active and the confirm
+     * PATCH) when [confirm] is true.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun TestScope.startActiveInAppCall(confirm: Boolean = true) {
+        api.joinCallHandler = { inAppJoinResponse() }
+        center.startCall(request())
+        runCurrent()
+        engine.emit(EngineEvent.LocalJoined)
+        runCurrent()
+        if (confirm) {
+            engine.emit(EngineEvent.RemoteJoined(9))
+            runCurrent()
+        }
     }
 
     fun inAppJoinResponse(
