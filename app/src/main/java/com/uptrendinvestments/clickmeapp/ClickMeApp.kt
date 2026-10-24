@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.navigation.AuthNavHost
 import com.uptrendinvestments.clickmeapp.navigation.SignupSetupNavHost
+import com.uptrendinvestments.clickmeapp.screens.call.calling.CallOverlayHost
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
@@ -27,6 +28,10 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 /**
  * Root switch on [AppRoute]. The route is app state owned by [AppViewModel], not a navigation
  * destination (D-01), so this is a plain `when`.
+ *
+ * The route switch is wrapped in [CallOverlayHost], the root call overlay: the expanded call and the pill sit
+ * above every route and survive tab changes and the Client/Expert switch because the call lives in `CallCenter`
+ * (D-08, CALL-04). The suspended-account dialog stays outside it.
  */
 @Composable
 fun ClickMeApp(
@@ -37,34 +42,36 @@ fun ClickMeApp(
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
-    AnimatedContent(
-        targetState = route,
-        transitionSpec = {
-            if (initialState in HOMES && targetState in HOMES) {
-                fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
-                    fadeOut(tween(Motion.TAB_FADE_OUT_MS))
-            } else {
-                EnterTransition.None togetherWith ExitTransition.None
+    CallOverlayHost {
+        AnimatedContent(
+            targetState = route,
+            transitionSpec = {
+                if (initialState in HOMES && targetState in HOMES) {
+                    fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
+                        fadeOut(tween(Motion.TAB_FADE_OUT_MS))
+                } else {
+                    EnterTransition.None togetherWith ExitTransition.None
+                }
+            },
+            label = "root-route",
+        ) { targetRoute ->
+            when (targetRoute) {
+                // The OS splash covers Splash.
+                AppRoute.Splash -> EmptySurface(modifier)
+
+                AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
+
+                // Publish success sets mode Client and routes to client home (D-22).
+                AppRoute.SignupSetup ->
+                    SignupSetupNavHost(
+                        onPublished = appViewModel::onSetupPublished,
+                        onNotNow = appViewModel::onSetupDeferred,
+                    )
+
+                AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
+
+                AppRoute.ExpertHome -> HomeExpertScreen(onSwitchMode = appViewModel::switchMode)
             }
-        },
-        label = "root-route",
-    ) { targetRoute ->
-        when (targetRoute) {
-            // The OS splash covers Splash.
-            AppRoute.Splash -> EmptySurface(modifier)
-
-            AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
-
-            // Publish success sets mode Client and routes to client home (D-22).
-            AppRoute.SignupSetup ->
-                SignupSetupNavHost(
-                    onPublished = appViewModel::onSetupPublished,
-                    onNotNow = appViewModel::onSetupDeferred,
-                )
-
-            AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
-
-            AppRoute.ExpertHome -> HomeExpertScreen(onSwitchMode = appViewModel::switchMode)
         }
     }
 
