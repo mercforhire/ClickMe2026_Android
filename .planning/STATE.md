@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-10-24T00:19:02.828Z"
+stopped_at: Completed 08-14-PLAN.md
+last_updated: "2026-10-24T00:27:07.585Z"
 last_activity: 2026-10-23 -- Phase 08 execution started
 progress:
   total_phases: 17
   completed_phases: 6
   total_plans: 111
-  completed_plans: 105
+  completed_plans: 106
   percent: 35
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 08 (client-bookings-cancellation) — EXECUTING
-Plan: 13 of 15 complete (08-13 done; 08-14, 08-15 remain)
+Plan: 14 of 15 complete (08-14 done; 08-15 remains)
 Status: Executing Phase 08
 Last activity: 2026-10-23 -- Phase 08 execution started
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 94%
 | Phase 06 P14 | 30min | 2 tasks | 2 files |
 | Phase 07 P14 | 40min | 2 tasks | 2 files |
 | Phase 08 P13 | 35min | 2 tasks | 5 files |
+| Phase 08 P14 | 6min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Recent decisions affecting current work:
 - [Init]: Reschedule follows Reading A. Responding is in the MVP (BOOK-09, EXP-09); starting one is deferred (DEF-1).
 - [Init]: The user confirmed the Week 7 and Week 8 success criteria (Phases 14–17).
 - [Init]: 17 phases, about 2 per PRD week (3 in Week 3, the highest-risk week).
+- [Phase 08-14]: showMyBookings resets both Explore and Bookings stacks after a cancel so no screen for a cancelled booking is reachable by Back
 
 ### Pending Todos
 
@@ -87,7 +89,7 @@ Recent decisions affecting current work:
 - [Phase 8/9 hand-off] Today's Sessions cards on Explore are inert (D-01): Phase 8 wires the card tap to Upcoming Booking Details (ExploreTodaysSessionsSection). Join Call is always disabled (D-02): Phase 9 finds "// PHASE-9: join window + click (D-02)" and test tag todays_session_join, adds the join window, the click and the STARTING NOW badge. ClientBookingsRepository and ClientBookingItem (screens/clientmode/mybookings, model/responses/ClientBookingsPayload.kt) are the base for My Bookings.
 - Report to the iOS side (found while porting Phase 5): Expert Profile fails silently on a 404 (suspended/deleted experts) and on network errors; empty Expertise/Topics/Reviews render blank headers and zero reviews shows "—"; featured topic cards ignore is_free; prices divide every currency by 100 (JPY shows 1/100 of the price) and drop decimals on whole amounts; Today's Sessions times use a fixed en_US "h:mm a".
 - [Phase 7 hand-off] DONE 2026-10-23 (Phase 7 plans 07-10, 07-07, 07-08): the paid branch replaced `BookDisabledReason.PaidTopic`, bookingAttemptId regenerates on topic and slot change, D-10 chose the first topic as the default, and Request Sent shows the payment-lifecycle card for paid bookings. Original note: replace the `BookDisabledReason.PaidTopic` branch with the paid flow at the same footprint; add bookingAttemptId regeneration; decide the first-topic default; add the lifecycle card to Request Sent.
-- [Phase 8 hand-off] `ClientBookingDetail` (model/responses) and `ClientBookingsRepository.detail(id)` are the base for Upcoming Booking Details; "View My Bookings" already selects `ClientBookingsRoot`, which is still the placeholder.
+- [Phase 8 hand-off] `ClientBookingDetail` (model/responses) and `ClientBookingsRepository.detail(id)` are the base for Upcoming Booking Details; "View My Bookings" selects `ClientBookingsRoot`, which renders My Bookings since 08-14.
 - [Backend notes] `POST /bookings/request` trusts the client `duration_minutes` and does not reject a past `scheduled_start` (Android guards both on the client); `/experts/:id/details` already returns `available_meeting_types` (D-08's premise is stale; Phase 6 kept D-08 as written by user decision; a pre-filter is a later option); `/experts/:id/availability` accepts `topic_id` (Android's API method has the parameter and passes null).
 - [iOS follow-ups found while porting Phase 6] Request Sent is pushed on top of the booking form (re-submittable); a month change does not cancel the previous availability load (stale overwrite race); the slots card shows the raw IANA zone id; slot times are fixed to h:mm a; the Request Sent loading copy says "Sending your booking…" after the request was already sent.
 - [iOS follow-ups found while porting Phase 7] Dismissing the FlowController sheet with a preselected card still authorizes it on iOS (Android cancels, D-18); after a confirm timeout iOS shows a plain slot-taken message for the user's own pending booking (Android points to My Bookings, D-19); the lifecycle card says "A hold is placed" for long-lead bookings that are only saved and charged at T-24h (UI-SPEC Open Item 3); iOS shows no alert when 3DS is cancelled (Android does, D-15); the "TODO(backend): stripe_account" comment in MakeABookingViewModel.swift is stale (the backend sends it); iOS paid copy for slot taken / meeting link differs from its free path (Android uses one copy, D-14); iOS Payment Methods updates optimistically and can show a default the server rejected.
@@ -150,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-24T00:18:59.820Z
-Stopped at: Phase 8 UI-SPEC approved
+Last session: 2026-10-24T00:27:07.580Z
+Stopped at: Completed 08-14-PLAN.md
 Resume file: .planning/phases/08-client-bookings-cancellation/08-UI-SPEC.md
