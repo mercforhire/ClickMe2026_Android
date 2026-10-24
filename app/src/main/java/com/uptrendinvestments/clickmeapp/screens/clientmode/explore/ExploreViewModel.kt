@@ -4,6 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
+import com.uptrendinvestments.clickmeapp.managers.CallStarter
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.FeaturedTopicDto
 import com.uptrendinvestments.clickmeapp.model.responses.RecommendedExpertDto
@@ -21,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 import java.time.ZoneId
 import javax.inject.Inject
 
@@ -39,6 +44,8 @@ class ExploreViewModel
         private val bookingsRepository: ClientBookingsRepository,
         private val clock: Clock,
         private val savedStateHandle: SavedStateHandle,
+        private val callStarter: CallStarter,
+        joinClock: JoinClock,
     ) : ViewModel() {
         private val _uiState =
             MutableStateFlow(
@@ -52,6 +59,9 @@ class ExploreViewModel
             )
         val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
 
+        /** Shared 30 s wall clock the Join buttons and the Starting now badge are evaluated against (D-03). */
+        val joinNow: StateFlow<Instant> = joinClock.now
+
         private var homeJob: Job? = null
         private var expertsJob: Job? = null
         private var todayJob: Job? = null
@@ -59,6 +69,22 @@ class ExploreViewModel
         init {
             loadHome(refresh = false)
             loadTodaysSessions()
+        }
+
+        /** Join tap on a Today's Sessions card (D-01): starts the call through the one shared entry point. */
+        fun join(session: TodaysSessionUi) {
+            callStarter.startCall(
+                CallStartRequest(
+                    bookingId = session.bookingId,
+                    peerId = session.expertId,
+                    peerName = session.expertName,
+                    peerAvatarUrl = session.expertAvatarUrl,
+                    topic = session.topic,
+                    scheduledStart = session.startTime,
+                    scheduledEnd = session.endTime,
+                    meetingType = MeetingType.fromWire(session.meetingType),
+                ),
+            )
         }
 
         /** Pull-to-refresh: reloads home and Today's Sessions (D-16). */
@@ -185,6 +211,9 @@ class ExploreViewModel
                                         topic = booking.topic,
                                         startTime = booking.startTime,
                                         endTime = booking.endTime,
+                                        expertId = booking.expert.id,
+                                        meetingType = booking.meetingType,
+                                        status = booking.status,
                                     )
                                 }
                         } catch (_: ApiException) {

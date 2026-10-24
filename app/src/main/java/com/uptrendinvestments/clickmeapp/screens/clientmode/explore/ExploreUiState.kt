@@ -50,6 +50,10 @@ data class TodaysSessionUi(
     val topic: String?,
     val startTime: Instant,
     val endTime: Instant,
+    /** What a call start needs (Phase 9). Defaults keep older constructions compiling. */
+    val expertId: String? = null,
+    val meetingType: String? = null,
+    val status: String = "confirmed",
 )
 
 data class ExploreUiState(

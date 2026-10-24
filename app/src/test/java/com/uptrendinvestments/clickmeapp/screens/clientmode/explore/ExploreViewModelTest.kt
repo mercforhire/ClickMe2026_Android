@@ -4,6 +4,9 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.BookingExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
@@ -15,12 +18,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.RecommendedExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.TrendingCategoryDto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -85,18 +90,28 @@ class ExploreViewModelTest {
         id: String,
         start: Instant = now,
         status: String = "confirmed",
+        meetingType: String? = "video",
     ) = ClientBookingItem(
         bookingId = id,
         expert = BookingExpertDto(id = "x-$id", fullName = "Coach $id", avatarUrl = "https://a/$id"),
         topic = "Topic",
         startTime = start,
         endTime = start.plusSeconds(3600),
-        meetingType = "video",
+        meetingType = meetingType,
         status = status,
     )
 
-    private fun viewModel(saved: SavedStateHandle = SavedStateHandle()) =
-        ExploreViewModel(ExploreRepository(api), ClientBookingsRepository(api), clock, saved)
+    private val callStarter = FakeCallStarter()
+
+    private fun TestScope.viewModel(saved: SavedStateHandle = SavedStateHandle()) =
+        ExploreViewModel(
+            ExploreRepository(api),
+            ClientBookingsRepository(api),
+            clock,
+            saved,
+            callStarter,
+            JoinClock(clock, backgroundScope),
+        )
 
     private fun stubDefaults() {
         api.clientHomeHandler = { home() }
@@ -502,5 +517,81 @@ class ExploreViewModelTest {
 
             vm.applySelection(setOf("design", "ai"))
             assertEquals(arrayListOf("ai", "design"), saved.get<ArrayList<String>>(ExploreViewModel.KEY_SELECTION))
+        }
+
+    @Test
+    fun todaysSessionsCarryWhatACallStartNeeds() =
+        runTest {
+            stubDefaults()
+            api.clientBookingsHandler = {
+                ClientBookingsPayload(
+                    bookings = listOf(booking("b1", status = "in_progress", meetingType = "skype_zoom")),
+                )
+            }
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            val session =
+                vm.uiState.value.todaysSessions
+                    .single()
+            assertEquals("x-b1", session.expertId)
+            assertEquals("skype_zoom", session.meetingType)
+            assertEquals("in_progress", session.status)
+        }
+
+    @Test
+    fun joinStartsTheCallThroughTheCallStarter() =
+        runTest {
+            stubDefaults()
+            api.clientBookingsHandler = {
+                ClientBookingsPayload(bookings = listOf(booking("b1", meetingType = "skype_zoom")))
+            }
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.join(
+                vm.uiState.value.todaysSessions
+                    .single(),
+            )
+
+            assertEquals(
+                listOf(
+                    CallStartRequest(
+                        bookingId = "b1",
+                        peerId = "x-b1",
+                        peerName = "Coach b1",
+                        peerAvatarUrl = "https://a/b1",
+                        topic = "Topic",
+                        scheduledStart = now,
+                        scheduledEnd = now.plusSeconds(3600),
+                        meetingType = MeetingType.SkypeZoom,
+                    ),
+                ),
+                callStarter.requests,
+            )
+        }
+
+    @Test
+    fun joinWithAnUnknownMeetingTypeLeavesItNull() =
+        runTest {
+            stubDefaults()
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.join(
+                vm.uiState.value.todaysSessions
+                    .single(),
+            )
+
+            assertEquals(null, callStarter.requests.single().meetingType)
+        }
+
+    @Test
+    fun joinNowMirrorsTheJoinClock() =
+        runTest {
+            stubDefaults()
+            val vm = viewModel()
+
+            assertEquals(now, vm.joinNow.value)
         }
 }
