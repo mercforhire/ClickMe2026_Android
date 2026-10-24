@@ -25,6 +25,10 @@ class FakeCallEngine(
     @Volatile
     var speakerResult: Boolean = true
 
+    /** When set, [join] throws it (after recording the call). */
+    @Volatile
+    var joinError: Throwable? = null
+
     /** When set, [leave] suspends until this completes. */
     @Volatile
     var leaveGate: CompletableDeferred<Unit>? = null
@@ -61,6 +65,7 @@ class FakeCallEngine(
     ): Boolean {
         log?.let { synchronized(it) { it += "engine.join" } }
         synchronized(_joins) { _joins += Triple(token, channelName, uid) }
+        joinError?.let { throw it }
         return joinResult
     }
 

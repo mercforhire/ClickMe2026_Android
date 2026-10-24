@@ -251,4 +251,45 @@ class CallCenterStartTest {
             assertEquals(1, h.engine.destroyCalls)
             assertTrue(h.foreground.stopCalls >= 1)
         }
+
+    // ---- WR-10: unexpected exceptions abort the start instead of crashing the process ----
+
+    @Test
+    fun engineJoinThrowing_abortsAndReleasesTheEngine() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.joinCallHandler = { h.inAppJoinResponse() }
+            h.engine.joinError = RuntimeException("sdk")
+            h.center.startCall(h.request())
+            runCurrent()
+            assertTornDownWithoutEnd(h)
+            assertEquals(1, h.engine.destroyCalls)
+            assertEquals(1, h.foreground.stopCalls)
+            assertEquals(listOf<CallDialog>(CallDialog.JoinError(JoinErrorReason.Unknown)), h.center.dialogs.value)
+        }
+
+    @Test
+    fun serviceStartThrowing_abortsWithoutTouchingTheEngine() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.joinCallHandler = { h.inAppJoinResponse() }
+            h.foreground.startError = IllegalArgumentException("bad intent")
+            h.center.startCall(h.request())
+            runCurrent()
+            assertTornDownWithoutEnd(h)
+            assertEquals(0, h.engine.destroyCalls)
+            assertTrue(h.engine.joins.isEmpty())
+            assertEquals(listOf<CallDialog>(CallDialog.JoinError(JoinErrorReason.Unknown)), h.center.dialogs.value)
+        }
+
+    @Test
+    fun joinRequestThrowingANonApiException_aborts() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.joinCallHandler = { throw IllegalStateException("unexpected") }
+            h.center.startCall(h.request())
+            runCurrent()
+            assertTornDownWithoutEnd(h)
+            assertEquals(listOf<CallDialog>(CallDialog.JoinError(JoinErrorReason.Unknown)), h.center.dialogs.value)
+        }
 }

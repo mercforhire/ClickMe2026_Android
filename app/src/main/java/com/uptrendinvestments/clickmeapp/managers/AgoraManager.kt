@@ -143,6 +143,10 @@ class AgoraManager
             } catch (e: Exception) {
                 Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
                 null
+            } catch (e: LinkageError) {
+                // A native library that fails to load (UnsatisfiedLinkError) is an Error, not an Exception (WR-10).
+                Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
+                null
             }
 
         /** Holds the lock so a leave never interleaves with [destroy] or [join] (WR-04). */

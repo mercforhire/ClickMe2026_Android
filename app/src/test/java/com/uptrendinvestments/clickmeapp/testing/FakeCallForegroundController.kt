@@ -20,6 +20,10 @@ class FakeCallForegroundController(
     @Volatile
     var startResult: Boolean = true
 
+    /** When set, [startAndAwait] throws it. */
+    @Volatile
+    var startError: Throwable? = null
+
     /** When set, [startAndAwait] returns the value this completes with. */
     @Volatile
     var startGate: CompletableDeferred<Boolean>? = null
@@ -38,6 +42,7 @@ class FakeCallForegroundController(
     override suspend fun startAndAwait(info: CallNotificationInfo): Boolean {
         log?.let { synchronized(it) { it += "foreground.start" } }
         synchronized(_starts) { _starts += info }
+        startError?.let { throw it }
         return startGate?.await() ?: startResult
     }
 

@@ -13,6 +13,7 @@ import com.uptrendinvestments.clickmeapp.network.apiCall
 import com.uptrendinvestments.clickmeapp.realtime.ProcessForeground
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -151,7 +152,25 @@ class CallCenter
          */
         private fun isLive(id: Long): Boolean = _session.value?.let { it.id == id && !it.isEndingCall } == true
 
+        /**
+         * The application scope has no exception handler, so anything the start throws besides an [ApiException]
+         * (a native engine failure, a RuntimeException from the SDK or the service start, ...) would kill the
+         * process with the service possibly running. It aborts the start like any other failure (WR-10).
+         */
         private suspend fun runStart(
+            id: Long,
+            request: CallStartRequest,
+        ) {
+            try {
+                runStartSteps(id, request)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                abortStart(id, CallDialog.JoinError(JoinErrorReason.Unknown), engineTouched = engineEngaged)
+            }
+        }
+
+        private suspend fun runStartSteps(
             id: Long,
             request: CallStartRequest,
         ) {
