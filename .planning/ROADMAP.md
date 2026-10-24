@@ -386,7 +386,7 @@ Plans:
   4. When the iOS expert proposes a reschedule, the Android client accepts or declines it from Booking Summary, and the booking leaves `pending_reschedule`.
 
 **Planning notes:** The cancellation-comment open item is settled (D-05): the comment is sent inside `reason` as "label: comment", because `cancelSchema` is `{reason?: string<=500}.strict()`. My Bookings loads both buckets on every load (the rejoin rule needs `type=past`). Starting a reschedule is deferred (DEF-1). Only responding to one is in scope.
-**Plans:** 8/15 plans executed
+**Plans:** 12/15 plans executed
 Plans:
 **Wave 1**
 
@@ -404,10 +404,10 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 08-09-PLAN.md — My Bookings screen: tabs, cards, skeleton / empty / error, pull-to-refresh, snackbars, lifecycle reloads (BOOK-05)
-- [ ] 08-10-PLAN.md — Upcoming Booking Details key, display model and ViewModel (quiet reloads, own-id realtime, reschedule delegation) (BOOK-06, BOOK-09)
-- [ ] 08-11-PLAN.md — Cancel Booking screen: reason and confirm steps, refund line, Back rules, in-flight lock (BOOK-07)
-- [ ] 08-12-PLAN.md — Booking Summary: key, model, ViewModel, screen with badge, price labels, Book Again and the reschedule card (BOOK-08, BOOK-09)
+- [x] 08-09-PLAN.md — My Bookings screen: tabs, cards, skeleton / empty / error, pull-to-refresh, snackbars, lifecycle reloads (BOOK-05)
+- [x] 08-10-PLAN.md — Upcoming Booking Details key, display model and ViewModel (quiet reloads, own-id realtime, reschedule delegation) (BOOK-06, BOOK-09)
+- [x] 08-11-PLAN.md — Cancel Booking screen: reason and confirm steps, refund line, Back rules, in-flight lock (BOOK-07)
+- [x] 08-12-PLAN.md — Booking Summary: key, model, ViewModel, screen with badge, price labels, Book Again and the reschedule card (BOOK-08, BOOK-09)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -583,7 +583,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
-| 8. Client Bookings & Cancellation | 8/15 | In Progress|  |
+| 8. Client Bookings & Cancellation | 12/15 | In Progress|  |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
