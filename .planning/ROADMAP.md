@@ -386,7 +386,7 @@ Plans:
   4. When the iOS expert proposes a reschedule, the Android client accepts or declines it from Booking Summary, and the booking leaves `pending_reschedule`.
 
 **Planning notes:** The cancellation-comment open item is settled (D-05): the comment is sent inside `reason` as "label: comment", because `cancelSchema` is `{reason?: string<=500}.strict()`. My Bookings loads both buckets on every load (the rejoin rule needs `type=past`). Starting a reschedule is deferred (DEF-1). Only responding to one is in scope.
-**Plans:** 12/15 plans executed
+**Plans:** 13/15 plans executed
 Plans:
 **Wave 1**
 
@@ -411,7 +411,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 08-13-PLAN.md — Upcoming Booking Details screen: status row, cards, payment pill, pending banner or inert join card, Cancel Booking, reschedule card (BOOK-06, BOOK-09)
+- [x] 08-13-PLAN.md — Upcoming Booking Details screen: status row, cards, payment pill, pending banner or inert join card, Cancel Booking, reschedule card (BOOK-06, BOOK-09)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -583,7 +583,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
-| 8. Client Bookings & Cancellation | 12/15 | In Progress|  |
+| 8. Client Bookings & Cancellation | 13/15 | In Progress|  |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
