@@ -52,12 +52,17 @@ The ongoing-call notification is plain and swipe-dismissible on Android 14+. Dec
 expected: Decision recorded before release.
 result: [pending]
 
+### 9. Review-fix device checks (09-REVIEW-FIX.md)
+WR-05: force a refused foreground start on API 34+ (Samsung) and confirm the service stops without a crash. WR-06: tap the call notification while a Custom Tab is open and confirm a single MainActivity and the call expands. WR-07: a booking with an unopenable meeting link shows "Couldn't open meeting" and does not confirm. WR-09: a 90-minute booking can still be rejoined after start + 60 min.
+expected: No crash; one activity; no confirm for an unopenable link; Join enabled until the scheduled end.
+result: [pending]
+
 ## Summary
 
-total: 8
+total: 9
 passed: 0
 issues: 0
-pending: 7
+pending: 8
 skipped: 0
 blocked: 1
 
