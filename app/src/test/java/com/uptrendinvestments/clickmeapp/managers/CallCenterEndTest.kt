@@ -4,6 +4,7 @@ package com.uptrendinvestments.clickmeapp.managers
 
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -318,5 +319,84 @@ class CallCenterEndTest {
                     .isEmpty(),
             )
             assertEquals(1, h.engine.destroyCalls)
+        }
+
+    @Test
+    fun endCall_waitsForInFlightConfirm_thenSendsCompleted() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            val gate = CompletableDeferred<ConfirmConnectionData>()
+            h.api.confirmCallConnectionHandler = { _, _ ->
+                gate.await().also { synchronized(h.log) { h.log += "confirm" } }
+            }
+            with(h) { startActiveInAppCall() }
+            h.clock.advanceBy(Duration.ofSeconds(10))
+            h.center.endCall()
+            runCurrent()
+            // /end must not overtake the PATCH that moves the booking to in_progress (WR-03).
+            assertEquals(0, h.api.endCallCalls)
+            gate.complete(ConfirmConnectionData())
+            runCurrent()
+            assertEquals(listOf("b1" to EndCallRequest(10, "completed")), h.api.endCallRequests)
+            assertEquals(
+                startLog + listOf("engine.leave", "confirm", "end", "engine.destroy", "foreground.stop"),
+                h.log.toList(),
+            )
+            assertNull(h.center.session.value)
+        }
+
+    @Test
+    fun endCall_afterFailedConfirm_isManualExit() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.confirmCallConnectionHandler = { _, _ -> throw IOException("offline") }
+            with(h) { startActiveInAppCall() }
+            assertEquals(1, h.api.confirmCallConnectionCalls)
+            h.clock.advanceBy(Duration.ofSeconds(20))
+            h.center.endCall()
+            runCurrent()
+            assertEquals(listOf("b1" to EndCallRequest(20, "manual_exit")), h.api.endCallRequests)
+        }
+
+    @Test
+    fun endCall_confirmThatHangs_isBoundedAndManualExit() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.confirmCallConnectionHandler = { _, _ -> awaitCancellation() }
+            with(h) { startActiveInAppCall() }
+            h.center.endCall()
+            runCurrent()
+            advanceTimeBy(CallCenter.CONFIRM_SETTLE_TIMEOUT_MS - 1)
+            runCurrent()
+            assertEquals(0, h.api.endCallCalls)
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(
+                "manual_exit",
+                h.api.endCallRequests
+                    .single()
+                    .second.endReason,
+            )
+            assertNull(h.center.session.value)
+        }
+
+    @Test
+    fun rejoin_whileOldConfirmHangs_confirmsTheNewSession() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.confirmCallConnectionHandler = { _, _ -> awaitCancellation() }
+            with(h) { startActiveInAppCall() }
+            h.center.endCall()
+            runCurrent()
+            advanceTimeBy(CallCenter.CONFIRM_SETTLE_TIMEOUT_MS)
+            runCurrent()
+            assertNull(h.center.session.value)
+            h.api.confirmCallConnectionHandler = { _, _ -> ConfirmConnectionData() }
+            with(h) { startActiveInAppCall() }
+            assertEquals(2, h.api.confirmCallConnectionCalls)
+            assertTrue(
+                h.center.session.value!!
+                    .confirmSent,
+            )
         }
 }

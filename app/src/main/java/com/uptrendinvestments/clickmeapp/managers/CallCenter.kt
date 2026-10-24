@@ -97,6 +97,9 @@ class CallCenter
         private var cutoffJob: Job? = null
         private var endJob: Job? = null
 
+        /** The current session's confirm-connection PATCH; `/end` waits for it so it never overtakes it (WR-03). */
+        private var confirmJob: Job? = null
+
         /** True once the engine was asked to join, so teardown leaves and destroys only a touched engine. */
         private var engineEngaged = false
 
@@ -118,6 +121,9 @@ class CallCenter
             }
             val id = ++nextSessionId
             engineEngaged = false
+            // A confirm still in flight for the previous session must not block this session's confirm.
+            confirmJob?.cancel()
+            confirmJob = null
             val session =
                 CallSession(
                     id = id,
@@ -305,26 +311,34 @@ class CallCenter
         }
 
         /**
-         * Sends `PATCH confirm-connection` once per session. The flag is set before the request (iOS parity,
-         * RESEARCH Pitfall 9).
+         * Sends `PATCH confirm-connection` until it succeeds once per session, with at most one request in
+         * flight. [CallSession.confirmSent] is set only when the PATCH succeeded, so `/end` reports `completed`
+         * only for a booking the server moved to `in_progress`, and a failed PATCH is retried on the next Active
+         * transition or link open (WR-03; iOS sets its flag before the request, RESEARCH Pitfall 9). A failure
+         * never interrupts the call (CALL-05).
          */
         private fun confirmConnectionOnce() {
             val current = _session.value ?: return
-            if (current.confirmSent) return
-            setSession(current.copy(confirmSent = true))
+            if (current.confirmSent || confirmJob?.isActive == true) return
+            val id = current.id
             val bookingId = current.bookingId
             val body =
                 ConfirmConnectionRequest(
                     timestamp = clock.instant().truncatedTo(ChronoUnit.SECONDS).toString(),
                     method = current.connectionType.wire,
                 )
-            scope.launch(Dispatchers.Main.immediate) {
-                try {
-                    apiCall { api.confirmCallConnection(bookingId, body) }
-                } catch (_: ApiException) {
-                    // 409 and every other error are ignored without interrupting the call (CALL-05).
+            confirmJob =
+                scope.launch(Dispatchers.Main.immediate) {
+                    val confirmed =
+                        try {
+                            apiCall { api.confirmCallConnection(bookingId, body) }
+                            true
+                        } catch (_: ApiException) {
+                            // 409 and every other error leave the flag unset; the call carries on.
+                            false
+                        }
+                    if (confirmed) updateSession(id) { it.copy(confirmSent = true) }
                 }
-            }
         }
 
         // endregion
@@ -406,13 +420,17 @@ class CallCenter
             try {
                 // An in-flight engine join finishes before leave.
                 startJob?.cancelAndJoin()
-                val current = _session.value?.takeIf { it.id == id } ?: return
-                // Read after the join settled so a confirm sent while joining counts.
-                val reason = if (current.confirmSent) EndReason.Completed else EndReason.ManualExit
-                if (current.connectionType == ConnectionType.InAppVoice && engineEngaged) {
+                val joined = _session.value?.takeIf { it.id == id } ?: return
+                if (joined.connectionType == ConnectionType.InAppVoice && engineEngaged) {
                     // The peer hears us go immediately.
                     withTimeoutOrNull(LEAVE_STEP_TIMEOUT_MS) { engine.leave() }
                 }
+                // `completed` is accepted only once the confirm PATCH moved the booking to in_progress, so an
+                // in-flight confirm settles (bounded) before the reason is chosen and `/end` is sent (WR-03).
+                withTimeoutOrNull(CONFIRM_SETTLE_TIMEOUT_MS) { confirmJob?.join() }
+                val current = _session.value?.takeIf { it.id == id } ?: return
+                // Read after the join and the confirm settled, so only a confirm that succeeded counts.
+                val reason = if (current.confirmSent) EndReason.Completed else EndReason.ManualExit
                 // No leg started (hang-up while /join, the mic prompt or the service start was in flight): no
                 // `/end`. iOS sends max(0, d) = 0 here, which the backend's `.int().positive()` schema rejects
                 // with a 400, so nothing is recorded there either. Sending a clamped 1 s would overwrite the
@@ -557,6 +575,9 @@ class CallCenter
         companion object {
             /** Bound on `engine.leave()` during hang-up and logout teardown. */
             const val LEAVE_STEP_TIMEOUT_MS = 3_000L
+
+            /** Bound on waiting for an in-flight confirm-connection before `/end`; `manual_exit` is sent after it. */
+            const val CONFIRM_SETTLE_TIMEOUT_MS = 5_000L
 
             /** Bound on `POST /end`; teardown continues when it elapses. */
             const val END_REQUEST_TIMEOUT_MS = 10_000L

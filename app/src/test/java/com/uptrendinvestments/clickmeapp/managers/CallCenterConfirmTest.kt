@@ -3,6 +3,7 @@
 package com.uptrendinvestments.clickmeapp.managers
 
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
@@ -178,5 +179,79 @@ class CallCenterConfirmTest {
             h.center.toggleSpeaker()
             assertEquals(0, h.engine.muteCalls.size)
             assertEquals(0, h.engine.speakerCalls.size)
+        }
+
+    @Test
+    fun failedConfirm_isRetriedOnNextActive_andSucceedsExactlyOnce() =
+        runTest(main.testDispatcher) {
+            val h = startedInApp()
+            var fail = true
+            h.api.confirmCallConnectionHandler = { _, _ ->
+                if (fail) throw IOException("offline")
+                ConfirmConnectionData()
+            }
+            emit(h, EngineEvent.LocalJoined)
+            emit(h, EngineEvent.RemoteJoined(9))
+            assertEquals(1, h.api.confirmCallConnectionCalls)
+            assertFalse(
+                h.center.session.value!!
+                    .confirmSent,
+            )
+            fail = false
+            emit(h, EngineEvent.RemoteOffline(9, 0))
+            emit(h, EngineEvent.RemoteJoined(9))
+            assertEquals(2, h.api.confirmCallConnectionCalls)
+            assertTrue(
+                h.center.session.value!!
+                    .confirmSent,
+            )
+            emit(h, EngineEvent.RemoteOffline(9, 0))
+            emit(h, EngineEvent.RemoteJoined(9))
+            assertEquals(2, h.api.confirmCallConnectionCalls)
+        }
+
+    @Test
+    fun confirmInFlight_isNotDuplicated_andFlagIsSetOnSuccess() =
+        runTest(main.testDispatcher) {
+            val h = startedInApp()
+            val gate = CompletableDeferred<ConfirmConnectionData>()
+            h.api.confirmCallConnectionHandler = { _, _ -> gate.await() }
+            emit(h, EngineEvent.LocalJoined)
+            emit(h, EngineEvent.RemoteJoined(9))
+            emit(h, EngineEvent.RemoteOffline(9, 0))
+            emit(h, EngineEvent.RemoteJoined(9))
+            assertEquals(1, h.api.confirmCallConnectionCalls)
+            assertFalse(
+                h.center.session.value!!
+                    .confirmSent,
+            )
+            gate.complete(ConfirmConnectionData())
+            runCurrent()
+            assertTrue(
+                h.center.session.value!!
+                    .confirmSent,
+            )
+            assertEquals(1, h.api.confirmCallConnectionCalls)
+        }
+
+    @Test
+    fun failedExternalConfirm_isRetriedOnTheNextOpen() =
+        runTest(main.testDispatcher) {
+            val h = startedExternal()
+            var fail = true
+            h.api.confirmCallConnectionHandler = { _, _ ->
+                if (fail) throw IOException("offline")
+                ConfirmConnectionData()
+            }
+            h.center.onExternalLinkOpened()
+            runCurrent()
+            fail = false
+            h.center.onExternalLinkOpened()
+            runCurrent()
+            assertEquals(2, h.api.confirmCallConnectionCalls)
+            assertTrue(
+                h.center.session.value!!
+                    .confirmSent,
+            )
         }
 }

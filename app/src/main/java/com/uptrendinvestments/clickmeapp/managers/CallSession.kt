@@ -61,6 +61,8 @@ fun CallStartRequest.initialConnectionType(): ConnectionType =
  * [id] is a per-start counter so coroutines that resume after an await can detect a session that was
  * replaced or cleared. `call.ended` from the peer is modelled as `remote = Disconnected`, not a separate
  * status (RESEARCH Pattern 2), so a later remote join restores [CallStatus.Active].
+ *
+ * [confirmSent] turns true only when `PATCH confirm-connection` succeeded for this session (WR-03).
  */
 data class CallSession(
     val id: Long,
