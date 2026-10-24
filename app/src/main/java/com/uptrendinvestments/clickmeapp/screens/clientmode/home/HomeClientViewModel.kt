@@ -2,6 +2,8 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,7 @@ class HomeClientViewModel
     @Inject
     constructor(
         private val userManager: UserManager,
+        private val callGuard: CallGuard,
     ) : ViewModel() {
         val avatarUrl: StateFlow<String?> =
             userManager.profile
@@ -39,8 +42,12 @@ class HomeClientViewModel
             viewModelScope.launch { userManager.markOnboardingShown() }
         }
 
-        /** UserManager runs the logout non-cancellable, so the route change cannot interrupt it. */
+        /**
+         * UserManager runs the logout non-cancellable, so the route change cannot interrupt it. Blocked during a
+         * call (D-13); CallCenter shows the guard dialog.
+         */
         fun logout() {
+            if (!callGuard.attempt(RestrictedAction.LogOut)) return
             viewModelScope.launch { userManager.logout() }
         }
 

@@ -4,6 +4,7 @@ package com.uptrendinvestments.clickmeapp
 
 import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.managers.SessionEvent
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
 import com.uptrendinvestments.clickmeapp.managers.SessionStore
@@ -16,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -55,6 +57,7 @@ class AppViewModelTest {
         initial: TokenPair? = authedPair,
     ) {
         val api = FakeClickMeApi()
+        val guard = FakeCallGuard()
         val tokens = FakeSecureTokenStore(initial)
         val sessionStore = SessionStore(testPreferencesDataStore(scope.backgroundScope, tmp))
         val events = SessionEvents()
@@ -74,7 +77,7 @@ class AppViewModelTest {
             api.userProfileHandler = { throw IOException("not needed") }
         }
 
-        fun viewModel() = AppViewModel(manager)
+        fun viewModel() = AppViewModel(manager, guard)
     }
 
     private fun Harness.clientLaunch() {
@@ -233,6 +236,40 @@ class AppViewModelTest {
 
             assertEquals(AppRoute.Login, vm.route.value)
             assertFalse(h.manager.isLoggedIn.value)
+        }
+
+    @Test
+    fun logoutDuringACallIsBlockedAndKeepsTheSession() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            h.guard.blocked = true
+
+            vm.logout()
+            runCurrent()
+
+            assertEquals(AppRoute.ClientHome, vm.route.value)
+            assertTrue(h.manager.isLoggedIn.value)
+            assertEquals(listOf(RestrictedAction.LogOut), h.guard.attempts)
+        }
+
+    @Test
+    fun forcedLogoutIsNotGuardedDuringACall() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            h.guard.blocked = true
+
+            h.events.emit(SessionEvent.Rejected)
+            runCurrent()
+
+            assertEquals(AppRoute.Login, vm.route.value)
+            assertFalse(h.manager.isLoggedIn.value)
+            assertTrue(h.guard.attempts.isEmpty())
         }
 
     @Test
@@ -400,6 +437,24 @@ class AppViewModelTest {
 
             assertEquals(AppRoute.ExpertHome, vm.route.value)
             assertEquals(AppMode.Expert, h.sessionStore.storedMode())
+        }
+
+    @Test
+    fun switchModeDuringACallIsBlockedAndDoesNotSwitch() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
+            val vm = h.viewModel()
+            runCurrent()
+            h.guard.blocked = true
+
+            vm.switchMode(AppMode.Expert)
+            runCurrent()
+
+            assertEquals(AppRoute.ClientHome, vm.route.value)
+            assertEquals(AppMode.Client, h.manager.currentMode.value)
+            assertEquals(listOf(RestrictedAction.SwitchModes), h.guard.attempts)
         }
 
     @Test
@@ -680,7 +735,7 @@ class AppViewModelTest {
                     backgroundScope,
                     main.testDispatcher,
                 )
-            val second = AppViewModel(relaunched)
+            val second = AppViewModel(relaunched, h.guard)
             runCurrent()
 
             assertEquals(AppRoute.ExpertHome, second.route.value)
@@ -741,6 +796,7 @@ class AppViewModelTest {
                 backgroundScope,
                 main.testDispatcher,
             ),
+            h.guard,
         )
 
     /** Launches into the unfinished hub and taps "Not now". */

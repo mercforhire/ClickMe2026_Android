@@ -2,7 +2,9 @@ package com.uptrendinvestments.clickmeapp
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +38,7 @@ class AppViewModel
     @Inject
     constructor(
         private val userManager: UserManager,
+        private val callGuard: CallGuard,
     ) : ViewModel() {
         private val _route = MutableStateFlow(AppRoute.Splash)
         val route: StateFlow<AppRoute> = _route.asStateFlow()
@@ -116,9 +119,11 @@ class AppViewModel
          * Switches mode (D-17). Cancels any in-flight switch so only the last request lands; the result is
          * applied only while the session is alive and the route is still a home route. `logout()` flips
          * [UserManager.isLoggedIn] off the main thread, so the switch can resume before the collector above
-         * cancels it; the session check drops that late result (WR-01).
+         * cancels it; the session check drops that late result (WR-01). Blocked during a call (D-13);
+         * CallCenter shows the guard dialog.
          */
         fun switchMode(target: AppMode) {
+            if (!callGuard.attempt(RestrictedAction.SwitchModes)) return
             switchJob?.cancel()
             switchJob =
                 viewModelScope.launch {
@@ -150,8 +155,12 @@ class AppViewModel
             }
         }
 
-        /** Ends the session; the isLoggedIn collector then switches the route to Login (FND-08). */
+        /**
+         * Ends the session; the isLoggedIn collector then switches the route to Login (FND-08). Blocked during a
+         * call (D-13); CallCenter shows the guard dialog.
+         */
         fun logout() {
+            if (!callGuard.attempt(RestrictedAction.LogOut)) return
             viewModelScope.launch { userManager.logout() }
         }
 

@@ -2,6 +2,8 @@ package com.uptrendinvestments.clickmeapp.screens.signup.overview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.signup.HydrationState
@@ -45,6 +47,7 @@ class SignupOverviewViewModel
     constructor(
         private val repository: SignupSetupRepository,
         private val userManager: UserManager,
+        private val callGuard: CallGuard,
     ) : ViewModel() {
         private val failureAcknowledged = MutableStateFlow(false)
         private val showLogoutConfirm = MutableStateFlow(false)
@@ -103,7 +106,9 @@ class SignupOverviewViewModel
             failureAcknowledged.value = true
         }
 
+        /** Blocked during a call (D-13); CallCenter shows the guard dialog instead of the logout confirm. */
         fun requestLogout() {
+            if (!callGuard.attempt(RestrictedAction.LogOut)) return
             showLogoutConfirm.value = true
         }
 
