@@ -2,7 +2,9 @@ package com.uptrendinvestments.clickmeapp.managers
 
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.model.enums.ConnectionType
+import com.uptrendinvestments.clickmeapp.model.enums.EndReason
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -13,12 +15,19 @@ import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
+import java.time.Duration
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,8 +50,13 @@ import javax.inject.Singleton
  * down while the app is backgrounded unless the keep-alive from plan 09-11 holds it (RESEARCH Pitfall 6).
  * The echo race in Pitfall 7 is accepted for iOS parity (no time-window heuristic).
  *
- * Hang-up, the cutoff and logout teardown live in this class too (added by plan 09-11). The iOS `isRejoin`
- * parameter is obsolete after CALL-END-SEMANTICS and is not ported (RESEARCH Deprecated).
+ * Hang-up, the cutoff and logout teardown live in this class too. Hang-up leaves the channel, then always
+ * sends `POST /end` (never branching on its outcome), then destroys the engine and stops the service; the
+ * user can rejoin for the whole window (CALL-08, CALL-END-SEMANTICS). The iOS `isRejoin` parameter is
+ * obsolete after CALL-END-SEMANTICS and is not ported (RESEARCH Deprecated).
+ *
+ * It is also a [SessionDataCleaner]: a forced logout or suspension tears the call down locally, with no
+ * `/end` (the tokens are already gone) and no dialog (RESEARCH Pitfall 8).
  */
 @Singleton
 class CallCenter
@@ -57,7 +71,8 @@ class CallCenter
         private val clock: Clock,
         @ApplicationScope private val scope: CoroutineScope,
     ) : CallGuard,
-        CallStarter {
+        CallStarter,
+        SessionDataCleaner {
         private val _session = MutableStateFlow<CallSession?>(null)
 
         /** The live call, or null. */
@@ -78,9 +93,16 @@ class CallCenter
 
         private var nextSessionId = 0L
         private var startJob: Job? = null
+        private var cutoffJob: Job? = null
+        private var endJob: Job? = null
+
+        /** True once the engine was asked to join, so teardown leaves and destroys only a touched engine. */
+        private var engineEngaged = false
 
         init {
             scope.launch(Dispatchers.Main.immediate) { engine.events.collect(::onEngineEvent) }
+            // D-10: the notification's End call action runs the same flow as the button.
+            scope.launch(Dispatchers.Main.immediate) { foreground.hangUpRequests.collect { endCall() } }
             scope.launch(Dispatchers.Main.immediate) {
                 realtime.events.filterIsInstance<RealtimeEvent.CallEnded>().collect(::onPeerCallEnded)
             }
@@ -94,7 +116,8 @@ class CallCenter
                 return
             }
             val id = ++nextSessionId
-            setSession(
+            engineEngaged = false
+            val session =
                 CallSession(
                     id = id,
                     bookingId = request.bookingId,
@@ -105,9 +128,10 @@ class CallCenter
                     scheduledStart = request.scheduledStart,
                     scheduledEnd = request.scheduledEnd,
                     connectionType = request.initialConnectionType(),
-                ),
-            )
+                )
+            setSession(session)
             _isMinimized.value = false
+            startCutoff(session)
             startJob = scope.launch(Dispatchers.Main.immediate) { runStart(id, request) }
         }
 
@@ -186,6 +210,7 @@ class CallCenter
                 abortStart(id, CallDialog.JoinError(JoinErrorReason.Unknown))
                 return
             }
+            engineEngaged = true
             val joined = engine.join(config.rtcToken, config.channelName, config.uid)
             if (_session.value?.id != id) return
             if (!joined) {
@@ -206,7 +231,9 @@ class CallCenter
             engineTouched: Boolean = false,
         ) {
             if (_session.value?.id != id) return
+            cutoffJob?.cancel()
             if (engineTouched) engine.destroy()
+            engineEngaged = false
             foreground.stop()
             setSession(null)
             _isMinimized.value = false
@@ -298,6 +325,7 @@ class CallCenter
         /** The user opened the external meeting link: confirm once (method skype_zoom) and minimize (D-05). */
         fun onExternalLinkOpened() {
             val current = _session.value ?: return
+            if (current.isEndingCall) return
             if (current.connectionType != ConnectionType.SkypeZoom || current.externalJoinUrl == null) return
             setSession(current.copy(hasOpenedExternalLink = true))
             confirmConnectionOnce()
@@ -312,6 +340,132 @@ class CallCenter
         fun expand() {
             if (_session.value == null) return
             _isMinimized.value = false
+        }
+
+        // endregion
+
+        // region Hang-up, cutoff and logout teardown
+
+        /** Hang-up from the button; the notification action arrives through the foreground controller. */
+        fun endCall() {
+            endCall(forced = false)
+        }
+
+        /**
+         * Always runs in a fresh coroutine, so the cutoff loop or the hang-up collector that calls it is
+         * never cancelled by the end flow itself.
+         */
+        private fun endCall(forced: Boolean) {
+            val current = _session.value ?: return
+            if (current.isEndingCall) return
+            endJob = scope.launch(Dispatchers.Main.immediate) { performEnd(forced) }
+        }
+
+        /**
+         * Leave the channel, `POST /end`, then destroy, stop the service and clear (CALL-08, D-10). The
+         * foreground service stays up until `/end` finished or timed out so the process survives the request.
+         */
+        private suspend fun performEnd(forced: Boolean) {
+            val started = _session.value ?: return
+            if (started.isEndingCall) return
+            val id = started.id
+            setSession(
+                started.copy(
+                    isEndingCall = true,
+                    status = CallStatus.Ended,
+                    endedAt = started.endedAt ?: clock.instant(),
+                ),
+            )
+            cutoffJob?.cancel()
+            try {
+                // An in-flight engine join finishes before leave.
+                startJob?.cancelAndJoin()
+                val current = _session.value?.takeIf { it.id == id } ?: return
+                // Read after the join settled so a confirm sent while joining counts.
+                val reason = if (current.confirmSent) EndReason.Completed else EndReason.ManualExit
+                val seconds = current.joinStartedAt?.let { Duration.between(it, clock.instant()).seconds } ?: 0L
+                // The backend /end schema is `.int().positive()`, so 0 would be a 400 (iOS sends max(0, d);
+                // logged as an iOS follow-up).
+                val actualDuration = seconds.coerceIn(1, Int.MAX_VALUE.toLong()).toInt()
+                if (current.connectionType == ConnectionType.InAppVoice && engineEngaged) {
+                    // The peer hears us go immediately.
+                    withTimeoutOrNull(LEAVE_STEP_TIMEOUT_MS) { engine.leave() }
+                }
+                // Always sent, for both variants, never branching on the response or its status: a 409 on
+                // `completed` is expected (CALL-END-SEMANTICS, RESEARCH Pitfall 9).
+                withTimeoutOrNull(END_REQUEST_TIMEOUT_MS) {
+                    try {
+                        apiCall { api.endCall(current.bookingId, EndCallRequest(actualDuration, reason.wire)) }
+                    } catch (_: ApiException) {
+                        // Ignored: teardown continues whatever the server said.
+                    }
+                }
+            } finally {
+                withContext(NonCancellable) { finishEnd(id, forced) }
+            }
+        }
+
+        private suspend fun finishEnd(
+            id: Long,
+            forced: Boolean,
+        ) {
+            val current = _session.value?.takeIf { it.id == id } ?: return
+            if (current.connectionType == ConnectionType.InAppVoice && engineEngaged) engine.destroy()
+            engineEngaged = false
+            foreground.stop()
+            setSession(null)
+            _isMinimized.value = false
+            if (forced) enqueue(CallDialog.TimeLimit)
+        }
+
+        /**
+         * Force-ends the call at [overtimeCutoff] once (CALL-07). Lives here, never in a UI ticker (the ticker
+         * stops when nothing is composed). `delay` uses uptime, which stalls in deep sleep, so the loop re-reads
+         * the injected wall clock at most every [CUTOFF_POLL_MS] (RESEARCH Pitfall 11). The 3600 s limit
+         * replaces the iOS five-minute TEMP value.
+         */
+        private fun startCutoff(session: CallSession) {
+            val end = session.scheduledEnd ?: return
+            val cutoff = overtimeCutoff(end)
+            cutoffJob =
+                scope.launch(Dispatchers.Main.immediate) {
+                    while (isActive) {
+                        val left = Duration.between(clock.instant(), cutoff).toMillis()
+                        if (left <= 0) {
+                            endCall(forced = true)
+                            break
+                        }
+                        delay(minOf(left, CUTOFF_POLL_MS))
+                    }
+                }
+        }
+
+        /**
+         * Forced logout or suspension: tear the call down locally. No `/end` (UserManager clears the tokens
+         * before cleaners run, so it would 401) and no dialog; the booking stays live and the next session
+         * can rejoin (RESEARCH Pitfall 8). User-initiated logout is guarded and never gets here mid-call.
+         */
+        override suspend fun clearSessionData() {
+            withContext(Dispatchers.Main.immediate + NonCancellable) { localTeardown() }
+        }
+
+        private suspend fun localTeardown() {
+            cutoffJob?.cancel()
+            startJob?.cancelAndJoin()
+            // A running end flow finishes its own teardown in its finally block.
+            endJob?.cancelAndJoin()
+            val current = _session.value
+            if (current != null) {
+                if (current.connectionType == ConnectionType.InAppVoice && engineEngaged) {
+                    withTimeoutOrNull(LEAVE_STEP_TIMEOUT_MS) { engine.leave() }
+                    engine.destroy()
+                }
+                engineEngaged = false
+                foreground.stop()
+                setSession(null)
+                _isMinimized.value = false
+            }
+            _dialogs.value = emptyList()
         }
 
         // endregion
@@ -361,5 +515,16 @@ class CallCenter
         private fun setSession(value: CallSession?) {
             _session.value = value
             _isCallActive.value = value != null
+        }
+
+        companion object {
+            /** Bound on `engine.leave()` during hang-up and logout teardown. */
+            const val LEAVE_STEP_TIMEOUT_MS = 3_000L
+
+            /** Bound on `POST /end`; teardown continues when it elapses. */
+            const val END_REQUEST_TIMEOUT_MS = 10_000L
+
+            /** Longest sleep between wall-clock checks of the overtime cutoff. */
+            const val CUTOFF_POLL_MS = 30_000L
         }
     }

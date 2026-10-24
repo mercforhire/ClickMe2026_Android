@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.realtime
 
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.di.IoDispatcher
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.SecureTokenStore
 import com.uptrendinvestments.clickmeapp.managers.SessionEvent
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
@@ -27,6 +28,9 @@ import javax.inject.Singleton
  * App-scoped connection policy for the realtime socket: when it should be connected and with which token.
  *
  * The socket is wanted while the user is logged in and the process is in the foreground (D-13, D-14).
+ * During an active call it is also wanted in the background, so `call.ended` and `booking.update` keep
+ * arriving (RESEARCH Pitfall 6, Open Question 2 adopted); the call's foreground service keeps the process
+ * eligible. There is no Hilt cycle: `CallCenter` depends on `RealtimeConnection`, not on this manager.
  * Logout, session rejection and suspension all end in `UserManager.logout`, which flips `isLoggedIn`, so
  * one condition covers all of them. Every `SessionEvent.Refreshed` reconnects with the stored token (RT-02).
  *
@@ -42,6 +46,7 @@ class RealtimeConnectionManager
         private val tokens: SecureTokenStore,
         private val sessionEvents: SessionEvents,
         private val foreground: ProcessForeground,
+        private val callGuard: CallGuard,
         private val config: RealtimeConfig,
         @ApplicationScope private val scope: CoroutineScope,
         @IoDispatcher private val io: CoroutineDispatcher,
@@ -64,7 +69,11 @@ class RealtimeConnectionManager
             val policyScope = scope + serial
 
             policyScope.launch {
-                combine(userManager.isLoggedIn, foreground.isForeground) { loggedIn, fg -> loggedIn && fg }
+                combine(
+                    userManager.isLoggedIn,
+                    foreground.isForeground,
+                    callGuard.isCallActive,
+                ) { loggedIn, fg, inCall -> loggedIn && (fg || inCall) }
                     .distinctUntilChanged()
                     .collectLatest { desired ->
                         if (desired) {
@@ -91,8 +100,9 @@ class RealtimeConnectionManager
             policyScope.launch { connection.handshakeFailures.collect(::onFailure) }
         }
 
-        /** The one place that decides whether the socket should exist (Phase 9 ORs a keep-alive input here). */
-        private fun isDesired(): Boolean = userManager.isLoggedIn.value && foreground.isForeground.value
+        /** The one place that decides whether the socket should exist; a live call keeps it up in the background. */
+        private fun isDesired(): Boolean =
+            userManager.isLoggedIn.value && (foreground.isForeground.value || callGuard.isCallActive.value)
 
         private suspend fun connectWithStoredToken() {
             cancelRetry()

@@ -13,6 +13,7 @@ import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.responses.AuthUser
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeProcessForeground
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
@@ -76,6 +77,7 @@ class RealtimeConnectionManagerTest {
         val events = SessionEvents()
         val connection = FakeRealtimeConnection()
         val foreground = FakeProcessForeground(foregroundInitially)
+        val callGuard = FakeCallGuard()
         val userManager =
             UserManager(
                 api,
@@ -93,6 +95,7 @@ class RealtimeConnectionManagerTest {
                 managerTokens,
                 events,
                 foreground,
+                callGuard,
                 RealtimeConfig("http://localhost"),
                 scope.backgroundScope,
                 dispatcher,
@@ -157,6 +160,58 @@ class RealtimeConnectionManagerTest {
             runCurrent()
 
             assertEquals(before + 1, h.connection.disconnectCalls)
+        }
+
+    @Test
+    fun activeCallInBackgroundConnectsWithStoredToken() =
+        runTest {
+            val h = Harness(this, foregroundInitially = false)
+            h.callGuard.isCallActive.value = true
+
+            h.startAndLogin()
+
+            assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun callEndingInBackgroundDisconnects() =
+        runTest {
+            val h = Harness(this, foregroundInitially = false)
+            h.callGuard.isCallActive.value = true
+            h.startAndLogin()
+            val before = h.connection.disconnectCalls
+
+            h.callGuard.isCallActive.value = false
+            runCurrent()
+
+            assertEquals(before + 1, h.connection.disconnectCalls)
+        }
+
+    @Test
+    fun callEndingInForegroundKeepsTheSocket() =
+        runTest {
+            val h = Harness(this)
+            h.callGuard.isCallActive.value = true
+            h.startAndLogin()
+            val before = h.connection.disconnectCalls
+
+            h.callGuard.isCallActive.value = false
+            runCurrent()
+
+            assertEquals(before, h.connection.disconnectCalls)
+            assertEquals(listOf("access"), h.connection.connectCalls)
+        }
+
+    @Test
+    fun loggedOutWithCallFlagDoesNotConnect() =
+        runTest {
+            val h = Harness(this, foregroundInitially = false)
+            h.callGuard.isCallActive.value = true
+
+            h.manager.start()
+            runCurrent()
+
+            assertTrue(h.connection.connectCalls.isEmpty())
         }
 
     @Test
