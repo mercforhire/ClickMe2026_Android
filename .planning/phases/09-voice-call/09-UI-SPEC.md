@@ -1,10 +1,11 @@
 ---
 phase: 9
 slug: voice-call
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-10-23
+reviewed_at: 2026-10-23
 ---
 
 # Phase 9 — UI Design Contract
