@@ -4,7 +4,9 @@ import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
@@ -20,11 +22,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
+import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
@@ -57,8 +62,9 @@ import retrofit2.http.Query
  * lookups and avatar upload/delete. Phase 5 adds the discovery group (client home, client bookings,
  * categories, expert details and reviews). Phase 6 adds the booking group (availability, free booking
  * request, client booking detail). Phase 7 adds the payment group (saved cards, setup and payment intents,
- * booking confirm). Other API groups arrive with their features (ROADMAP Phase 2 planning
- * note).
+ * booking confirm). Phase 8 adds the client booking actions (cancel, accept and decline a reschedule).
+ * Phase 9 adds the call group (join, confirm connection, end). Other API groups arrive with their features
+ * (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
  * wrapped by `apiCall` at the repository layer, which maps failures to `ApiException`.
@@ -260,4 +266,31 @@ interface ClickMeApi {
         @Path("id") bookingId: String,
         @Body body: DeclineRescheduleRequest,
     ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports iOS ClickMeAPI+Call joinCall. No `@Body`: the backend join route has no schema and reads only the path
+     * param, so the explicit-`{}` rule for strict bodies does not apply. The response decides the call variant
+     * (`in_app_voice` with [JoinCallResponse.agoraConfig], `skype_zoom` with [JoinCallResponse.externalConfig]).
+     */
+    @POST(ApiRequestUrls.BOOKING_JOIN)
+    suspend fun joinCall(
+        @Path("id") bookingId: String,
+    ): SuccessDataResponse<JoinCallResponse>
+
+    /** Ports iOS ClickMeAPI+Call confirmCallConnection. The backend schema is `.strict()` (see the request KDoc). */
+    @PATCH(ApiRequestUrls.BOOKING_CONFIRM_CONNECTION)
+    suspend fun confirmCallConnection(
+        @Path("id") bookingId: String,
+        @Body body: ConfirmConnectionRequest,
+    ): SuccessDataResponse<ConfirmConnectionData>
+
+    /**
+     * Ports iOS ClickMeAPI+Call endCall. The response status is always the unchanged booking status; callers never
+     * branch on it (CALL-END-SEMANTICS).
+     */
+    @POST(ApiRequestUrls.BOOKING_END)
+    suspend fun endCall(
+        @Path("id") bookingId: String,
+        @Body body: EndCallRequest,
+    ): SuccessDataResponse<EndCallData>
 }

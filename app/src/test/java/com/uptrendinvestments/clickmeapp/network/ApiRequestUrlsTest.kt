@@ -164,4 +164,23 @@ class ApiRequestUrlsTest {
         }
         assertEquals(5, ApiRequestUrls.publicPaths.size)
     }
+
+    @Test
+    fun phaseNineConstants_haveExactRelativeValues() {
+        assertEquals("bookings/{id}/join", ApiRequestUrls.BOOKING_JOIN)
+        assertEquals("bookings/{id}/confirm-connection", ApiRequestUrls.BOOKING_CONFIRM_CONNECTION)
+        assertEquals("bookings/{id}/end", ApiRequestUrls.BOOKING_END)
+    }
+
+    @Test
+    fun callPaths_needAuthToken() {
+        listOf(
+            "/api/v1/bookings/b1/join",
+            "/api/v1/bookings/b1/confirm-connection",
+            "/api/v1/bookings/b1/end",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
 }
