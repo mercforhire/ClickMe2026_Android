@@ -438,7 +438,7 @@ Plans:
   5. An Android client and an iOS expert finish a full paid session end to end, and `confirm-connection` is sent exactly once. (PRD Week 4 checkpoint: the client side is complete)
 
 **Planning notes:** Second-biggest schedule risk (background audio, keeping the call across navigation). Don't port `Call/Ready`. Use 3600s, not the iOS 5-minute test value. Hang-up semantics follow CALL-END-SEMANTICS.md. Never cut.
-**Plans:** 12/17 plans executed
+**Plans:** 16/17 plans executed
 Plans:
 **Wave 1**
 
@@ -463,10 +463,10 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 09-13-PLAN.md — Root CallOverlayHost in ClickMeApp (layer, pill, Back minimizes, dialogs, mic requester), MeetingCallViewModel, notification tap in MainActivity (CALL-02, CALL-03, CALL-04)
-- [ ] 09-14-PLAN.md — Join on Upcoming Booking Details and the My Bookings card, client cancel guard (CALL-01, CALL-04, CALL-08)
-- [ ] 09-15-PLAN.md — Join on Explore Today's Sessions and the Starting now badge (CALL-01)
-- [ ] 09-16-PLAN.md — Guard sites: mode switch, every user logout, add payment method, cancel confirm (CALL-04)
+- [x] 09-13-PLAN.md — Root CallOverlayHost in ClickMeApp (layer, pill, Back minimizes, dialogs, mic requester), MeetingCallViewModel, notification tap in MainActivity (CALL-02, CALL-03, CALL-04)
+- [x] 09-14-PLAN.md — Join on Upcoming Booking Details and the My Bookings card, client cancel guard (CALL-01, CALL-04, CALL-08)
+- [x] 09-15-PLAN.md — Join on Explore Today's Sessions and the Starting now badge (CALL-01)
+- [x] 09-16-PLAN.md — Guard sites: mode switch, every user logout, add payment method, cancel confirm (CALL-04)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -617,7 +617,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
-| 9. Voice Call | 12/17 | In Progress|  |
+| 9. Voice Call | 16/17 | In Progress|  |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
