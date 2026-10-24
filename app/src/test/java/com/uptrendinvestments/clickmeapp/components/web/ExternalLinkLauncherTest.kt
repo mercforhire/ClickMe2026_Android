@@ -21,8 +21,7 @@ import org.robolectric.annotation.Config
 class ExternalLinkLauncherTest {
     private val application = RuntimeEnvironment.getApplication()
 
-    @Test
-    fun allowlist_admitsWebAndMeetingAppSchemes() {
+    private val allowed =
         listOf(
             "https://zoom.us/j/1",
             "http://x.com",
@@ -31,11 +30,10 @@ class ExternalLinkLauncherTest {
             "zoomus://x",
             "msteams://x",
             "ZOOMMTG://x",
-        ).forEach { assertTrue(it, isAllowedMeetingUri(it.toUri())) }
-    }
+            "https://user@zoom.us:443/j/1?pwd=a#b",
+        )
 
-    @Test
-    fun allowlist_rejectsEverythingElse() {
+    private val rejected =
         listOf(
             "intent://x#Intent;end",
             "javascript:alert(1)",
@@ -45,7 +43,25 @@ class ExternalLinkLauncherTest {
             "https:///nohost",
             "ftp://x.com",
             "mailto:a@b.c",
-        ).forEach { assertFalse(it, isAllowedMeetingUri(it.toUri())) }
+            "https:zoom.us",
+            "zoom.us/j/1",
+            " https://zoom.us/j/1",
+        )
+
+    @Test
+    fun allowlist_admitsWebAndMeetingAppSchemes() {
+        allowed.forEach { assertTrue(it, isAllowedMeetingUri(it.toUri())) }
+    }
+
+    @Test
+    fun allowlist_rejectsEverythingElse() {
+        rejected.forEach { assertFalse(it, isAllowedMeetingUri(it.toUri())) }
+    }
+
+    @Test
+    fun stringAllowlist_agreesWithTheUriAllowlist() {
+        allowed.forEach { assertTrue(it, isAllowedMeetingUrl(it)) }
+        rejected.forEach { assertFalse(it, isAllowedMeetingUrl(it)) }
     }
 
     @Test
@@ -87,8 +103,10 @@ class ExternalLinkLauncherTest {
         var failures = 0
         var customTabs = 0
 
-        application.openExternalMeeting("javascript:alert(1)".toUri(), { failures++ }, { _, _ -> customTabs++ })
+        val opened =
+            application.openExternalMeeting("javascript:alert(1)".toUri(), { failures++ }, { _, _ -> customTabs++ })
 
+        assertFalse(opened)
         assertEquals(1, failures)
         assertEquals(0, customTabs)
         assertNull(shadowOf(application).nextStartedActivity)
@@ -101,8 +119,9 @@ class ExternalLinkLauncherTest {
         var failures = 0
         val tabbed = mutableListOf<Uri>()
 
-        application.openExternalMeeting(uri, { failures++ }, { u, _ -> tabbed += u })
+        val opened = application.openExternalMeeting(uri, { failures++ }, { u, _ -> tabbed += u })
 
+        assertTrue(opened)
         assertEquals(listOf(uri), tabbed)
         assertEquals(0, failures)
     }
@@ -113,8 +132,10 @@ class ExternalLinkLauncherTest {
         var failures = 0
         var customTabs = 0
 
-        application.openExternalMeeting("zoommtg://zoom.us/join".toUri(), { failures++ }, { _, _ -> customTabs++ })
+        val opened =
+            application.openExternalMeeting("zoommtg://zoom.us/join".toUri(), { failures++ }, { _, _ -> customTabs++ })
 
+        assertFalse(opened)
         assertEquals(1, failures)
         assertEquals(0, customTabs)
     }
@@ -136,13 +157,30 @@ class ExternalLinkLauncherTest {
         var failures = 0
         var customTabs = 0
 
-        application.openExternalMeeting(uri, { failures++ }, { _, _ -> customTabs++ })
+        val opened = application.openExternalMeeting(uri, { failures++ }, { _, _ -> customTabs++ })
 
+        assertTrue(opened)
         assertEquals(0, failures)
         assertEquals(0, customTabs)
         val started = shadowOf(application).nextStartedActivity
         assertNotNull(started)
         assertEquals(Intent.ACTION_VIEW, started.action)
         assertEquals(uri, started.data)
+    }
+
+    @Test
+    fun open_customTabThatFails_reportsNotOpened() {
+        shadowOf(application).checkActivities(true)
+        var failures = 0
+
+        val opened =
+            application.openExternalMeeting(
+                "https://zoom.us/j/1".toUri(),
+                { failures++ },
+                { _, fail -> fail() },
+            )
+
+        assertFalse(opened)
+        assertEquals(1, failures)
     }
 }

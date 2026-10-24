@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.managers
 
+import com.uptrendinvestments.clickmeapp.components.web.isAllowedMeetingUrl
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.model.enums.ConnectionType
 import com.uptrendinvestments.clickmeapp.model.enums.EndReason
@@ -179,9 +180,18 @@ class CallCenter
             id: Long,
             response: JoinCallResponse,
         ) {
-            val url = response.externalConfig?.joinUrl?.takeIf { it.isNotBlank() }
+            val url =
+                response.externalConfig
+                    ?.joinUrl
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
             if (url == null) {
                 abortStart(id, CallDialog.JoinError(JoinErrorReason.MissingMeetingLink))
+                return
+            }
+            // Expert-controlled data (T-09-07): a link the launcher would refuse never enables Open (WR-07).
+            if (!isAllowedMeetingUrl(url)) {
+                abortStart(id, CallDialog.JoinError(JoinErrorReason.InvalidMeetingLink))
                 return
             }
             val now = clock.instant()
@@ -367,7 +377,10 @@ class CallCenter
             if (engine.setSpeakerOn(target)) setSession(current.copy(isSpeakerOn = target))
         }
 
-        /** The user opened the external meeting link: confirm once (method skype_zoom) and minimize (D-05). */
+        /**
+         * The external meeting link opened: confirm once (method skype_zoom) and minimize (D-05). Called only
+         * when the launcher reports success (WR-07).
+         */
         fun onExternalLinkOpened() {
             val current = _session.value ?: return
             if (current.isEndingCall) return
@@ -375,6 +388,13 @@ class CallCenter
             setSession(current.copy(hasOpenedExternalLink = true))
             confirmConnectionOnce()
             minimize()
+        }
+
+        /** Nothing could open the meeting link: tell the user, without confirming or minimizing (WR-07). */
+        fun onExternalLinkFailed() {
+            val current = _session.value ?: return
+            if (current.isEndingCall || current.connectionType != ConnectionType.SkypeZoom) return
+            enqueue(CallDialog.ExternalLinkFailed)
         }
 
         fun minimize() {

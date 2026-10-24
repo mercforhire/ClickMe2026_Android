@@ -65,8 +65,8 @@ fun CallOverlayHost(
     val isMinimized by viewModel.isMinimized.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val pendingPermission by viewModel.pendingPermission.collectAsStateWithLifecycle()
-    // App first, Custom Tab fallback (D-06). A scheme nobody handles fails silently (UAT observation).
-    val launchMeeting = rememberExternalMeetingLauncher(onFailure = {})
+    // App first, Custom Tab fallback (D-06). A link nothing can open shows a dialog (WR-07).
+    val launchMeeting = rememberExternalMeetingLauncher(onFailure = viewModel::onExternalLinkFailed)
     CallOverlayContent(
         state = state,
         isMinimized = isMinimized,
@@ -78,9 +78,10 @@ fun CallOverlayHost(
         onToggleSpeaker = viewModel::toggleSpeaker,
         onEndCall = viewModel::endCall,
         onOpenExternal = {
-            state?.externalJoinUrl?.let { launchMeeting(Uri.parse(it)) }
-            // Confirm once and minimize whether or not the launch worked (D-05).
-            viewModel.onExternalLinkOpened()
+            val opened = state?.externalJoinUrl?.let { launchMeeting(Uri.parse(it)) } == true
+            // Confirm once and minimize only when something opened the link; a refused or unhandled link is not
+            // "opened" (WR-07, unlike iOS where UIApplication.open always hands off).
+            if (opened) viewModel.onExternalLinkOpened()
         },
         onDismissDialog = viewModel::dismissDialog,
         onPermissionResult = viewModel::onPermissionResult,

@@ -128,6 +128,37 @@ class CallCenterStartTest {
         }
 
     @Test
+    fun skypeZoom_withDisallowedUrl_failsWithInvalidLink() =
+        runTest(main.testDispatcher) {
+            for (url in listOf("javascript:alert(1)", "intent://x#Intent;end", "file:///sdcard/a", "https:///nohost")) {
+                val h = CallCenterHarness(backgroundScope)
+                h.api.joinCallHandler = { h.externalJoinResponse(url) }
+                h.center.startCall(h.request(meetingType = MeetingType.SkypeZoom))
+                runCurrent()
+                assertTornDownWithoutEnd(h)
+                assertEquals(
+                    url,
+                    listOf<CallDialog>(CallDialog.JoinError(JoinErrorReason.InvalidMeetingLink)),
+                    h.center.dialogs.value,
+                )
+            }
+        }
+
+    @Test
+    fun skypeZoom_urlIsTrimmed() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.joinCallHandler = { h.externalJoinResponse("  https://zoom.us/j/1\n") }
+            h.center.startCall(h.request(meetingType = MeetingType.SkypeZoom))
+            runCurrent()
+            assertEquals(
+                "https://zoom.us/j/1",
+                h.center.session.value!!
+                    .externalJoinUrl,
+            )
+        }
+
+    @Test
     fun serverRefusal_showsServerMessage() =
         runTest(main.testDispatcher) {
             val h = CallCenterHarness(backgroundScope)

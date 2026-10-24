@@ -82,6 +82,24 @@ class CallDialogsTest {
     }
 
     @Test
+    fun joinError_invalidMeetingLink() {
+        assertDialog(
+            CallDialog.JoinError(JoinErrorReason.InvalidMeetingLink),
+            "Couldn't join session",
+            "This booking's meeting link can't be opened. Contact the other party.",
+        )
+    }
+
+    @Test
+    fun externalLinkFailed() {
+        assertDialog(
+            CallDialog.ExternalLinkFailed,
+            "Couldn't open meeting",
+            "No app on this device could open the meeting link. Use Copy Link to open it another way.",
+        )
+    }
+
+    @Test
     fun joinError_network() {
         assertDialog(
             CallDialog.JoinError(JoinErrorReason.Network),

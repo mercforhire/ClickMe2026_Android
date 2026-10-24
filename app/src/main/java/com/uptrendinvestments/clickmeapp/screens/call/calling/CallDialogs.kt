@@ -32,6 +32,7 @@ fun joinErrorMessage(reason: JoinErrorReason): String =
         is JoinErrorReason.Server -> reason.message
         JoinErrorReason.NotSetUpForInAppVoice -> stringResource(R.string.call_join_error_not_in_app)
         JoinErrorReason.MissingMeetingLink -> stringResource(R.string.call_join_error_missing_link)
+        JoinErrorReason.InvalidMeetingLink -> stringResource(R.string.call_join_error_invalid_link)
         JoinErrorReason.Network -> stringResource(R.string.login_error_network)
         JoinErrorReason.Unknown -> stringResource(R.string.call_join_error_unknown)
     }
@@ -91,6 +92,12 @@ fun CallDialogHost(
                 message = stringResource(R.string.call_time_limit_message),
                 onDismiss = onDismiss,
                 title = stringResource(R.string.call_time_limit_title),
+            )
+        CallDialog.ExternalLinkFailed ->
+            AuthErrorDialog(
+                message = stringResource(R.string.call_external_open_failed_message),
+                onDismiss = onDismiss,
+                title = stringResource(R.string.call_external_open_failed_title),
             )
         CallDialog.MicPermissionDenied -> MicDeniedDialog(onDismiss = onDismiss)
     }

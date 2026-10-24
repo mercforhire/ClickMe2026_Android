@@ -25,6 +25,9 @@ sealed interface JoinErrorReason {
 
     data object MissingMeetingLink : JoinErrorReason
 
+    /** The `join_url` is not an allowed meeting link (javascript:, intent:, file:, no host, ...; WR-07). */
+    data object InvalidMeetingLink : JoinErrorReason
+
     data object Network : JoinErrorReason
 
     data object Unknown : JoinErrorReason
@@ -59,6 +62,9 @@ sealed interface CallDialog {
     ) : CallDialog
 
     data object TimeLimit : CallDialog
+
+    /** Nothing on the device could open the meeting link (WR-07). */
+    data object ExternalLinkFailed : CallDialog
 }
 
 /** Maps a join failure to its dialog reason: server text when present, else connectivity or unknown. */

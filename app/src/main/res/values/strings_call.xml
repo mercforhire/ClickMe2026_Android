@@ -59,6 +59,8 @@
     <string name="call_provider_teams" translatable="false">Microsoft Teams</string>
     <string name="call_external_copy_link">Copy Link</string>
     <string name="call_external_link_copied">Link copied</string>
+    <string name="call_external_open_failed_title">Couldn\'t open meeting</string>
+    <string name="call_external_open_failed_message">No app on this device could open the meeting link. Use Copy Link to open it another way.</string>
     <string name="call_external_status_not_opened">Open the meeting link to start the session.</string>
     <string name="call_external_status_opened_end">Meeting in progress. The session is scheduled to end at %1$s. Tap End Session when you\'re done.</string>
     <string name="call_external_status_opened_no_end">Meeting in progress — tap End Session when you\'re done, or leave the session to end automatically.</string>
@@ -76,6 +78,7 @@
     <string name="call_join_error_title">Couldn\'t join session</string>
     <string name="call_join_error_not_in_app">This booking isn\'t set up for in-app voice.</string>
     <string name="call_join_error_missing_link">This booking is missing a meeting link. Contact the other party.</string>
+    <string name="call_join_error_invalid_link">This booking\'s meeting link can\'t be opened. Contact the other party.</string>
     <string name="call_join_error_unknown">Something went wrong. Please try again.</string>
 
     <!-- Microphone permission dialogs. -->

@@ -83,6 +83,8 @@ class MeetingCallViewModel
 
         fun onExternalLinkOpened() = callCenter.onExternalLinkOpened()
 
+        fun onExternalLinkFailed() = callCenter.onExternalLinkFailed()
+
         fun dismissDialog() = callCenter.dismissDialog()
 
         fun onPermissionResult(

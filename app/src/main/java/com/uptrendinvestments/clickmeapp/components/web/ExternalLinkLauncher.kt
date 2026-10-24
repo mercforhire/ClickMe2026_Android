@@ -10,8 +10,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import java.util.Locale
 
 private val MeetingAppSchemes = setOf("skype", "zoommtg", "zoomus", "msteams")
+
+private val SchemePattern = Regex("[a-z][a-z0-9+.-]*")
 
 /**
  * Only http(s) links with a host and the meeting-app schemes skype, zoommtg, zoomus and msteams may be
@@ -22,6 +25,34 @@ internal fun isAllowedMeetingUri(uri: Uri): Boolean {
     return when (scheme) {
         "http", "https" -> !uri.host.isNullOrBlank()
         else -> scheme in MeetingAppSchemes
+    }
+}
+
+/**
+ * String twin of [isAllowedMeetingUri] for code without an android [Uri]: `CallCenter` checks the server's
+ * `join_url` before it enables Open (WR-07). Same rules, read leniently like [Uri.parse]: http(s) with a
+ * non-blank host, or one of the meeting-app schemes.
+ */
+fun isAllowedMeetingUrl(url: String): Boolean {
+    val colon = url.indexOf(':')
+    if (colon <= 0) return false
+    val scheme = url.substring(0, colon).lowercase(Locale.ROOT)
+    if (!SchemePattern.matches(scheme)) return false
+    return when (scheme) {
+        "http", "https" -> webHost(url.substring(colon + 1)).isNotBlank()
+        else -> scheme in MeetingAppSchemes
+    }
+}
+
+/** Host of a hierarchical `//authority/...` part, without user info or port; empty when there is none. */
+private fun webHost(schemeSpecific: String): String {
+    if (!schemeSpecific.startsWith("//")) return ""
+    val authority = schemeSpecific.substring(2).takeWhile { it != '/' && it != '?' && it != '#' }
+    val hostAndPort = authority.substringAfterLast('@')
+    return if (hostAndPort.startsWith("[")) {
+        hostAndPort.substringBefore(']').removePrefix("[")
+    } else {
+        hostAndPort.substringBefore(':')
     }
 }
 
@@ -48,26 +79,37 @@ internal fun buildExternalMeetingIntent(
  * [onFailure]. The URL is expert-controlled server data (T-09-07), so it is checked against
  * [isAllowedMeetingUri] first; this never parses an Intent from a URI string and never launches a server-built Intent.
  * The try/catch avoids needing `<queries>` package-visibility entries.
+ *
+ * Returns true when something opened the link, false when [onFailure] ran (WR-07).
  */
 fun Context.openExternalMeeting(
     uri: Uri,
     onFailure: () -> Unit,
     customTab: (Uri, () -> Unit) -> Unit = { u, f -> openCustomTab(u, f) },
-) {
-    if (!isAllowedMeetingUri(uri)) {
+): Boolean {
+    var failed = false
+    val fail = {
+        failed = true
         onFailure()
-        return
+    }
+    if (!isAllowedMeetingUri(uri)) {
+        fail()
+        return false
     }
     try {
         startActivity(buildExternalMeetingIntent(uri, fromActivity = findActivity() != null))
     } catch (_: ActivityNotFoundException) {
-        if (isAllowedCustomTabUri(uri)) customTab(uri, onFailure) else onFailure()
+        if (isAllowedCustomTabUri(uri)) customTab(uri, fail) else fail()
     }
+    return !failed
 }
 
-/** Remembers a launcher for [openExternalMeeting]; callers show a Snackbar from [onFailure]. */
+/**
+ * Remembers a launcher for [openExternalMeeting]. It returns true when the link opened; callers give feedback
+ * from [onFailure].
+ */
 @Composable
-fun rememberExternalMeetingLauncher(onFailure: () -> Unit): (Uri) -> Unit {
+fun rememberExternalMeetingLauncher(onFailure: () -> Unit): (Uri) -> Boolean {
     val context = LocalContext.current
     val currentOnFailure by rememberUpdatedState(onFailure)
     return remember(context) {

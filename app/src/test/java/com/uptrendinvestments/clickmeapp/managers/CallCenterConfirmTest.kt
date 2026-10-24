@@ -276,4 +276,30 @@ class CallCenterConfirmTest {
                     .isMuted,
             )
         }
+
+    @Test
+    fun externalLinkFailed_showsDialogWithoutConfirmingOrMinimizing() =
+        runTest(main.testDispatcher) {
+            val h = startedExternal()
+            h.center.onExternalLinkFailed()
+            runCurrent()
+            assertEquals(listOf<CallDialog>(CallDialog.ExternalLinkFailed), h.center.dialogs.value)
+            assertEquals(0, h.api.confirmCallConnectionCalls)
+            assertFalse(h.center.isMinimized.value)
+            assertFalse(
+                h.center.session.value!!
+                    .hasOpenedExternalLink,
+            )
+        }
+
+    @Test
+    fun externalLinkFailed_isIgnoredForInAppCalls() =
+        runTest(main.testDispatcher) {
+            val h = startedInApp()
+            h.center.onExternalLinkFailed()
+            assertTrue(
+                h.center.dialogs.value
+                    .isEmpty(),
+            )
+        }
 }
