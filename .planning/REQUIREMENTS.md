@@ -83,7 +83,7 @@ From the PRD's Make a Booking (booking flow and free path) and Request Sent (Wee
 - [x] **BOOK-04**: After sending a booking request, the client sees the Request Sent confirmation screen. The staggered animation is optional.
 - [x] **BOOK-05**: Client can view My Bookings with Upcoming and Past tabs. A `completed` booking whose end time hasn't passed stays in Upcoming. Past items are labeled completed, cancelled (cancelled or declined) or missed (missed or expired).
 - [x] **BOOK-06**: Client can open Upcoming Booking Details, which shows the "Waiting for expert" banner, the join card and a Cancel action. There is no Reschedule action.
-- [x] **BOOK-07**: Client can cancel a booking with a reason picker and a refund preview through `cancelClientBooking`. Whether to collect and send the cancellation comment is an open item for Phase 8 planning; iOS collects it but never sends it.
+- [x] **BOOK-07**: Client can cancel a booking with a reason picker and a refund preview through `cancelClientBooking`. The optional comment is sent inside `reason` as "label: comment" (resolved in Phase 8, D-05); iOS collects it but never sends it.
 - [x] **BOOK-08**: Client can open a minimal Booking Summary with the session details.
 - [x] **BOOK-09**: Client can accept or decline a reschedule the expert proposed, so bookings in `pending_reschedule` can move forward.
 
