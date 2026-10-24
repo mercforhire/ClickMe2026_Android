@@ -1,5 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -7,13 +10,16 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescriptionExactly
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_COMMENT_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_CONFIRM_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_KEEP_TAG
@@ -21,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subview
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CancellationConfirmStep
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CancellationReasonStep
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.label
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -251,6 +258,186 @@ class ClientCancellationScreenTest {
 
         rule.onNodeWithTag(CANCEL_KEEP_TAG).assertIsEnabled()
         rule.onNodeWithTag(CANCEL_CONFIRM_TAG).assertIsEnabled()
+    }
+
+    // endregion
+
+    // region Task 2: screen
+
+    private var backCount = 0
+    private var retryCount = 0
+    private var backToReasonCount = 0
+    private var dismissErrorCount = 0
+    private var finishedCount = 0
+    private var navBacks = 0
+
+    private val loaded = ClientCancellationUiState(load = CancellationLoad.Loaded(summary))
+
+    private fun showScreen(
+        state: ClientCancellationUiState,
+        dispatcherSink: (OnBackPressedDispatcher?) -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                dispatcherSink(LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher)
+                // Outer handler, like NavDisplay's: counts Back presses that reach navigation.
+                BackHandler { navBacks++ }
+                ClientCancellationContent(
+                    state = state,
+                    onBack = { backCount++ },
+                    onRetry = { retryCount++ },
+                    onSelectReason = { selectedReason = it },
+                    onCommentChange = { typed = it },
+                    onContinue = { continueCount++ },
+                    onBackToReason = { backToReasonCount++ },
+                    onConfirm = { confirmCount++ },
+                    onDismissError = { dismissErrorCount++ },
+                    onFinished = { finishedCount++ },
+                    zone = zone,
+                    timeFormat = time12,
+                    locale = Locale.US,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun appBarShowsTitleAndBackArrow() {
+        showScreen(loaded)
+
+        rule.onNodeWithText("Cancel Booking").assertExists()
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsEnabled()
+    }
+
+    @Test
+    fun loadingShowsLoadingDescription() {
+        showScreen(ClientCancellationUiState())
+
+        rule.onNodeWithContentDescription("Loading").assertExists()
+    }
+
+    @Test
+    fun failedShowsMessageAndRetry() {
+        showScreen(ClientCancellationUiState(load = CancellationLoad.Failed(FieldError.Text("Boom"))))
+
+        rule.onNodeWithText("Couldn't load booking").assertExists()
+        rule.onNodeWithText("Boom").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryCount)
+    }
+
+    @Test
+    fun reasonStepIsShownForTheReasonStep() {
+        showScreen(loaded)
+
+        rule.onNodeWithText("Why are you cancelling?").assertExists()
+        rule.onAllNodesWithText("Confirm Cancellation?").assertCountEquals(0)
+    }
+
+    @Test
+    fun confirmStepIsShownForTheConfirmStep() {
+        showScreen(loaded.copy(step = CancelStep.Confirm, refund = RefundPreview.HoldReleased))
+
+        rule.onNodeWithText("Confirm Cancellation?").assertExists()
+        rule.onAllNodesWithText("Why are you cancelling?").assertCountEquals(0)
+    }
+
+    @Test
+    fun appBarBackOnReasonStepPops() {
+        showScreen(loaded)
+
+        rule.onNode(hasContentDescriptionExactly("Back")).performClick()
+
+        assertEquals(1, backCount)
+        assertEquals(0, backToReasonCount)
+    }
+
+    @Test
+    fun appBarBackOnConfirmStepReturnsToReason() {
+        showScreen(loaded.copy(step = CancelStep.Confirm))
+
+        rule.onNode(hasContentDescriptionExactly("Back")).performClick()
+
+        assertEquals(1, backToReasonCount)
+        assertEquals(0, backCount)
+    }
+
+    @Test
+    fun keepBookingPopsOneScreen() {
+        showScreen(loaded.copy(step = CancelStep.Confirm))
+
+        rule.onNodeWithTag(CANCEL_KEEP_TAG).performScrollTo().performClick()
+
+        assertEquals(1, backCount)
+    }
+
+    @Test
+    fun systemBackOnConfirmStepReturnsToReason() {
+        var dispatcher: OnBackPressedDispatcher? = null
+        showScreen(loaded.copy(step = CancelStep.Confirm)) { dispatcher = it }
+
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+
+        assertEquals(1, backToReasonCount)
+        assertEquals(0, navBacks)
+    }
+
+    @Test
+    fun systemBackOnReasonStepReachesNavigation() {
+        var dispatcher: OnBackPressedDispatcher? = null
+        showScreen(loaded) { dispatcher = it }
+
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+
+        assertEquals(1, navBacks)
+        assertEquals(0, backToReasonCount)
+    }
+
+    @Test
+    fun whileSubmittingBackIsSwallowedAndTheArrowIsDisabled() {
+        var dispatcher: OnBackPressedDispatcher? = null
+        showScreen(loaded.copy(step = CancelStep.Confirm, isSubmitting = true)) { dispatcher = it }
+
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+
+        assertEquals(0, backToReasonCount)
+        assertEquals(0, backCount)
+        assertEquals(0, navBacks)
+        rule.onNode(hasContentDescriptionExactly("Back")).assertIsNotEnabled()
+    }
+
+    @Test
+    fun errorDialogShowsTitleAndMessageAndDismisses() {
+        showScreen(
+            loaded.copy(
+                step = CancelStep.Confirm,
+                error = CancelErrorDialog(FieldError.Res(R.string.cancel_booking_error_not_cancellable), true),
+            ),
+        )
+
+        rule.onNodeWithText("Couldn't cancel booking").assertExists()
+        rule.onNodeWithText("This booking can no longer be cancelled.").assertExists()
+        rule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissErrorCount)
+    }
+
+    @Test
+    fun finishedCallsOnFinishedExactlyOnce() {
+        showScreen(loaded.copy(step = CancelStep.Confirm, isSubmitting = true, isFinished = true))
+        rule.waitForIdle()
+
+        assertEquals(1, finishedCount)
+    }
+
+    @Test
+    fun notFinishedDoesNotCallOnFinished() {
+        showScreen(loaded)
+        rule.waitForIdle()
+
+        assertEquals(0, finishedCount)
     }
 
     // endregion
