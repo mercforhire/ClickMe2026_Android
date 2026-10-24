@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Explore & Expert Profile** - Client Explore home with category cache and the Expert Profile screen (Week 3) (completed 2026-10-22)
 - [x] **Phase 6: Booking Flow & Free Bookings** - Topic/calendar/slot picker with timezone regrouping, free booking, Request Sent (Week 3) (completed 2026-10-23)
 - [x] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3) (completed 2026-10-23)
-- [ ] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4)
+- [x] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4) (completed 2026-10-24)
 - [ ] **Phase 9: Voice Call** - Join, Agora call in a microphone foreground service, overlay/pill, rejoin semantics (Week 4)
 - [ ] **Phase 10: Expert Topics & Availability** - Topics + Topic Editor with price floor, weekly availability and timezone (Week 5)
 - [ ] **Phase 11: Expert Requests & Bookings** - Expert Dashboard, Incoming Requests → decision → Confirmed, expert bookings with Join and reschedule response (Week 5)
@@ -583,7 +583,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
-| 8. Client Bookings & Cancellation | 15/15 | In Progress|  |
+| 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 0/TBD | Not started | - |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
