@@ -53,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
@@ -72,6 +73,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 
@@ -94,7 +96,8 @@ private val DateSkeletonHeight = 128.dp
  *
  * D-01: a pending reschedule proposal shows the shared reschedule card first, which fixes the iOS dead end where the
  * client could not respond. D-14: the status, price and payment pill are real. D-15: Cancel is limited to confirmed,
- * pending approval and pending reschedule. The join card is inert until Phase 9 (search `PHASE-9`).
+ * pending approval and pending reschedule. The join card has a live Join Call (D-01) enabled by the shared join window
+ * ([isWithinJoinWindow], ticking every 30 s, D-02 / D-03), and Cancel is blocked while this booking's call is live (D-13).
  *
  * The screen reloads quietly on resume and when it re-enters composition, so returning from Payment Methods (D-02)
  * shows fresh data.
@@ -109,6 +112,7 @@ fun UpcomingBookingScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
+    val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
@@ -119,9 +123,11 @@ fun UpcomingBookingScreen(
     UpcomingBookingContent(
         state = state,
         rescheduleState = rescheduleState,
+        joinNow = joinNow,
+        onJoin = viewModel::join,
         onBack = onBack,
         onRetry = viewModel::retry,
-        onCancel = onCancel,
+        onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onAccept = viewModel::accept,
         onDecline = viewModel::decline,
         onDismissRescheduleDialog = viewModel::dismissRescheduleDialog,
@@ -137,6 +143,8 @@ fun UpcomingBookingScreen(
 fun UpcomingBookingContent(
     state: UpcomingBookingUiState,
     rescheduleState: RescheduleUiState,
+    joinNow: Instant,
+    onJoin: () -> Unit,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onCancel: () -> Unit,
@@ -198,6 +206,8 @@ fun UpcomingBookingContent(
                 LoadedBody(
                     details = state.details,
                     rescheduleState = rescheduleState,
+                    joinNow = joinNow,
+                    onJoin = onJoin,
                     onCancel = onCancel,
                     onAccept = onAccept,
                     onDecline = onDecline,
@@ -257,6 +267,8 @@ private fun LoadingBody(modifier: Modifier = Modifier) {
 private fun LoadedBody(
     details: UpcomingBookingDetails,
     rescheduleState: RescheduleUiState,
+    joinNow: Instant,
+    onJoin: () -> Unit,
     onCancel: () -> Unit,
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
@@ -315,7 +327,12 @@ private fun LoadedBody(
         if (details.showsPendingBanner) {
             UpcomingBookingPendingBanner(details.expertName)
         } else {
-            UpcomingBookingJoinCard(details.meetingType, details.joinLink)
+            UpcomingBookingJoinCard(
+                meetingType = details.meetingType,
+                joinLink = details.joinLink,
+                joinEnabled = isWithinJoinWindow(details.status.raw, details.start, details.end, joinNow),
+                onJoin = onJoin,
+            )
         }
         details.clientNotes?.let {
             Spacer(Modifier.height(Spacing.md))

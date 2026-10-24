@@ -3,6 +3,11 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
+import com.uptrendinvestments.clickmeapp.managers.CallStarter
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
@@ -21,6 +26,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -40,6 +46,10 @@ import javax.inject.Inject
  * the notice for the snackbar, forces a fresh reload and is applied exactly once.
  *
  * Switching sub-tabs never fetches, since both buckets are always loaded together.
+ *
+ * Join Call (CALL-01, D-01): [join] starts the call through the one [CallStarter] and [joinNow] is the shared 30 s
+ * clock that enables each card's button within the join window. iOS wires an empty callback on this card; Android
+ * goes beyond it.
  */
 @HiltViewModel
 class MyBookingsViewModel
@@ -50,6 +60,8 @@ class MyBookingsViewModel
         private val realtime: RealtimeConnection,
         private val clock: Clock,
         private val launchRequest: BookingsLaunchRequest,
+        private val callStarter: CallStarter,
+        joinClock: JoinClock,
     ) : ViewModel() {
         private enum class LoadMode {
             /** Shows the spinner and a failure message. */
@@ -71,6 +83,9 @@ class MyBookingsViewModel
                 ),
             )
         val uiState: StateFlow<MyBookingsUiState> = _uiState.asStateFlow()
+
+        /** Shared 30 s wall clock that turns a visible Join button on without leaving the screen (D-03). */
+        val joinNow: StateFlow<Instant> = joinClock.now
 
         private var loadJob: Job? = null
         private var loadIsCurrent = false
@@ -94,6 +109,22 @@ class MyBookingsViewModel
                     launchRequest.consume()?.let { launch -> applyLaunch(launch, reload = true) }
                 }
             }
+        }
+
+        /** Starts the call for [item]. The server has the final say on `/join`, so the window is not re-checked (D-02). */
+        fun join(item: ClientBookingItem) {
+            callStarter.startCall(
+                CallStartRequest(
+                    bookingId = item.bookingId,
+                    peerId = item.expert.id,
+                    peerName = item.expert.fullName,
+                    peerAvatarUrl = item.expert.avatarUrl,
+                    topic = item.topic,
+                    scheduledStart = item.startTime,
+                    scheduledEnd = item.endTime,
+                    meetingType = MeetingType.fromWire(item.meetingType),
+                ),
+            )
         }
 
         fun retry() = startLoad(LoadMode.Loud)

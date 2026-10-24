@@ -31,6 +31,7 @@ fun shortBookingId(id: String): String = "#" + id.take(SHORT_ID_LENGTH).uppercas
  * @property canCancel Cancel is offered for confirmed, pending approval and pending reschedule only. There is no
  *   Reschedule action (DEF-1).
  * @property reschedule the shared reschedule card model, present only for `pending_reschedule` (D-01, D-03).
+ * @property expertId the expert's user id, sent as the peer id when Join Call starts the call (CALL-01).
  */
 @Suppress("LongParameterList")
 data class UpcomingBookingDetails(
@@ -52,6 +53,7 @@ data class UpcomingBookingDetails(
     val showsPendingBanner: Boolean,
     val canCancel: Boolean,
     val reschedule: RescheduleProposalUi?,
+    val expertId: String? = null,
 )
 
 /** Upcoming Booking Details load state. */
@@ -92,4 +94,5 @@ fun ClientBookingDetail.toUpcomingDetails(now: Instant): UpcomingBookingDetails 
         showsPendingBanner = status == STATUS_PENDING_APPROVAL,
         canCancel = status in CANCELLABLE_BOOKING_STATUSES,
         reschedule = toRescheduleProposalUi(now),
+        expertId = expert.id?.takeIf { it.isNotBlank() },
     )

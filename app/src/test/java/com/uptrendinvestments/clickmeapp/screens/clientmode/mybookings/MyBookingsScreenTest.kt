@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -34,6 +35,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 
@@ -55,6 +57,8 @@ class MyBookingsScreenTest {
 
     private fun existsTag(tag: String) = rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
 
+    private val defaultStart: Instant = Instant.parse("2026-10-24T18:00:00Z")
+
     // 2026-10-24T18:00Z is 2:00 PM to 3:00 PM in Toronto (EDT).
     private val dateText = "Oct 24, 2026"
     private val timeRange = "2:00 PM – 3:00 PM"
@@ -70,7 +74,17 @@ class MyBookingsScreenTest {
     private fun UpcomingCard(
         item: ClientBookingItem,
         onClick: () -> Unit = {},
-    ) = UpcomingBookingCard(item, onClick, zone = zone, timeFormat = timeFormat(), locale = locale)
+        joinEnabled: Boolean = false,
+        onJoin: () -> Unit = {},
+    ) = UpcomingBookingCard(
+        item,
+        onClick,
+        joinEnabled,
+        onJoin,
+        zone = zone,
+        timeFormat = timeFormat(),
+        locale = locale,
+    )
 
     @Composable
     private fun PastCard(
@@ -94,14 +108,31 @@ class MyBookingsScreenTest {
     }
 
     @Test
-    fun upcomingCard_confirmedShowsDisabledJoinPlaceholder() {
-        show { UpcomingCard(bookingItem(status = "confirmed")) }
+    fun upcomingCard_outsideTheWindowShowsADisabledJoinWithTheHint() {
+        show { UpcomingCard(bookingItem(status = "confirmed"), joinEnabled = false) }
         rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertIsNotEnabled()
         val node = rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNode()
         assertEquals(
             "Available closer to the session start",
             node.config.getOrNull(SemanticsProperties.StateDescription),
         )
+    }
+
+    @Test
+    fun upcomingCard_insideTheWindowShowsAnEnabledJoinThatDoesNotOpenTheDetails() {
+        var joins = 0
+        var clicks = 0
+        show {
+            UpcomingCard(
+                bookingItem(status = "confirmed"),
+                onClick = { clicks++ },
+                joinEnabled = true,
+                onJoin = { joins++ },
+            )
+        }
+        rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertIsEnabled().performClick()
+        assertEquals(1, joins)
+        assertEquals(0, clicks)
     }
 
     @Test
@@ -224,12 +255,14 @@ class MyBookingsScreenTest {
         var explored = 0
         var noticeConsumed = 0
         var refreshFailureConsumed = 0
+        val joined = mutableListOf<String>()
     }
 
     @Composable
     private fun Content(
         state: MyBookingsUiState,
         calls: Callbacks = Callbacks(),
+        joinNow: Instant = defaultStart.minusSeconds(600),
     ) = MyBookingsContent(
         state = state,
         onSelectTab = { calls.selectedTab = it },
@@ -240,6 +273,8 @@ class MyBookingsScreenTest {
         onExploreExperts = { calls.explored++ },
         onNoticeConsumed = { calls.noticeConsumed++ },
         onRefreshFailureConsumed = { calls.refreshFailureConsumed++ },
+        joinNow = joinNow,
+        onJoin = { calls.joined += it.bookingId },
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -367,5 +402,47 @@ class MyBookingsScreenTest {
         rule.runOnIdle { tab = BookingsTab.Past }
         rule.waitForIdle()
         forbidden.forEach { assertTrue("$it on Past", !exists(it)) }
+    }
+
+    // Join in the list (D-01 .. D-03)
+
+    @Test
+    fun content_aConfirmedCardTenMinutesBeforeStartHasAnEnabledJoinThatJoinsOnce() {
+        val calls = Callbacks()
+        show { Content(loaded(upcoming = listOf(bookingItem("b1"))), calls) }
+        rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertIsEnabled().performClick()
+        assertEquals(listOf("b1"), calls.joined)
+        assertEquals(null, calls.openedUpcoming)
+    }
+
+    @Test
+    fun content_aConfirmedCardThreeHoursBeforeStartHasADisabledJoin() {
+        show {
+            Content(
+                loaded(upcoming = listOf(bookingItem("b1"))),
+                joinNow = defaultStart.minusSeconds(3 * 3600),
+            )
+        }
+        rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun content_aRejoinableCompletedCardHasAnEnabledJoin() {
+        val item =
+            bookingItem(
+                id = "r1",
+                status = "completed",
+                start = defaultStart.minusSeconds(2 * 3600),
+                end = defaultStart.plusSeconds(300),
+            )
+        show { Content(loaded(upcoming = listOf(item)), joinNow = defaultStart) }
+        rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun content_aPendingApprovalCardShowsTheBannerAndNoJoin() {
+        show { Content(loaded(upcoming = listOf(bookingItem("b1", status = STATUS_PENDING_APPROVAL)))) }
+        rule.onNodeWithText("Waiting for expert to accept").assertExists()
+        assertTrue(!existsTag(MY_BOOKINGS_JOIN_TAG))
     }
 }

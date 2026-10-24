@@ -1,6 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking
 
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
@@ -15,13 +19,17 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.rescheduleDto
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
+import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -44,7 +52,10 @@ class UpcomingBookingViewModelTest {
     private val clock = MutableClock(Instant.parse("2026-10-22T16:00:00Z"))
     private val now = clock.instant
 
-    private fun vm(): UpcomingBookingViewModel {
+    private val callStarter = FakeCallStarter()
+    private val callGuard = FakeCallGuard()
+
+    private fun vm(joinScope: CoroutineScope = CoroutineScope(Job() + main.testDispatcher)): UpcomingBookingViewModel {
         val bookings = ClientBookingsRepository(api)
         return UpcomingBookingViewModel(
             UpcomingBookingKey("b1"),
@@ -52,6 +63,9 @@ class UpcomingBookingViewModelTest {
             RescheduleResponder(bookings, PaymentMethodsRepository(api)),
             realtime,
             clock,
+            callStarter,
+            callGuard,
+            JoinClock(clock, joinScope),
         )
     }
 
@@ -393,5 +407,92 @@ class UpcomingBookingViewModelTest {
             )
             vm.dismissRescheduleDialog()
             assertNull(vm.rescheduleState.value.dialog)
+        }
+
+    // ---- join and cancel guard ----
+
+    @Test
+    fun expert_id_is_mapped_and_blank_becomes_null() {
+        assertEquals("e1", bookingDetail().toUpcomingDetails(now).expertId)
+        assertNull(bookingDetail(expertId = " ").toUpcomingDetails(now).expertId)
+        assertNull(bookingDetail(expertId = null).toUpcomingDetails(now).expertId)
+    }
+
+    @Test
+    fun join_records_one_start_request_for_the_loaded_booking() =
+        runTest(main.testDispatcher) {
+            val start = Instant.parse("2026-10-24T18:00:00Z")
+            api.clientBookingDetailHandler = { bookingDetail(start = start) }
+            val vm = vm()
+            runCurrent()
+
+            vm.join()
+
+            assertEquals(
+                listOf(
+                    CallStartRequest(
+                        bookingId = "b1",
+                        peerId = "e1",
+                        peerName = "Ada Lovelace",
+                        peerAvatarUrl = null,
+                        topic = "Algorithms",
+                        scheduledStart = start,
+                        scheduledEnd = start.plusSeconds(3600),
+                        meetingType = MeetingType.InAppVoice,
+                    ),
+                ),
+                callStarter.requests,
+            )
+        }
+
+    @Test
+    fun join_before_the_booking_has_loaded_does_nothing() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { CompletableDeferred<ClientBookingDetail>().await() }
+            val vm = vm()
+            runCurrent()
+
+            vm.join()
+
+            assertTrue(callStarter.requests.isEmpty())
+        }
+
+    @Test
+    fun join_does_not_re_check_the_window_at_tap_time() =
+        runTest(main.testDispatcher) {
+            // Start is far in the future: the button would be disabled, but the server has the final say (D-02).
+            api.clientBookingDetailHandler = { bookingDetail(start = now.plusSeconds(86_400)) }
+            val vm = vm()
+            runCurrent()
+
+            vm.join()
+
+            assertEquals(1, callStarter.requests.size)
+        }
+
+    @Test
+    fun attemptCancel_returns_the_guards_answer_and_records_the_attempt() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            val vm = vm()
+            runCurrent()
+
+            assertTrue(vm.attemptCancel())
+            callGuard.blocked = true
+            assertFalse(vm.attemptCancel())
+
+            assertEquals(
+                listOf("b1" to RestrictedAction.CancelBooking, "b1" to RestrictedAction.CancelBooking),
+                callGuard.modifyAttempts,
+            )
+        }
+
+    @Test
+    fun joinNow_emits_the_join_clock_value() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            val vm = vm(backgroundScope)
+            runCurrent()
+            assertEquals(now, vm.joinNow.value)
         }
 }

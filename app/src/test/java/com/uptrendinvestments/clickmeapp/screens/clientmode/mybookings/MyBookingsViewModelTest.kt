@@ -2,16 +2,23 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.BookingExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -57,8 +64,20 @@ class MyBookingsViewModelTest {
         api.clientBookingsHandler = { type -> payload(if (type == "upcoming") upcoming else past) }
     }
 
-    private fun vm(handle: SavedStateHandle = saved) =
-        MyBookingsViewModel(handle, ClientBookingsRepository(api), realtime, clock, launchRequest)
+    private val callStarter = FakeCallStarter()
+
+    private fun vm(
+        handle: SavedStateHandle = saved,
+        joinScope: CoroutineScope = CoroutineScope(Job() + main.testDispatcher),
+    ) = MyBookingsViewModel(
+        handle,
+        ClientBookingsRepository(api),
+        realtime,
+        clock,
+        launchRequest,
+        callStarter,
+        JoinClock(clock, joinScope),
+    )
 
     private fun expectedLists(
         upcoming: List<ClientBookingItem> = upcomingRows,
@@ -406,5 +425,59 @@ class MyBookingsViewModelTest {
             assertNull(launchRequest.pending.value)
             vm.consumeNotice()
             assertNull(vm.uiState.value.notice)
+        }
+
+    @Test
+    fun joinRecordsTheStartRequestForTheItem() {
+        val start = Instant.parse("2026-10-22T16:10:00Z")
+        val item =
+            ClientBookingItem(
+                bookingId = "u9",
+                expert = BookingExpertDto(id = "e9", fullName = "Grace Hopper", avatarUrl = "https://img/a.png"),
+                topic = "Compilers",
+                startTime = start,
+                endTime = start.plusSeconds(1800),
+                meetingType = "in_app_voice",
+                status = "confirmed",
+            )
+        serve()
+        val vm = vm()
+
+        vm.join(item)
+
+        assertEquals(
+            listOf(
+                CallStartRequest(
+                    bookingId = "u9",
+                    peerId = "e9",
+                    peerName = "Grace Hopper",
+                    peerAvatarUrl = "https://img/a.png",
+                    topic = "Compilers",
+                    scheduledStart = start,
+                    scheduledEnd = start.plusSeconds(1800),
+                    meetingType = MeetingType.InAppVoice,
+                ),
+            ),
+            callStarter.requests,
+        )
+    }
+
+    @Test
+    fun joinMapsAnUnknownMeetingTypeToNull() {
+        serve()
+        val vm = vm()
+
+        vm.join(bookingItem(meetingType = null))
+
+        assertNull(callStarter.requests.single().meetingType)
+    }
+
+    @Test
+    fun joinNowEmitsTheJoinClockValue() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm(joinScope = backgroundScope)
+            runCurrent()
+            assertEquals(clock.instant, vm.joinNow.value)
         }
 }
