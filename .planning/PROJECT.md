@@ -21,6 +21,7 @@ The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. An
 - SIGN-01..SIGN-05, ONB-01, ONB-02: signup without username or phone, a five-step setup hub saving through `PATCH /expert/profile/setup` (send-on-tap email code with a 30 s resend cooldown, photo crop and upload), Review → Publish, resume into setup, the once-per-login onboarding carousel, and a persisted client/expert mode switch. A "Not now" setup exit is remembered per login (D-27). Validated in Phase 4: Signup, Onboarding & Mode Switch (2026-10-21; automated gate green, 876 unit tests; all 11 code-review blockers and warnings fixed; 6 device checks deferred in 04-HUMAN-UAT.md).
 - DISC-01, DISC-02, DISC-03: the Explore home (hero, Today's Sessions, Trending Categories with the All Categories multi-select sheet, Featured Topics, Recommended Experts, with separate states per section) from `GET /client/home`, a `CategoryStore` with a 7-day TTL in its own DataStore, and Expert Profile (hero, stats, about, expertise, topics, the first 3 reviews, unavailable on 404). Book Session lands on the real `BookingKey` route with a stub body that Phase 6 replaces. Validated in Phase 5: Explore & Expert Profile (2026-10-22; automated gate green, 1056 unit tests; 5 code-review warnings open in 05-REVIEW.md; 4 device checks deferred in 05-HUMAN-UAT.md).
 - BOOK-01..BOOK-04: Make a Booking (topic sheet, custom month calendar, slots for three months regrouped by the client's local date with dedup and held slots disabled, expert timezone note, meeting type with the meeting-link check, notes), the free path via `POST /bookings/request`, and Request Sent from `GET /client/bookings/:id`. A booking that succeeds after the app is backgrounded survives process death (attempt id in saved state plus a short-lived DataStore record). Validated in Phase 6: Booking Flow & Free Bookings (2026-10-22; 1340 unit tests; three code-review rounds fixed; device UAT 15/16 with the far-zone check skipped; security 47/47 closed).
+- BOOK-05..BOOK-09: My Bookings as the Bookings tab root (Upcoming/Past with the completed-but-not-ended rejoin rule, pull-to-refresh, quiet reloads on resume, tab re-show and `booking.update`), Upcoming Booking Details (status, pending banner, inert Phase 9 join card, Cancel), two-step cancellation with the strict-24h refund preview and a single-flight `POST /client/bookings/:id/cancel`, Booking Summary with Book Again, and the shared reschedule response card (accept with one-shot saved-card recovery, decline with reason). Validated in Phase 8: Client Bookings & Cancellation (2026-10-24; 1888 unit tests per flavor, R8 release green; 6 code-review warnings open in 08-REVIEW.md, WR-01/WR-06 recommended before Phase 9; 5 device checks deferred in 08-HUMAN-UAT.md).
 
 ### Active
 
@@ -29,7 +30,7 @@ Full checkable list with IDs: `.planning/REQUIREMENTS.md` (99 v1 requirements).
 - [ ] Foundation: scaffolding, networking core with single-flight token refresh, session storage, Material 3 design system, app shell with two 5-tab scaffolds, Stripe and Agora SDK spikes (FND-01 to FND-14)
 - [x] Authentication, signup, onboarding and mode switch (AUTH-01 to AUTH-02, SIGN-01 to SIGN-05, ONB-01 to ONB-02), Phases 3–4
 - [x] Realtime socket plumbing (RT-01 to RT-03), Phase 3
-- [ ] Client booking: calendar and slot picker, free booking, My Bookings, details, cancellation, responding to reschedules (BOOK-01 to BOOK-09)
+- [x] Client booking: calendar and slot picker, free booking, My Bookings, details, cancellation, responding to reschedules (BOOK-01 to BOOK-09), Phases 6 and 8
 - [ ] Payments: saved cards, short-lead, long-lead and 3DS paid paths (PAY-01 to PAY-07). Code complete in Phase 7 (2026-10-23; 1556 unit tests; WR-02..07 fixed). Not validated: every card device check is blocked because the only backend runs Stripe in live mode and the dev `pk_test_` key is a sandbox. CR-01 (3DS reachability under off_session + error_on_requires_action) is an open cross-platform design risk. See 07-HUMAN-UAT.md.
 - [ ] Voice call: Agora in a microphone foreground service, overlay/pill, rejoin semantics (CALL-01 to CALL-08)
 - [ ] Expert core: topics, availability, dashboard, requests, expert bookings (EXP-01 to EXP-09)
@@ -160,4 +161,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-23 after Phase 7 completion*
+*Last updated: 2026-10-24 after Phase 8 completion*
