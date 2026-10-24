@@ -2,9 +2,11 @@
 
 package com.uptrendinvestments.clickmeapp.screens.signup.overview
 
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.signup.SetupStep
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,7 +34,9 @@ class SignupOverviewViewModelTest {
             it.api.emailStatusHandler = { EmailStatusData(verified = false) }
         }
 
-    private fun viewModel(h: SignupTestHarness) = SignupOverviewViewModel(h.repository, h.userManager)
+    private val guard = FakeCallGuard()
+
+    private fun viewModel(h: SignupTestHarness) = SignupOverviewViewModel(h.repository, h.userManager, guard)
 
     private fun SignupOverviewUiState.completed(step: SetupStep) = rows.first { it.step == step }.completed
 
@@ -224,5 +228,22 @@ class SignupOverviewViewModelTest {
 
             assertFalse(vm.uiState.value.showLogoutConfirm)
             assertFalse(h.userManager.isLoggedIn.value)
+        }
+
+    @Test
+    fun requestLogoutDuringACallIsBlockedAndShowsNoConfirm() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.signIn()
+            val vm = viewModel(h)
+            runCurrent()
+            guard.blocked = true
+
+            vm.requestLogout()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.showLogoutConfirm)
+            assertTrue(h.userManager.isLoggedIn.value)
+            assertEquals(listOf(RestrictedAction.LogOut), guard.attempts)
         }
 }

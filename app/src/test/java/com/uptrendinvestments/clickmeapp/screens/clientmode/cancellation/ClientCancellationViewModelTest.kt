@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation
 
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
@@ -12,6 +13,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsT
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
@@ -35,6 +37,7 @@ class ClientCancellationViewModelTest {
     val main = MainDispatcherRule()
 
     private val api = FakeClickMeApi()
+    private val guard = FakeCallGuard()
     private val launchRequest = BookingsLaunchRequest()
     private val clock = MutableClock(Instant.parse("2026-10-23T12:00:00Z"))
 
@@ -45,6 +48,7 @@ class ClientCancellationViewModelTest {
             ClientBookingsRepository(api),
             clock,
             launchRequest,
+            guard,
         )
 
     private fun stubDetail(detail: ClientBookingDetail = bookingDetail()) {
@@ -405,6 +409,24 @@ class ClientCancellationViewModelTest {
             assertNull(vm.uiState.value.error)
             assertFalse(vm.uiState.value.isSubmitting)
             assertFalse(vm.uiState.value.isFinished)
+        }
+
+    @Test
+    fun confirmForTheBookingInTheCallIsBlockedWithoutSubmitting() =
+        runTest(main.testDispatcher) {
+            stubDetail()
+            val vm = vm()
+            runCurrent()
+            vm.continueToConfirm()
+            guard.blocked = true
+
+            vm.confirm()
+            runCurrent()
+
+            assertEquals(0, api.cancelClientBookingCalls)
+            assertFalse(vm.uiState.value.isSubmitting)
+            assertFalse(vm.uiState.value.isFinished)
+            assertEquals(listOf("b1" to RestrictedAction.CancelBooking), guard.modifyAttempts)
         }
 
     @Test

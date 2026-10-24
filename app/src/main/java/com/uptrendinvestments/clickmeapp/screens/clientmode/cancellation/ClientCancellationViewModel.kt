@@ -3,6 +3,8 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
@@ -51,6 +53,7 @@ class ClientCancellationViewModel
         private val repository: ClientBookingsRepository,
         private val clock: Clock,
         private val launchRequest: BookingsLaunchRequest,
+        private val callGuard: CallGuard,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -141,10 +144,14 @@ class ClientCancellationViewModel
             _uiState.update { it.copy(step = CancelStep.Reason) }
         }
 
-        /** Sends the cancel once (D-05) and hands the server's result to My Bookings (D-07). */
+        /**
+         * Sends the cancel once (D-05) and hands the server's result to My Bookings (D-07). Blocked for the booking
+         * that is in a call (D-13); CallCenter shows the guard dialog.
+         */
         fun confirm() {
             val current = _uiState.value
             if (current.isSubmitting || current.load !is CancellationLoad.Loaded) return
+            if (!callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)) return
             _uiState.update { it.copy(isSubmitting = true) }
             viewModelScope.launch {
                 try {

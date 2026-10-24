@@ -24,6 +24,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.subviews.paymentMethodMenuTag
 import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -232,7 +233,7 @@ class PaymentMethodsScreenTest {
         val api = FakeClickMeApi()
         api.getPaymentMethodsHandler = { PaymentMethodsData(listOf(visa, master)) }
         api.setupIntentHandler = { PaymentMethodSetupData("seti_1_secret_x", "cus_1", "ek_1") }
-        val viewModel = PaymentMethodsViewModel(PaymentMethodsRepository(api), MonotonicClock { 0L })
+        val viewModel = PaymentMethodsViewModel(PaymentMethodsRepository(api), MonotonicClock { 0L }, FakeCallGuard())
         val received = mutableListOf<AddCardRequest>()
         var report: (SheetOutcome) -> Unit = {}
 
