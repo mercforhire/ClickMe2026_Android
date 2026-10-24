@@ -2,13 +2,14 @@ package com.uptrendinvestments.clickmeapp.screens.call.calling
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.Modifier
 import com.uptrendinvestments.clickmeapp.managers.CallTimerState
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,16 +41,24 @@ class CallTimerLabelsTest {
     }
 
     @Test
-    fun beforeStartShowsStartsInCountdown() = assertTimerText(CallTimerState(-90, null), "Starts in 1:30")
+    fun beforeStartShowsStartsInCountdown() {
+        assertTimerText(CallTimerState(-90, null), "Starts in 1:30")
+    }
 
     @Test
-    fun atStartShowsZeroes() = assertTimerText(CallTimerState(0, null), "00:00")
+    fun atStartShowsZeroes() {
+        assertTimerText(CallTimerState(0, null), "00:00")
+    }
 
     @Test
-    fun afterStartShowsPaddedMinutesAndSeconds() = assertTimerText(CallTimerState(125, null), "02:05")
+    fun afterStartShowsPaddedMinutesAndSeconds() {
+        assertTimerText(CallTimerState(125, null), "02:05")
+    }
 
     @Test
-    fun minutesPastFiftyNineKeepGrowing() = assertTimerText(CallTimerState(4512, null), "75:12")
+    fun minutesPastFiftyNineKeepGrowing() {
+        assertTimerText(CallTimerState(4512, null), "75:12")
+    }
 
     @Test
     fun chipShowsRemainingInFinalStretch() {
@@ -61,16 +70,21 @@ class CallTimerLabelsTest {
     fun chipIsNullOutsideFinalStretch() {
         var chip: String? = "unset"
         show { chip = callRemainingChipText(CallTimerState(1000, 800)) }
-        rule.runOnIdle { assert(chip == null) }
+        rule.runOnIdle { assertNull(chip) }
     }
 
     @Test
-    fun spokenDescriptionForElapsedUsesPlurals() = assertSpoken(CallTimerState(125, null), "2 minutes 5 seconds elapsed")
+    fun spokenDescriptionForElapsedUsesPlurals() {
+        assertSpoken(CallTimerState(125, null), "2 minutes 5 seconds elapsed")
+    }
 
     @Test
-    fun spokenDescriptionBeforeStartUsesSingulars() = assertSpoken(CallTimerState(-61, null), "Starts in 1 minute 1 second")
+    fun spokenDescriptionBeforeStartUsesSingulars() {
+        assertSpoken(CallTimerState(-61, null), "Starts in 1 minute 1 second")
+    }
 
     @Test
-    fun spokenDescriptionBeforeStartPluralMinutesAndSeconds() =
+    fun spokenDescriptionBeforeStartPluralSeconds() {
         assertSpoken(CallTimerState(-90, null), "Starts in 1 minute 30 seconds")
+    }
 }
