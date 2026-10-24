@@ -625,25 +625,30 @@ realtime.events.filterIsInstance<RealtimeEvent.CallEnded>()
 | A9 | The exact Android 14 `FLAG_ONGOING_EVENT` dismissal exemption applies to `CallStyle` built through `NotificationCompat` on API 34+ and keeps the FGS behaviour intact | Open Question 1 | The alternative stays UI-SPEC's plain builder |
 | A10 | Task Manager "Stop" and OEM killers terminate the process without service callbacks | Pitfall 14 | D-15 already accepts process death |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Ongoing notification: plain builder vs `CallStyle`?**
    - What we know: UI-SPEC approves a plain builder (title "Call with {name}", chronometer, one "End call" action, `CATEGORY_CALL`). On Android 14+ that notification is swipe-dismissible; only `CallStyle` is exempt, and `CallStyle.forOngoingCall` gives a system "Hang up" button and a chronometer [CITED: Android 14 behavior changes].
    - What's unclear: whether the user prefers the exact approved copy over non-dismissibility.
    - Recommendation: implement `CallNotificationFactory` to the approved UI-SPEC and isolate it so switching to `CallStyle` is a single-file change; raise the question once at plan time (not a blocker). If the user chooses `CallStyle`, the title becomes the `Person` name and the action label is system-provided.
+   - RESOLVED: ship the approved plain builder, isolated in `CallNotificationFactory` (09-07); `CallStyle` logged as an open item in 09-17.
 
 2. **Keep the realtime socket alive during a backgrounded call?**
    - What we know: the socket drops when the process is not STARTED; Agora covers peer-left detection; the manager has an explicit seam for a keep-alive.
    - Recommendation: add `|| callCenter.isCallActive` to `isDesired()` (small, tested) so `booking.update` and `call.ended` keep arriving. Not needed for any CALL requirement; skip if schedule is tight.
+   - RESOLVED: adopted in 09-11 (keep-alive while a call is active, behind an interface to avoid a Hilt cycle).
 
 3. **`SESSION_NOT_ACTIVE` message.**
    - The server message is "Session join window is not active." The join-error dialog shows the server message. Recommendation: keep the server text for now; if UAT shows early taps are common, add a string-resource mapping. Related: the guard call-site strings. iOS uses "cancel this session" / "reschedule this session", the UI-SPEC lists "cancel this booking" / "reschedule this booking". Recommendation: follow the approved UI-SPEC and treat the iOS wording as the tiebreaker only if the user objects.
+   - RESOLVED: show the server message as-is; guard copy follows the UI-SPEC ("cancel this booking", 09-02). Revisit after UAT.
 
 4. **Bluetooth headset routing on Android 12+.**
    - UI-SPEC excludes a route picker; the Agora manifest adds no Bluetooth permission. Android 12+ typically needs the runtime `BLUETOOTH_CONNECT` permission for an app to use a Bluetooth headset route [ASSUMED]. Recommendation: do not request it this phase; log "Bluetooth headset routing" as a UAT observation. If it fails, add `BLUETOOTH_CONNECT` (non-blocking) to the permission request.
+   - RESOLVED: no `BLUETOOTH_CONNECT` this phase; Bluetooth routing logged as a D-16 UAT observation in 09-17.
 
 5. **Cancel guard placement.**
    - iOS guards at the cancellation *confirm* button; the UI-SPEC says "Upcoming Details Cancel Booking and the Cancel flow entry". Recommendation: guard at the Cancel entry on Upcoming Details and also at the final confirm in the cancel flow (cheap, mirrors iOS), so a call that starts mid-flow is still blocked.
+   - RESOLVED: guard at both the Cancel entry (09-14) and the final confirm (09-16).
 
 ## Runtime State Inventory
 
