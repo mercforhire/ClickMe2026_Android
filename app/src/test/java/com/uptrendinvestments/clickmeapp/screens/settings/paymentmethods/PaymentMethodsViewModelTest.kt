@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods
 
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.MonotonicClock
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
@@ -9,6 +10,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.stripe.SETUP_INTENT_REUSE_WINDOW_MS
 import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
@@ -27,6 +29,7 @@ class PaymentMethodsViewModelTest {
     val main = MainDispatcherRule()
 
     private val api = FakeClickMeApi()
+    private val guard = FakeCallGuard()
     private var nowMs = 0L
 
     private val visa = PaymentMethodItem("pm_1", "visa", "4242", 9, 2028, isDefault = true)
@@ -41,7 +44,7 @@ class PaymentMethodsViewModelTest {
         api.setDefaultPaymentMethodHandler = { ok }
     }
 
-    private fun vm() = PaymentMethodsViewModel(PaymentMethodsRepository(api), MonotonicClock { nowMs })
+    private fun vm() = PaymentMethodsViewModel(PaymentMethodsRepository(api), MonotonicClock { nowMs }, guard)
 
     private fun PaymentMethodsViewModel.cards() = (uiState.value.list as PaymentMethodsListState.Loaded).cards
 
@@ -315,6 +318,27 @@ class PaymentMethodsViewModelTest {
                 vm.uiState.value.dialog,
             )
             assertEquals(false, vm.uiState.value.isAddingCard)
+        }
+
+    @Test
+    fun addCardDuringACallIsBlockedBeforeAnyStateChangeOrSetupIntent() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            guard.blocked = true
+
+            vm.addCard()
+            runCurrent()
+
+            assertEquals(0, api.setupIntentCalls)
+            assertEquals(false, vm.uiState.value.isAddingCard)
+            assertNull(vm.uiState.value.addCardRequest)
+            assertEquals(listOf(RestrictedAction.AddPaymentMethod), guard.attempts)
+
+            guard.blocked = false
+            vm.addCard()
+            runCurrent()
+            assertEquals(1, api.setupIntentCalls)
         }
 
     @Test

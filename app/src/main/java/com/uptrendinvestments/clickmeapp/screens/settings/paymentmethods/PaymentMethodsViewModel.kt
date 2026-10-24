@@ -3,7 +3,9 @@ package com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.MonotonicClock
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -33,6 +35,7 @@ class PaymentMethodsViewModel
     constructor(
         private val repository: PaymentMethodsRepository,
         private val monotonicClock: MonotonicClock,
+        private val callGuard: CallGuard,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(PaymentMethodsUiState())
         val uiState: StateFlow<PaymentMethodsUiState> = _uiState.asStateFlow()
@@ -166,7 +169,12 @@ class PaymentMethodsViewModel
             }
         }
 
+        /**
+         * Blocked during a call (D-13); CallCenter shows the guard dialog. The guard comes before any state change,
+         * so no SetupIntent is minted against the 10 per 15 minutes limit.
+         */
         fun addCard() {
+            if (!callGuard.attempt(RestrictedAction.AddPaymentMethod)) return
             val state = _uiState.value
             if (state.isAddingCard || state.addCardRequest != null) return
             val cached = reusableSetup
