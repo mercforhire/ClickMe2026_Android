@@ -84,6 +84,7 @@ fun HomeClientScreen(
                         avatarUrl = url,
                         onAvatarClick = { navigator.navigate(ModeSwitchKey) },
                         onOpenExpert = { navigator.navigate(it) },
+                        onOpenBooking = {},
                     )
                 },
                 detailEntries = { navigator ->

@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,12 +56,14 @@ private val JoinButtonMinHeight = 56.dp
 private val PREVIEW_START: Instant = Instant.parse("2026-10-21T19:00:00Z")
 
 /**
- * Today's Sessions strip (D-01). Renders nothing for an empty list. Cards are inert in Phase 5: no tap action
- * (Phase 8 adds it) and a permanently disabled Join Call (D-02, Phase 9 adds the join window).
+ * Today's Sessions strip (D-01). Renders nothing for an empty list. Each card is one click target that reports its
+ * booking id through [onSessionClick] (Phase 8: Upcoming Booking Details). The Join Call button inside it stays
+ * permanently disabled (D-02, Phase 9 adds the join window).
  */
 @Composable
 fun ExploreTodaysSessionsSection(
     sessions: List<TodaysSessionUi>,
+    onSessionClick: (bookingId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (sessions.isEmpty()) return
@@ -67,15 +71,27 @@ fun ExploreTodaysSessionsSection(
         SectionHeader(title = stringResource(R.string.explore_section_todays_sessions))
         Spacer(Modifier.height(Spacing.md))
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            sessions.forEach { session -> TodaysSessionCard(session) }
+            sessions.forEach { session ->
+                TodaysSessionCard(session, onClick = { onSessionClick(session.bookingId) })
+            }
         }
     }
 }
 
 @Composable
-private fun TodaysSessionCard(session: TodaysSessionUi) {
+private fun TodaysSessionCard(
+    session: TodaysSessionUi,
+    onClick: () -> Unit,
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel = stringResource(R.string.my_bookings_view_details),
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -175,6 +191,7 @@ private fun ExploreTodaysSessionsSectionPreview() {
                             endTime = PREVIEW_START.plusSeconds(3600),
                         ),
                     ),
+                onSessionClick = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }

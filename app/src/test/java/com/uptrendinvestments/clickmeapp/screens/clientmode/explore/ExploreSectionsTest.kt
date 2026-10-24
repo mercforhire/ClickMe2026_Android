@@ -3,15 +3,17 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 import android.content.Context
 import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -83,7 +85,8 @@ class ExploreSectionsTest {
 
     private fun sessionTimeText(): String =
         rule
-            .onNodeWithTag(TODAYS_SESSION_TIME_TAG)
+            // The clickable card merges its descendants, so read the time text from the unmerged tree.
+            .onNodeWithTag(TODAYS_SESSION_TIME_TAG, useUnmergedTree = true)
             .fetchSemanticsNode()
             .config[SemanticsProperties.Text]
             .joinToString("")
@@ -101,9 +104,9 @@ class ExploreSectionsTest {
 
     @Test
     fun todaysSessions_showsCardWithFallbackTopicAndDisabledJoin() {
-        show { ExploreTodaysSessionsSection(sessions = listOf(ada)) }
+        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = {}) }
         rule.onNodeWithText("Today's Sessions").assertExists()
-        rule.onNodeWithText("Ada Lovelace").assertExists().assertHasNoClickAction()
+        rule.onNodeWithText("Ada Lovelace").assertExists()
         rule.onNodeWithText("Consultation").assertExists()
         assertEquals("3:00 PM – 4:00 PM", sessionTimeText())
         rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled()
@@ -114,7 +117,7 @@ class ExploreSectionsTest {
         // en-US defaults to 12 hour; the user's 24 hour setting must still win.
         setTime1224("24")
         try {
-            show { ExploreTodaysSessionsSection(sessions = listOf(ada)) }
+            show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = {}) }
             assertEquals("15:00 – 16:00", sessionTimeText())
         } finally {
             setTime1224(null)
@@ -123,8 +126,34 @@ class ExploreSectionsTest {
 
     @Test
     fun todaysSessions_empty_rendersNothing() {
-        show { ExploreTodaysSessionsSection(sessions = emptyList()) }
+        show { ExploreTodaysSessionsSection(sessions = emptyList(), onSessionClick = {}) }
         assertEquals(false, exists("Today's Sessions"))
+    }
+
+    @Test
+    fun todaysSessions_tappingTheCardReportsTheBookingIdOnce() {
+        val clicked = mutableListOf<String>()
+        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = { clicked += it }) }
+        rule.onNodeWithText("Ada Lovelace").performClick()
+        assertEquals(listOf("b1"), clicked)
+    }
+
+    @Test
+    fun todaysSessions_cardExposesAViewBookingDetailsClickAction() {
+        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = {}) }
+        val hasLabel =
+            SemanticsMatcher("OnClick label is View booking details") { node ->
+                node.config.getOrNull(SemanticsActions.OnClick)?.label == "View booking details"
+            }
+        rule.onNode(hasClickAction() and hasText("Ada Lovelace")).assert(hasLabel)
+    }
+
+    @Test
+    fun todaysSessions_joinStaysDisabledAndTappingItDoesNotOpenTheBooking() {
+        val clicked = mutableListOf<String>()
+        show { ExploreTodaysSessionsSection(sessions = listOf(ada), onSessionClick = { clicked += it }) }
+        rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).assertIsNotEnabled().performClick()
+        assertEquals(emptyList<String>(), clicked)
     }
 
     // Trending Categories

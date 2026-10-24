@@ -54,6 +54,7 @@ fun ExploreScreen(
     avatarUrl: String?,
     onAvatarClick: () -> Unit,
     onOpenExpert: (ExpertProfileKey) -> Unit,
+    onOpenBooking: (bookingId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExploreViewModel = hiltViewModel(),
     sheetViewModel: CategoriesSheetViewModel = hiltViewModel(),
@@ -76,6 +77,7 @@ fun ExploreScreen(
         onClearFilter = viewModel::clearFilter,
         onExpertClick = { onOpenExpert(it.toProfileKey(nameFallback)) },
         onFeaturedTopicClick = { onOpenExpert(it.toProfileKey(nameFallback)) },
+        onSessionClick = onOpenBooking,
         onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         modifier = modifier,
     )
@@ -106,6 +108,7 @@ fun ExploreContent(
     onClearFilter: () -> Unit,
     onExpertClick: (ExpertCardUi) -> Unit,
     onFeaturedTopicClick: (FeaturedTopicUi) -> Unit,
+    onSessionClick: (bookingId: String) -> Unit,
     onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -167,7 +170,7 @@ fun ExploreContent(
                 item(key = "hero") { ExploreHeroHeader() }
                 if (showToday) {
                     item(key = "today") {
-                        SectionAppear { ExploreTodaysSessionsSection(state.todaysSessions) }
+                        SectionAppear { ExploreTodaysSessionsSection(state.todaysSessions, onSessionClick) }
                     }
                 }
                 item(key = "categories") {

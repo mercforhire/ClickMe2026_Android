@@ -55,6 +55,7 @@ class ExploreScreenTest {
     private var viewAllCount = 0
     private var chipTapped: String? = null
     private var consumedCount = 0
+    private var sessionClicked: String? = null
 
     private fun show(state: ExploreUiState) {
         rule.setContent {
@@ -70,6 +71,7 @@ class ExploreScreenTest {
                     onClearFilter = {},
                     onExpertClick = { expertClicked = it },
                     onFeaturedTopicClick = { topicClicked = it },
+                    onSessionClick = { sessionClicked = it },
                     onRefreshFailureConsumed = { consumedCount++ },
                 )
             }
@@ -98,6 +100,13 @@ class ExploreScreenTest {
     fun mapper_featuredTopicCarriesOnlyIdNameAndImage() {
         val key = topic.toProfileKey("Expert")
         assertEquals(ExpertProfileKey("e2", "Expert", "", "v", null, null, emptyList()), key)
+    }
+
+    @Test
+    fun todaysSessionCardTapForwardsTheBookingId() {
+        show(fullState)
+        rule.onNodeWithText("Grace Hopper").performClick()
+        assertEquals("b1", sessionClicked)
     }
 
     @Test
