@@ -103,7 +103,7 @@ From the PRD's Payment Methods and Make a Booking paid paths (Week 3).
 
 From the PRD's Call section (Week 4; iOS `Managers/CallCenter.swift`, `AgoraManager.swift`, `Call/Calling/`) and the Join wiring from Upcoming Booking Details.
 
-- [ ] **CALL-01**: Client can tap Join on Upcoming Booking Details, including when it was opened from My Bookings (unlike iOS). This calls `POST /bookings/:id/join`. An `agoraConfig` response starts an in-app audio call; an `externalConfig.joinUrl` response opens in a Custom Tab or intent.
+- [ ] **CALL-01**: Client can tap Join on Upcoming Booking Details, including when it was opened from My Bookings (unlike iOS). This calls `POST /bookings/:id/join`. An `agoraConfig` response starts an in-app audio call; an `externalConfig.joinUrl` response opens in a Custom Tab or intent. (Phase 9 D-05 / D-06: an external join opens the call layer's Skype/Zoom variant; Open tries the native app first, then a Custom Tab.)
 - [ ] **CALL-02**: User is asked for microphone permission with a rationale. A user who denies it sees a dialog explaining how to recover.
 - [ ] **CALL-03**: The call runs in a `microphone`-type foreground service with audio focus and a persistent notification, and it keeps going when the app is in the background.
 - [ ] **CALL-04**: A root-level call overlay shows the full-screen call UI. It minimizes to a pill that stays visible across tabs and modes, and restricted actions show a "you're in a call" guard.

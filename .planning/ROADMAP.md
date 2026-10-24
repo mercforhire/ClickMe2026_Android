@@ -487,6 +487,7 @@ Plans:
   3. The expert picks an availability timezone. If the server's timezone is UTC, the device timezone is filled in without a prompt.
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
+**Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
 **Plans:** TBD
 **UI hint**: yes
 
@@ -503,6 +504,7 @@ Plans:
   3. In expert bookings (Upcoming/Past), Join appears inside the join window, and the iOS client and the Android expert both join the call. (PRD Week 5 checkpoint)
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
+**Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13).
 **Plans:** TBD
 **UI hint**: yes
 
@@ -519,7 +521,7 @@ Plans:
   3. A user can report another user (the backend accepts the reason enum value) and block them, from chat and from Expert Profile.
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
-**Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut.
+**Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread.
 **Plans:** TBD
 **UI hint**: yes
 
@@ -554,7 +556,7 @@ Plans:
   3. Any user can open their profile hub, edit their profile and avatar, and change their password. (Week 7 checkpoint, user-confirmed)
   4. Any user can delete their account from the app and is then logged out, and Help/FAQ opens a `mailto:` support link. (Week 7 checkpoint, user-confirmed)
 
-**Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut.
+**Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings).
 **Plans:** TBD
 **UI hint**: yes
 
