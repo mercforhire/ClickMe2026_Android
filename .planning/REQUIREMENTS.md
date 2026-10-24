@@ -103,14 +103,14 @@ From the PRD's Payment Methods and Make a Booking paid paths (Week 3).
 
 From the PRD's Call section (Week 4; iOS `Managers/CallCenter.swift`, `AgoraManager.swift`, `Call/Calling/`) and the Join wiring from Upcoming Booking Details.
 
-- [ ] **CALL-01**: Client can tap Join on Upcoming Booking Details, including when it was opened from My Bookings (unlike iOS). This calls `POST /bookings/:id/join`. An `agoraConfig` response starts an in-app audio call; an `externalConfig.joinUrl` response opens in a Custom Tab or intent. (Phase 9 D-05 / D-06: an external join opens the call layer's Skype/Zoom variant; Open tries the native app first, then a Custom Tab.)
-- [ ] **CALL-02**: User is asked for microphone permission with a rationale. A user who denies it sees a dialog explaining how to recover.
-- [ ] **CALL-03**: The call runs in a `microphone`-type foreground service with audio focus and a persistent notification, and it keeps going when the app is in the background.
-- [ ] **CALL-04**: A root-level call overlay shows the full-screen call UI. It minimizes to a pill that stays visible across tabs and modes, and restricted actions show a "you're in a call" guard.
-- [ ] **CALL-05**: When both sides have joined, the app sends `PATCH confirm-connection` exactly once.
-- [ ] **CALL-06**: A `call.ended` event from the peer switches the UI to "waiting for peer". It doesn't end the call.
-- [ ] **CALL-07**: The call timer counts from the scheduled start and turns amber in the last 5 minutes. The overtime cutoff is 3600 seconds, not the iOS 5-minute test value.
-- [ ] **CALL-08**: Hanging up leaves the channel and then calls `POST /bookings/:id/end`. The booking stays open, and the user can rejoin for the whole window (CALL-END-SEMANTICS.md).
+- [x] **CALL-01**: Client can tap Join on Upcoming Booking Details, including when it was opened from My Bookings (unlike iOS). This calls `POST /bookings/:id/join`. An `agoraConfig` response starts an in-app audio call; an `externalConfig.joinUrl` response opens in a Custom Tab or intent. (Phase 9 D-05 / D-06: an external join opens the call layer's Skype/Zoom variant; Open tries the native app first, then a Custom Tab.)
+- [x] **CALL-02**: User is asked for microphone permission with a rationale. A user who denies it sees a dialog explaining how to recover.
+- [x] **CALL-03**: The call runs in a `microphone`-type foreground service with audio focus and a persistent notification, and it keeps going when the app is in the background.
+- [x] **CALL-04**: A root-level call overlay shows the full-screen call UI. It minimizes to a pill that stays visible across tabs and modes, and restricted actions show a "you're in a call" guard.
+- [x] **CALL-05**: When both sides have joined, the app sends `PATCH confirm-connection` exactly once.
+- [x] **CALL-06**: A `call.ended` event from the peer switches the UI to "waiting for peer". It doesn't end the call.
+- [x] **CALL-07**: The call timer counts from the scheduled start and turns amber in the last 5 minutes. The overtime cutoff is 3600 seconds, not the iOS 5-minute test value.
+- [x] **CALL-08**: Hanging up leaves the channel and then calls `POST /bookings/:id/end`. The booking stays open, and the user can rejoin for the whole window (CALL-END-SEMANTICS.md).
 
 ### Expert
 
@@ -299,14 +299,14 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | PAY-05 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | PAY-06 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | PAY-07 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| CALL-01 | Phase 9 | Pending |
-| CALL-02 | Phase 9 | Pending |
-| CALL-03 | Phase 9 | Pending |
-| CALL-04 | Phase 9 | Pending |
-| CALL-05 | Phase 9 | Pending |
-| CALL-06 | Phase 9 | Pending |
-| CALL-07 | Phase 9 | Pending |
-| CALL-08 | Phase 9 | Pending |
+| CALL-01 | Phase 9 | Complete |
+| CALL-02 | Phase 9 | Complete |
+| CALL-03 | Phase 9 | Complete |
+| CALL-04 | Phase 9 | Complete |
+| CALL-05 | Phase 9 | Complete |
+| CALL-06 | Phase 9 | Complete |
+| CALL-07 | Phase 9 | Complete |
+| CALL-08 | Phase 9 | Complete |
 | EXP-01 | Phase 10 | Pending |
 | EXP-02 | Phase 10 | Pending |
 | EXP-03 | Phase 10 | Pending |

@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Booking Flow & Free Bookings** - Topic/calendar/slot picker with timezone regrouping, free booking, Request Sent (Week 3) (completed 2026-10-23)
 - [x] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3) (completed 2026-10-23)
 - [x] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4) (completed 2026-10-24)
-- [ ] **Phase 9: Voice Call** - Join, Agora call in a microphone foreground service, overlay/pill, rejoin semantics (Week 4)
+- [x] **Phase 9: Voice Call** - Join, Agora call in a microphone foreground service, overlay/pill, rejoin semantics (Week 4) (completed 2026-10-24)
 - [ ] **Phase 10: Expert Topics & Availability** - Topics + Topic Editor with price floor, weekly availability and timezone (Week 5)
 - [ ] **Phase 11: Expert Requests & Bookings** - Expert Dashboard, Incoming Requests → decision → Confirmed, expert bookings with Join and reschedule response (Week 5)
 - [ ] **Phase 12: Chat, Report & Block** - Conversations, realtime chatting, initiateChat entry points, report/block/unblock (Week 6)
@@ -438,7 +438,7 @@ Plans:
   5. An Android client and an iOS expert finish a full paid session end to end, and `confirm-connection` is sent exactly once. (PRD Week 4 checkpoint: the client side is complete)
 
 **Planning notes:** Second-biggest schedule risk (background audio, keeping the call across navigation). Don't port `Call/Ready`. Use 3600s, not the iOS 5-minute test value. Hang-up semantics follow CALL-END-SEMANTICS.md. Never cut.
-**Plans:** 16/17 plans executed
+**Plans:** 17/17 plans complete
 Plans:
 **Wave 1**
 
@@ -470,7 +470,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 09-17-PLAN.md — Phase gate (both flavors, lint, R8 with Agora), delete :spikes:agora, sweeps, deferred D-16 device UAT, open items, follow-ups and hand-offs (all)
+- [x] 09-17-PLAN.md — Phase gate (both flavors, lint, R8 with Agora), delete :spikes:agora, sweeps, deferred D-16 device UAT, open items, follow-ups and hand-offs (all)
 
 **UI hint**: yes
 
@@ -619,7 +619,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
-| 9. Voice Call | 16/17 | In Progress|  |
+| 9. Voice Call | 17/17 | Complete   | 2026-10-24 |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
