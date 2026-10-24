@@ -148,6 +148,7 @@ private fun InAppContent(
             onMinimize = onMinimize,
             onToggleMute = onToggleMute,
             onToggleSpeaker = onToggleSpeaker,
+            audioControlsEnabled = !state.isEndingCall,
         )
         Spacer(Modifier.height(Spacing.xl))
         MeetingCallEndButton(

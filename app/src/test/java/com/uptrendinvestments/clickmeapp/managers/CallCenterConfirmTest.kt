@@ -254,4 +254,26 @@ class CallCenterConfirmTest {
                     .confirmSent,
             )
         }
+
+    @Test
+    fun controls_areIgnoredWhileEnding() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            with(h) { startActiveInAppCall() }
+            h.engine.leaveGate = CompletableDeferred()
+            h.center.endCall()
+            runCurrent()
+            assertTrue(
+                h.center.session.value!!
+                    .isEndingCall,
+            )
+            h.center.toggleMute()
+            h.center.toggleSpeaker()
+            assertTrue(h.engine.muteCalls.isEmpty())
+            assertTrue(h.engine.speakerCalls.isEmpty())
+            assertFalse(
+                h.center.session.value!!
+                    .isMuted,
+            )
+        }
 }

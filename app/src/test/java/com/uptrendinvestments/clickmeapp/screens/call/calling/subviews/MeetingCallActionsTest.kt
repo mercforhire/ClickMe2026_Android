@@ -39,6 +39,7 @@ class MeetingCallActionsTest {
         onMinimize: () -> Unit = {},
         onToggleMute: () -> Unit = {},
         onToggleSpeaker: () -> Unit = {},
+        audioControlsEnabled: Boolean = true,
     ) = show {
         MeetingCallControls(
             showAudioControls = showAudioControls,
@@ -47,6 +48,7 @@ class MeetingCallActionsTest {
             onMinimize = onMinimize,
             onToggleMute = onToggleMute,
             onToggleSpeaker = onToggleSpeaker,
+            audioControlsEnabled = audioControlsEnabled,
         )
     }
 
@@ -148,6 +150,16 @@ class MeetingCallActionsTest {
     fun speakerReportsOffWhenTheSpeakerIsOff() {
         controls(isSpeakerOn = false)
         rule.onNodeWithTag(CALL_CONTROL_SPEAKER_TAG).assert(hasStateDescription("Off"))
+    }
+
+    @Test
+    fun audioControlsAreDisabledAndIgnoreTapsWhileEnding() {
+        var toggles = 0
+        controls(audioControlsEnabled = false, onToggleMute = { toggles++ }, onToggleSpeaker = { toggles++ })
+        rule.onNodeWithTag(CALL_CONTROL_MUTE_TAG).assertIsNotEnabled().performClick()
+        rule.onNodeWithTag(CALL_CONTROL_SPEAKER_TAG).assertIsNotEnabled().performClick()
+        rule.onNodeWithTag(CALL_CONTROL_MINIMIZE_TAG).assertIsEnabled()
+        assertEquals(0, toggles)
     }
 
     @Test

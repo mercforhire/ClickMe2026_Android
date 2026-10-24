@@ -41,8 +41,10 @@ class AgoraManager
         @ApplicationContext private val context: Context,
         @IoDispatcher private val io: CoroutineDispatcher,
     ) : CallEngine {
+        /** Guards every engine lifecycle step (join, leave, destroy) and the controls (WR-04). */
         private val mutex = Mutex()
-        private var engine: RtcEngine? = null
+
+        @Volatile private var engine: RtcEngine? = null
 
         @Volatile private var isLeaving = false
 
@@ -143,20 +145,38 @@ class AgoraManager
                 null
             }
 
+        /** Holds the lock so a leave never interleaves with [destroy] or [join] (WR-04). */
         override suspend fun leave() {
             withContext(io) {
-                val rtc = engine ?: return@withContext
-                isLeaving = true
-                val signal = CompletableDeferred<Unit>()
-                leaveSignal = signal
-                rtc.leaveChannel()
-                withTimeoutOrNull(LEAVE_TIMEOUT_MS) { signal.await() }
+                mutex.withLock {
+                    val rtc = engine ?: return@withLock
+                    isLeaving = true
+                    val signal = CompletableDeferred<Unit>()
+                    leaveSignal = signal
+                    rtc.leaveChannel()
+                    withTimeoutOrNull(LEAVE_TIMEOUT_MS) { signal.await() }
+                }
             }
         }
 
-        override fun setMuted(muted: Boolean): Boolean = engine?.muteLocalAudioStream(muted) == 0
+        override fun setMuted(muted: Boolean): Boolean = withIdleEngine { it.muteLocalAudioStream(muted) == 0 }
 
-        override fun setSpeakerOn(on: Boolean): Boolean = engine?.setEnableSpeakerphone(on) == 0
+        override fun setSpeakerOn(on: Boolean): Boolean = withIdleEngine { it.setEnableSpeakerphone(on) == 0 }
+
+        /**
+         * Runs [block] on the engine only while no join, leave or destroy holds the lock, so a control called on
+         * Main never reaches an engine that is being released on the IO dispatcher. Never blocks the caller:
+         * a busy engine reports false and the UI flag stays unchanged (WR-04).
+         */
+        private inline fun withIdleEngine(block: (RtcEngine) -> Boolean): Boolean {
+            if (!mutex.tryLock()) return false
+            try {
+                val rtc = engine ?: return false
+                return block(rtc)
+            } finally {
+                mutex.unlock()
+            }
+        }
 
         override suspend fun destroy() {
             withContext(io) {

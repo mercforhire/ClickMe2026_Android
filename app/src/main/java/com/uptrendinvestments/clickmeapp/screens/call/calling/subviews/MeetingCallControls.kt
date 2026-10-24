@@ -142,7 +142,8 @@ fun MeetingCallControlButton(
 /**
  * The control row. In-app: Minimize, Chat, Mute, Speaker spread evenly (iOS layout). External
  * ([showAudioControls] false): Minimize and Chat only, centered, since there is no in-app audio (D-05). Chat is
- * disabled with "Available soon" until Phase 12 wires chat (D-11).
+ * disabled with "Available soon" until Phase 12 wires chat (D-11). Mute and Speaker are disabled when
+ * [audioControlsEnabled] is false (while the call is ending, WR-04).
  */
 @Composable
 fun MeetingCallControls(
@@ -153,6 +154,7 @@ fun MeetingCallControls(
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
     modifier: Modifier = Modifier,
+    audioControlsEnabled: Boolean = true,
 ) {
     val arrangement =
         if (showAudioControls) {
@@ -188,6 +190,7 @@ fun MeetingCallControls(
                 label = stringResource(R.string.call_control_mute),
                 onClick = onToggleMute,
                 modifier = cell.testTag(CALL_CONTROL_MUTE_TAG),
+                enabled = audioControlsEnabled,
                 isOn = isMuted,
                 stateDescription =
                     stringResource(if (isMuted) R.string.call_state_muted else R.string.call_state_unmuted),
@@ -203,6 +206,7 @@ fun MeetingCallControls(
                 label = stringResource(R.string.call_control_speaker),
                 onClick = onToggleSpeaker,
                 modifier = cell.testTag(CALL_CONTROL_SPEAKER_TAG),
+                enabled = audioControlsEnabled,
                 isOn = isSpeakerOn,
                 stateDescription = stringResource(if (isSpeakerOn) R.string.call_state_on else R.string.call_state_off),
                 toggle = true,

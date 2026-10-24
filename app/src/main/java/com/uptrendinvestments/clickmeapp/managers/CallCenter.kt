@@ -345,18 +345,24 @@ class CallCenter
 
         // region Controls
 
-        /** Mutes or unmutes the microphone. The flag changes only when the engine accepts the request. */
+        /**
+         * Mutes or unmutes the microphone. The flag changes only when the engine accepts the request. Ignored
+         * while ending: the engine is being left and destroyed (WR-04).
+         */
         fun toggleMute() {
             val current = _session.value ?: return
-            if (current.connectionType != ConnectionType.InAppVoice) return
+            if (current.connectionType != ConnectionType.InAppVoice || current.isEndingCall) return
             val target = !current.isMuted
             if (engine.setMuted(target)) setSession(current.copy(isMuted = target))
         }
 
-        /** Switches between loudspeaker and earpiece. The flag changes only when the engine accepts it. */
+        /**
+         * Switches between loudspeaker and earpiece. The flag changes only when the engine accepts it. Ignored
+         * while ending (WR-04).
+         */
         fun toggleSpeaker() {
             val current = _session.value ?: return
-            if (current.connectionType != ConnectionType.InAppVoice) return
+            if (current.connectionType != ConnectionType.InAppVoice || current.isEndingCall) return
             val target = !current.isSpeakerOn
             if (engine.setSpeakerOn(target)) setSession(current.copy(isSpeakerOn = target))
         }
