@@ -23,6 +23,12 @@ object Motion {
     /** Duration of a strength meter segment color change. */
     const val STRENGTH_SEGMENT_COLOR_MS = 300
 
+    /** Half-cycle of the hero avatar ring pulse while connecting or waiting (UI-SPEC Motion). */
+    const val CALL_RING_PULSE_MS = 900
+
+    /** Half-cycle of the ambient glow behind the call hero (UI-SPEC Motion). */
+    const val CALL_GLOW_PULSE_MS = 2200
+
     val pressEasing: Easing = EaseInOut
     val pushPopEasing: Easing = FastOutSlowInEasing
 }
