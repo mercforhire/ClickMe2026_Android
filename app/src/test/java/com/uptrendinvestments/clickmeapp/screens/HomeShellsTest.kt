@@ -22,7 +22,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.Expert
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingManagementEntries
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMethodsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -394,6 +397,185 @@ class HomeShellsTest {
         composeRule.onNodeWithText("sent home").performClick()
         composeRule.onNodeWithText("open booking", substring = true).assertExists()
         composeRule.onNode(tab("Explore")).assertIsSelected()
+    }
+
+    private fun setClientWithBookingManagement() {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Column {
+                            Text("fake explore")
+                            Button(onClick = { navigator.openUpcomingBooking("b1") }) { Text("explore open upcoming") }
+                        }
+                    },
+                    bookingsRoot = { navigator ->
+                        Column {
+                            Text("fake my bookings")
+                            Button(onClick = { navigator.openUpcomingBooking("b1") }) { Text("open upcoming") }
+                            Button(onClick = { navigator.openBookingSummary("b2") }) { Text("open summary") }
+                        }
+                    },
+                    detailEntries = { nav ->
+                        clientBookingFlowEntries(
+                            navigator = nav,
+                            booking = { _, onBack, _, _ ->
+                                Column {
+                                    Text("fake booking form")
+                                    Button(onClick = onBack) { Text("fake back") }
+                                }
+                            },
+                            requestSent = { _, _, _, _ -> Text("fake request sent") },
+                        )
+                        clientBookingManagementEntries(
+                            navigator = nav,
+                            upcoming = { key, onBack, onCancel, onOpenPaymentMethods ->
+                                Column {
+                                    Text("fake upcoming ${key.bookingId}")
+                                    Button(onClick = onBack) { Text("upcoming back") }
+                                    Button(onClick = onCancel) { Text("upcoming cancel") }
+                                    Button(onClick = onOpenPaymentMethods) { Text("upcoming add card") }
+                                }
+                            },
+                            cancel = { key, onBack, onCancelled ->
+                                Column {
+                                    Text("fake cancel ${key.bookingId}")
+                                    Button(onClick = onBack) { Text("cancel back") }
+                                    Button(onClick = onCancelled) { Text("cancel done") }
+                                }
+                            },
+                            summary = { key, onBack, onBookAgain, onOpenPaymentMethods ->
+                                Column {
+                                    Text("fake summary ${key.bookingId}")
+                                    Button(onClick = onBack) { Text("summary back") }
+                                    Button(
+                                        onClick = { onBookAgain(BookingKey("e1", "Ada Lovelace", "Engineer", null)) },
+                                    ) { Text("summary book again") }
+                                    Button(onClick = onOpenPaymentMethods) { Text("summary add card") }
+                                }
+                            },
+                        )
+                        fakePaymentMethodsEntry(nav)
+                    },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun bookingsTabShowsTheBookingsRootSlot() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+    }
+
+    @Test
+    fun defaultShellKeepsThePlaceholderOnTheBookingsTab() {
+        setClient(showDebug = false)
+        tapTab("Bookings")
+        composeRule.onNodeWithText("fake my bookings").assertDoesNotExist()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("Nothing here yet.").assertExists()
+    }
+
+    @Test
+    fun upcomingRouteHidesBottomBarAndBackRestoresTheListAndBar() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open upcoming").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        composeRule.onNodeWithText("upcoming back").performClick()
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+    }
+
+    @Test
+    fun summaryRouteOpensFromAPastCardWithoutTheBottomBar() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open summary").performClick()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        composeRule.onNodeWithText("summary back").performClick()
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+    }
+
+    @Test
+    fun cancelOpensWithoutBarAndCancelledReturnsToMyBookings() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open upcoming").performClick()
+        composeRule.onNodeWithText("upcoming cancel").performClick()
+        composeRule.onNodeWithText("fake cancel b1").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        composeRule.onNodeWithText("cancel done").performClick()
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("fake cancel b1").assertDoesNotExist()
+        composeRule.onNodeWithText("fake upcoming b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun cancelledFromExploreOriginResetsExploreAndSelectsBookings() {
+        setClientWithBookingManagement()
+        composeRule.onNodeWithText("explore open upcoming").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.onNodeWithText("upcoming cancel").performClick()
+        composeRule.onNodeWithText("cancel done").performClick()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+        tapTab("Explore")
+        composeRule.onNodeWithText("fake explore").assertExists()
+        composeRule.onNodeWithText("fake upcoming b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun cancelBackReturnsToTheUpcomingDetails() {
+        setClientWithBookingManagement()
+        composeRule.onNodeWithText("explore open upcoming").performClick()
+        composeRule.onNodeWithText("upcoming cancel").performClick()
+        composeRule.onNodeWithText("cancel back").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+    }
+
+    @Test
+    fun upcomingAddCardOpensPaymentMethodsAndBackReturnsToTheSameBooking() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open upcoming").performClick()
+        composeRule.onNodeWithText("upcoming add card").performClick()
+        composeRule.onNodeWithText("fake payment methods").assertExists()
+        composeRule.onNodeWithText("pm back").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+    }
+
+    @Test
+    fun summaryAddCardOpensPaymentMethodsAndBackReturnsToTheSameBooking() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open summary").performClick()
+        composeRule.onNodeWithText("summary add card").performClick()
+        composeRule.onNodeWithText("fake payment methods").assertExists()
+        composeRule.onNodeWithText("pm back").performClick()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
+    }
+
+    @Test
+    fun summaryBookAgainOpensTheBookingFormInTheSameStack() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open summary").performClick()
+        composeRule.onNodeWithText("summary book again").performClick()
+        composeRule.onNodeWithText("fake booking form").assertExists()
+        composeRule.onNodeWithText("fake back").performClick()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
     }
 
     @Test
