@@ -438,14 +438,14 @@ Plans:
   5. An Android client and an iOS expert finish a full paid session end to end, and `confirm-connection` is sent exactly once. (PRD Week 4 checkpoint: the client side is complete)
 
 **Planning notes:** Second-biggest schedule risk (background audio, keeping the call across navigation). Don't port `Call/Ready`. Use 3600s, not the iOS 5-minute test value. Hang-up semantics follow CALL-END-SEMANTICS.md. Never cut.
-**Plans:** 17 plans
+**Plans:** 4/17 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — Call network contract: join (dual shape), confirm-connection and end endpoints, strict bodies, redacted RTC config, FakeClickMeApi handlers (CALL-01, CALL-05, CALL-08)
-- [ ] 09-02-PLAN.md — Copy contract strings_call.xml and the pure schedule-anchored CallTimer with the 3600 s cutoff and timer labels (CALL-07)
-- [ ] 09-03-PLAN.md — Join window + 30 s JoinClock, shared JoinCallButton, ExternalMeetingProvider, hardened app-first external link launcher (CALL-01)
-- [ ] 09-04-PLAN.md — Call contracts: ports (CallEngine, CallForegroundController, CallPermissionGate + broker), CallSession and status derivation, typed dialogs, CallGuard / CallStarter, fakes (CALL-02..CALL-06)
+- [x] 09-01-PLAN.md — Call network contract: join (dual shape), confirm-connection and end endpoints, strict bodies, redacted RTC config, FakeClickMeApi handlers (CALL-01, CALL-05, CALL-08)
+- [x] 09-02-PLAN.md — Copy contract strings_call.xml and the pure schedule-anchored CallTimer with the 3600 s cutoff and timer labels (CALL-07)
+- [x] 09-03-PLAN.md — Join window + 30 s JoinClock, shared JoinCallButton, ExternalMeetingProvider, hardened app-first external link launcher (CALL-01)
+- [x] 09-04-PLAN.md — Call contracts: ports (CallEngine, CallForegroundController, CallPermissionGate + broker), CallSession and status derivation, typed dialogs, CallGuard / CallStarter, fakes (CALL-02..CALL-06)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -617,7 +617,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 6. Booking Flow & Free Bookings | 14/14 | Complete    | 2026-10-23 |
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
-| 9. Voice Call | 0/TBD | Not started | - |
+| 9. Voice Call | 4/17 | In Progress|  |
 | 10. Expert Topics & Availability | 0/TBD | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
