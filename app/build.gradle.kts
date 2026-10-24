@@ -131,6 +131,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.stripe.paymentsheet)
+    implementation(libs.agora.voice.sdk)
     implementation(libs.moshi)
     // Android provides org.json; the 2009 jar would duplicate it.
     implementation(libs.socket.io.client) { exclude(group = "org.json", module = "json") }
