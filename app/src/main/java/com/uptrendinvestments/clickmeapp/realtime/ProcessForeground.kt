@@ -25,9 +25,8 @@ interface ProcessForeground {
  * socket (A7). A process started by FCM without an activity is never STARTED, so it does not connect
  * (RESEARCH Open Question 4).
  *
- * Phase 9 note: the call foreground service will need an extra "keep alive" input OR-ed into the desired
- * condition. That condition lives in one place (`RealtimeConnectionManager.isDesired`), so it is a
- * one-line change later. Keep-alive is deliberately not implemented now.
+ * Phase 9 note: the keep-alive for an active call is OR-ed into the desired condition in
+ * `RealtimeConnectionManager`, not here; this only reports whether an activity is visible.
  */
 @Singleton
 class LifecycleProcessForeground
