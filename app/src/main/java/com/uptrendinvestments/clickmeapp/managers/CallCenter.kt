@@ -50,9 +50,10 @@ import javax.inject.Singleton
  * down while the app is backgrounded unless the keep-alive from plan 09-11 holds it (RESEARCH Pitfall 6).
  * The echo race in Pitfall 7 is accepted for iOS parity (no time-window heuristic).
  *
- * Hang-up, the cutoff and logout teardown live in this class too. Hang-up leaves the channel, then always
- * sends `POST /end` (never branching on its outcome), then destroys the engine and stops the service; the
- * user can rejoin for the whole window (CALL-08, CALL-END-SEMANTICS). The iOS `isRejoin` parameter is
+ * Hang-up, the cutoff and logout teardown live in this class too. Hang-up leaves the channel, then sends
+ * `POST /end` for every leg that started (never branching on its outcome), then destroys the engine and stops
+ * the service; the user can rejoin for the whole window (CALL-08, CALL-END-SEMANTICS). A hang-up before any
+ * leg started sends no `/end` (WR-02). The iOS `isRejoin` parameter is
  * obsolete after CALL-END-SEMANTICS and is not ported (RESEARCH Deprecated).
  *
  * It is also a [SessionDataCleaner]: a forced logout or suspension tears the call down locally, with no
@@ -386,8 +387,9 @@ class CallCenter
         }
 
         /**
-         * Leave the channel, `POST /end`, then destroy, stop the service and clear (CALL-08, D-10). The
-         * foreground service stays up until `/end` finished or timed out so the process survives the request.
+         * Leave the channel, `POST /end` (only when a leg started), then destroy, stop the service and clear
+         * (CALL-08, D-10). The foreground service stays up until `/end` finished or timed out so the process
+         * survives the request.
          */
         private suspend fun performEnd(forced: Boolean) {
             val started = _session.value ?: return
@@ -407,21 +409,32 @@ class CallCenter
                 val current = _session.value?.takeIf { it.id == id } ?: return
                 // Read after the join settled so a confirm sent while joining counts.
                 val reason = if (current.confirmSent) EndReason.Completed else EndReason.ManualExit
-                val seconds = current.joinStartedAt?.let { Duration.between(it, clock.instant()).seconds } ?: 0L
-                // The backend /end schema is `.int().positive()`, so 0 would be a 400 (iOS sends max(0, d);
-                // logged as an iOS follow-up).
-                val actualDuration = seconds.coerceIn(1, Int.MAX_VALUE.toLong()).toInt()
                 if (current.connectionType == ConnectionType.InAppVoice && engineEngaged) {
                     // The peer hears us go immediately.
                     withTimeoutOrNull(LEAVE_STEP_TIMEOUT_MS) { engine.leave() }
                 }
-                // Always sent, for both variants, never branching on the response or its status: a 409 on
-                // `completed` is expected (CALL-END-SEMANTICS, RESEARCH Pitfall 9).
-                withTimeoutOrNull(END_REQUEST_TIMEOUT_MS) {
-                    try {
-                        apiCall { api.endCall(current.bookingId, EndCallRequest(actualDuration, reason.wire)) }
-                    } catch (_: ApiException) {
-                        // Ignored: teardown continues whatever the server said.
+                // No leg started (hang-up while /join, the mic prompt or the service start was in flight): no
+                // `/end`. iOS sends max(0, d) = 0 here, which the backend's `.int().positive()` schema rejects
+                // with a 400, so nothing is recorded there either. Sending a clamped 1 s would overwrite the
+                // booking's actual_duration_secs / end_reason from a real earlier leg and emit call.ended to
+                // the peer (WR-02).
+                val joinedAt = current.joinStartedAt
+                if (joinedAt != null) {
+                    // A real sub-second leg still reports 1 s: the schema rejects 0.
+                    val actualDuration =
+                        Duration
+                            .between(joinedAt, clock.instant())
+                            .seconds
+                            .coerceIn(1, Int.MAX_VALUE.toLong())
+                            .toInt()
+                    // Sent for both variants, never branching on the response or its status: a 409 on
+                    // `completed` is expected (CALL-END-SEMANTICS, RESEARCH Pitfall 9).
+                    withTimeoutOrNull(END_REQUEST_TIMEOUT_MS) {
+                        try {
+                            apiCall { api.endCall(current.bookingId, EndCallRequest(actualDuration, reason.wire)) }
+                        } catch (_: ApiException) {
+                            // Ignored: teardown continues whatever the server said.
+                        }
                     }
                 }
             } finally {

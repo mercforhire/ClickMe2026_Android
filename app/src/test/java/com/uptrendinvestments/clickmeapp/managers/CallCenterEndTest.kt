@@ -79,7 +79,7 @@ class CallCenterEndTest {
         }
 
     @Test
-    fun endCall_whileJoinInFlight_cancelsStartAndSendsOneEnd() =
+    fun endCall_whileJoinInFlight_cancelsStartAndSendsNoEnd() =
         runTest(main.testDispatcher) {
             val h = CallCenterHarness(backgroundScope)
             val gate = CompletableDeferred<JoinCallResponse>()
@@ -90,11 +90,51 @@ class CallCenterEndTest {
             runCurrent()
             gate.complete(h.inAppJoinResponse())
             runCurrent()
-            assertEquals(listOf("b1" to EndCallRequest(1, "manual_exit")), h.api.endCallRequests)
+            // No leg started, so no fabricated 1 s /end (WR-02).
+            assertTrue(h.api.endCallRequests.isEmpty())
             assertNull(h.center.session.value)
             assertTrue(h.engine.joins.isEmpty())
-            assertEquals(listOf("end", "foreground.stop"), h.log.toList())
+            assertEquals(listOf("foreground.stop"), h.log.toList())
             assertEquals(0, h.permission.calls)
+        }
+
+    @Test
+    fun endCall_whileMicPromptOpen_sendsNoEnd() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.joinCallHandler = { h.inAppJoinResponse() }
+            h.permission.gate = CompletableDeferred()
+            h.center.startCall(h.request())
+            runCurrent()
+            assertEquals(1, h.permission.calls)
+            h.clock.advanceBy(Duration.ofSeconds(30))
+            h.center.endCall()
+            runCurrent()
+            assertEquals(0, h.api.endCallCalls)
+            assertTrue(h.engine.joins.isEmpty())
+            assertEquals(0, h.engine.leaveCalls)
+            assertEquals(0, h.engine.destroyCalls)
+            assertNull(h.center.session.value)
+            assertTrue(
+                h.center.dialogs.value
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun endCall_whileServiceStarting_sendsNoEnd() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            h.api.joinCallHandler = { h.inAppJoinResponse() }
+            h.foreground.startGate = CompletableDeferred()
+            h.center.startCall(h.request())
+            runCurrent()
+            h.center.endCall()
+            runCurrent()
+            assertEquals(0, h.api.endCallCalls)
+            assertTrue(h.engine.joins.isEmpty())
+            assertNull(h.center.session.value)
+            assertEquals(1, h.foreground.stopCalls)
         }
 
     @Test

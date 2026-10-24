@@ -139,6 +139,8 @@ class CallCenterCutoffTest {
             assertTrue(h.foreground.starts.isEmpty())
             assertTrue(h.engine.joins.isEmpty())
             assertEquals(0, h.engine.destroyCalls)
+            // No leg started, so no /end (WR-02).
+            assertEquals(0, h.api.endCallCalls)
             assertEquals(listOf<CallDialog>(CallDialog.TimeLimit), h.center.dialogs.value)
         }
 }
