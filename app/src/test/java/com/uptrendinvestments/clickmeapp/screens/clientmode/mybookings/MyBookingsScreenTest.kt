@@ -1,9 +1,14 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -207,5 +212,160 @@ class MyBookingsScreenTest {
         }
         rule.onNodeWithTag(UPCOMING_BOOKING_CARD_TAG).assertExists()
         rule.onNodeWithTag(PAST_BOOKING_CARD_TAG).assertExists()
+    }
+    // Screen content
+
+    private class Callbacks {
+        var selectedTab: BookingsTab? = null
+        var refreshes = 0
+        var retries = 0
+        var openedUpcoming: String? = null
+        var openedPast: String? = null
+        var explored = 0
+        var noticeConsumed = 0
+        var refreshFailureConsumed = 0
+    }
+
+    @Composable
+    private fun Content(
+        state: MyBookingsUiState,
+        calls: Callbacks = Callbacks(),
+    ) = MyBookingsContent(
+        state = state,
+        onSelectTab = { calls.selectedTab = it },
+        onRefresh = { calls.refreshes++ },
+        onRetry = { calls.retries++ },
+        onOpenUpcoming = { calls.openedUpcoming = it },
+        onOpenPast = { calls.openedPast = it },
+        onExploreExperts = { calls.explored++ },
+        onNoticeConsumed = { calls.noticeConsumed++ },
+        onRefreshFailureConsumed = { calls.refreshFailureConsumed++ },
+        zone = zone,
+        timeFormat = timeFormat(),
+        locale = locale,
+    )
+
+    private fun pastRow(
+        id: String,
+        status: String = "completed",
+    ) = PastRow(bookingItem(id = id, status = status), pastStatusDisplay(status)!!)
+
+    private fun loaded(
+        tab: BookingsTab = BookingsTab.Upcoming,
+        upcoming: List<ClientBookingItem> = emptyList(),
+        past: List<PastRow> = emptyList(),
+        notice: BookingsNotice? = null,
+        refreshFailed: Boolean = false,
+    ) = MyBookingsUiState(
+        load = MyBookingsLoad.Loaded,
+        lists = BookingLists(upcoming, past),
+        selectedTab = tab,
+        notice = notice,
+        refreshFailed = refreshFailed,
+    )
+
+    @Test
+    fun content_showsTitleAndBothTabs() {
+        show { Content(loaded()) }
+        rule.onNodeWithText("My Bookings").assertExists()
+        rule.onNodeWithText("Upcoming").assertExists()
+        rule.onNodeWithText("Past").assertExists()
+        rule.onNodeWithText("Upcoming").assertIsSelected()
+        rule.onNodeWithText("Past").assertIsNotSelected()
+    }
+
+    @Test
+    fun content_tappingPastSelectsPastTab() {
+        val calls = Callbacks()
+        show { Content(loaded(), calls) }
+        rule.onNodeWithText("Past").performClick()
+        assertEquals(BookingsTab.Past, calls.selectedTab)
+    }
+
+    @Test
+    fun content_loadingShowsSkeletonOnly() {
+        show { Content(MyBookingsUiState()) }
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        assertTrue(!existsTag(UPCOMING_BOOKING_CARD_TAG))
+    }
+
+    @Test
+    fun content_upcomingTabShowsCardsAndOpensDetails() {
+        val calls = Callbacks()
+        show { Content(loaded(upcoming = listOf(bookingItem("b1"), bookingItem("b3"))), calls) }
+        assertEquals(2, rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG)[0].performClick()
+        assertEquals("b1", calls.openedUpcoming)
+    }
+
+    @Test
+    fun content_pastTabShowsCardAndOpensSummary() {
+        val calls = Callbacks()
+        show { Content(loaded(tab = BookingsTab.Past, past = listOf(pastRow("b2"))), calls) }
+        assertEquals(1, rule.onAllNodesWithTag(PAST_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
+        rule.onNodeWithTag(PAST_BOOKING_CARD_TAG).performClick()
+        assertEquals("b2", calls.openedPast)
+    }
+
+    @Test
+    fun content_emptyUpcomingOffersExplore() {
+        val calls = Callbacks()
+        show { Content(loaded(), calls) }
+        rule.onNodeWithText("No Bookings Yet!").assertExists()
+        rule.onNodeWithText("Explore Experts").performClick()
+        assertEquals(1, calls.explored)
+    }
+
+    @Test
+    fun content_emptyPastHasNoAction() {
+        show { Content(loaded(tab = BookingsTab.Past)) }
+        rule.onNodeWithText("No past bookings yet").assertExists()
+        assertTrue(!exists("Explore Experts"))
+    }
+
+    @Test
+    fun content_failedShowsErrorWithRetry() {
+        val calls = Callbacks()
+        show { Content(MyBookingsUiState(load = MyBookingsLoad.Failed(FieldError.Text("Boom"))), calls) }
+        rule.onNodeWithText("Couldn't load bookings").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, calls.retries)
+    }
+
+    @Test
+    fun content_refundNoticeShowsSnackbarAndIsConsumedOnce() {
+        val calls = Callbacks()
+        show { Content(loaded(notice = BookingsNotice.CancelledWithRefund("CA$12.50")), calls) }
+        rule.onNodeWithText("Booking cancelled. CA$12.50 will be refunded").assertExists()
+        assertEquals(1, calls.noticeConsumed)
+    }
+
+    @Test
+    fun content_plainNoticeShowsCancelledSnackbar() {
+        val calls = Callbacks()
+        show { Content(loaded(notice = BookingsNotice.Cancelled), calls) }
+        rule.onNodeWithText("Booking cancelled").assertExists()
+        assertEquals(1, calls.noticeConsumed)
+    }
+
+    @Test
+    fun content_refreshFailureShowsSnackbarAndIsConsumed() {
+        val calls = Callbacks()
+        show { Content(loaded(refreshFailed = true), calls) }
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        assertEquals(1, calls.refreshFailureConsumed)
+    }
+
+    @Test
+    fun content_neverOffersExcludedActions() {
+        val upcoming = listOf(bookingItem("b1"), bookingItem("b3", status = STATUS_PENDING_APPROVAL))
+        val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
+        var tab by mutableStateOf(BookingsTab.Upcoming)
+        show { Content(state.copy(selectedTab = tab)) }
+        val forbidden = listOf("Reschedule", "Message", "Private Note", "Leave a Review")
+        forbidden.forEach { assertTrue("$it on Upcoming", !exists(it)) }
+        rule.runOnIdle { tab = BookingsTab.Past }
+        rule.waitForIdle()
+        forbidden.forEach { assertTrue("$it on Past", !exists(it)) }
     }
 }
