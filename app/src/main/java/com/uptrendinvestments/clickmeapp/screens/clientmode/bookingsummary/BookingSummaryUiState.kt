@@ -1,0 +1,102 @@
+package com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary
+
+import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.DEFAULT_DURATION_MINS
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.summaryStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.toRescheduleProposalUi
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.util.PriceDisplay
+import java.time.Duration
+import java.time.Instant
+
+/** Label above the price on the summary card (D-13). */
+enum class SummaryPriceLabel { PricePaid, SessionFee, Refunded }
+
+/**
+ * Display seed for "Book Again" (iOS `BookAgainSeed`). Display only: Make a Booking re-fetches the expert and the
+ * server re-checks bookability (T-08-40).
+ */
+data class BookAgainSeed(
+    val expertId: String,
+    val expertName: String?,
+    val expertTitle: String?,
+    val expertImageUrl: String?,
+) {
+    fun toBookingKey(nameFallback: String): BookingKey =
+        BookingKey(
+            expertId = expertId,
+            expertName = expertName ?: nameFallback,
+            expertTitle = expertTitle.orEmpty(),
+            expertImageUrl = expertImageUrl,
+        )
+}
+
+/**
+ * What Booking Summary shows for one booking (D-13). There is deliberately no private note, review or feedback
+ * field here (D-16, Phases 12-13).
+ */
+data class BookingSummaryDetails(
+    val bookingId: String,
+    val status: BookingStatusDisplay,
+    val expertName: String?,
+    val expertTitle: String?,
+    val expertAvatarUrl: String?,
+    val topicTitle: String?,
+    val start: Instant,
+    val end: Instant,
+    val price: PriceDisplay,
+    val priceLabel: SummaryPriceLabel,
+    val bookAgain: BookAgainSeed?,
+    val reschedule: RescheduleProposalUi?,
+)
+
+/** Booking Summary load state: fetch by booking id, retry on failure. */
+sealed interface BookingSummaryUiState {
+    data object Loading : BookingSummaryUiState
+
+    data class Failed(
+        val message: FieldError,
+    ) : BookingSummaryUiState
+
+    data class Loaded(
+        val details: BookingSummaryDetails,
+    ) : BookingSummaryUiState
+}
+
+/**
+ * Maps the booking detail to the display model. The price label follows the payment status: `captured` is "Price
+ * paid", `refunded` is "Refunded", anything else (held, none, unknown) and every free topic is "Session fee".
+ * Blank strings become null; a missing end time falls back to start plus the topic duration.
+ */
+fun ClientBookingDetail.toSummaryDetails(now: Instant): BookingSummaryDetails =
+    BookingSummaryDetails(
+        bookingId = bookingId,
+        status = summaryStatusDisplay(status),
+        expertName = expert.fullName?.takeIf(String::isNotBlank),
+        expertTitle = expert.title?.takeIf(String::isNotBlank),
+        expertAvatarUrl = expert.avatarUrl?.takeIf(String::isNotBlank),
+        topicTitle = topic.title.takeIf(String::isNotBlank),
+        start = startTime,
+        end = endTime ?: startTime.plus(Duration.ofMinutes((topic.durationMins ?: DEFAULT_DURATION_MINS).toLong())),
+        price = PriceDisplay.of(topic.isFree, topic.price?.amount, topic.price?.currency),
+        priceLabel =
+            when {
+                topic.isFree -> SummaryPriceLabel.SessionFee
+                paymentStatus == "captured" -> SummaryPriceLabel.PricePaid
+                paymentStatus == "refunded" -> SummaryPriceLabel.Refunded
+                else -> SummaryPriceLabel.SessionFee
+            },
+        bookAgain =
+            expert.id?.let {
+                BookAgainSeed(
+                    expertId = it,
+                    expertName = expert.fullName?.takeIf(String::isNotBlank),
+                    expertTitle = expert.title?.takeIf(String::isNotBlank),
+                    expertImageUrl = expert.avatarUrl,
+                )
+            },
+        reschedule = toRescheduleProposalUi(now),
+    )
