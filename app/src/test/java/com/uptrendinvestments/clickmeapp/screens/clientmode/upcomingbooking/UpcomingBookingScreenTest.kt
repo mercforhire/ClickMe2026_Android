@@ -4,22 +4,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
+import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusLabel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.PaymentPill
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleSubmitting
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.StatusTone
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.detailStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_COPY_LINK_TAG
@@ -34,8 +48,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subv
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingStatusRow
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingTimezoneNote
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingTopicCard
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -209,5 +226,223 @@ class UpcomingBookingScreenTest {
         show { UpcomingBookingMessageCard("Please prepare slides") }
         rule.onNodeWithText("Your message").assertExists()
         rule.onNodeWithText("Please prepare slides").assertExists()
+    }
+
+    // ---- Task 2: screen ----
+
+    private val proposal =
+        RescheduleProposalUi(
+            currentStart = Instant.parse("2026-10-24T18:00:00Z"),
+            proposedStart = Instant.parse("2026-10-28T18:00:00Z"),
+            proposedEnd = Instant.parse("2026-10-28T19:00:00Z"),
+            note = null,
+            initiatedByExpert = true,
+            showsPaymentDisclosure = false,
+            chargesSoon = false,
+        )
+
+    @Suppress("LongParameterList")
+    private fun details(
+        status: String = "confirmed",
+        price: PriceDisplay = PriceDisplay.Paid("$50.00"),
+        paymentPill: PaymentPill? = PaymentPill.HoldPlaced,
+        meetingType: String? = "in_app_voice",
+        clientNotes: String? = "Please prepare slides",
+        reschedule: RescheduleProposalUi? = null,
+    ) = UpcomingBookingDetails(
+        bookingId = "b1",
+        shortId = "#B1",
+        status = detailStatusDisplay(status),
+        expertName = "Ada Lovelace",
+        expertTitle = "Engineer",
+        expertAvatarUrl = null,
+        topicTitle = "Algorithms",
+        price = price,
+        start = Instant.parse("2026-10-24T18:00:00Z"),
+        end = Instant.parse("2026-10-24T19:00:00Z"),
+        expertTimezone = "America/Toronto",
+        paymentPill = paymentPill,
+        meetingType = meetingType,
+        joinLink = null,
+        clientNotes = clientNotes,
+        showsPendingBanner = status == "pending_approval",
+        canCancel = status in setOf("confirmed", "pending_approval", "pending_reschedule"),
+        reschedule = reschedule,
+    )
+
+    private class Calls {
+        val events = mutableListOf<String>()
+    }
+
+    private fun setScreen(
+        state: UpcomingBookingUiState,
+        rescheduleState: RescheduleUiState = RescheduleUiState(),
+        calls: Calls = Calls(),
+    ): Calls {
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingContent(
+                    state = state,
+                    rescheduleState = rescheduleState,
+                    onBack = { calls.events += "back" },
+                    onRetry = { calls.events += "retry" },
+                    onCancel = { calls.events += "cancel" },
+                    onAccept = { calls.events += "accept" },
+                    onDecline = { calls.events += "decline:$it" },
+                    onDismissRescheduleDialog = { calls.events += "dismiss" },
+                    onOpenPaymentMethods = { calls.events += "paymentMethods" },
+                    onRescheduleNoticeConsumed = { calls.events += "consumed" },
+                    zone = zone,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        return calls
+    }
+
+    private fun loaded(d: UpcomingBookingDetails = details()) = UpcomingBookingUiState.Loaded(d)
+
+    @Test
+    fun titleIsUpcomingBooking() {
+        setScreen(loaded())
+        rule.onNodeWithText("Upcoming Booking").assertExists()
+    }
+
+    @Test
+    fun loadingShowsTheLoadingDescription() {
+        setScreen(UpcomingBookingUiState.Loading)
+        rule.onNodeWithContentDescription("Loading").assertExists()
+    }
+
+    @Test
+    fun failedShowsHeadingMessageAndRetry() {
+        val calls = setScreen(UpcomingBookingUiState.Failed(FieldError.Text("Boom")))
+        rule.onNodeWithText("Couldn't load booking").assertExists()
+        rule.onNodeWithText("Boom").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(listOf("retry"), calls.events)
+    }
+
+    @Test
+    fun confirmedPaidHeldBookingShowsEveryBlockAndCancels() {
+        val calls = setScreen(loaded())
+        rule.onNodeWithText("Confirmed").assertExists()
+        rule.onNodeWithText("Card hold placed").assertExists()
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithText("Please prepare slides").assertExists()
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG)
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        assertEquals(listOf("cancel"), calls.events)
+    }
+
+    @Test
+    fun pendingApprovalShowsTheBannerNotTheJoinCard() {
+        setScreen(loaded(details(status = "pending_approval")))
+        rule.onNodeWithText("Waiting for expert to accept").assertExists()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun inProgressAndCompletedShowNoCancel() {
+        setScreen(loaded(details(status = "in_progress")))
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun completedShowsNoCancel() {
+        setScreen(loaded(details(status = "completed")))
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun freeBookingShowsNoPaymentPill() {
+        setScreen(loaded(details(price = PriceDisplay.Free, paymentPill = null)))
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_PAYMENT_PILL_TAG).assertCountEquals(0)
+        rule.onNodeWithText("Free").assertExists()
+    }
+
+    @Test
+    fun skypeZoomBookingShowsTheMeetingLinkRow() {
+        setScreen(loaded(details(meetingType = "skype_zoom")))
+        rule.onNodeWithText("Meeting link").assertExists()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun pendingRescheduleShowsTheCardAboveTheStatusRow() {
+        setScreen(loaded(details(status = "pending_reschedule", reschedule = proposal)))
+        val cardTop =
+            rule
+                .onNodeWithTag(RESCHEDULE_CARD_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val statusTop =
+            rule
+                .onNodeWithTag(UPCOMING_BOOKING_STATUS_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        assertTrue(cardTop < statusTop)
+    }
+
+    @Test
+    fun cancelIsDisabledWhileARescheduleResponseRuns() {
+        setScreen(
+            loaded(details(status = "pending_reschedule", reschedule = proposal)),
+            RescheduleUiState(submitting = RescheduleSubmitting.Accepting),
+        )
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test
+    fun acceptingFromTheCardCallsOnAccept() {
+        val calls = setScreen(loaded(details(status = "pending_reschedule", reschedule = proposal)))
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNode(hasText("Accept") and hasAnyAncestor(isDialog())).performClick()
+        assertEquals(listOf("accept"), calls.events)
+    }
+
+    @Test
+    fun paymentMethodDialogOpensPaymentMethodsAndDismisses() {
+        val calls = setScreen(loaded(), RescheduleUiState(dialog = RescheduleDialog.PaymentMethodNeeded))
+        rule.onNodeWithText("Add a Payment Method").performClick()
+        assertEquals(listOf("paymentMethods", "dismiss"), calls.events)
+    }
+
+    @Test
+    fun errorDialogWithPopOnDismissDismissesAndLeaves() {
+        val calls =
+            setScreen(
+                loaded(),
+                RescheduleUiState(
+                    dialog =
+                        RescheduleDialog.Error(
+                            FieldError.Res(R.string.reschedule_error_not_pending),
+                            popOnDismiss = true,
+                        ),
+                ),
+            )
+        rule.onNodeWithText("OK").performClick()
+        assertEquals(listOf("dismiss", "back"), calls.events)
+    }
+
+    @Test
+    fun acceptedNoticeShowsASnackbarAndIsConsumed() {
+        val calls = setScreen(loaded(), RescheduleUiState(notice = RescheduleNotice.Accepted))
+        rule.waitForIdle()
+        rule.onNodeWithText("Reschedule accepted").assertExists()
+        assertEquals(listOf("consumed"), calls.events)
+    }
+
+    @Test
+    fun noRescheduleMessageOrPrivateNoteActionsExist() {
+        setScreen(loaded())
+        listOf("Reschedule", "Message Expert", "Private Note").forEach {
+            rule.onAllNodesWithText(it).assertCountEquals(0)
+        }
     }
 }
