@@ -45,7 +45,9 @@ class CallForegroundBridgeTest {
             val keys = intent.extras!!.keySet().map { it.lowercase() }
             assertFalse(keys.any { "token" in it || "channel" in it || "uid" in it })
 
-            bridge.onServiceStarted(true)
+            val attempt = intent.attempt()
+            assertTrue(bridge.isCurrentAttempt(attempt))
+            bridge.onServiceStarted(attempt, true)
             assertTrue(result.await())
             assertTrue(bridge.active.value)
         }
@@ -55,9 +57,45 @@ class CallForegroundBridgeTest {
         runTest {
             val bridge = bridge()
             val result = async(start = CoroutineStart.UNDISPATCHED) { bridge.startAndAwait(info) }
-            bridge.onServiceStarted(false)
+            bridge.onServiceStarted(nextAttempt(), false)
             assertFalse(result.await())
             assertFalse(bridge.active.value)
+        }
+
+    @Test
+    fun lateCallbackFromAnEarlierAttempt_isIgnored() =
+        runTest {
+            val bridge = bridge()
+            val first = async(start = CoroutineStart.UNDISPATCHED) { bridge.startAndAwait(info) }
+            val firstAttempt = nextAttempt()
+            advanceTimeBy(CallForegroundBridge.START_TIMEOUT_MS + 1)
+            runCurrent()
+            assertFalse(first.await())
+
+            val second = async(start = CoroutineStart.UNDISPATCHED) { bridge.startAndAwait(info) }
+            val secondAttempt = nextAttempt()
+            assertTrue(secondAttempt > firstAttempt)
+            assertFalse(bridge.isCurrentAttempt(firstAttempt))
+            assertTrue(bridge.isCurrentAttempt(secondAttempt))
+            // The first service command finally reports a refusal: it must not fail the second start (WR-05).
+            bridge.onServiceStarted(firstAttempt, false)
+            runCurrent()
+            assertFalse(second.isCompleted)
+            assertTrue(bridge.active.value)
+            bridge.onServiceStarted(secondAttempt, true)
+            assertTrue(second.await())
+        }
+
+    @Test
+    fun stoppedAttempt_isNoLongerCurrent() =
+        runTest {
+            val bridge = bridge()
+            val result = async(start = CoroutineStart.UNDISPATCHED) { bridge.startAndAwait(info) }
+            val attempt = nextAttempt()
+            bridge.onServiceStarted(attempt, true)
+            assertTrue(result.await())
+            bridge.stop()
+            assertFalse(bridge.isCurrentAttempt(attempt))
         }
 
     @Test
@@ -112,6 +150,15 @@ class CallForegroundBridgeTest {
             job.cancelAndJoin()
             assertEquals(1, probe.size)
         }
+
+    private fun Intent.attempt(): Long = getLongExtra(CallService.EXTRA_ATTEMPT_ID, CallForegroundBridge.NO_ATTEMPT)
+
+    /** Attempt id of the next start intent the bridge sent. */
+    private fun nextAttempt(): Long {
+        val intent = shadowOf(context as android.app.Application).nextStartedService
+        assertNotNull(intent)
+        return intent.attempt()
+    }
 
     private class ThrowingContext(
         base: Context,

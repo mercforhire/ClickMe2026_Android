@@ -49,6 +49,12 @@ class CallService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var focusRequest: AudioFocusRequest? = null
 
+    /**
+     * Newest start id this service has received. [teardown] stops with it, so a start command that is still
+     * queued (a newer id) keeps the service alive and reaches its own `startForeground` (WR-05).
+     */
+    private var lastStartId = 0
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -62,6 +68,7 @@ class CallService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        lastStartId = startId
         when (intent?.action) {
             ACTION_START -> start(intent)
             // CallCenter runs leave -> /end -> teardown, then stops the bridge.
@@ -72,37 +79,25 @@ class CallService : Service() {
     }
 
     private fun start(intent: Intent) {
+        val attempt = intent.getLongExtra(EXTRA_ATTEMPT_ID, CallForegroundBridge.NO_ATTEMPT)
         val info = infoFrom(intent)
-        if (info == null) {
+        // startForeground goes first on every ACTION_START, even a malformed or stale one: a
+        // startForegroundService() that never reaches it crashes the process (WR-05).
+        val shown = info ?: CallNotificationInfo(bookingId = "", peerName = null, scheduledStart = clock.instant())
+        if (!enterForeground(shown)) {
+            bridge.onServiceStarted(attempt, false)
             teardown()
             return
         }
-        // startForeground goes first: a start that skips it crashes the process.
-        try {
-            ServiceCompat.startForeground(
-                this,
-                CallNotificationFactory.NOTIFICATION_ID,
-                CallNotificationFactory.build(this, info, clock.instant(), ::formatTime),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-            )
-        } catch (e: SecurityException) {
-            Log.w(TAG, "startForeground rejected ${e.javaClass.simpleName}")
-            bridge.onServiceStarted(false)
-            teardown()
-            return
-        } catch (e: IllegalStateException) {
-            Log.w(TAG, "startForeground rejected ${e.javaClass.simpleName}")
-            bridge.onServiceStarted(false)
-            teardown()
-            return
-        }
-        if (!bridge.active.value) {
-            // Orphan: the call already ended before the service came up.
+        if (info == null || !bridge.isCurrentAttempt(attempt)) {
+            // Malformed, orphaned (the call already ended before the service came up) or superseded by a
+            // newer start attempt.
+            bridge.onServiceStarted(attempt, false)
             teardown()
             return
         }
         requestAudioFocus()
-        bridge.onServiceStarted(true)
+        bridge.onServiceStarted(attempt, true)
         Log.i(TAG, "started")
         scheduleChronometerSwitch(info)
         serviceScope.launch {
@@ -110,6 +105,24 @@ class CallService : Service() {
             teardown()
         }
     }
+
+    /** Posts the ongoing notification as a microphone foreground service; false when the system refuses. */
+    private fun enterForeground(info: CallNotificationInfo): Boolean =
+        try {
+            ServiceCompat.startForeground(
+                this,
+                CallNotificationFactory.NOTIFICATION_ID,
+                CallNotificationFactory.build(this, info, clock.instant(), ::formatTime),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+            )
+            true
+        } catch (e: SecurityException) {
+            Log.w(TAG, "startForeground rejected ${e.javaClass.simpleName}")
+            false
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "startForeground rejected ${e.javaClass.simpleName}")
+            false
+        }
 
     private fun requestAudioFocus() {
         val manager = getSystemService(AudioManager::class.java) ?: return
@@ -162,7 +175,9 @@ class CallService : Service() {
         abandonAudioFocus()
         serviceScope.coroutineContext.cancelChildren()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        // Not stopSelf(): that would also drop a newer start command already queued, whose startForeground
+        // would then never run (WR-05).
+        stopSelfResult(lastStartId)
     }
 
     override fun onDestroy() {
@@ -177,17 +192,20 @@ class CallService : Service() {
         const val EXTRA_BOOKING_ID = "com.uptrendinvestments.clickmeapp.call.extra.BOOKING_ID"
         const val EXTRA_PEER_NAME = "com.uptrendinvestments.clickmeapp.call.extra.PEER_NAME"
         const val EXTRA_SCHEDULED_START_MS = "com.uptrendinvestments.clickmeapp.call.extra.SCHEDULED_START_MS"
+        const val EXTRA_ATTEMPT_ID = "com.uptrendinvestments.clickmeapp.call.extra.ATTEMPT_ID"
         private const val TAG = "CallService"
 
         fun startIntent(
             context: Context,
             info: CallNotificationInfo,
+            attempt: Long,
         ): Intent =
             Intent(context, CallService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_BOOKING_ID, info.bookingId)
                 .putExtra(EXTRA_PEER_NAME, info.peerName)
                 .putExtra(EXTRA_SCHEDULED_START_MS, info.scheduledStart.toEpochMilli())
+                .putExtra(EXTRA_ATTEMPT_ID, attempt)
 
         internal fun infoFrom(intent: Intent): CallNotificationInfo? {
             val bookingId = intent.getStringExtra(EXTRA_BOOKING_ID) ?: return null
