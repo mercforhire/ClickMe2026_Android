@@ -3,13 +3,16 @@
 package com.uptrendinvestments.clickmeapp.managers
 
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -114,6 +117,28 @@ class CallCenterCutoffTest {
             assertEquals(1, h.api.endCallCalls)
             assertEquals(0, h.engine.leaveCalls)
             assertNull(h.center.session.value)
+            assertEquals(listOf<CallDialog>(CallDialog.TimeLimit), h.center.dialogs.value)
+        }
+
+    @Test
+    fun cutoffAlreadyDueAtStart_cancelsTheStartBeforeAnyEngineWork() =
+        runTest(main.testDispatcher) {
+            val h = CallCenterHarness(backgroundScope)
+            val gate = CompletableDeferred<JoinCallResponse>()
+            h.api.joinCallHandler = { gate.await() }
+            // The cutoff (end + 3600 s) is already in the past when Join is tapped (WR-01).
+            h.center.startCall(
+                h.request(scheduledStart = T0.minusSeconds(3 * 3600), scheduledEnd = T0.minusSeconds(7200)),
+            )
+            runCurrent()
+            gate.complete(h.inAppJoinResponse())
+            runCurrent()
+            assertNull(h.center.session.value)
+            assertFalse(h.center.isCallActive.value)
+            assertEquals(0, h.permission.calls)
+            assertTrue(h.foreground.starts.isEmpty())
+            assertTrue(h.engine.joins.isEmpty())
+            assertEquals(0, h.engine.destroyCalls)
             assertEquals(listOf<CallDialog>(CallDialog.TimeLimit), h.center.dialogs.value)
         }
 }

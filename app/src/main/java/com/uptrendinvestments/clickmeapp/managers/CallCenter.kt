@@ -131,9 +131,17 @@ class CallCenter
                 )
             setSession(session)
             _isMinimized.value = false
-            startCutoff(session)
+            // startJob must exist before the cutoff can fire: a cutoff that is already due ends the call at
+            // once, and the end flow has to find and cancel this start (WR-01).
             startJob = scope.launch(Dispatchers.Main.immediate) { runStart(id, request) }
+            startCutoff(session)
         }
+
+        /**
+         * True while [id] is the current session and no end flow has begun. Every start step re-checks it after
+         * a suspension, so a start never outlives a hang-up, the cutoff or a teardown (WR-01).
+         */
+        private fun isLive(id: Long): Boolean = _session.value?.let { it.id == id && !it.isEndingCall } == true
 
         private suspend fun runStart(
             id: Long,
@@ -146,7 +154,7 @@ class CallCenter
                     abortStart(id, CallDialog.JoinError(e.toJoinErrorReason()))
                     return
                 }
-            if (_session.value?.id != id) return
+            if (!isLive(id)) return
             // The server response is the source of truth over the client hint (D-05).
             val type = ConnectionType.fromWire(response.connectionType)
             if (type == null) {
@@ -184,7 +192,7 @@ class CallCenter
                 return
             }
             val permission = permissionGate.ensureMicrophone()
-            if (_session.value?.id != id) return
+            if (!isLive(id)) return
             when (permission) {
                 MicPermissionResult.Granted -> Unit
                 MicPermissionResult.DeniedPermanently -> {
@@ -205,14 +213,20 @@ class CallCenter
                 foreground.startAndAwait(
                     CallNotificationInfo(request.bookingId, request.peerName, request.scheduledStart),
                 )
-            if (_session.value?.id != id) return
+            if (!isLive(id)) return
             if (!started) {
                 abortStart(id, CallDialog.JoinError(JoinErrorReason.Unknown))
                 return
             }
             engineEngaged = true
             val joined = engine.join(config.rtcToken, config.channelName, config.uid)
-            if (_session.value?.id != id) return
+            if (!isLive(id)) {
+                // An end flow running for this session owns the teardown (it waits for this start, then leaves
+                // and destroys the engaged engine). A session that was cleared without that flow leaves nobody
+                // else to release the engine, so release it here instead of leaking a publishing channel.
+                if (_session.value == null) releaseOrphanEngine()
+                return
+            }
             if (!joined) {
                 abortStart(id, CallDialog.JoinError(JoinErrorReason.Unknown), engineTouched = true)
                 return
@@ -221,16 +235,26 @@ class CallCenter
             updateSession(id) { it.copy(joinStartedAt = now) }
         }
 
+        /** Leaves and destroys an engine whose session is already gone (defensive, WR-01). */
+        private suspend fun releaseOrphanEngine() {
+            withContext(NonCancellable) {
+                withTimeoutOrNull(LEAVE_STEP_TIMEOUT_MS) { engine.leave() }
+                engine.destroy()
+            }
+            engineEngaged = false
+        }
+
         /**
          * Tears the container down after a failed start. No `/end`: the user never joined a channel (D-04).
-         * Does nothing when the session was already replaced or cleared.
+         * Does nothing when the session was already replaced or cleared, or when an end flow already owns the
+         * teardown.
          */
         private suspend fun abortStart(
             id: Long,
             dialog: CallDialog?,
             engineTouched: Boolean = false,
         ) {
-            if (_session.value?.id != id) return
+            if (!isLive(id)) return
             cutoffJob?.cancel()
             if (engineTouched) engine.destroy()
             engineEngaged = false
