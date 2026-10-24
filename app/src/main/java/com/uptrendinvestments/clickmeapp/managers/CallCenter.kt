@@ -422,7 +422,7 @@ class CallCenter
          * Force-ends the call at [overtimeCutoff] once (CALL-07). Lives here, never in a UI ticker (the ticker
          * stops when nothing is composed). `delay` uses uptime, which stalls in deep sleep, so the loop re-reads
          * the injected wall clock at most every [CUTOFF_POLL_MS] (RESEARCH Pitfall 11). The 3600 s limit
-         * replaces the iOS `5 * 60` TEMP value.
+         * replaces the iOS five-minute TEMP value.
          */
         private fun startCutoff(session: CallSession) {
             val end = session.scheduledEnd ?: return
