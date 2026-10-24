@@ -2,6 +2,12 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
+import com.uptrendinvestments.clickmeapp.managers.CallStarter
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
@@ -22,6 +28,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
 
 /**
  * Upcoming Booking Details state machine (BOOK-06). Port of iOS `UpcomingBookingViewModel` with the D-14 fixes
@@ -36,6 +43,10 @@ import java.time.Clock
  * which reloads the booking before it shows the outcome. Nothing is optimistic. A response that completes after
  * the user left is dropped with `viewModelScope`. The iOS follow-up for the missing response card is logged in
  * plan 08-15.
+ *
+ * Join Call (CALL-01, D-01): [join] starts the call through the one [CallStarter]. The window only enables the button
+ * ([joinNow] ticks every 30 s); the server has the final say on `/join`, so [join] does not re-check it (D-02).
+ * Cancel is guarded while this booking's call is live ([attemptCancel], D-13).
  */
 @HiltViewModel(assistedFactory = UpcomingBookingViewModel.Factory::class)
 class UpcomingBookingViewModel
@@ -46,6 +57,9 @@ class UpcomingBookingViewModel
         responder: RescheduleResponder,
         private val realtime: RealtimeConnection,
         private val clock: Clock,
+        private val callStarter: CallStarter,
+        private val callGuard: CallGuard,
+        joinClock: JoinClock,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -69,6 +83,9 @@ class UpcomingBookingViewModel
             )
 
         val rescheduleState: StateFlow<RescheduleUiState> = controller.state
+
+        /** Shared 30 s wall clock that turns the Join button on without leaving the screen (D-03). */
+        val joinNow: StateFlow<Instant> = joinClock.now
 
         init {
             startLoad(quiet = false)
@@ -102,6 +119,26 @@ class UpcomingBookingViewModel
         fun onScreenHidden() {
             loadIsCurrent = false
         }
+
+        /** Starts the call for the loaded booking. Does nothing before the booking has loaded. */
+        fun join() {
+            val details = (_uiState.value as? UpcomingBookingUiState.Loaded)?.details ?: return
+            callStarter.startCall(
+                CallStartRequest(
+                    bookingId = details.bookingId,
+                    peerId = details.expertId,
+                    peerName = details.expertName,
+                    peerAvatarUrl = details.expertAvatarUrl,
+                    topic = details.topicTitle,
+                    scheduledStart = details.start,
+                    scheduledEnd = details.end,
+                    meetingType = MeetingType.fromWire(details.meetingType),
+                ),
+            )
+        }
+
+        /** True when Cancel may open; false (with the guard dialog queued) while this booking's call is live (D-13). */
+        fun attemptCancel(): Boolean = callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)
 
         fun accept() = controller.accept()
 

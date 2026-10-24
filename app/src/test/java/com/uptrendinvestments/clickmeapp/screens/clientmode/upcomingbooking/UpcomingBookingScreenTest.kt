@@ -25,16 +25,21 @@ import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
+import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusLabel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.PaymentPill
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleSubmitting
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.StatusTone
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.detailStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_COPY_LINK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_JOIN_TAG
@@ -49,8 +54,16 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subv
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingTimezoneNote
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingTopicCard
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
+import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
+import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
+import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -167,31 +180,50 @@ class UpcomingBookingScreenTest {
         )
 
     @Test
-    fun inAppVoiceShowsADisabledJoinCall() {
-        show { UpcomingBookingJoinCard("in_app_voice", null) }
+    fun inAppVoiceShowsADisabledJoinCallOutsideTheWindow() {
+        show { UpcomingBookingJoinCard("in_app_voice", null, joinEnabled = false, onJoin = {}) }
         rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).assertIsNotEnabled().assert(hasJoinHint())
         rule.onNodeWithText("Join Call").assertExists()
     }
 
     @Test
-    fun anUnknownMeetingTypeFallsBackToTheDisabledJoinCall() {
-        show { UpcomingBookingJoinCard(null, null) }
+    fun anUnknownMeetingTypeFallsBackToTheJoinCall() {
+        show { UpcomingBookingJoinCard(null, null, joinEnabled = false, onJoin = {}) }
         rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).assertIsNotEnabled().assert(hasJoinHint())
     }
 
     @Test
-    fun skypeZoomShowsTheLinkAndAnEnabledCopyButton() {
-        show { UpcomingBookingJoinCard("skype_zoom", "https://zoom.us/j/1") }
+    fun inAppVoiceJoinIsEnabledInsideTheWindowAndClicksOnce() {
+        var joins = 0
+        show { UpcomingBookingJoinCard("in_app_voice", null, joinEnabled = true, onJoin = { joins++ }) }
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).assertIsEnabled().performClick()
+        assertEquals(1, joins)
+    }
+
+    @Test
+    fun skypeZoomShowsTheLinkAnEnabledCopyButtonAndJoinBelowIt() {
+        show { UpcomingBookingJoinCard("skype_zoom", "https://zoom.us/j/1", joinEnabled = true, onJoin = {}) }
         rule.onNodeWithText("Meeting link").assertExists()
         rule.onNodeWithText("https://zoom.us/j/1").assertExists()
         rule.onNodeWithTag(UPCOMING_BOOKING_COPY_LINK_TAG).assertIsEnabled()
         rule.onNodeWithContentDescription("Copy meeting link").assertExists()
-        rule.onAllNodesWithText("Join Call").assertCountEquals(0)
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).assertIsEnabled()
+        val copyBottom =
+            rule
+                .onNodeWithTag(UPCOMING_BOOKING_COPY_LINK_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val joinTop =
+            rule
+                .onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        assertTrue(copyBottom < joinTop)
     }
 
     @Test
     fun copyingTheLinkShowsTheCopiedState() {
-        show { UpcomingBookingJoinCard("skype_zoom", "https://zoom.us/j/1") }
+        show { UpcomingBookingJoinCard("skype_zoom", "https://zoom.us/j/1", joinEnabled = false, onJoin = {}) }
         rule.onNodeWithTag(UPCOMING_BOOKING_COPY_LINK_TAG).performClick()
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Copied").assertExists()
@@ -199,7 +231,7 @@ class UpcomingBookingScreenTest {
 
     @Test
     fun skypeZoomWithoutALinkShowsNotAvailableAndDisablesCopy() {
-        show { UpcomingBookingJoinCard("skype_zoom", null) }
+        show { UpcomingBookingJoinCard("skype_zoom", null, joinEnabled = false, onJoin = {}) }
         rule.onNodeWithText("Not available yet").assertExists()
         rule.onNodeWithTag(UPCOMING_BOOKING_COPY_LINK_TAG).assertIsNotEnabled()
     }
@@ -241,6 +273,8 @@ class UpcomingBookingScreenTest {
             chargesSoon = false,
         )
 
+    private val detailsStart = Instant.parse("2026-10-24T18:00:00Z")
+
     @Suppress("LongParameterList")
     private fun details(
         status: String = "confirmed",
@@ -249,6 +283,8 @@ class UpcomingBookingScreenTest {
         meetingType: String? = "in_app_voice",
         clientNotes: String? = "Please prepare slides",
         reschedule: RescheduleProposalUi? = null,
+        start: Instant = detailsStart,
+        end: Instant = detailsStart.plusSeconds(3600),
     ) = UpcomingBookingDetails(
         bookingId = "b1",
         shortId = "#B1",
@@ -258,8 +294,8 @@ class UpcomingBookingScreenTest {
         expertAvatarUrl = null,
         topicTitle = "Algorithms",
         price = price,
-        start = Instant.parse("2026-10-24T18:00:00Z"),
-        end = Instant.parse("2026-10-24T19:00:00Z"),
+        start = start,
+        end = end,
         expertTimezone = "America/Toronto",
         paymentPill = paymentPill,
         meetingType = meetingType,
@@ -278,12 +314,15 @@ class UpcomingBookingScreenTest {
         state: UpcomingBookingUiState,
         rescheduleState: RescheduleUiState = RescheduleUiState(),
         calls: Calls = Calls(),
+        joinNow: Instant = detailsStart.minusSeconds(600),
     ): Calls {
         rule.setContent {
             ClickMeTheme {
                 UpcomingBookingContent(
                     state = state,
                     rescheduleState = rescheduleState,
+                    joinNow = joinNow,
+                    onJoin = { calls.events += "join" },
                     onBack = { calls.events += "back" },
                     onRetry = { calls.events += "retry" },
                     onCancel = { calls.events += "cancel" },
@@ -329,7 +368,7 @@ class UpcomingBookingScreenTest {
         val calls = setScreen(loaded())
         rule.onNodeWithText("Confirmed").assertExists()
         rule.onNodeWithText("Card hold placed").assertExists()
-        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
         rule.onNodeWithText("Please prepare slides").assertExists()
         rule
             .onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG)
@@ -367,10 +406,42 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
-    fun skypeZoomBookingShowsTheMeetingLinkRow() {
+    fun skypeZoomBookingKeepsTheMeetingLinkRowAndAddsJoinBelowIt() {
         setScreen(loaded(details(meetingType = "skype_zoom")))
         rule.onNodeWithText("Meeting link").assertExists()
-        rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
+        rule.onNodeWithTag(UPCOMING_BOOKING_COPY_LINK_TAG).assertExists()
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun joinIsEnabledTenMinutesBeforeStartAndClicksOnce() {
+        val calls = setScreen(loaded())
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG)
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        assertEquals(listOf("join"), calls.events)
+    }
+
+    @Test
+    fun joinIsDisabledTwoHoursBeforeStartWithTheHint() {
+        setScreen(loaded(), joinNow = detailsStart.minusSeconds(2 * 3600))
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG)
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .assert(hasJoinHint())
+    }
+
+    @Test
+    fun aCompletedBookingWhoseEndHasNotPassedCanBeRejoined() {
+        val start = detailsStart.minusSeconds(2 * 3600)
+        setScreen(
+            loaded(details(status = "completed", start = start, end = detailsStart.plusSeconds(300))),
+            joinNow = detailsStart,
+        )
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
     }
 
     @Test
@@ -444,5 +515,53 @@ class UpcomingBookingScreenTest {
         listOf("Reschedule", "Message Expert", "Private Note").forEach {
             rule.onAllNodesWithText(it).assertCountEquals(0)
         }
+    }
+
+    // ---- Cancel guard (D-13), through the real ViewModel ----
+
+    private fun cancelWithGuard(blocked: Boolean): Pair<Calls, FakeCallGuard> {
+        val api = FakeClickMeApi()
+        api.clientBookingDetailHandler = { bookingDetail() }
+        val guard = FakeCallGuard().also { it.blocked = blocked }
+        val bookings = ClientBookingsRepository(api)
+        val vm =
+            UpcomingBookingViewModel(
+                UpcomingBookingKey("b1"),
+                bookings,
+                RescheduleResponder(bookings, PaymentMethodsRepository(api)),
+                FakeRealtimeConnection(),
+                MutableClock(detailsStart.minusSeconds(600)),
+                FakeCallStarter(),
+                guard,
+                JoinClock(MutableClock(detailsStart.minusSeconds(600)), CoroutineScope(Job())),
+            )
+        val calls = Calls()
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingScreen(
+                    viewModel = vm,
+                    onBack = {},
+                    onCancel = { calls.events += "cancel" },
+                    onOpenPaymentMethods = {},
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().performClick()
+        return calls to guard
+    }
+
+    @Test
+    fun cancelOpensTheCancelFlowWhenTheGuardAllows() {
+        val (calls, guard) = cancelWithGuard(blocked = false)
+        assertEquals(listOf("cancel"), calls.events)
+        assertEquals(listOf("b1" to RestrictedAction.CancelBooking), guard.modifyAttempts)
+    }
+
+    @Test
+    fun cancelIsBlockedWhileThisBookingsCallIsLive() {
+        val (calls, guard) = cancelWithGuard(blocked = true)
+        assertTrue(calls.events.isEmpty())
+        assertEquals(listOf("b1" to RestrictedAction.CancelBooking), guard.modifyAttempts)
     }
 }

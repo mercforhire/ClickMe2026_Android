@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,13 +34,11 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
-import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -48,7 +46,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Test tag on the (always disabled) Join Call button of Upcoming Booking Details. */
+/** Test tag on the Join Call button of Upcoming Booking Details: live, enabled by the join window (D-01..D-03). */
 const val UPCOMING_BOOKING_JOIN_TAG = "upcoming_booking_join"
 
 /** Test tag on the copy button of the Skype / Zoom meeting link row. */
@@ -57,18 +55,20 @@ const val UPCOMING_BOOKING_COPY_LINK_TAG = "upcoming_booking_copy_link"
 private val IconSize = 20.dp
 private val LinkIconSize = 24.dp
 private val LinkTileSize = 48.dp
-private val JoinButtonMinHeight = 56.dp
 private const val COPIED_RESET_MS = 2_000L
 
 /**
- * Block 8: how to join. Inert in Phase 8 (D-02, UI-SPEC A2): an in-app voice booking shows a disabled Join Call, and a
- * Skype / Zoom booking shows the meeting link with a copy button. The link is displayed and copied on an explicit tap
- * only; it is never opened from here (T-08-43, Phase 9).
+ * Block 8: how to join. A live Join Call for both meeting types (D-01), enabled by [joinEnabled] (the shared join
+ * window, D-02 / D-03). A Skype / Zoom booking keeps the meeting-link row with its copy button and gets Join Call
+ * below it (UI-SPEC A3). The link is displayed and copied on an explicit tap only; opening it happens from the call
+ * layer (D-05, T-08-43).
  */
 @Composable
 fun UpcomingBookingJoinCard(
     meetingType: String?,
     joinLink: String?,
+    joinEnabled: Boolean,
+    onJoin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -77,33 +77,17 @@ fun UpcomingBookingJoinCard(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Box(modifier = Modifier.padding(Spacing.md)) {
+        Column(modifier = Modifier.padding(Spacing.md)) {
             if (meetingType == MeetingType.SkypeZoom.wire) {
                 MeetingLinkRow(joinLink)
-            } else {
-                DisabledJoinButton()
+                Spacer(Modifier.height(Spacing.md))
             }
+            JoinCallButton(
+                enabled = joinEnabled,
+                onClick = onJoin,
+                modifier = Modifier.testTag(UPCOMING_BOOKING_JOIN_TAG),
+            )
         }
-    }
-}
-
-@Composable
-private fun DisabledJoinButton() {
-    val joinState = stringResource(R.string.explore_join_call_state)
-    // PHASE-9: join window + click (D-02, D-12)
-    PressScaleButton(
-        onClick = {},
-        enabled = false,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = JoinButtonMinHeight)
-                .testTag(UPCOMING_BOOKING_JOIN_TAG)
-                .semantics { stateDescription = joinState },
-    ) {
-        Icon(Icons.Outlined.Videocam, contentDescription = null, modifier = Modifier.size(IconSize))
-        Spacer(Modifier.width(Spacing.sm))
-        Text(stringResource(R.string.explore_join_call))
     }
 }
 
@@ -231,9 +215,9 @@ private fun UpcomingBookingJoinCardPreview() {
     ClickMeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Column(modifier = Modifier.padding(Spacing.md)) {
-                UpcomingBookingJoinCard("in_app_voice", null)
+                UpcomingBookingJoinCard("in_app_voice", null, joinEnabled = true, onJoin = {})
                 Spacer(Modifier.size(Spacing.md))
-                UpcomingBookingJoinCard("skype_zoom", "https://zoom.us/j/123456789")
+                UpcomingBookingJoinCard("skype_zoom", "https://zoom.us/j/123456789", joinEnabled = false, onJoin = {})
                 Spacer(Modifier.size(Spacing.md))
                 UpcomingBookingPendingBanner("Ada Lovelace")
             }
