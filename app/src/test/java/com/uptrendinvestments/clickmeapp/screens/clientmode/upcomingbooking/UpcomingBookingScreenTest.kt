@@ -1,8 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -82,7 +86,7 @@ class UpcomingBookingScreenTest {
 
     @Test
     fun paymentPillShowsEachMoneyState() {
-        var pill by androidx.compose.runtime.mutableStateOf(PaymentPill.HoldPlaced)
+        var pill by mutableStateOf(PaymentPill.HoldPlaced)
         show { UpcomingBookingPaymentPill(pill) }
         rule.onNodeWithTag(UPCOMING_BOOKING_PAYMENT_PILL_TAG).assertExists()
         rule.onNodeWithText("Card hold placed").assertExists()
@@ -187,10 +191,11 @@ class UpcomingBookingScreenTest {
     fun pendingBannerNamesTheExpert() {
         show { UpcomingBookingPendingBanner("Ada Lovelace") }
         rule.onNodeWithText("Waiting for expert to accept").assertExists()
-        rule.onNodeWithText(
-            "You'll get a notification once Ada Lovelace confirms this session. " +
-                "The Join Call option unlocks then.",
-        ).assertExists()
+        rule
+            .onNodeWithText(
+                "You'll get a notification once Ada Lovelace confirms this session. " +
+                    "The Join Call option unlocks then.",
+            ).assertExists()
     }
 
     @Test
