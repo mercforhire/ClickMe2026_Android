@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.MainActivity
 import com.uptrendinvestments.clickmeapp.R
@@ -108,6 +109,15 @@ class CallNotificationFactoryTest {
         assertEquals(MainActivity::class.java.name, shadow.savedIntent.component?.className)
         assertTrue(shadow.savedIntent.getBooleanExtra(CallNotificationFactory.EXTRA_EXPAND_CALL, false))
         assertTrue(pi.isImmutableFlag())
+    }
+
+    @Test
+    fun contentIntent_reusesTheExistingActivityAboveACustomTab() {
+        val flags = shadowOf(build().contentIntent).savedIntent.flags
+        // CLEAR_TOP + SINGLE_TOP delivers onNewIntent to the existing instance instead of stacking a second one.
+        assertTrue(flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        assertTrue(flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
     }
 
     private fun PendingIntent.isImmutableFlag(): Boolean = shadowOf(this).flags and PendingIntent.FLAG_IMMUTABLE != 0

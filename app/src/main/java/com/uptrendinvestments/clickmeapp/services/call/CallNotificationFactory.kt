@@ -92,11 +92,17 @@ object CallNotificationFactory {
             .setContentTitle(context.getString(R.string.call_notification_public_title))
             .build()
 
+    /**
+     * CLEAR_TOP with SINGLE_TOP routes the tap to the existing MainActivity through `onNewIntent`, even when a
+     * Custom Tab opened from the app sits above it in the task; singleTop alone would stack a second instance
+     * (WR-06).
+     */
     private fun openIntent(context: Context): PendingIntent {
         val intent =
             Intent(context, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                .putExtra(EXTRA_EXPAND_CALL, true)
+                .addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                ).putExtra(EXTRA_EXPAND_CALL, true)
         return PendingIntent.getActivity(
             context,
             REQUEST_OPEN,
