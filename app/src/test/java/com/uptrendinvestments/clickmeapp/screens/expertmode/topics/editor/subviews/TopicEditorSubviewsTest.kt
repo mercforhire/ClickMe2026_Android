@@ -15,6 +15,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.input.KeyboardType
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -156,5 +158,189 @@ class TopicEditorSubviewsTest {
         }
         rule.onNodeWithTag("topic_editor_description").assertIsNotEnabled()
         rule.onNodeWithTag("topic_editor_description").assertTextContains("abc")
+    }
+
+    // TopicPriceField
+
+    private fun setPrice(
+        text: String = "12.50",
+        helper: String? = HELPER,
+        error: String? = null,
+        decimal: Boolean = true,
+        onChange: (String) -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                TopicPriceField(
+                    text = text,
+                    onTextChange = onChange,
+                    currencyCode = "CAD",
+                    helperText = helper,
+                    error = error,
+                    decimalKeyboard = decimal,
+                    enabled = true,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun price_showsTextBadgeAndHelper() {
+        setPrice()
+        rule.onNodeWithText("12.50").assertIsDisplayed()
+        rule.onNodeWithText("CAD").assertIsDisplayed()
+        rule.onNodeWithText(HELPER).assertIsDisplayed()
+        rule.onNodeWithText("Price per Session").assertIsDisplayed()
+    }
+
+    @Test
+    fun price_errorReplacesHelper() {
+        setPrice(error = "A paid session must be at least $5.00.")
+        rule.onNodeWithText("A paid session must be at least $5.00.").assertIsDisplayed()
+        rule.onNodeWithText(HELPER).assertDoesNotExist()
+    }
+
+    @Test
+    fun price_withoutHelperOrErrorHasNoHelperLine() {
+        setPrice(helper = null)
+        rule.onNodeWithText(HELPER).assertDoesNotExist()
+        rule.onNodeWithText("CAD").assertIsDisplayed()
+    }
+
+    @Test
+    fun price_forwardsTyping() {
+        val typed = mutableListOf<String>()
+        setPrice(text = "", helper = null, onChange = { typed += it })
+        rule.onNode(hasSetTextAction()).performTextInput("7")
+        assertEquals(listOf("7"), typed)
+    }
+
+    @Test
+    fun price_keyboardIsDecimalUnlessZeroDigitCurrency() {
+        assertEquals(KeyboardType.Decimal, priceKeyboardType(decimalKeyboard = true))
+        assertEquals(KeyboardType.Number, priceKeyboardType(decimalKeyboard = false))
+    }
+
+    // TopicTagPicker
+
+    private fun setPicker(
+        isLoading: Boolean = false,
+        loadFailed: Boolean = false,
+        hasProfileTags: Boolean = true,
+        visible: List<ExpertiseTagItem> = listOf(Law, Audit),
+        selected: Set<String> = setOf("law"),
+        atCap: Boolean = false,
+        filter: String = "",
+        onFilterChange: (String) -> Unit = {},
+        onToggle: (ExpertiseTagItem) -> Unit = {},
+        onAdd: () -> Unit = {},
+        onRetry: () -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                TopicTagPicker(
+                    isLoading = isLoading,
+                    loadFailed = loadFailed,
+                    hasProfileTags = hasProfileTags,
+                    visibleTags = visible,
+                    selectedIds = selected,
+                    atCap = atCap,
+                    filter = filter,
+                    onFilterChange = onFilterChange,
+                    onToggle = onToggle,
+                    onAddExpertise = onAdd,
+                    onRetry = onRetry,
+                    enabled = true,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun picker_loading_showsLoadingText() {
+        setPicker(isLoading = true)
+        rule.onNodeWithText("Loading tags…").assertIsDisplayed()
+        rule.onNodeWithText("Law").assertDoesNotExist()
+    }
+
+    @Test
+    fun picker_withoutProfileTags_offersAddExpertise() {
+        var adds = 0
+        setPicker(hasProfileTags = false, visible = emptyList(), selected = emptySet(), onAdd = { adds++ })
+        rule.onNodeWithText("You don't have any expertise tags on your profile yet.").assertIsDisplayed()
+        rule.onNodeWithText("Add Expertise").performClick()
+        assertEquals(1, adds)
+    }
+
+    @Test
+    fun picker_loadFailed_showsRetry() {
+        var retries = 0
+        setPicker(loadFailed = true, onRetry = { retries++ })
+        rule.onNodeWithText("Couldn't load your tags.").assertIsDisplayed()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+    }
+
+    @Test
+    fun picker_loaded_showsChipsAndTogglesUnselected() {
+        val toggled = mutableListOf<ExpertiseTagItem>()
+        setPicker(onToggle = { toggled += it })
+        rule.onNodeWithContentDescription("Remove Law").assertIsDisplayed()
+        rule.onNodeWithText("Audit").assertIsDisplayed().performClick()
+        assertEquals(listOf(Audit), toggled)
+    }
+
+    @Test
+    fun picker_atCap_disablesUnselectedAndKeepsSelectedClickable() {
+        val toggled = mutableListOf<ExpertiseTagItem>()
+        setPicker(atCap = true, onToggle = { toggled += it })
+        rule.onNodeWithText("Audit").assertIsNotEnabled()
+        rule.onNode(hasStateDescription("Limit reached")).assertExists()
+        rule.onNodeWithContentDescription("Remove Law").assertIsEnabled().performClick()
+        assertEquals(listOf(Law), toggled)
+    }
+
+    @Test
+    fun picker_belowCap_hasNoLimitReachedState() {
+        setPicker(atCap = false)
+        rule.onNode(hasStateDescription("Limit reached")).assertDoesNotExist()
+    }
+
+    @Test
+    fun picker_emptyFilterResult_showsNoMatch() {
+        setPicker(visible = emptyList(), selected = emptySet(), filter = "zz")
+        rule.onNodeWithText("No tags match “zz”").assertIsDisplayed()
+    }
+
+    @Test
+    fun picker_filterTypingAndClearButton() {
+        val filters = mutableListOf<String>()
+        setPicker(filter = "", onFilterChange = { filters += it })
+        rule.onNodeWithContentDescription("Clear filter").assertDoesNotExist()
+        rule.onNode(hasSetTextAction()).performTextInput("a")
+        assertEquals(listOf("a"), filters)
+    }
+
+    @Test
+    fun picker_clearButtonAppearsWithFilterAndClears() {
+        val filters = mutableListOf<String>()
+        setPicker(filter = "la", onFilterChange = { filters += it })
+        rule.onNodeWithContentDescription("Clear filter").performClick()
+        assertEquals(listOf(""), filters)
+    }
+
+    @Test
+    fun picker_headerAddButtonOpensExpertise() {
+        var adds = 0
+        setPicker(onAdd = { adds++ })
+        rule.onNodeWithTag("topic_editor_add_expertise").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Add expertise").performClick()
+        assertEquals(1, adds)
+    }
+
+    private companion object {
+        const val HELPER = "Leave blank or enter 0 for a free session — otherwise min $5.00"
+        val Law = ExpertiseTagItem(id = "law", label = "Law")
+        val Audit = ExpertiseTagItem(id = "audit", label = "Audit")
     }
 }
