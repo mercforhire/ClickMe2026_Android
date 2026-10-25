@@ -488,7 +488,41 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** TBD
+**Plans:** 16 plans
+Plans:
+**Wave 1**
+
+- [ ] 10-01-PLAN.md — Network contract: typed topic and availability DTOs, explicit-null PATCH adapter, 6 endpoints, FakeClickMeApi handlers, fixture migration, wire tests (EXP-01..EXP-04)
+- [ ] 10-02-PLAN.md — Pure availability logic: hydrate, overlap, edits, lossless 24:00 HH:mm, picker options, saved-state codec, timezone rules (EXP-03, EXP-04)
+- [ ] 10-03-PLAN.md — Pure topic rules: price parse/format by currency digits, floor, free wire amount, currency, icons, duration, tags (EXP-01, EXP-02)
+- [ ] 10-04-PLAN.md — Copy contract (2 string files), RestrictedAction.EditAvailability + guard copy, SelectableChip enabled, Saved hold, expert error mapper, duration text (EXP-01..EXP-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 10-05-PLAN.md — Stateless repositories (topics, expertise tags, availability) and the session-safe TopicEvents channel (EXP-01, EXP-03, EXP-04)
+- [ ] 10-06-PLAN.md — Topics list components: card with overflow and delete spinner, delete confirm, skeleton, empty and error (EXP-01)
+- [ ] 10-07-PLAN.md — Topic Editor sections: icon strip, duration stepper, description, price field with currency badge, tag picker (EXP-01, EXP-02)
+- [ ] 10-08-PLAN.md — Availability components: day card, overlap banner, Save action, skeleton, Select Time Range and Select Timezone sheets (EXP-03, EXP-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 10-09-PLAN.md — Topics tab: ViewModel (quiet reloads, one-at-a-time delete, saved-topic merge) and screen (EXP-01)
+- [ ] 10-10-PLAN.md — Topic Editor key and ViewModel: seed, currency, fresh /me floor, tags, save with PRICE_BELOW_MINIMUM on the field (EXP-01, EXP-02)
+- [ ] 10-11-PLAN.md — Edit Expertise sheet: shared signup tag parts, ViewModel with the at-least-one-tag guard, PATCH /expert/profile (EXP-01)
+- [ ] 10-12-PLAN.md — Availability key and ViewModel: hydrate, edits, guarded Save with 2 s Saved, silent UTC auto-fill, process-death restore (EXP-03, EXP-04)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 10-13-PLAN.md — Topic Editor screen assembly: Save lock, focus on failure, errors, expertise sheet hand-off (EXP-01, EXP-02)
+- [ ] 10-14-PLAN.md — Availability screen assembly: states, timezone row and sheet, banner, day cards, time-range sheet (EXP-03, EXP-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 10-15-PLAN.md — Expert shell wiring: Topics slot, editor and Availability routes, Profile Availability row (EXP-01, EXP-03, EXP-04)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 10-16-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device and SC-4 checks, follow-ups and hand-offs (all)
 **UI hint**: yes
 
 ### Phase 11: Expert Requests & Bookings
@@ -620,7 +654,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 0/TBD | Not started | - |
+| 10. Expert Topics & Availability | 0/16 | Not started | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
