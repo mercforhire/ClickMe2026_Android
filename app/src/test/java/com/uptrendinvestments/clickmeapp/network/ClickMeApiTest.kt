@@ -226,7 +226,7 @@ class ClickMeApiTest {
             assertEquals("GET", request.method)
             assertEquals("/api/v1/expert/topics", request.url.encodedPath)
             assertEquals(2, topics.size)
-            assertEquals("t2", topics[1]["id"])
+            assertEquals("t2", topics[1].id)
         }
 
     @Test

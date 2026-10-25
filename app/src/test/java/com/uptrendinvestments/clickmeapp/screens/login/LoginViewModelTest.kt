@@ -18,6 +18,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
+import com.uptrendinvestments.clickmeapp.testing.topicItem
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -204,7 +205,7 @@ class LoginViewModelTest {
             val h = Harness(this)
             h.loginOk("client", "expert")
             h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
-            h.api.topicsHandler = { MyExpertTopicsPayload(listOf(mapOf("id" to "t1"))) }
+            h.api.topicsHandler = { MyExpertTopicsPayload(listOf(topicItem())) }
             h.fill()
 
             h.viewModel.submit()
