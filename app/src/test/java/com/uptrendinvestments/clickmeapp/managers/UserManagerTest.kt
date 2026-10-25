@@ -19,6 +19,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakePhotoProcessor
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
+import com.uptrendinvestments.clickmeapp.testing.topicItem
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.currentCoroutineContext
@@ -374,7 +375,7 @@ class UserManagerTest {
             val h = Harness(this, authedPair)
             h.api.meHandler = { me("client", "expert") }
             h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
-            h.api.topicsHandler = { MyExpertTopicsPayload(listOf(mapOf("id" to "t1"))) }
+            h.api.topicsHandler = { MyExpertTopicsPayload(listOf(topicItem())) }
             h.api.userProfileHandler = { sampleProfile }
 
             assertEquals(LaunchDestination.Home(AppMode.Expert), h.manager.restore())
@@ -411,7 +412,7 @@ class UserManagerTest {
             val h = Harness(this, authedPair)
             h.api.meHandler = { me("expert") }
             h.api.expertProfileHandler = { throw IOException("flaky") }
-            h.api.topicsHandler = { MyExpertTopicsPayload(listOf(mapOf("id" to "t1"))) }
+            h.api.topicsHandler = { MyExpertTopicsPayload(listOf(topicItem())) }
             h.api.userProfileHandler = { sampleProfile }
 
             assertEquals(LaunchDestination.Home(AppMode.Expert), h.manager.restore())
@@ -1111,7 +1112,7 @@ class UserManagerTest {
             h.api.expertProfileHandler = { ExpertProfileData(setupCompleted = true) }
             h.api.topicsHandler = {
                 gate.await()
-                MyExpertTopicsPayload(listOf(mapOf("id" to "t1")))
+                MyExpertTopicsPayload(listOf(topicItem()))
             }
             var restored: LaunchDestination? = null
             backgroundScope.launch { restored = h.manager.restore() }
