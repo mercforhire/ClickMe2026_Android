@@ -5,6 +5,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
@@ -13,6 +14,9 @@ import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
@@ -26,6 +30,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -33,6 +38,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
+import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
@@ -98,6 +104,15 @@ class FakeClickMeApi : ClickMeApi {
     var confirmCallConnectionHandler: suspend (String, ConfirmConnectionRequest) -> ConfirmConnectionData =
         { _, _ -> notStubbed() }
     var endCallHandler: suspend (String, EndCallRequest) -> EndCallData = { _, _ -> notStubbed() }
+    var createTopicHandler: suspend (CreateExpertTopicRequest) -> MyExpertTopicPayload = { notStubbed() }
+    var updateTopicHandler: suspend (String, UpdateExpertTopicRequest) -> MyExpertTopicPayload =
+        { _, _ -> notStubbed() }
+    var deleteTopicHandler: suspend (String) -> SuccessMessageResponse = { notStubbed() }
+    var myAvailabilityHandler: suspend () -> ExpertAvailabilityScheduleData = { notStubbed() }
+    var updateMyAvailabilityHandler: suspend (UpdateMyAvailabilityRequest) -> SuccessMessageResponse =
+        { notStubbed() }
+    var updateExpertProfileTagsHandler: suspend (UpdateExpertTagsRequest) -> SuccessMessageResponse =
+        { notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -207,6 +222,24 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var endCallCalls = 0
         private set
 
+    @Volatile var createTopicCalls = 0
+        private set
+
+    @Volatile var updateTopicCalls = 0
+        private set
+
+    @Volatile var deleteTopicCalls = 0
+        private set
+
+    @Volatile var myAvailabilityCalls = 0
+        private set
+
+    @Volatile var updateMyAvailabilityCalls = 0
+        private set
+
+    @Volatile var updateExpertProfileTagsCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -277,6 +310,36 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /bookings/{id}/end call (id, body), in call order. */
     val endCallRequests: List<Pair<String, EndCallRequest>>
         get() = synchronized(_endCallRequests) { _endCallRequests.toList() }
+
+    private val _createTopicRequests = mutableListOf<CreateExpertTopicRequest>()
+
+    /** Every POST /expert/topics body received, in call order. */
+    val createTopicRequests: List<CreateExpertTopicRequest>
+        get() = synchronized(_createTopicRequests) { _createTopicRequests.toList() }
+
+    private val _updateTopicRequests = mutableListOf<Pair<String, UpdateExpertTopicRequest>>()
+
+    /** Every PATCH /expert/topics/{id} call (id, body), in call order. */
+    val updateTopicRequests: List<Pair<String, UpdateExpertTopicRequest>>
+        get() = synchronized(_updateTopicRequests) { _updateTopicRequests.toList() }
+
+    private val _deletedTopicIds = mutableListOf<String>()
+
+    /** The id of every DELETE /expert/topics/{id} call, in call order. */
+    val deletedTopicIds: List<String>
+        get() = synchronized(_deletedTopicIds) { _deletedTopicIds.toList() }
+
+    private val _updateMyAvailabilityRequests = mutableListOf<UpdateMyAvailabilityRequest>()
+
+    /** Every PUT /expert/availability body received, in call order. */
+    val updateMyAvailabilityRequests: List<UpdateMyAvailabilityRequest>
+        get() = synchronized(_updateMyAvailabilityRequests) { _updateMyAvailabilityRequests.toList() }
+
+    private val _updateExpertProfileTagsRequests = mutableListOf<UpdateExpertTagsRequest>()
+
+    /** Every PATCH /expert/profile tags body received, in call order. */
+    val updateExpertProfileTagsRequests: List<UpdateExpertTagsRequest>
+        get() = synchronized(_updateExpertProfileTagsRequests) { _updateExpertProfileTagsRequests.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -523,6 +586,44 @@ class FakeClickMeApi : ClickMeApi {
         endCallCalls++
         synchronized(_endCallRequests) { _endCallRequests += bookingId to body }
         return ok(endCallHandler(bookingId, body))
+    }
+
+    override suspend fun createTopic(body: CreateExpertTopicRequest): SuccessDataResponse<MyExpertTopicPayload> {
+        createTopicCalls++
+        synchronized(_createTopicRequests) { _createTopicRequests += body }
+        return ok(createTopicHandler(body))
+    }
+
+    override suspend fun updateTopic(
+        topicId: String,
+        body: UpdateExpertTopicRequest,
+    ): SuccessDataResponse<MyExpertTopicPayload> {
+        updateTopicCalls++
+        synchronized(_updateTopicRequests) { _updateTopicRequests += topicId to body }
+        return ok(updateTopicHandler(topicId, body))
+    }
+
+    override suspend fun deleteTopic(topicId: String): SuccessMessageResponse {
+        deleteTopicCalls++
+        synchronized(_deletedTopicIds) { _deletedTopicIds += topicId }
+        return deleteTopicHandler(topicId)
+    }
+
+    override suspend fun getMyAvailability(): SuccessDataResponse<ExpertAvailabilityScheduleData> {
+        myAvailabilityCalls++
+        return ok(myAvailabilityHandler())
+    }
+
+    override suspend fun updateMyAvailability(body: UpdateMyAvailabilityRequest): SuccessMessageResponse {
+        updateMyAvailabilityCalls++
+        synchronized(_updateMyAvailabilityRequests) { _updateMyAvailabilityRequests += body }
+        return updateMyAvailabilityHandler(body)
+    }
+
+    override suspend fun updateExpertProfileTags(body: UpdateExpertTagsRequest): SuccessMessageResponse {
+        updateExpertProfileTagsCalls++
+        synchronized(_updateExpertProfileTagsRequests) { _updateExpertProfileTagsRequests += body }
+        return updateExpertProfileTagsHandler(body)
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

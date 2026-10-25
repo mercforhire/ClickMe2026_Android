@@ -5,6 +5,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
@@ -13,6 +14,9 @@ import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
@@ -26,6 +30,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -33,6 +38,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
+import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
@@ -51,6 +57,7 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -63,7 +70,8 @@ import retrofit2.http.Query
  * categories, expert details and reviews). Phase 6 adds the booking group (availability, free booking
  * request, client booking detail). Phase 7 adds the payment group (saved cards, setup and payment intents,
  * booking confirm). Phase 8 adds the client booking actions (cancel, accept and decline a reschedule).
- * Phase 9 adds the call group (join, confirm connection, end). Other API groups arrive with their features
+ * Phase 9 adds the call group (join, confirm connection, end). Phase 10 adds expert topics (create, update, delete),
+ * the expert's own weekly availability and the profile-tags update. Other API groups arrive with their features
  * (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -293,4 +301,42 @@ interface ClickMeApi {
         @Path("id") bookingId: String,
         @Body body: EndCallRequest,
     ): SuccessDataResponse<EndCallData>
+
+    /** Ports iOS ClickMeAPI+ExpertTopics createTopic. 201 with `data.topic`; 422 `PRICE_BELOW_MINIMUM` on a low price. */
+    @POST(ApiRequestUrls.EXPERT_TOPICS)
+    suspend fun createTopic(
+        @Body body: CreateExpertTopicRequest,
+    ): SuccessDataResponse<MyExpertTopicPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertTopics updateTopic. The body is serialized by `UpdateExpertTopicRequestAdapter` so a
+     * cleared icon or description reaches the server as an explicit `null`.
+     */
+    @PATCH(ApiRequestUrls.EXPERT_TOPIC)
+    suspend fun updateTopic(
+        @Path("id") topicId: String,
+        @Body body: UpdateExpertTopicRequest,
+    ): SuccessDataResponse<MyExpertTopicPayload>
+
+    /** Ports iOS ClickMeAPI+ExpertTopics deleteTopic. Soft delete; 404 when missing, no 409 today. */
+    @DELETE(ApiRequestUrls.EXPERT_TOPIC)
+    suspend fun deleteTopic(
+        @Path("id") topicId: String,
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+Availability getMyAvailability: the expert's own schedule, not the public route. */
+    @GET(ApiRequestUrls.EXPERT_MY_AVAILABILITY)
+    suspend fun getMyAvailability(): SuccessDataResponse<ExpertAvailabilityScheduleData>
+
+    /** Ports iOS ClickMeAPI+Availability updateMyAvailability. Full replace; the response `data.updated_days` is ignored. */
+    @PUT(ApiRequestUrls.EXPERT_MY_AVAILABILITY)
+    suspend fun updateMyAvailability(
+        @Body body: UpdateMyAvailabilityRequest,
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+ExpertProfile updateExpertProfile (tags only): full replace of the profile tags (D-08). */
+    @PATCH(ApiRequestUrls.EXPERT_PROFILE)
+    suspend fun updateExpertProfileTags(
+        @Body body: UpdateExpertTagsRequest,
+    ): SuccessMessageResponse
 }

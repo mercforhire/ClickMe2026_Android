@@ -173,6 +173,23 @@ class ApiRequestUrlsTest {
     }
 
     @Test
+    fun phaseTenConstants_haveExactRelativeValues() {
+        assertEquals("expert/topics/{id}", ApiRequestUrls.EXPERT_TOPIC)
+        assertEquals("expert/availability", ApiRequestUrls.EXPERT_MY_AVAILABILITY)
+    }
+
+    @Test
+    fun expertTopicAndAvailabilityPaths_needAuthToken() {
+        listOf(
+            "/api/v1/expert/availability",
+            "/api/v1/expert/topics/t1",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
+
+    @Test
     fun callPaths_needAuthToken() {
         listOf(
             "/api/v1/bookings/b1/join",

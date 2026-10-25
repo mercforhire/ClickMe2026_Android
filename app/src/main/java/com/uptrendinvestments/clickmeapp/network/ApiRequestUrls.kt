@@ -8,6 +8,7 @@ package com.uptrendinvestments.clickmeapp.network
  * details and reviews). Phase 6 adds the booking group (availability, booking request, booking detail). Phase 7 adds the payment
  * group (saved cards, setup and payment intents, booking confirm). Phase 8 adds the client booking actions
  * (cancel, accept and decline a reschedule). Phase 9 adds the call group (join, confirm connection, end).
+ * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability.
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -58,6 +59,15 @@ object ApiRequestUrls {
     const val BOOKING_JOIN = "bookings/{id}/join"
     const val BOOKING_CONFIRM_CONNECTION = "bookings/{id}/confirm-connection"
     const val BOOKING_END = "bookings/{id}/end"
+
+    // Phase 10: expert topics and weekly availability.
+    const val EXPERT_TOPIC = "expert/topics/{id}"
+
+    /**
+     * The expert's OWN weekly schedule. Not [EXPERT_AVAILABILITY], which is the public client-facing
+     * `experts/{id}/availability` route (note the singular/plural difference).
+     */
+    const val EXPERT_MY_AVAILABILITY = "expert/availability"
 
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
