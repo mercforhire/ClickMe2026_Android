@@ -143,6 +143,19 @@ class PickerComponentsTest {
         assertEquals(1, clicks)
     }
 
+    @Test
+    fun selectableChip_disabled_ignoresClicksAndIsNotEnabled() {
+        var clicks = 0
+        rule.setContent {
+            ClickMeTheme {
+                SelectableChip(label = "Growth", selected = false, onClick = { clicks++ }, enabled = false)
+            }
+        }
+        rule.onNodeWithText("Growth").assertIsNotEnabled()
+        rule.onNodeWithText("Growth").performClick()
+        assertEquals(0, clicks)
+    }
+
     // PickerSheetContent
 
     @Test

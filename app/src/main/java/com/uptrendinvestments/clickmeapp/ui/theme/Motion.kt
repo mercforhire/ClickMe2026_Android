@@ -17,6 +17,12 @@ object Motion {
     /** How long the "saved" confirmation stays visible before the flow advances. */
     const val SAVED_CONFIRMATION_HOLD_MS = 600
 
+    /**
+     * How long the availability "Saved" confirmation stays on the Save button (D-02, iOS `didSave` ~2 s). Not
+     * the 600 ms flow-advance hold above.
+     */
+    const val AVAILABILITY_SAVED_HOLD_MS = 2000
+
     /** Fade and expand duration when the password strength meter appears or disappears. */
     const val STRENGTH_METER_VISIBILITY_MS = 200
 
