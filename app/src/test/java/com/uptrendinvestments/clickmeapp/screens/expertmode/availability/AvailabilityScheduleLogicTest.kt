@@ -5,8 +5,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.util.Locale
+import java.util.TimeZone
 
 class AvailabilityScheduleLogicTest {
     private val logic = AvailabilityScheduleLogic
@@ -237,5 +239,131 @@ class AvailabilityScheduleLogicTest {
         assertEquals(listOf("09:00" to "10:00", "13:00" to "14:00", "22:00" to "24:00"), wire)
         val back = logic.hydrate(mapOf(DayOfWeek.MONDAY to wire))
         assertEquals(listOf(TimeSlot(540, 600), TimeSlot(780, 840), TimeSlot(1320, 1440)), back[0].slots)
+    }
+
+    // --- picker options ---
+
+    @Test
+    fun startOptions_gridStrictlyBeforeDraftEnd() {
+        val o = logic.startOptions(540, 1020)
+        assertEquals((0 until 1020 step 30).toList(), o)
+        assertEquals(990, o.last())
+    }
+
+    @Test
+    fun startOptions_includesOffGridDraftValueInOrder() {
+        val o = logic.startOptions(555, 1020)
+        assertTrue(555 in o)
+        assertEquals(o.sorted(), o)
+        assertEquals(o.distinct(), o)
+        assertEquals(listOf(510, 540, 555, 570), o.filter { it in 510..570 })
+    }
+
+    @Test
+    fun startOptions_neverExceedsLatestStartExceptInjectedDraft() {
+        val o = logic.startOptions(1380, 1440)
+        assertEquals((0..1380 step 30).toList(), o)
+        assertEquals(1380, o.last())
+    }
+
+    @Test
+    fun endOptions_gridStrictlyAfterDraftStart() {
+        val o = logic.endOptions(540, 1020)
+        assertEquals((570..1410 step 30).toList(), o)
+        assertFalse(1440 in o)
+    }
+
+    @Test
+    fun endOptions_midnightEndStaysSelectable() {
+        val o = logic.endOptions(1320, 1440)
+        assertEquals(1440, o.last())
+        assertEquals(listOf(1350, 1380, 1410, 1440), o)
+    }
+
+    @Test
+    fun endOptions_startsAfterDraftStart() {
+        assertEquals(1410, logic.endOptions(1395, 1410).first())
+    }
+
+    // --- display format ---
+
+    private fun withDefaultZone(
+        id: String,
+        block: () -> Unit,
+    ) {
+        val saved = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone(id))
+            block()
+        } finally {
+            TimeZone.setDefault(saved)
+        }
+    }
+
+    @Test
+    fun formatMinutes_24HourIgnoresDeviceZoneAndDst() {
+        withDefaultZone("America/New_York") {
+            val fmt = SimpleDateFormat("HH:mm", Locale.US)
+            assertEquals("09:00", logic.formatMinutes(540, fmt))
+            // 02:30 does not exist on 2026-03-08 in New York; the UTC-pinned clone never shifts it.
+            assertEquals("02:30", logic.formatMinutes(150, fmt))
+            assertEquals("00:00", logic.formatMinutes(1440, fmt))
+            assertEquals(TimeZone.getTimeZone("America/New_York"), fmt.timeZone)
+        }
+    }
+
+    @Test
+    fun formatMinutes_12Hour() {
+        withDefaultZone("America/New_York") {
+            val fmt = SimpleDateFormat("h:mm a", Locale.US)
+            assertEquals("12:00 AM", logic.formatMinutes(1440, fmt))
+            assertEquals("1:00 PM", logic.formatMinutes(780, fmt))
+        }
+    }
+
+    // --- saved-state codec ---
+
+    @Test
+    fun encodeDecode_roundTrips() {
+        val days =
+            week(
+                day(DayOfWeek.MONDAY, TimeSlot(540, 600), TimeSlot(1320, 1440)),
+                day(DayOfWeek.TUESDAY, TimeSlot(600, 660), enabled = false),
+                day(DayOfWeek.WEDNESDAY),
+            )
+        val tz = "America/Argentina/Buenos_Aires"
+        assertEquals(days to tz, logic.decode(logic.encode(days, tz)))
+    }
+
+    @Test
+    fun decode_rejectsMalformedInput() {
+        assertNull(logic.decode(null))
+        assertNull(logic.decode(""))
+        assertNull(logic.decode("garbage"))
+        val six = logic.encode(week(), "UTC").substringBeforeLast(";")
+        assertNull(logic.decode(six))
+    }
+
+    @Test
+    fun decode_rejectsOutOfRangeSlots() {
+        val good = logic.encode(week(day(DayOfWeek.MONDAY, TimeSlot(540, 600))), "UTC")
+        assertTrue(logic.decode(good) != null)
+        assertNull(logic.decode(good.replace("540-600", "600-540")))
+        assertNull(logic.decode(good.replace("540-600", "540-1441")))
+        assertNull(logic.decode(good.replace("540-600", "-5-600")))
+        assertNull(logic.decode(good.replace("540-600", "x-y")))
+    }
+
+    // --- joinNames ---
+
+    @Test
+    fun joinNames_englishListWithoutOxfordComma() {
+        assertEquals("", logic.joinNames(emptyList(), ", ", " and "))
+        assertEquals("Monday", logic.joinNames(listOf("Monday"), ", ", " and "))
+        assertEquals("Monday and Tuesday", logic.joinNames(listOf("Monday", "Tuesday"), ", ", " and "))
+        assertEquals(
+            "Monday, Tuesday and Friday",
+            logic.joinNames(listOf("Monday", "Tuesday", "Friday"), ", ", " and "),
+        )
     }
 }
