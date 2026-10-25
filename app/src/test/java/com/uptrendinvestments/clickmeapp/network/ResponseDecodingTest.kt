@@ -230,7 +230,7 @@ class ResponseDecodingTest {
     @Test
     fun myExpertTopicsDecodesSizes() {
         val adapter = moshi.adapter(MyExpertTopicsPayload::class.java)
-        val two = """{"topics":[{"id":"1","title":"A"},{"id":"2","price":{"amount":5}}]}"""
+        val two = """{"topics":[{"id":"1","title":"A"},{"id":"2","title":"B","price":{"amount":5}}]}"""
         assertEquals(2, adapter.fromJson(two)!!.topics.size)
         assertEquals(0, adapter.fromJson("""{"topics":[]}""")!!.topics.size)
     }
