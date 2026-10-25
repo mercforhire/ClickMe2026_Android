@@ -3,28 +3,38 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor
 
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
 import com.uptrendinvestments.clickmeapp.managers.SessionStore
 import com.uptrendinvestments.clickmeapp.managers.TokenPair
 import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.TopicHourlyRateBody
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertTag
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MinSessionAmount
+import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PricingLimits
 import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertiseTagsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.ExpertTopicsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicEvents
+import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicSavedKind
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
 import com.uptrendinvestments.clickmeapp.testing.topicItem
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +43,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
 
 class TopicEditorViewModelTest {
     @get:Rule
@@ -429,5 +440,291 @@ class TopicEditorViewModelTest {
             val vm = env.vm(handle = handle)
             advanceUntilIdle()
             assertEquals("12.99", vm.uiState.value.priceText)
+        }
+
+    // ---- save ----
+
+    private fun apiError(
+        status: Int,
+        code: String,
+        message: String,
+        errors: String = "",
+    ) = FakeClickMeApi().httpError(
+        status,
+        """{"status":"error","code":"$code","message":"$message"$errors}""",
+    )
+
+    private fun saved(id: String = "t1") = MyExpertTopicPayload(topicItem(id = id))
+
+    private fun TestScope.readyVm(
+        env: Env,
+        key: TopicEditorKey = TopicEditorKey.newTopic(),
+    ): TopicEditorViewModel {
+        val vm = env.vm(key)
+        advanceUntilIdle()
+        return vm
+    }
+
+    @Test
+    fun aBlankTitleShowsTheRequiredErrorAndSendsNothing() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            val vm = readyVm(env)
+            vm.save()
+            advanceUntilIdle()
+            val s = vm.uiState.value
+            assertEquals(FieldError.Res(R.string.topic_editor_required_error), s.titleError)
+            assertEquals(EditorField.Title, s.focusTarget)
+            assertEquals(0, env.api.createTopicCalls)
+            vm.onFocusHandled()
+            assertNull(vm.uiState.value.focusTarget)
+            vm.onTitleChange("x")
+            assertNull(vm.uiState.value.titleError)
+        }
+
+    @Test
+    fun anInvalidPriceFocusesThePriceField() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.onPriceChange(".")
+            assertNull(vm.uiState.value.priceError)
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(PriceFieldError.Invalid, vm.uiState.value.priceError)
+            assertEquals(EditorField.Price, vm.uiState.value.focusTarget)
+            assertEquals(0, env.api.createTopicCalls)
+        }
+
+    @Test
+    fun aBelowFloorPriceBlocksSaveAndTitleWinsTheFocus() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            val vm = readyVm(env)
+            vm.onPriceChange("4.99")
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(PriceFieldError.BelowFloor(500, "CAD"), vm.uiState.value.priceError)
+            assertEquals(EditorField.Title, vm.uiState.value.focusTarget)
+            vm.onTitleChange("Tax")
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(EditorField.Price, vm.uiState.value.focusTarget)
+            assertEquals(0, env.api.createTopicCalls)
+        }
+
+    @Test
+    fun aFreeNewTopicSendsTheFloorAsTheWireAmount() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.expertProfileHandler = { env.profile("TAX" to "Tax") }
+            env.api.createTopicHandler = { saved() }
+            val vm = readyVm(env)
+            vm.onTitleChange("  Tax planning  ")
+            vm.onDescriptionChange("   ")
+            vm.toggleIcon("finance")
+            vm.toggleTag(tag("TAX", "Tax"))
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(
+                listOf(
+                    CreateExpertTopicRequest(
+                        title = "Tax planning",
+                        description = null,
+                        durationMins = 60,
+                        isFree = true,
+                        hourlyRate = TopicHourlyRateBody(500, "CAD"),
+                        iconSlug = "finance",
+                        expertiseTagIds = listOf("tax"),
+                    ),
+                ),
+                env.api.createTopicRequests,
+            )
+        }
+
+    @Test
+    fun withNoLimitsAFreeTopicSendsOneHundred() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.api.meHandler = { throw env.api.httpError(503, """{"message":"down"}""") }
+            env.api.createTopicHandler = { saved() }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(
+                TopicHourlyRateBody(100, "CAD"),
+                env.api.createTopicRequests
+                    .single()
+                    .hourlyRate,
+            )
+        }
+
+    @Test
+    fun aPaidNewTopicSendsTheParsedAmount() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.createTopicHandler = { saved() }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.onPriceChange("12.50")
+            vm.save()
+            advanceUntilIdle()
+            val request = env.api.createTopicRequests.single()
+            assertEquals(TopicHourlyRateBody(1250, "CAD"), request.hourlyRate)
+            assertFalse(request.isFree)
+        }
+
+    @Test
+    fun editSendsAFullBodyWithClearedFieldsAndKeepsItsCurrency() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith("CAD"))
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(currency = "USD"))
+            vm.toggleIcon("finance")
+            vm.onDescriptionChange("")
+            vm.save()
+            advanceUntilIdle()
+            val expected =
+                UpdateExpertTopicRequest(
+                    title = "Tax planning",
+                    description = null,
+                    durationMins = 90,
+                    isFree = false,
+                    hourlyRate = TopicHourlyRateBody(1250, "USD"),
+                    iconSlug = null,
+                    expertiseTagIds = emptyList(),
+                )
+            assertEquals(listOf("t1" to expected), env.api.updateTopicRequests)
+            assertEquals(0, env.api.createTopicCalls)
+        }
+
+    @Test
+    fun successEmitsTheSavedEventAndFinishes() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            val gate = CompletableDeferred<MyExpertTopicPayload>()
+            env.api.createTopicHandler = { gate.await() }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.save()
+            runCurrent()
+            assertTrue(vm.uiState.value.isSaving)
+            assertFalse(vm.uiState.value.finished)
+            gate.complete(saved("new1"))
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.isSaving)
+            assertTrue(vm.uiState.value.finished)
+            val event = env.events.events.first()
+            assertEquals(TopicSavedKind.Added, event.kind)
+            assertEquals("new1", event.topic.id)
+        }
+
+    @Test
+    fun editSuccessEmitsAnUpdatedEvent() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved("t1") }
+            val vm = readyVm(env, editKey())
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(
+                TopicSavedKind.Updated,
+                env.events.events
+                    .first()
+                    .kind,
+            )
+            assertTrue(vm.uiState.value.finished)
+        }
+
+    @Test
+    fun aSecondSaveWhileOneIsInFlightSendsNothingAndEditsAreIgnored() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            val gate = CompletableDeferred<MyExpertTopicPayload>()
+            env.api.createTopicHandler = { gate.await() }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.save()
+            runCurrent()
+            vm.save()
+            vm.onTitleChange("Other")
+            vm.onPriceChange("9")
+            runCurrent()
+            assertEquals(1, env.api.createTopicCalls)
+            assertEquals("Tax", vm.uiState.value.title)
+            assertEquals("", vm.uiState.value.priceText)
+            gate.complete(saved())
+            advanceUntilIdle()
+        }
+
+    @Test
+    fun priceBelowMinimumFromTheServerLandsOnThePriceField() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.createTopicHandler = {
+                throw apiError(422, "PRICE_BELOW_MINIMUM", "A paid session must be at least CA\$5.")
+            }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.onPriceChange("6")
+            vm.save()
+            advanceUntilIdle()
+            val s = vm.uiState.value
+            assertEquals(PriceFieldError.Server("A paid session must be at least CA\$5."), s.priceError)
+            assertEquals(EditorField.Price, s.focusTarget)
+            assertFalse(s.finished)
+            assertFalse(s.isSaving)
+            assertNull(s.dialog)
+            vm.onPriceChange("7")
+            assertNull(vm.uiState.value.priceError)
+        }
+
+    @Test
+    fun aValidationErrorOpensTheDialogWithTheFieldMessageAndKeepsTheFields() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            val text = "One or more expertise tags are not in your profile"
+            val fieldErrors = ""","errors":[{"field":"expertise_tag_ids","message":"$text"}]"""
+            env.api.createTopicHandler = { throw apiError(422, "VALIDATION_ERROR", "Validation failed", fieldErrors) }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.onPriceChange("6")
+            vm.save()
+            advanceUntilIdle()
+            val s = vm.uiState.value
+            assertEquals(FieldError.Text(text), s.dialog)
+            assertEquals("Tax", s.title)
+            assertEquals("6", s.priceText)
+            assertFalse(s.finished)
+            assertFalse(s.isSaving)
+            vm.dismissDialog()
+            assertNull(vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun aNetworkFailureOpensTheNetworkDialog() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.createTopicHandler = { throw IOException("offline") }
+            val vm = readyVm(env)
+            vm.onTitleChange("Tax")
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(FieldError.Res(R.string.login_error_network), vm.uiState.value.dialog)
+            assertFalse(vm.uiState.value.isSaving)
         }
 }

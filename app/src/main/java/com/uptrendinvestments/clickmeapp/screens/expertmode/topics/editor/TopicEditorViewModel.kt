@@ -3,13 +3,22 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.TopicHourlyRateBody
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertiseTagsRepository
+import com.uptrendinvestments.clickmeapp.screens.expertmode.toExpertDialogError
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.ExpertTopicsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicEvents
+import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicSavedEvent
+import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicSavedKind
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -272,8 +281,104 @@ class TopicEditorViewModel
 
         // ---- save ----
 
-        /** Validates and saves the topic. Implemented in the save-path task. */
-        fun save() = Unit
+        /**
+         * Validates locally, then creates (Add) or patches (Edit) the topic. A failed check puts the error on its field
+         * and moves focus to the first failing one (title before price) without a request. The floor is read from `/me`
+         * now, not from a snapshot taken at open. Single flight: a second call while one is running does nothing.
+         *
+         * - A free topic (blank or 0) still sends a positive wire amount (D-11).
+         * - A server `PRICE_BELOW_MINIMUM` goes on the price field and the editor stays open (EXP-02).
+         * - Any other failure opens the error dialog and keeps every field.
+         * - Success hands the saved topic to the list and sets [TopicEditorUiState.finished] (D-07).
+         */
+        fun save() {
+            val current = _uiState.value
+            if (current.isSaving || current.finished) return
+            val currency = current.currency
+            val floor = floorNow(currency)
+            val titleValid = TopicEditorRules.isTitleValid(current.title)
+            var minor = 0L
+            val priceError: PriceFieldError? =
+                when (val parsed = TopicPrice.parse(current.priceText, currency)) {
+                    PriceParse.Invalid -> PriceFieldError.Invalid
+                    is PriceParse.Ok -> {
+                        minor = parsed.minor
+                        if (floor != null && TopicPrice.isBelowFloor(minor, floor)) {
+                            PriceFieldError.BelowFloor(floor, currency)
+                        } else {
+                            null
+                        }
+                    }
+                }
+            if (!titleValid || priceError != null) {
+                _uiState.update {
+                    it.copy(
+                        titleError =
+                            if (titleValid) it.titleError else FieldError.Res(R.string.topic_editor_required_error),
+                        priceError = priceError,
+                        floorMinor = floor,
+                        focusTarget = if (titleValid) EditorField.Price else EditorField.Title,
+                    )
+                }
+                return
+            }
+            _uiState.update { it.copy(isSaving = true, titleError = null, priceError = null, floorMinor = floor) }
+            val title = current.title.trim()
+            val description = current.description.trim().ifEmpty { null }
+            val isFree = minor == 0L
+            val hourlyRate = TopicHourlyRateBody(TopicPrice.wireAmount(minor, floor), currency)
+            val tagIds = TopicEditorRules.wireTagIds(current.selectedTags)
+            viewModelScope.launch {
+                try {
+                    val saved =
+                        if (seed != null) {
+                            repository.update(
+                                seed.id,
+                                UpdateExpertTopicRequest(
+                                    title = title,
+                                    description = description,
+                                    durationMins = current.durationMins,
+                                    isFree = isFree,
+                                    hourlyRate = hourlyRate,
+                                    iconSlug = current.iconSlug,
+                                    expertiseTagIds = tagIds,
+                                ),
+                            )
+                        } else {
+                            repository.create(
+                                CreateExpertTopicRequest(
+                                    title = title,
+                                    description = description,
+                                    durationMins = current.durationMins,
+                                    isFree = isFree,
+                                    hourlyRate = hourlyRate,
+                                    iconSlug = current.iconSlug,
+                                    expertiseTagIds = tagIds,
+                                ),
+                            )
+                        }
+                    val kind = if (isEdit) TopicSavedKind.Updated else TopicSavedKind.Added
+                    topicEvents.emit(TopicSavedEvent(kind, saved))
+                    _uiState.update { it.copy(isSaving = false, finished = true) }
+                } catch (e: ApiException) {
+                    onSaveFailed(e)
+                }
+            }
+        }
+
+        private fun onSaveFailed(e: ApiException) {
+            if (e is ApiException.Http && e.code == ErrorCode.PriceBelowMinimum) {
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        priceError = PriceFieldError.Server(e.serverMessage),
+                        focusTarget = EditorField.Price,
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(isSaving = false, dialog = e.toExpertDialogError()) }
+            }
+        }
 
         fun dismissDialog() {
             _uiState.update { it.copy(dialog = null) }
