@@ -46,6 +46,7 @@ fun restrictedActionText(action: RestrictedAction): String =
             RestrictedAction.LogOut -> R.string.call_action_log_out
             RestrictedAction.AddPaymentMethod -> R.string.call_action_add_payment_method
             RestrictedAction.CancelBooking -> R.string.call_action_cancel_booking
+            RestrictedAction.EditAvailability -> R.string.call_action_edit_availability
         },
     )
 

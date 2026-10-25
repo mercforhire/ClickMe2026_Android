@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -25,17 +26,22 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 private val CloseIconSize = 16.dp
 
+/** M3 disabled content alpha. */
+private const val DISABLED_ALPHA = 0.38f
+
 /**
  * Removable selection chip (selected languages, expertise tags). Selected chips show a trailing close icon and use
  * the secondaryContainer fill; unselected chips use surfaceContainerHighest. [removeContentDescription] (for example
  * "Remove English") becomes the chip's TalkBack description when set. Callers lay chips out in a `FlowRow` with
- * `Spacing.sm` gaps.
+ * `Spacing.sm` gaps. When [enabled] is false the chip ignores clicks and draws at the M3 disabled alpha (the
+ * topic tag cap uses this for unselected chips once three are picked); callers add their own state description.
  */
 @Composable
 fun SelectableChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
     removeContentDescription: String? = null,
 ) {
@@ -53,7 +59,8 @@ fun SelectableChip(
             modifier =
                 Modifier
                     .heightIn(min = 48.dp)
-                    .clickable(role = Role.Button, onClick = onClick)
+                    .alpha(if (enabled) 1f else DISABLED_ALPHA)
+                    .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                     .padding(horizontal = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.xs),

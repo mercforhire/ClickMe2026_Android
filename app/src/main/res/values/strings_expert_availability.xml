@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phase 10 copy contract, UI-SPEC Copywriting Contract; English only.
+         Availability editor. Reused elsewhere, not duplicated here: login_error_network, picker_load_error_body. -->
+
+    <string name="availability_title">Availability</string>
+    <string name="availability_save">Save</string>
+    <string name="availability_save_a11y">Save availability</string>
+    <string name="availability_saving">Saving availability</string>
+    <string name="availability_saved">Availability saved</string>
+    <string name="availability_save_disabled">Fix overlapping time slots to save availability</string>
+    <string name="availability_load_error_heading">Couldn\'t load availability</string>
+    <string name="availability_timezone_placeholder">Timezone</string>
+    <string name="availability_timezone_sheet_title">Select Timezone</string>
+    <string name="availability_auto_detect">Auto-detect from device</string>
+
+    <!-- Overlap dialog. The list separators join day names ("Monday, Tuesday and Friday"). -->
+    <string name="availability_overlap_title">Overlapping time slots</string>
+    <string name="availability_overlap_body">Time slots on %1$s overlap. Please adjust them before saving.</string>
+    <string name="availability_list_separator">", "</string>
+    <string name="availability_list_last_separator">" and "</string>
+
+    <!-- Days. -->
+    <string name="availability_day_monday">Monday</string>
+    <string name="availability_day_tuesday">Tuesday</string>
+    <string name="availability_day_wednesday">Wednesday</string>
+    <string name="availability_day_thursday">Thursday</string>
+    <string name="availability_day_friday">Friday</string>
+    <string name="availability_day_saturday">Saturday</string>
+    <string name="availability_day_sunday">Sunday</string>
+
+    <!-- Day rows and time slots. -->
+    <string name="availability_unavailable">Unavailable</string>
+    <string name="availability_available">Available</string>
+    <string name="availability_add_hours">Add hours</string>
+    <string name="availability_delete_slot">Delete time slot</string>
+    <string name="availability_start_time_a11y">Start time %1$s</string>
+    <string name="availability_end_time_a11y">End time %1$s</string>
+    <string name="availability_change_time_range">Change time range</string>
+    <string name="availability_range_separator">–</string>
+
+    <!-- Time-range sheet. -->
+    <string name="availability_time_sheet_title">Select Time Range</string>
+    <string name="availability_start_time">Start Time</string>
+    <string name="availability_end_time">End Time</string>
+    <string name="availability_cancel">Cancel</string>
+    <string name="availability_done">Done</string>
+
+    <string name="availability_save_error_title">Couldn\'t save availability</string>
+</resources>

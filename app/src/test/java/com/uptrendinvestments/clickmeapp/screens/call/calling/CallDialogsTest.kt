@@ -145,6 +145,15 @@ class CallDialogsTest {
     }
 
     @Test
+    fun guard_endCallToEditAvailability() {
+        assertDialog(
+            CallDialog.Guard(GuardMessage.EndCallTo(RestrictedAction.EditAvailability)),
+            "Can't do that during a call",
+            "End the call to edit your availability.",
+        )
+    }
+
+    @Test
     fun guard_sessionInProgressCancelBooking() {
         assertDialog(
             CallDialog.Guard(GuardMessage.SessionInProgress(RestrictedAction.CancelBooking)),
