@@ -118,7 +118,7 @@ From the PRD's Topics + Topic Editor, Availability, Expert Dashboard, Incoming R
 
 - [ ] **EXP-01**: Expert can see their topics in the Topics tab and create or edit a topic in the Topic Editor. An expert needs at least one topic to receive bookings.
 - [ ] **EXP-02**: The topic price floor comes from `pricing_limits` in `/me`, fetched fresh rather than cached across launches (PRICING-LIMITS.md). A `422 PRICE_BELOW_MINIMUM` error shows on the price field.
-- [ ] **EXP-03**: Expert can edit weekly availability (slots stored as minutes from midnight, sent as `HH:mm`) using a time-range picker sheet, with overlap validation per day.
+- [ ] **EXP-03**: Expert can edit weekly availability (slots stored as minutes from midnight, sent as `HH:mm`) using a time-range picker sheet, with overlap validation per day. (Phase 10: a stored 24:00 end round-trips losslessly; the picker caps End at 23:30 like iOS.)
 - [ ] **EXP-04**: Expert can pick the timezone for their availability. If the server timezone is UTC, the device timezone is filled in quietly.
 - [ ] **EXP-05**: Expert sees a simplified Dashboard: pending request count, upcoming sessions, weekly earnings text and a payout onboarding card.
 - [ ] **EXP-06**: Expert can open Incoming Requests and either accept a request with an optional message or decline it with a reason code. After accepting, they see the Confirmed screen.
