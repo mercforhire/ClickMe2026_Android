@@ -1,10 +1,14 @@
 package com.uptrendinvestments.clickmeapp.screens
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -17,6 +21,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
@@ -27,7 +32,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
+import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -656,5 +664,117 @@ class HomeShellsTest {
         val resumed = bookingResumed - resumedBefore
         println("A10 observed: LaunchedEffect runs +$reentered, ON_RESUME +$resumed")
         assertEquals(enteredBefore + 1, bookingEntered)
+    }
+
+    private var expertBackDispatcher: OnBackPressedDispatcher? = null
+
+    private fun setExpertWithSlots(
+        topicsRoot: @Composable (Navigator) -> Unit,
+        detail: EntryProviderScope<NavKey>.(Navigator) -> Unit,
+    ) {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                HomeExpertShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    topicsRoot = topicsRoot,
+                    detailEntries = detail,
+                )
+            }
+        }
+    }
+
+    private fun EntryProviderScope<NavKey>.fakeAvailabilityEntry(navigator: Navigator) {
+        entry<AvailabilityKey>(metadata = BottomBar.hidden()) { key ->
+            Column {
+                Text("availability-stub:${key.origin}")
+                Button(onClick = navigator::goBack) { Text("availability back") }
+            }
+        }
+    }
+
+    private fun pressSystemBack() {
+        composeRule.runOnUiThread { expertBackDispatcher?.onBackPressed() }
+        composeRule.waitForIdle()
+    }
+
+    @Test
+    fun defaultExpertShellKeepsThePlaceholderOnTheTopicsTab() {
+        setExpert(showDebug = false)
+        tapTab("Topics")
+        composeRule.onNode(tab("Topics")).assertIsSelected()
+        composeRule.onNodeWithText("Nothing here yet.").assertExists()
+    }
+
+    @Test
+    fun expertProfileAvailabilityRowSitsAboveLogOutAndOpensAvailabilityWithoutTheBar() {
+        setExpertWithSlots(topicsRoot = { Text("fake topics") }, detail = { fakeAvailabilityEntry(it) })
+        tapTab("Profile")
+        val row = composeRule.onNode(hasTestTag("profile_availability_row"))
+        row.assertExists()
+        composeRule.onNodeWithText("Availability").assertExists()
+        assertTrue(topOf("Availability") < topOf("Log out"))
+        row.performClick()
+        composeRule.onNodeWithText("availability-stub:Profile").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+        composeRule.onNodeWithText("availability back").performClick()
+        composeRule.onNode(tab("Profile")).assertIsSelected()
+        composeRule.onNodeWithText("availability-stub:Profile").assertDoesNotExist()
+    }
+
+    @Test
+    fun topicsRootSlotRendersAndOpensAvailabilityFromTheTopicsStack() {
+        setExpertWithSlots(
+            topicsRoot = { navigator ->
+                Column {
+                    Text("fake topics")
+                    Button(onClick = { navigator.navigate(AvailabilityKey(AvailabilityOrigin.Topics)) }) {
+                        Text("open availability")
+                    }
+                }
+            },
+            detail = { fakeAvailabilityEntry(it) },
+        )
+        tapTab("Topics")
+        composeRule.onNodeWithText("fake topics").assertExists()
+        composeRule.onNodeWithText("open availability").performClick()
+        composeRule.onNodeWithText("availability-stub:Topics").assertExists()
+        composeRule.onNode(tab("Topics")).assertDoesNotExist()
+        pressSystemBack()
+        composeRule.onNodeWithText("fake topics").assertExists()
+        composeRule.onNode(tab("Topics")).assertIsSelected()
+    }
+
+    @Test
+    fun topicEditorRouteHidesTheBarAndBackReturnsToTheTopicsList() {
+        setExpertWithSlots(
+            topicsRoot = { navigator ->
+                Column {
+                    Text("fake topics")
+                    Button(onClick = { navigator.navigate(TopicEditorKey.newTopic()) }) { Text("add topic") }
+                }
+            },
+            detail = { navigator ->
+                entry<TopicEditorKey>(metadata = BottomBar.hidden()) {
+                    Column {
+                        Text("editor-stub")
+                        Button(onClick = navigator::goBack) { Text("editor back") }
+                    }
+                }
+            },
+        )
+        tapTab("Topics")
+        composeRule.onNodeWithText("add topic").performClick()
+        composeRule.onNodeWithText("editor-stub").assertExists()
+        composeRule.onNode(tab("Topics")).assertDoesNotExist()
+        pressSystemBack()
+        composeRule.onNodeWithText("editor-stub").assertDoesNotExist()
+        composeRule.onNodeWithText("fake topics").assertExists()
+        composeRule.onNode(tab("Topics")).assertIsSelected()
     }
 }
