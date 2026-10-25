@@ -488,7 +488,7 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 15/16 plans executed
+**Plans:** 16/16 plans executed
 Plans:
 **Wave 1**
 
@@ -522,7 +522,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 10-16-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device and SC-4 checks, follow-ups and hand-offs (all)
+- [x] 10-16-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device and SC-4 checks, follow-ups and hand-offs (all)
 
 **UI hint**: yes
 
@@ -539,7 +539,7 @@ Plans:
   3. In expert bookings (Upcoming/Past), Join appears inside the join window, and the iOS client and the Android expert both join the call. (PRD Week 5 checkpoint)
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
-**Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13).
+**Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
 **Plans:** TBD
 **UI hint**: yes
 
@@ -591,7 +591,7 @@ Plans:
   3. Any user can open their profile hub, edit their profile and avatar, and change their password. (Week 7 checkpoint, user-confirmed)
   4. Any user can delete their account from the app and is then logged out, and Help/FAQ opens a `mailto:` support link. (Week 7 checkpoint, user-confirmed)
 
-**Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings).
+**Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings). Phase 10 hand-off: replace the Phase 10 Availability placeholder row in the expert Profile; reuse `ExpertiseEditorSheet` in expert settings.
 **Plans:** TBD
 **UI hint**: yes
 
@@ -655,7 +655,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 15/16 | In Progress | - |
+| 10. Expert Topics & Availability | 16/16 | In Progress | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
