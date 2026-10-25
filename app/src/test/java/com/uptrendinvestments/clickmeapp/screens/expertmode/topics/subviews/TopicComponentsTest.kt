@@ -4,13 +4,16 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.components.SKELETON_BLOCK_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertTopicItem
 import com.uptrendinvestments.clickmeapp.testing.topicItem
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -143,5 +146,81 @@ class TopicComponentsTest {
                 },
             ).assertExists()
         rule.onNodeWithContentDescription("More options for Tax planning").assertExists()
+    }
+
+    @Test
+    fun deleteDialogShowsTitleMessageAndButtons() {
+        rule.setContent { ClickMeTheme { TopicDeleteDialog("Tax planning", onConfirm = {}, onDismiss = {}) } }
+
+        rule.onNodeWithText("Delete this topic?").assertExists()
+        rule
+            .onNodeWithText("\u201CTax planning\u201D will be removed and clients won't be able to book it.")
+            .assertExists()
+        rule.onNodeWithText("Keep Topic").assertExists()
+        rule.onNodeWithText("Delete").assertExists()
+    }
+
+    @Test
+    fun deleteDialogConfirmCallsOnConfirmOnly() {
+        rule.setContent {
+            ClickMeTheme {
+                TopicDeleteDialog(
+                    topicTitle = "Tax planning",
+                    onConfirm = { clicks += "confirm" },
+                    onDismiss = { clicks += "dismiss" },
+                )
+            }
+        }
+
+        rule.onNodeWithText("Delete").performClick()
+
+        assertEquals(listOf("confirm"), clicks)
+    }
+
+    @Test
+    fun deleteDialogKeepTopicDismissesWithoutConfirming() {
+        rule.setContent {
+            ClickMeTheme {
+                TopicDeleteDialog(
+                    topicTitle = "Tax planning",
+                    onConfirm = { clicks += "confirm" },
+                    onDismiss = { clicks += "dismiss" },
+                )
+            }
+        }
+
+        rule.onNodeWithText("Keep Topic").performClick()
+
+        assertEquals(listOf("dismiss"), clicks)
+    }
+
+    @Test
+    fun emptyContentShowsCopyAndAddTopicButton() {
+        rule.setContent { ClickMeTheme { TopicsEmptyContent(onAddTopic = { clicks += "add" }) } }
+
+        rule.onNodeWithText("Add your first topic").assertExists()
+        rule.onNodeWithText("Clients can't book you until you add at least one topic.").assertExists()
+        rule.onNodeWithText("Add Topic").performClick()
+
+        assertEquals(listOf("add"), clicks)
+    }
+
+    @Test
+    fun errorContentShowsMessageAndRetry() {
+        rule.setContent { ClickMeTheme { TopicsErrorContent("Server down", onRetry = { clicks += "retry" }) } }
+
+        rule.onNodeWithText("Couldn't load topics").assertExists()
+        rule.onNodeWithText("Server down").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+
+        assertEquals(listOf("retry"), clicks)
+    }
+
+    @Test
+    fun skeletonRendersThreeBlocks() {
+        rule.setContent { ClickMeTheme { TopicsSkeleton() } }
+
+        rule.onNodeWithTag(TOPICS_SKELETON_TAG).assertExists()
+        rule.onAllNodesWithTag(SKELETON_BLOCK_TAG, useUnmergedTree = true).assertCountEquals(3)
     }
 }
