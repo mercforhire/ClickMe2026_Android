@@ -488,7 +488,7 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 4/16 plans executed
+**Plans:** 8/16 plans executed
 Plans:
 **Wave 1**
 
@@ -499,10 +499,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-05-PLAN.md — Stateless repositories (topics, expertise tags, availability) and the session-safe TopicEvents channel (EXP-01, EXP-03, EXP-04)
-- [ ] 10-06-PLAN.md — Topics list components: card with overflow and delete spinner, delete confirm, skeleton, empty and error (EXP-01)
-- [ ] 10-07-PLAN.md — Topic Editor sections: icon strip, duration stepper, description, price field with currency badge, tag picker (EXP-01, EXP-02)
-- [ ] 10-08-PLAN.md — Availability components: day card, overlap banner, Save action, skeleton, Select Time Range and Select Timezone sheets (EXP-03, EXP-04)
+- [x] 10-05-PLAN.md — Stateless repositories (topics, expertise tags, availability) and the session-safe TopicEvents channel (EXP-01, EXP-03, EXP-04)
+- [x] 10-06-PLAN.md — Topics list components: card with overflow and delete spinner, delete confirm, skeleton, empty and error (EXP-01)
+- [x] 10-07-PLAN.md — Topic Editor sections: icon strip, duration stepper, description, price field with currency badge, tag picker (EXP-01, EXP-02)
+- [x] 10-08-PLAN.md — Availability components: day card, overlap banner, Save action, skeleton, Select Time Range and Select Timezone sheets (EXP-03, EXP-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -655,7 +655,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 4/16 | In Progress | - |
+| 10. Expert Topics & Availability | 8/16 | In Progress | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
