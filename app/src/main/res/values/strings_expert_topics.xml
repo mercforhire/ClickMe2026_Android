@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phase 10 copy contract, UI-SPEC Copywriting Contract; English only.
+         Topics list, Topic Editor and Edit Expertise. Reused elsewhere, not duplicated here: tab_topics,
+         login_error_network, picker_load_error_body, price_free, signup_tags_*. -->
+
+    <!-- Shared expert-mode copy. -->
+    <string name="expert_retry">Retry</string>
+    <string name="expert_error_generic">Something went wrong. Please try again.</string>
+    <string name="expert_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
+
+    <!-- Topics list. -->
+    <string name="topics_availability_action">Availability</string>
+    <string name="topics_empty_heading">Add your first topic</string>
+    <string name="topics_empty_body">Clients can\'t book you until you add at least one topic.</string>
+    <string name="topics_add_topic">Add Topic</string>
+    <string name="topics_add_topic_fab">Add topic</string>
+    <string name="topics_load_error_heading">Couldn\'t load topics</string>
+    <string name="topics_per_session">Per session · %1$s</string>
+    <string name="topics_per_session_plain">Per session</string>
+    <string name="topics_duration_minutes">%1$d min</string>
+    <string name="topics_duration_one_hour">1 hour</string>
+    <string name="topics_duration_hours">%1$d hours</string>
+    <string name="topics_duration_hours_minutes">%1$d hr %2$d min</string>
+    <string name="topics_menu_edit">Edit</string>
+    <string name="topics_menu_delete">Delete</string>
+    <string name="topics_more_options">More options for %1$s</string>
+    <string name="topics_card_description">%1$s, %2$s, %3$s</string>
+    <string name="topics_card_click_label">Edit topic</string>
+    <string name="topics_deleting">Deleting</string>
+    <string name="topics_delete_title">Delete this topic?</string>
+    <string name="topics_delete_message">“%1$s” will be removed and clients won\'t be able to book it.</string>
+    <string name="topics_delete_confirm">Delete</string>
+    <string name="topics_delete_keep">Keep Topic</string>
+    <string name="topics_deleted">Topic deleted</string>
+    <string name="topics_added">Topic added</string>
+    <string name="topics_updated">Topic updated</string>
+    <string name="topics_delete_error_title">Couldn\'t delete topic</string>
+
+    <!-- Topic Editor. -->
+    <string name="topic_editor_title_add">Add Topic</string>
+    <string name="topic_editor_title_edit">Edit Topic</string>
+    <string name="topic_editor_save">Save</string>
+    <string name="topic_editor_save_a11y">Save topic</string>
+    <string name="topic_editor_saving">Saving topic</string>
+    <string name="topic_editor_icon_label">Icon</string>
+    <string name="topic_editor_icon_a11y">%1$s icon</string>
+    <string name="topic_editor_icon_selected">Selected</string>
+    <string name="topic_editor_icon_not_selected">Not selected</string>
+    <string name="topic_editor_title_label">Topic Title</string>
+    <string name="topic_editor_title_placeholder">e.g. Go-to-Market Execution</string>
+    <string name="topic_editor_description_label">Description (optional)</string>
+    <string name="topic_editor_description_placeholder">What clients will get out of this session</string>
+    <string name="topic_editor_description_counter">%1$d/2000</string>
+    <string name="topic_editor_duration_label">Session Duration</string>
+    <string name="topic_editor_duration_decrease">Decrease duration</string>
+    <string name="topic_editor_duration_increase">Increase duration</string>
+    <string name="topic_editor_price_label">Price per Session</string>
+    <string name="topic_editor_price_placeholder">e.g. 150</string>
+    <string name="topic_editor_price_helper">Leave blank or enter 0 for a free session — otherwise min %1$s</string>
+    <string name="topic_editor_price_below_floor">A paid session must be at least %1$s.</string>
+    <string name="topic_editor_required_error">Please fill in all required fields with valid values.</string>
+    <string name="topic_editor_tags_label">Expertise Tags</string>
+    <string name="topic_editor_tags_limit_hint">Select up to 3</string>
+    <string name="topic_editor_tags_add">Add</string>
+    <string name="topic_editor_tags_add_a11y">Add expertise</string>
+    <string name="topic_editor_tags_add_expertise">Add Expertise</string>
+    <string name="topic_editor_tags_loading">Loading tags…</string>
+    <string name="topic_editor_tags_none">You don\'t have any expertise tags on your profile yet.</string>
+    <string name="topic_editor_tags_load_error">Couldn\'t load your tags.</string>
+    <string name="topic_editor_tags_filter">Filter tags</string>
+    <string name="topic_editor_tags_clear_filter">Clear filter</string>
+    <string name="topic_editor_tags_no_match">No tags match “%1$s”</string>
+    <string name="topic_editor_tags_remove">Remove %1$s</string>
+    <string name="topic_editor_tags_limit_reached">Limit reached</string>
+    <string name="topic_editor_save_error_title">Couldn\'t save topic</string>
+
+    <!-- Edit Expertise. -->
+    <string name="expertise_editor_title">Edit Expertise</string>
+    <string name="expertise_editor_cancel">Cancel</string>
+    <string name="expertise_editor_save">Save Expertise</string>
+    <string name="expertise_editor_saving">Saving expertise</string>
+    <string name="expertise_editor_your_tags">Your Tags</string>
+    <string name="expertise_editor_all">All Expertise</string>
+    <string name="expertise_editor_pick_one">Pick at least one expertise tag before saving.</string>
+    <string name="expertise_editor_save_error_title">Couldn\'t save</string>
+</resources>
