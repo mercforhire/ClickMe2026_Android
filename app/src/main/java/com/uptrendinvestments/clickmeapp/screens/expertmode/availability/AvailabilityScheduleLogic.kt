@@ -1,7 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.availability
 
+import java.text.DateFormat
 import java.time.DayOfWeek
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /** A time range within one day, in minutes since midnight (0..1440). 1440 is the "24:00" end-of-day value. */
 data class TimeSlot(
@@ -169,4 +172,101 @@ object AvailabilityScheduleLogic {
         } else {
             day.slots.sortedBy { it.start }.map { minutesToHhmm(it.start) to minutesToHhmm(it.end) }
         }
+
+    /**
+     * Start picker values: 30-minute steps from 00:00 to 23:00 strictly before [draftEnd], plus [draftStart] itself
+     * so an off-grid value written by another client stays selectable.
+     */
+    fun startOptions(
+        draftStart: Int,
+        draftEnd: Int,
+    ): List<Int> = ((0..LATEST_START step STEP_MINUTES).filter { it < draftEnd } + draftStart).distinct().sorted()
+
+    /**
+     * End picker values: 30-minute steps from 00:30 to 23:30 strictly after [draftStart], plus [draftEnd] itself so
+     * an off-grid value or 24:00 stays selectable.
+     */
+    fun endOptions(
+        draftStart: Int,
+        draftEnd: Int,
+    ): List<Int> =
+        ((STEP_MINUTES..LATEST_END step STEP_MINUTES).filter { it > draftStart } + draftEnd).distinct().sorted()
+
+    /**
+     * [minutes] formatted with the device time format. The format is cloned and pinned to UTC so a DST gap in the
+     * device zone cannot shift the clock face; 1440 renders as midnight. The passed [deviceFormat] is not mutated.
+     */
+    fun formatMinutes(
+        minutes: Int,
+        deviceFormat: DateFormat,
+    ): String {
+        val clone = deviceFormat.clone() as DateFormat
+        clone.timeZone = TimeZone.getTimeZone("UTC")
+        return clone.format(Date(minutes * MILLIS_PER_MINUTE))
+    }
+
+    /** Compact versioned string for SavedStateHandle: `v1|<timezoneId>|<day>;...` with `1:540-600,...` days. */
+    fun encode(
+        days: List<DaySchedule>,
+        timezoneId: String,
+    ): String {
+        val body =
+            WEEK.joinToString(";") { weekday ->
+                val d = days.firstOrNull { it.day == weekday }
+                val flag = if (d?.enabled == true) "1" else "0"
+                flag + ":" + d?.slots.orEmpty().joinToString(",") { "${it.start}-${it.end}" }
+            }
+        return "$CODEC_VERSION|$timezoneId|$body"
+    }
+
+    /** Inverse of [encode]; null for anything malformed, not exactly seven days, or with an invalid slot. */
+    fun decode(value: String?): Pair<List<DaySchedule>, String>? {
+        if (value.isNullOrEmpty()) return null
+        val parts = value.split("|")
+        if (parts.size != CODEC_PARTS || parts[0] != CODEC_VERSION || parts[1].isBlank()) return null
+        val dayStrings = parts[2].split(";")
+        if (dayStrings.size != WEEK.size) return null
+        val days =
+            WEEK.mapIndexed { i, weekday ->
+                val enabled =
+                    when (dayStrings[i].substringBefore(":", "")) {
+                        "1" -> true
+                        "0" -> false
+                        else -> return null
+                    }
+                val slotText = dayStrings[i].substringAfter(":", "")
+                val slots =
+                    if (slotText.isEmpty()) {
+                        emptyList()
+                    } else {
+                        slotText.split(",").map { decodeSlot(it) ?: return null }
+                    }
+                DaySchedule(weekday, enabled, slots)
+            }
+        return days to parts[1]
+    }
+
+    private fun decodeSlot(text: String): TimeSlot? {
+        val bits = text.split("-")
+        if (bits.size != 2 || bits.any { it.isEmpty() || !it.all(Char::isDigit) }) return null
+        val start = bits[0].toIntOrNull() ?: return null
+        val end = bits[1].toIntOrNull() ?: return null
+        return if (start in 0 until end && end <= MINUTES_PER_DAY) TimeSlot(start, end) else null
+    }
+
+    /** English list join without an Oxford comma: "A", "A and B", "A, B and C". */
+    fun joinNames(
+        names: List<String>,
+        separator: String,
+        lastSeparator: String,
+    ): String =
+        when (names.size) {
+            0 -> ""
+            1 -> names[0]
+            else -> names.dropLast(1).joinToString(separator) + lastSeparator + names.last()
+        }
+
+    private const val MILLIS_PER_MINUTE = 60_000L
+    private const val CODEC_VERSION = "v1"
+    private const val CODEC_PARTS = 3
 }
