@@ -488,14 +488,14 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 16 plans
+**Plans:** 4/16 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Network contract: typed topic and availability DTOs, explicit-null PATCH adapter, 6 endpoints, FakeClickMeApi handlers, fixture migration, wire tests (EXP-01..EXP-04)
-- [ ] 10-02-PLAN.md — Pure availability logic: hydrate, overlap, edits, lossless 24:00 HH:mm, picker options, saved-state codec, timezone rules (EXP-03, EXP-04)
-- [ ] 10-03-PLAN.md — Pure topic rules: price parse/format by currency digits, floor, free wire amount, currency, icons, duration, tags (EXP-01, EXP-02)
-- [ ] 10-04-PLAN.md — Copy contract (2 string files), RestrictedAction.EditAvailability + guard copy, SelectableChip enabled, Saved hold, expert error mapper, duration text (EXP-01..EXP-04)
+- [x] 10-01-PLAN.md — Network contract: typed topic and availability DTOs, explicit-null PATCH adapter, 6 endpoints, FakeClickMeApi handlers, fixture migration, wire tests (EXP-01..EXP-04)
+- [x] 10-02-PLAN.md — Pure availability logic: hydrate, overlap, edits, lossless 24:00 HH:mm, picker options, saved-state codec, timezone rules (EXP-03, EXP-04)
+- [x] 10-03-PLAN.md — Pure topic rules: price parse/format by currency digits, floor, free wire amount, currency, icons, duration, tags (EXP-01, EXP-02)
+- [x] 10-04-PLAN.md — Copy contract (2 string files), RestrictedAction.EditAvailability + guard copy, SelectableChip enabled, Saved hold, expert error mapper, duration text (EXP-01..EXP-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -523,6 +523,7 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [ ] 10-16-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device and SC-4 checks, follow-ups and hand-offs (all)
+
 **UI hint**: yes
 
 ### Phase 11: Expert Requests & Bookings
@@ -654,7 +655,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 0/16 | Not started | - |
+| 10. Expert Topics & Availability | 4/16 | In Progress | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
