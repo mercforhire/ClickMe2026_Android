@@ -156,6 +156,7 @@ class BookingConfirmedScreenTest {
 
     @Test
     fun noCalendarAppShowsSnackbar() {
+        val viewModel = BookingConfirmedViewModel(ExpertLaunchRequest())
         rule.setContent {
             val base = LocalContext.current
             val noCalendarApp = remember { NoCalendarContext(base) }
@@ -165,7 +166,7 @@ class BookingConfirmedScreenTest {
                         key = key,
                         onBack = {},
                         onBackToHome = {},
-                        viewModel = BookingConfirmedViewModel(ExpertLaunchRequest()),
+                        viewModel = viewModel,
                     )
                 }
             }
@@ -183,6 +184,7 @@ class BookingConfirmedScreenTest {
         val launchRequest = ExpertLaunchRequest()
         var home = 0
         var pendingWhenNavigating: DashboardLaunch? = null
+        val viewModel = BookingConfirmedViewModel(launchRequest)
         rule.setContent {
             ClickMeTheme {
                 BookingConfirmedScreen(
@@ -192,7 +194,7 @@ class BookingConfirmedScreenTest {
                         home++
                         pendingWhenNavigating = launchRequest.dashboard.pending.value
                     },
-                    viewModel = BookingConfirmedViewModel(launchRequest),
+                    viewModel = viewModel,
                 )
             }
         }
