@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-26T21:35:16Z
+updated: 2026-10-26T23:10:38.703Z
 ---
 
 ## Current Test
@@ -30,11 +30,17 @@ result: pass
 expected: No logging of that data on expert screens (grep pass is non-authoritative; human review recommended).
 result: pass
 
+### 5. Re-test after 11-16 (G-11-1 fix) — Android expert and iOS client join the same call
+expected: Join from the Dashboard card, an Upcoming card and the Booking Summary opens the call with no "Couldn't join session" dialog; two-way audio with the iOS client; mute and speaker work; leave then re-join works. (Also clears 09-HUMAN-UAT items 1, 2 and 5.)
+result: issue
+reported: "After the call screen shows up, an error dialog says, \"Couldn't join session. Something went wrong. Please try again.\""
+severity: blocker
+
 ## Summary
 
-total: 4
+total: 5
 passed: 3
-issues: 1
+issues: 2
 pending: 0
 skipped: 0
 blocked: 0
@@ -43,7 +49,9 @@ blocked: 0
 
 - gap_id: G-11-1
   truth: "Both sides join the same Agora call inside the join window (Dashboard card, Upcoming card, Summary) — Android expert joins an iOS client's booking"
-  status: failed
+  status: resolved
+  resolved_by: 11-16-PLAN.md
+  resolved_at: 2026-10-26
   reason: "User reported: Android Version shows error: cannot join session."
   severity: blocker
   test: 1
@@ -60,3 +68,12 @@ blocked: 0
     - "Regression test: extract engine config building into a testable function and assert mContext != null"
     - "Re-run 09-HUMAN-UAT items 1, 2, 5 and 11-UAT test 1 on device after the fix"
   debug_session: ".planning/debug/android-expert-cannot-join-session.md"
+
+- gap_id: G-11-5
+  truth: "Android expert and iOS client join the same Agora call from the Dashboard card, an Upcoming card and the Booking Summary, with two-way audio (re-test after 11-16)"
+  status: failed
+  reason: "User reported: After the call screen shows up, an error dialog says, \"Couldn't join session. Something went wrong. Please try again.\""
+  severity: blocker
+  test: 5
+  artifacts: []  # Filled by diagnosis
+  missing: []    # Filled by diagnosis
