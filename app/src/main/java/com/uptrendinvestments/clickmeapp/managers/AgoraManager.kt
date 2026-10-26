@@ -25,7 +25,9 @@ import javax.inject.Singleton
  * Production [CallEngine] over the Agora [RtcEngine]; port of iOS `AgoraManager.swift`.
  *
  * Lives in an app singleton rather than the foreground service so the UI and the service share it without
- * binding. The constructor touches no native code. The engine is created lazily by [join], which
+ * binding. The constructors touch no native code. The internal primary constructor takes the SDK engine
+ * factory so a JVM test can stop at the SDK boundary; Hilt injects through the public secondary constructor,
+ * which passes the real `RtcEngine.create`. The engine is created lazily by [join], which
  * `CallCenter` calls only after `CallForegroundController.startAndAwait` returned true (spike finding), and
  * is released by [destroy] off the main thread, never from a callback (RESEARCH Pitfall 10).
  *
@@ -36,11 +38,17 @@ import javax.inject.Singleton
  */
 @Singleton
 class AgoraManager
-    @Inject
-    constructor(
-        @ApplicationContext private val context: Context,
-        @IoDispatcher private val io: CoroutineDispatcher,
+    internal constructor(
+        private val context: Context,
+        private val io: CoroutineDispatcher,
+        private val createRtcEngine: (RtcEngineConfig) -> RtcEngine?,
     ) : CallEngine {
+        @Inject
+        constructor(
+            @ApplicationContext context: Context,
+            @IoDispatcher io: CoroutineDispatcher,
+        ) : this(context, io, { config -> RtcEngine.create(config) })
+
         /** Guards every engine lifecycle step (join, leave, destroy) and the controls (WR-04). */
         private val mutex = Mutex()
 
@@ -133,7 +141,7 @@ class AgoraManager
                         mAppId = BuildConfig.AGORA_APP_ID
                         mEventHandler = handler
                     }
-                RtcEngine.create(config).also { rtc ->
+                createRtcEngine(config)!!.also { rtc ->
                     rtc.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD)
                     rtc.setAudioScenario(Constants.AUDIO_SCENARIO_DEFAULT)
                     rtc.setDefaultAudioRoutetoSpeakerphone(true)
