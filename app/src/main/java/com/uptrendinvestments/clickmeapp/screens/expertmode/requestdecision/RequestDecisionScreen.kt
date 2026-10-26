@@ -36,6 +36,7 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestClientHeader
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestDetailsCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestEarningsSection
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestExpiredBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestMessageCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
@@ -128,6 +129,7 @@ private fun LoadedBody(
             locale = locale,
         )
         details.clientMessage?.let { RequestMessageCard(message = it) }
+        RequestEarningsSection(earnings = details.earnings)
     }
 }
 

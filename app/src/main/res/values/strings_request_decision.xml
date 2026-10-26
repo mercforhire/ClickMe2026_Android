@@ -13,4 +13,14 @@
     <string name="request_decision_expired_title">This request has expired</string>
     <string name="request_decision_expired_body">You can no longer accept or decline this booking.</string>
     <string name="request_decision_load_error">Couldn\'t load request</string>
+    <string name="request_decision_your_earnings">Your Earnings</string>
+    <string name="request_decision_client_pays">Client pays</string>
+    <string name="request_decision_platform_fee_pct">Platform fee (%1$s%%)</string>
+    <string name="request_decision_platform_fee">Platform fee</string>
+    <string name="request_decision_fee_amount">−%1$s</string>
+    <string name="request_decision_you_earn">You earn</string>
+    <string name="request_decision_estimated_net">≈ %1$s</string>
+    <string name="request_decision_estimated_caption">Estimated — fee applies when the booking is charged.</string>
+    <string name="request_decision_session_price">Session price</string>
+    <string name="request_decision_payout_pending">Payout amount pending</string>
 </resources>
