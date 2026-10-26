@@ -3,9 +3,13 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.availability
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
-/** Where the Availability screen was opened from; it only decides which tab stack owns the entry. */
+/**
+ * Where the Availability screen was opened from; it only decides which tab stack owns the entry. Dashboard is the
+ * Expert Tools entry (D-11, Phase 10 hand-off) and Bookings is the empty Upcoming state's "Update Availability"
+ * (UI-SPEC A3).
+ */
 @Serializable
-enum class AvailabilityOrigin { Topics, Profile }
+enum class AvailabilityOrigin { Topics, Profile, Dashboard, Bookings }
 
 /**
  * Nav3 route to Availability. The [origin] only distinguishes the tab stack: `NavigationState.toDecoratedEntries`
