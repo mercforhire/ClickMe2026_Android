@@ -323,6 +323,59 @@ class RescheduleResponseControllerTest {
             assertTrue(events.isEmpty())
         }
 
+    private class FakeResponding(
+        var acceptOutcome: AcceptOutcome = AcceptOutcome.Accepted,
+        var declineOutcome: DeclineOutcome = DeclineOutcome.Declined,
+    ) : RescheduleResponding {
+        val accepted = mutableListOf<String>()
+        val declined = mutableListOf<Pair<String, String?>>()
+
+        override suspend fun accept(bookingId: String): AcceptOutcome {
+            accepted += bookingId
+            return acceptOutcome
+        }
+
+        override suspend fun decline(
+            bookingId: String,
+            reason: String?,
+        ): DeclineOutcome {
+            declined += bookingId to reason
+            return declineOutcome
+        }
+    }
+
+    @Test
+    fun controllerWorksWithAnyResponder() =
+        runTest(main.testDispatcher) {
+            val fake = FakeResponding()
+            var reloads = 0
+            val c =
+                RescheduleResponseController(
+                    scope = backgroundScope,
+                    responder = fake,
+                    bookingId = "b9",
+                    reload = { reloads++ },
+                )
+
+            c.accept()
+            runCurrent()
+            assertEquals(listOf("b9"), fake.accepted)
+            assertEquals(1, reloads)
+            assertEquals(RescheduleNotice.Accepted, c.state.value.notice)
+            c.consumeNotice()
+
+            fake.declineOutcome =
+                DeclineOutcome.Failed(
+                    RescheduleFailure.Show(FieldError.Res(R.string.reschedule_error_not_pending), reload = true),
+                )
+            c.decline("Busy")
+            runCurrent()
+            assertEquals(listOf("b9" to "Busy"), fake.declined)
+            assertEquals(2, reloads)
+            assertEquals(error(R.string.reschedule_error_not_pending), c.state.value.dialog)
+            assertEquals(RescheduleSubmitting.None, c.state.value.submitting)
+        }
+
     @Test
     fun decline_marks_submitting_then_reloads_and_sets_the_declined_notice() =
         runTest(main.testDispatcher) {
