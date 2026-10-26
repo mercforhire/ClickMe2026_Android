@@ -488,7 +488,7 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 16/16 plans executed
+**Plans:** 16/20 plans executed
 Plans:
 **Wave 1**
 
@@ -523,6 +523,18 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 10-16-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device and SC-4 checks, follow-ups and hand-offs (all)
+
+**Gap closure** *(from 10-VERIFICATION.md CR-01 and 10-REVIEW.md WR-01/02/04/05; WR-03 and IN-01..07 deferred)*
+
+**Wave 1**
+
+- [ ] 10-17-PLAN.md — CR-01: Edit Expertise seed state (Loading / Failed / Ready) gates Save, Retry on failure, edits blocked until the profile tags load (EXP-01)
+- [ ] 10-18-PLAN.md — WR-02: stored topic duration kept and omitted from PATCH unless changed, stepper snaps onto the grid; WR-05: selected tags stay removable when the tag load fails (EXP-01, EXP-02)
+- [ ] 10-19-PLAN.md — WR-04: silent UTC PUT only when hydrate is lossless (D-15 body kept); WR-01: edits and refresh ignored while saving, edit ends the Saved hold (EXP-03, EXP-04)
+
+**Wave 2** *(blocked on gap Wave 1 completion)*
+
+- [ ] 10-20-PLAN.md — Gap-pass gate (both flavors, lint, R8), VALIDATION rows, review disposition ledger, STATE carry-forward of deferred findings (all)
 
 **UI hint**: yes
 
