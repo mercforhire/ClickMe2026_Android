@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Copy of the expert Dashboard workload half (EXP-05). Reused, not redefined here: tab_dashboard, expert_retry,
+        expert_refresh_failed, explore_join_call, content_loading, call_starting_now.
+    -->
+    <string name="dashboard_overview">Dashboard overview</string>
+    <string name="dashboard_hello">Hello, %1$s</string>
+    <string name="dashboard_hello_there">Hello, there</string>
+    <plurals name="dashboard_pending_requests">
+        <item quantity="one">1 Pending Request</item>
+        <item quantity="other">%1$d Pending Requests</item>
+    </plurals>
+    <string name="dashboard_pending_subtitle">Review and confirm new bookings</string>
+    <string name="dashboard_pending_zero_title">No pending requests</string>
+    <string name="dashboard_pending_zero_subtitle">New bookings will show up here</string>
+    <string name="dashboard_review_requests">Review requests</string>
+    <string name="dashboard_error_heading">Couldn\'t load dashboard</string>
+</resources>
