@@ -9,4 +9,7 @@
     <string name="expert_bookings_earnings">Earnings</string>
     <string name="expert_bookings_open_details">View booking details</string>
     <string name="expert_bookings_error_heading">Couldn\'t load sessions</string>
+    <string name="expert_bookings_topic">Topic: %1$s</string>
+    <!-- Past card announcement: client, topic, date, time range, status label. -->
+    <string name="expert_bookings_past_a11y">%1$s, %2$s, %3$s, %4$s, %5$s</string>
 </resources>

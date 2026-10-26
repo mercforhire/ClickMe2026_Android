@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -15,8 +16,10 @@ import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -33,10 +36,14 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.IOException
 import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "w411dp-h1200dp")
 class ExpertBookingsScreenTest {
     @get:Rule
     val rule = createComposeRule()
@@ -143,5 +150,76 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Couldn't load sessions").assertExists()
         rule.onNodeWithText("Check your connection and try again.").assertExists()
         rule.onNodeWithText("Retry").assertExists()
+    }
+
+    private fun showPast(
+        past: List<ExpertBookingItem>,
+        onOpenBooking: (String) -> Unit = {},
+    ) {
+        serve(upcoming = emptyList(), past = past)
+        show(onOpenBooking = onOpenBooking)
+        rule.onNodeWithText("Past").performClick()
+        rule.waitForIdle()
+    }
+
+    private fun pastItem(
+        id: String,
+        status: String,
+        hoursAgo: Long,
+    ) = expertBookingItem(
+        id = id,
+        statusCode = status,
+        start = now.minusSeconds(hoursAgo * 3600),
+    )
+
+    @Test
+    fun pastTabShowsLabelledCards() {
+        showPast(
+            listOf(
+                pastItem("p1", "completed", hoursAgo = 24),
+                pastItem("p2", "declined", hoursAgo = 48),
+                pastItem("p3", "expired", hoursAgo = 72),
+            ),
+        )
+        assertEquals(3, rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().size)
+        rule.onNodeWithText("Completed").assertExists()
+        rule.onNodeWithText("Cancelled").assertExists()
+        rule.onNodeWithText("Missed").assertExists()
+        assertEquals(3, rule.onAllNodesWithText("Topic: Algorithms").fetchSemanticsNodes().size)
+        val date = formatShortDate(now.minusSeconds(24 * 3600).atZone(ZoneId.systemDefault()).toLocalDate(), Locale.US)
+        assertTrue(rule.onAllNodesWithText(date, substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithTag(EXPERT_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithTag(EXPERT_UPCOMING_CARD_TAG).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun pastCardsAreNewestFirst() {
+        showPast(
+            listOf(
+                pastItem("older", "completed", hoursAgo = 72),
+                pastItem("newer", "cancelled", hoursAgo = 24),
+            ),
+        )
+        val cards = rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG)
+        cards[0].assertTextContains("Cancelled", substring = true)
+        cards[1].assertTextContains("Completed", substring = true)
+    }
+
+    @Test
+    fun pastCardOpensSummary() {
+        val opened = mutableListOf<String>()
+        showPast(listOf(pastItem("p1", "completed", hoursAgo = 24)), onOpenBooking = { opened += it })
+        rule.onNodeWithTag(EXPERT_PAST_CARD_TAG).performClick()
+        assertEquals(listOf("p1"), opened)
+    }
+
+    @Test
+    fun pastFirstLoadShowsPastSkeleton() {
+        api.expertBookingsHandler = { awaitCancellation() }
+        show()
+        rule.onNodeWithText("Past").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        assertTrue(rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().isEmpty())
     }
 }

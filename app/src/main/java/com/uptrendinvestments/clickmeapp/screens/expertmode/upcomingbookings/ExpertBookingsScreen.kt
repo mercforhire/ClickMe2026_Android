@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -43,10 +45,12 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertBookingsSkeleton
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertPastCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.asString
+import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import java.text.DateFormat
 import java.time.Instant
@@ -165,16 +169,23 @@ fun ExpertBookingsContent(
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                ExpertBookingsTabBody(
-                    state = state,
-                    joinNow = joinNow,
-                    onRetry = onRetry,
-                    onOpenBooking = onOpenBooking,
-                    onJoin = onJoin,
-                    zone = zone,
-                    timeFormat = timeFormat,
-                    locale = locale,
-                )
+                Crossfade(
+                    targetState = state.selectedTab,
+                    animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
+                    label = "expertBookingsTab",
+                ) { tab ->
+                    ExpertBookingsTabBody(
+                        tab = tab,
+                        state = state,
+                        joinNow = joinNow,
+                        onRetry = onRetry,
+                        onOpenBooking = onOpenBooking,
+                        onJoin = onJoin,
+                        zone = zone,
+                        timeFormat = timeFormat,
+                        locale = locale,
+                    )
+                }
             }
         }
     }
@@ -183,6 +194,7 @@ fun ExpertBookingsContent(
 @Suppress("LongParameterList")
 @Composable
 private fun ExpertBookingsTabBody(
+    tab: BookingsTab,
     state: ExpertBookingsUiState,
     joinNow: Instant,
     onRetry: () -> Unit,
@@ -193,7 +205,7 @@ private fun ExpertBookingsTabBody(
     locale: Locale,
 ) {
     when (val load = state.load) {
-        ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = state.selectedTab == BookingsTab.Past)
+        ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = tab == BookingsTab.Past)
         is ExpertBookingsLoad.Failed -> ScrollableCentered { ExpertBookingsError(load.message, onRetry) }
         ExpertBookingsLoad.Loaded ->
             LazyColumn(
@@ -202,19 +214,31 @@ private fun ExpertBookingsTabBody(
                     PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                if (state.selectedTab == BookingsTab.Upcoming) {
-                    items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
-                        ExpertUpcomingCard(
-                            item = item,
-                            now = joinNow,
-                            onOpen = { onOpenBooking(item.bookingId) },
-                            onJoin = { onJoin(item) },
-                            modifier = Modifier.animateItem(),
-                            zone = zone,
-                            timeFormat = timeFormat,
-                            locale = locale,
-                        )
-                    }
+                when (tab) {
+                    BookingsTab.Upcoming ->
+                        items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
+                            ExpertUpcomingCard(
+                                item = item,
+                                now = joinNow,
+                                onOpen = { onOpenBooking(item.bookingId) },
+                                onJoin = { onJoin(item) },
+                                modifier = Modifier.animateItem(),
+                                zone = zone,
+                                timeFormat = timeFormat,
+                                locale = locale,
+                            )
+                        }
+                    BookingsTab.Past ->
+                        items(items = state.lists.past, key = { it.item.bookingId }) { row ->
+                            ExpertPastCard(
+                                row = row,
+                                onOpen = { onOpenBooking(row.item.bookingId) },
+                                modifier = Modifier.animateItem(),
+                                zone = zone,
+                                timeFormat = timeFormat,
+                                locale = locale,
+                            )
+                        }
                 }
             }
     }
