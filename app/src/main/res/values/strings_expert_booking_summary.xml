@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expert Booking Summary (Phase 11, EXP-08 / EXP-09).
+         Reused elsewhere, not duplicated here: price_free, explore_join_call, explore_join_call_state, expert_retry,
+         content_loading, expert_meeting_in_app_voice, expert_meeting_skype_zoom, topics_duration_*. -->
+    <string name="expert_summary_title">Booking Summary</string>
+    <string name="expert_summary_id">ID: #%1$s</string>
+    <string name="expert_summary_date">Date</string>
+    <string name="expert_summary_time">Time</string>
+    <string name="expert_summary_duration">Duration</string>
+    <string name="expert_summary_topic">Topic</string>
+    <string name="expert_summary_meeting_type">Meeting Type</string>
+    <string name="expert_summary_fee">Consultation Fee</string>
+    <string name="expert_summary_load_error">Couldn\'t load booking</string>
+    <string name="expert_summary_loading">Loading</string>
+    <string name="expert_summary_client_message">Client\'s message</string>
+    <string name="expert_summary_cancel">Cancel Booking</string>
+</resources>
