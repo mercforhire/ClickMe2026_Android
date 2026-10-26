@@ -1,0 +1,238 @@
+package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.ExpertRescheduleBadge
+import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
+import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
+import com.uptrendinvestments.clickmeapp.managers.isStartingNow
+import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingClientDto
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingSessionDto
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertStatusMeta
+import com.uptrendinvestments.clickmeapp.model.responses.RESCHEDULE_INITIATED_BY_CLIENT
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.StartingNowBadge
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
+import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import com.uptrendinvestments.clickmeapp.util.Money
+import java.text.DateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
+
+/** Test tag on an expert Upcoming card. */
+const val EXPERT_UPCOMING_CARD_TAG = "expert_bookings_upcoming_card"
+
+/** Test tag on the Join button of an expert Upcoming card: enabled by the join window, live on the clock tick. */
+const val EXPERT_BOOKINGS_JOIN_TAG = "expert_bookings_join"
+
+private val IconSize = 20.dp
+private val AvatarSize = 56.dp
+private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
+
+/**
+ * The net amount the expert earns from [item], formatted, or null when the breakdown has no net amount or no
+ * currency. Gross never stands in for net under an "Earnings" label (RESEARCH C4), and a currency is never guessed.
+ */
+internal fun ExpertBookingItem.netEarningsText(locale: Locale): String? {
+    val breakdown = session.earningsBreakdown ?: return null
+    val net = breakdown.netAmount ?: return null
+    val currency = breakdown.currency ?: session.consultationFee?.currency ?: return null
+    return Money.formatMajor(net, currency, locale)
+}
+
+/**
+ * An expert Upcoming booking card (iOS expert session card, UI-SPEC surface 5). The card body opens the expert Booking
+ * Summary; Join is its own target, live within the join window (D-14). There is no Message, Reschedule or Private Note
+ * control (Phase 12, DEF-1, Phase 8 D-16).
+ *
+ * @param now the shared join clock value; drives the Join button and the "Starting now" badge.
+ * @param onOpen opens the summary; tapping Join does not.
+ * @param onJoin starts the call with the client as the peer.
+ * @param zone zone the date and times are shown in; defaults to the device zone.
+ * @param timeFormat the device time format so the 12 or 24 hour setting applies.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ExpertUpcomingCard(
+    item: ExpertBookingItem,
+    now: Instant,
+    onOpen: () -> Unit,
+    onJoin: () -> Unit,
+    modifier: Modifier = Modifier,
+    zone: ZoneId = ZoneId.systemDefault(),
+    timeFormat: DateFormat = rememberDeviceTimeFormat(),
+    locale: Locale = LocalConfiguration.current.locales[0],
+) {
+    val earnings = item.netEarningsText(locale)
+    Surface(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .testTag(EXPERT_UPCOMING_CARD_TAG)
+                .clickable(
+                    onClickLabel = stringResource(R.string.expert_bookings_open_details),
+                    role = Role.Button,
+                    onClick = onOpen,
+                ),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(url = item.client.avatarUrl, contentDescription = null, size = AvatarSize)
+                    Spacer(Modifier.width(Spacing.md))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = clientDisplayName(item.client.name),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = item.topic ?: stringResource(R.string.explore_session_topic_fallback),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = Spacing.xs),
+                        )
+                    }
+                }
+                if (earnings != null) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.expert_bookings_earnings),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.extras.onSurfaceMuted,
+                        )
+                        Text(
+                            text = earnings,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+                if (isStartingNow(item.startTime, now)) StartingNowBadge()
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                IconText(
+                    icon = Icons.Outlined.CalendarMonth,
+                    text = formatShortDate(item.startTime.atZone(zone).toLocalDate(), locale),
+                )
+                IconText(
+                    icon = Icons.Outlined.Schedule,
+                    text = formatSessionTimeRange(item.startTime, item.endTime, zone, timeFormat),
+                )
+            }
+            if (item.statusCode == STATUS_PENDING_RESCHEDULE) {
+                ExpertRescheduleBadge(
+                    initiatedByClient = item.reschedule?.initiatedBy == RESCHEDULE_INITIATED_BY_CLIENT,
+                )
+            }
+            JoinCallButton(
+                enabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now),
+                onClick = onJoin,
+                modifier = Modifier.testTag(EXPERT_BOOKINGS_JOIN_TAG),
+            )
+        }
+    }
+}
+
+@Composable
+private fun IconText(
+    icon: ImageVector,
+    text: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(IconSize),
+            tint = MaterialTheme.extras.onSurfaceMuted,
+        )
+        Spacer(Modifier.width(Spacing.sm))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Preview(name = "ExpertUpcomingCard")
+@Composable
+private fun ExpertUpcomingCardPreview() {
+    ClickMeTheme {
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            ExpertUpcomingCard(
+                item =
+                    ExpertBookingItem(
+                        bookingId = "b1",
+                        client = ExpertBookingClientDto(id = "c1", name = "Ada Lovelace"),
+                        session =
+                            ExpertBookingSessionDto(
+                                topic = "Algorithms",
+                                startTime = PREVIEW_START,
+                                endTime = PREVIEW_START.plusSeconds(3600),
+                            ),
+                        status = ExpertStatusMeta(code = "confirmed"),
+                    ),
+                now = PREVIEW_START,
+                onOpen = {},
+                onJoin = {},
+                modifier = Modifier.padding(Spacing.md),
+            )
+        }
+    }
+}

@@ -1,0 +1,169 @@
+package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
+import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
+import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import java.text.DateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
+
+/** Test tag on the expert Bookings list (either tab). */
+const val EXPERT_BOOKINGS_LIST_TAG = "expert_bookings_list"
+
+private val TabMinHeight = 48.dp
+
+/**
+ * Hilt-aware expert Bookings tab root (EXP-08).
+ *
+ * @param onOpenBooking opens the expert Booking Summary for a booking id.
+ * @param onUpdateAvailability opens Availability from the empty Upcoming state.
+ */
+@Composable
+fun ExpertBookingsScreen(
+    onOpenBooking: (String) -> Unit,
+    onUpdateAvailability: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ExpertBookingsViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+
+    ExpertBookingsContent(
+        state = state,
+        joinNow = joinNow,
+        onSelectTab = viewModel::selectTab,
+        onRefresh = viewModel::refresh,
+        onRetry = viewModel::retry,
+        onOpenBooking = onOpenBooking,
+        onJoin = viewModel::join,
+        onUpdateAvailability = onUpdateAvailability,
+        onNoticeConsumed = {},
+        onRefreshFailureConsumed = {},
+        modifier = modifier,
+    )
+}
+
+/**
+ * Stateless expert Bookings tab: app bar, full-width Upcoming / Past tabs, pull-to-refresh and the list of the
+ * selected tab (UI-SPEC surface 5). Cards offer the D-14 and D-15 actions only: tapping opens the summary and Join is
+ * live within the join window.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Suppress("LongParameterList", "UNUSED_PARAMETER")
+@Composable
+fun ExpertBookingsContent(
+    state: ExpertBookingsUiState,
+    joinNow: Instant,
+    onSelectTab: (BookingsTab) -> Unit,
+    onRefresh: () -> Unit,
+    onRetry: () -> Unit,
+    onOpenBooking: (String) -> Unit,
+    onJoin: (ExpertBookingItem) -> Unit,
+    onUpdateAvailability: () -> Unit,
+    onNoticeConsumed: () -> Unit,
+    onRefreshFailureConsumed: () -> Unit,
+    modifier: Modifier = Modifier,
+    zone: ZoneId = ZoneId.systemDefault(),
+    timeFormat: DateFormat = rememberDeviceTimeFormat(),
+    locale: Locale = LocalConfiguration.current.locales[0],
+) {
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = { AuthTopAppBar(title = stringResource(R.string.expert_bookings_title), onBack = null) },
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            PrimaryTabRow(
+                selectedTabIndex = state.selectedTab.ordinal,
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                BookingsTab.entries.forEach { tab ->
+                    val selected = tab == state.selectedTab
+                    Tab(
+                        selected = selected,
+                        onClick = { onSelectTab(tab) },
+                        modifier = Modifier.heightIn(min = TabMinHeight),
+                        text = {
+                            Text(
+                                text =
+                                    stringResource(
+                                        when (tab) {
+                                            BookingsTab.Upcoming -> R.string.expert_bookings_tab_upcoming
+                                            BookingsTab.Past -> R.string.expert_bookings_tab_past
+                                        },
+                                    ),
+                                style =
+                                    if (selected) {
+                                        MaterialTheme.typography.titleMedium
+                                    } else {
+                                        MaterialTheme.typography.bodyLarge
+                                    },
+                                color =
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.onSurface
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                            )
+                        },
+                    )
+                }
+            }
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
+                    contentPadding =
+                        PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    if (state.selectedTab == BookingsTab.Upcoming) {
+                        items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
+                            ExpertUpcomingCard(
+                                item = item,
+                                now = joinNow,
+                                onOpen = { onOpenBooking(item.bookingId) },
+                                onJoin = { onJoin(item) },
+                                zone = zone,
+                                timeFormat = timeFormat,
+                                locale = locale,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
