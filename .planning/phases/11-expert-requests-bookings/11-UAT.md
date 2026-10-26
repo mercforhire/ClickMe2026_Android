@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-26T23:19:56.393Z
+updated: 2026-10-26T23:50:00Z
 ---
 
 ## Current Test
@@ -77,5 +77,18 @@ blocked: 0
   severity: major
   test: 5
   evidence: "Fixed build (installed 19:13). logcat 19:17:51 and 19:18:31: CallService started -> conn state=2 reason=0 -> conn state=3 reason=1 (CONNECTED / JOIN_SUCCESS); no 'engine create' or 'joinChannel failed' line. 19:18:26 conn state=1 reason=5 (left, after ~35 s). onUserJoined/onUserOffline are not logged, so whether the remote uid ever arrived is not visible. User: the iOS client was in its call screen at the same time and also showed 'waiting for the other person' — both sides connected, neither sees the other."
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "Probable (~65%): Android's Agora engine/connection runs LIVE_BROADCASTING because buildRtcEngineConfig never sets RtcEngineConfig.mChannelProfile (SDK default 1; device agoraapi.log shows initializeEx channelProfile:1, connection channelProfile:1 clientRoleType:2, rtc.channel_profile=1 once and never changed after joinChannel), while iOS sets config.channelProfile = .communication on its engine config (AgoraManager.swift:99). App ID, channel (= booking id), PUBLISHER token, broadcaster role and int uid are equivalent on both sides, and the Android SDK raised no remote-user callback across 3 joins (one 2m14s). Residual alternative (~25%): the iOS tester joined a different booking than 30a789c1-107b-48ee-b782-5e151b17751a."
+  artifacts:
+    - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/managers/AgoraEngineConfig.kt"
+      issue: "Lines 26-30: buildRtcEngineConfig sets mContext/mAppId/mEventHandler only; mChannelProfile stays at the SDK default 1 (LIVE_BROADCASTING) while iOS initializes the engine in COMMUNICATION (AgoraManager.swift:99)"
+    - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/managers/AgoraManager.kt"
+      issue: "Line 126: COMMUNICATION set only in ChannelMediaOptions; device log shows no re-profile after joinChannel. Lines 83-95: onUserJoined/onUserOffline/onRemoteAudioStateChanged/onClientRoleChanged not logged, so remote presence is invisible in logcat"
+    - path: "app/src/test/java/com/uptrendinvestments/clickmeapp/managers/AgoraEngineConfigTest.kt"
+      issue: "Does not assert the channel profile, so the LIVE_BROADCASTING default could not be caught"
+  missing:
+    - "In buildRtcEngineConfig set config.mChannelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION (iOS parity); keep the per-join COMMUNICATION option"
+    - "Extend AgoraEngineConfigTest to assert mChannelProfile == CHANNEL_PROFILE_COMMUNICATION"
+    - "Log (no uid/token/channel values) onUserJoined, onUserOffline(reason), onRemoteAudioStateChanged(state, reason) and onClientRoleChanged in the AgoraManager handler"
+    - "Confirm the iOS tester was in the same booking (iOS Xcode console, or bookings.client_joined_at / expert_joined_at)"
+    - "Two-sided re-test of 11-UAT test 5 on a freshly installed APK (check lastUpdateTime); pull agoraapi.log and confirm channelProfile:0 at initializeEx plus a remote-join callback and Active status; then 09-HUMAN-UAT items 1, 2, 5"
+  debug_session: ".planning/debug/android-ios-call-peers-never-meet.md"
