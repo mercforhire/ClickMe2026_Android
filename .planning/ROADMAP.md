@@ -596,7 +596,7 @@ Plans:
   3. A user can report another user (the backend accepts the reason enum value) and block them, from chat and from Expert Profile.
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
-**Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread.
+**Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
 **Plans:** TBD
 **UI hint**: yes
 
@@ -614,7 +614,7 @@ Plans:
   4. A user can write a review from the `session/ended` and `review/nudge` pushes and from Booking Summary.
   5. A build is on the internal testing track with a few real users on a mix of devices. The store listing, data safety form and foreground-service declaration are drafted in Play Console. (PRD Week 6 checkpoint: every MVP flow except payouts and settings works, and a build is with testers)
 
-**Planning notes:** Third-biggest schedule risk: deep links into per-tab back stacks. If the schedule slips, the notifications list is cut #2 and Write Review is cut #3.
+**Planning notes:** Third-biggest schedule risk: deep links into per-tab back stacks. If the schedule slips, the notifications list is cut #2 and Write Review is cut #3. Phase 11 hand-off: a push that routes to an incoming request must build `RequestDecisionKey` with `isExpired` and the expiry (the request detail endpoint has no status or expiry), and a push to an expert booking builds `ExpertBookingSummaryKey(bookingId, origin)`.
 **Plans:** TBD
 **UI hint**: yes
 
@@ -631,7 +631,7 @@ Plans:
   3. Any user can open their profile hub, edit their profile and avatar, and change their password. (Week 7 checkpoint, user-confirmed)
   4. Any user can delete their account from the app and is then logged out, and Help/FAQ opens a `mailto:` support link. (Week 7 checkpoint, user-confirmed)
 
-**Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings). Phase 10 hand-off: replace the Phase 10 Availability placeholder row in the expert Profile; reuse `ExpertiseEditorSheet` in expert settings.
+**Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings). Phase 10 hand-off: replace the Phase 10 Availability placeholder row in the expert Profile; reuse `ExpertiseEditorSheet` in expert settings. Phase 11 hand-off: replace the Profile Settings and Payouts handlers in `ExpertToolsGrid` (and the inert earnings card tap), and route `clickme://connect/return|refresh` into a Dashboard reload through `ExpertLaunchRequest.dashboard`.
 **Plans:** TBD
 **UI hint**: yes
 
