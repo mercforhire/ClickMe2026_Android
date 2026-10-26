@@ -1,9 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,6 +23,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subview
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.EXPERT_CANCEL_CONFIRM_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.EXPERT_CANCEL_CONTINUE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.EXPERT_CANCEL_REASON_ROW_TAG_PREFIX
+import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.ExpertCancelConfirmStep
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.label
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -36,7 +39,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.text.SimpleDateFormat
 import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -152,6 +158,106 @@ class ExpertCancellationScreenTest {
             rule.onNodeWithTag(EXPERT_CANCEL_REASON_ROW_TAG_PREFIX + it.name).assertIsNotSelected()
         }
     }
+
+    // region Task 2: refund line
+
+    private fun toConfirmStep() {
+        pick("Other")
+        goToConfirm()
+    }
+
+    @Test
+    fun paidBookingShowsHoldReleaseLine() {
+        stub(fee = 75.0)
+        showScreen()
+
+        toConfirmStep()
+
+        rule.onNodeWithText("The client's payment hold will be released.").assertExists()
+        rule.onAllNodesWithText("won't be refunded", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("full refund", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("Refunds typically appear", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun freeBookingShowsNoRefundLine() {
+        stub(fee = null)
+        showScreen()
+
+        toConfirmStep()
+
+        rule.onAllNodesWithText("payment hold", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("refund", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun serverRefundBecomesNotice() {
+        stub(fee = 75.0, refundAmount = 75.0, currency = "USD")
+        showScreen()
+
+        toConfirmStep()
+        confirm()
+
+        assertEquals(
+            BookingsLaunch(BookingsTab.Past, BookingsNotice.CancelledWithRefund("$75.00")),
+            launchRequest.bookings.consume(),
+        )
+    }
+
+    private fun showConfirmStep(refund: ExpertRefundPreview) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertCancelConfirmStep(
+                    summary = summary,
+                    refund = refund,
+                    isSubmitting = false,
+                    onKeepBooking = {},
+                    onConfirm = {},
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+    }
+
+    private val summary =
+        ExpertCancelSummary(
+            clientName = "Ada Lovelace",
+            clientAvatarUrl = null,
+            topic = "Algorithms",
+            start = Instant.parse("2026-10-24T18:00:00Z"),
+            end = Instant.parse("2026-10-24T19:00:00Z"),
+        )
+
+    @Test
+    fun dormantFullRefundRowShowsAmountAndNote() {
+        showConfirmStep(ExpertRefundPreview.ClientFullRefund(75.0, "USD"))
+
+        rule.onNodeWithText("Your client will receive a full refund of $75.00", substring = true).assertExists()
+        rule
+            .onNodeWithText("Refunds typically appear in the client's account within 3–5 business days.")
+            .assertExists()
+    }
+
+    @Test
+    fun dormantNoRefundRowShowsItsLineAndNoNote() {
+        showConfirmStep(ExpertRefundPreview.ClientNoRefundWithin24h)
+
+        rule
+            .onNodeWithText("Your client won't be refunded — cancelling within 24 hours of the session")
+            .assertExists()
+        rule.onAllNodesWithText("Refunds typically appear", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun dormantPolicyRowNeverStatesAnAmount() {
+        showConfirmStep(ExpertRefundPreview.PolicyFallback)
+
+        rule.onNodeWithText("Any refund follows our cancellation policy.").assertExists()
+    }
+
+    // endregion
 
     @Test
     fun reasonLabelsEqualTheWireLabels() {

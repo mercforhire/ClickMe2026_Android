@@ -21,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,7 +47,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
@@ -61,6 +66,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import com.uptrendinvestments.clickmeapp.util.Money
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -199,6 +205,15 @@ private fun ConfirmCard(
                 )
             }
             SummaryCard(summary = summary, refund = refund, zone = zone, timeFormat = timeFormat, locale = locale)
+            if (refund is ExpertRefundPreview.ClientFullRefund) {
+                Text(
+                    text = stringResource(R.string.expert_cancel_refund_note),
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.extras.onSurfaceMuted,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -266,18 +281,50 @@ private fun SummaryCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 InfoRow(icon = Icons.Outlined.CalendarMonth, text = whenText)
-                RefundRow(refund = refund)
+                RefundRow(refund = refund, locale = locale)
             }
         }
     }
 }
 
 @Composable
-private fun RefundRow(refund: ExpertRefundPreview) {
+private fun RefundRow(
+    refund: ExpertRefundPreview,
+    locale: Locale,
+) {
     when (refund) {
         ExpertRefundPreview.HoldReleased ->
             InfoRow(Icons.Outlined.Lock, stringResource(R.string.expert_cancel_refund_hold))
+        is ExpertRefundPreview.ClientFullRefund -> {
+            val amount = Money.formatMajor(refund.amountMajor, refund.currency, locale)
+            val text = stringResource(R.string.expert_cancel_refund_full, amount)
+            val emphasis = MaterialTheme.typography.titleMedium.toSpanStyle()
+            InfoRow(Icons.Outlined.CreditCard, amountEmphasised(text, amount, emphasis))
+        }
+        ExpertRefundPreview.ClientNoRefundWithin24h ->
+            InfoRow(
+                Icons.Outlined.ErrorOutline,
+                stringResource(R.string.expert_cancel_refund_none_24h),
+                iconTint = MaterialTheme.colorScheme.tertiary,
+            )
+        ExpertRefundPreview.PolicyFallback ->
+            InfoRow(Icons.Outlined.CreditCard, stringResource(R.string.cancel_booking_refund_policy))
         ExpertRefundPreview.None -> Unit
+    }
+}
+
+private fun amountEmphasised(
+    text: String,
+    amount: String,
+    style: SpanStyle,
+) = buildAnnotatedString {
+    val index = text.indexOf(amount)
+    if (index < 0) {
+        append(text)
+    } else {
+        append(text.substring(0, index))
+        withStyle(style) { append(amount) }
+        append(text.substring(index + amount.length))
     }
 }
 

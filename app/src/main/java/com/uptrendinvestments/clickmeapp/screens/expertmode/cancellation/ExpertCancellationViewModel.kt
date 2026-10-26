@@ -85,8 +85,17 @@ class ExpertCancellationViewModel
             )
         }
 
-        private fun previewFor(detail: ExpertBookingDetail): ExpertRefundPreview =
-            expertRefundPreview(detail.paymentState())
+        /** Computed when the confirm step is reached, so the 24 hour boundary uses that moment. */
+        private fun previewFor(detail: ExpertBookingDetail): ExpertRefundPreview {
+            val fee = detail.session.consultationFee
+            return expertRefundPreview(
+                payment = detail.paymentState(),
+                amountMajor = fee?.amount,
+                currency = fee?.currency,
+                start = detail.startTime,
+                now = clock.instant(),
+            )
+        }
 
         private fun load() {
             loadJob?.cancel()
