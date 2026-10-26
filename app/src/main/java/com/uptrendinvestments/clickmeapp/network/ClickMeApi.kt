@@ -37,6 +37,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -379,4 +381,55 @@ interface ClickMeApi {
         @Path("id") requestId: String,
         @Body body: DeclineBookingRequestBody,
     ): SuccessDataResponse<DeclineBookingRequestData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings getExpertBookings. `type` is `upcoming` or `past` and is required (422
+     * otherwise); `limit` is 1 to 100.
+     */
+    @GET(ApiRequestUrls.EXPERT_BOOKINGS)
+    suspend fun getExpertBookings(
+        @Query("type") type: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ExpertBookingsPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings getExpertBookingDetails. The route ends in `/details`; the backend has no
+     * GET on the bare booking id (RESEARCH C1).
+     */
+    @GET(ApiRequestUrls.EXPERT_BOOKING_DETAILS)
+    suspend fun getExpertBookingDetails(
+        @Path("id") bookingId: String,
+    ): SuccessDataResponse<ExpertBookingDetail>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings cancelExpertBooking. The backend schema is `.strict()` with `reason` as
+     * its only key, so an explicit body is always passed. A second cancel on a cancelled booking is 409
+     * `INVALID_STATUS`; only the lost race is `ALREADY_CANCELLED` (RESEARCH C8). The refund is in MAJOR units.
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_CANCEL)
+    suspend fun cancelExpertBooking(
+        @Path("id") bookingId: String,
+        @Body body: CancelBookingRequest,
+    ): SuccessDataResponse<CancelBookingData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings acceptExpertReschedule. The backend schema is `.strict()`, so an explicit
+     * `{}` body is always passed. A repeat on an already confirmed booking is an idempotent 200 (RESEARCH C9).
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_ACCEPT_RESCHEDULE)
+    suspend fun acceptExpertReschedule(
+        @Path("id") bookingId: String,
+        @Body body: AcceptRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings declineExpertReschedule. The backend schema is `.strict()` (`reason`
+     * only). A repeat on an already resolved booking is an idempotent 200 (RESEARCH C9).
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_DECLINE_RESCHEDULE)
+    suspend fun declineExpertReschedule(
+        @Path("id") bookingId: String,
+        @Body body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
 }

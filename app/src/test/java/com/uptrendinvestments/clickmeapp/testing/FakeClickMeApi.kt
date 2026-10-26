@@ -38,6 +38,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -125,6 +127,14 @@ class FakeClickMeApi : ClickMeApi {
     var acceptBookingRequestHandler: suspend (String, AcceptBookingRequestBody) -> AcceptBookingRequestData =
         { _, _ -> notStubbed() }
     var declineBookingRequestHandler: suspend (String, DeclineBookingRequestBody) -> DeclineBookingRequestData =
+        { _, _ -> notStubbed() }
+    var expertBookingsHandler: suspend (type: String) -> ExpertBookingsPayload = { notStubbed() }
+    var expertBookingDetailsHandler: suspend (String) -> ExpertBookingDetail = { notStubbed() }
+    var cancelExpertBookingHandler: suspend (String, CancelBookingRequest) -> CancelBookingData =
+        { _, _ -> notStubbed() }
+    var acceptExpertRescheduleHandler: suspend (String, AcceptRescheduleRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
+    var declineExpertRescheduleHandler: suspend (String, DeclineRescheduleRequest) -> RescheduleResponseData =
         { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
@@ -265,6 +275,21 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var declineBookingRequestCalls = 0
         private set
 
+    @Volatile var expertBookingsCalls = 0
+        private set
+
+    @Volatile var expertBookingDetailsCalls = 0
+        private set
+
+    @Volatile var cancelExpertBookingCalls = 0
+        private set
+
+    @Volatile var acceptExpertRescheduleCalls = 0
+        private set
+
+    @Volatile var declineExpertRescheduleCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -377,6 +402,30 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /expert/booking-requests/{id}/decline call (id, body), in call order. */
     val declineBookingRequestRequests: List<Pair<String, DeclineBookingRequestBody>>
         get() = synchronized(_declineBookingRequestRequests) { _declineBookingRequestRequests.toList() }
+
+    private val _expertBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
+
+    /** The (type, page, limit) of every getExpertBookings call, in call order. */
+    val expertBookingsQueries: List<Triple<String, Int, Int>>
+        get() = synchronized(_expertBookingsQueries) { _expertBookingsQueries.toList() }
+
+    private val _cancelExpertBookingRequests = mutableListOf<Pair<String, CancelBookingRequest>>()
+
+    /** Every POST /expert/bookings/{id}/cancel call (id, body), in call order. */
+    val cancelExpertBookingRequests: List<Pair<String, CancelBookingRequest>>
+        get() = synchronized(_cancelExpertBookingRequests) { _cancelExpertBookingRequests.toList() }
+
+    private val _acceptExpertRescheduleRequests = mutableListOf<Pair<String, AcceptRescheduleRequest>>()
+
+    /** Every POST /expert/bookings/{id}/accept-reschedule call (id, body), in call order. */
+    val acceptExpertRescheduleRequests: List<Pair<String, AcceptRescheduleRequest>>
+        get() = synchronized(_acceptExpertRescheduleRequests) { _acceptExpertRescheduleRequests.toList() }
+
+    private val _declineExpertRescheduleRequests = mutableListOf<Pair<String, DeclineRescheduleRequest>>()
+
+    /** Every POST /expert/bookings/{id}/decline-reschedule call (id, body), in call order. */
+    val declineExpertRescheduleRequests: List<Pair<String, DeclineRescheduleRequest>>
+        get() = synchronized(_declineExpertRescheduleRequests) { _declineExpertRescheduleRequests.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -689,6 +738,48 @@ class FakeClickMeApi : ClickMeApi {
         declineBookingRequestCalls++
         synchronized(_declineBookingRequestRequests) { _declineBookingRequestRequests += requestId to body }
         return ok(declineBookingRequestHandler(requestId, body))
+    }
+
+    override suspend fun getExpertBookings(
+        type: String,
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ExpertBookingsPayload> {
+        expertBookingsCalls++
+        synchronized(_expertBookingsQueries) { _expertBookingsQueries += Triple(type, page, limit) }
+        return ok(expertBookingsHandler(type))
+    }
+
+    override suspend fun getExpertBookingDetails(bookingId: String): SuccessDataResponse<ExpertBookingDetail> {
+        expertBookingDetailsCalls++
+        return ok(expertBookingDetailsHandler(bookingId))
+    }
+
+    override suspend fun cancelExpertBooking(
+        bookingId: String,
+        body: CancelBookingRequest,
+    ): SuccessDataResponse<CancelBookingData> {
+        cancelExpertBookingCalls++
+        synchronized(_cancelExpertBookingRequests) { _cancelExpertBookingRequests += bookingId to body }
+        return ok(cancelExpertBookingHandler(bookingId, body))
+    }
+
+    override suspend fun acceptExpertReschedule(
+        bookingId: String,
+        body: AcceptRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        acceptExpertRescheduleCalls++
+        synchronized(_acceptExpertRescheduleRequests) { _acceptExpertRescheduleRequests += bookingId to body }
+        return ok(acceptExpertRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun declineExpertReschedule(
+        bookingId: String,
+        body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        declineExpertRescheduleCalls++
+        synchronized(_declineExpertRescheduleRequests) { _declineExpertRescheduleRequests += bookingId to body }
+        return ok(declineExpertRescheduleHandler(bookingId, body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */
