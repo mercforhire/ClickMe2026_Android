@@ -100,6 +100,8 @@
     <string name="call_action_add_payment_method">add a payment method</string>
     <string name="call_action_cancel_booking">cancel this booking</string>
     <string name="call_action_edit_availability">edit your availability</string>
+    <string name="call_action_set_up_payouts">set up payouts</string>
+    <string name="call_action_respond_reschedule">respond to this reschedule</string>
 
     <!-- Overtime cutoff (CALL-07). -->
     <string name="call_time_limit_title">Call ended</string>
