@@ -46,7 +46,8 @@ import javax.inject.Inject
  *
  * Edits are mirrored into [SavedStateHandle] so unsaved work survives process death (D-16); there are no dirty
  * flags and leaving the screen discards edits without a prompt. Save shows the shared [SaveState]: Idle, Saving,
- * then Saved for the 2-second hold, then Idle.
+ * then Saved for the 2-second hold, then Idle. While saving, edits and pull-to-refresh are ignored, so Saved always
+ * matches what was sent; an edit during the Saved hold ends the hold at once (WR-01).
  */
 @HiltViewModel
 class AvailabilityViewModel
@@ -60,6 +61,9 @@ class AvailabilityViewModel
         val uiState: StateFlow<AvailabilityUiState> = _uiState.asStateFlow()
 
         private var loadJob: Job? = null
+
+        /** The in-flight Save, then its Saved hold; an edit during the hold cancels it (WR-01). */
+        private var saveJob: Job? = null
 
         /** Unsaved edits were restored after process death: the first load must not overwrite them. */
         private var restored = false
@@ -79,7 +83,11 @@ class AvailabilityViewModel
         fun retry() = load(LoadMode.Initial)
 
         /** Pull-to-refresh: overwrites local edits with the server copy (iOS parity); a failure keeps them. */
-        fun refresh() = load(LoadMode.Pull)
+        fun refresh() {
+            // WR-01: a pull during a save could land the pre-PUT copy over the schedule being sent.
+            if (_uiState.value.saveState == SaveState.Saving) return
+            load(LoadMode.Pull)
+        }
 
         private fun load(mode: LoadMode) {
             loadJob?.cancel()
@@ -191,7 +199,20 @@ class AvailabilityViewModel
         fun autoDetectTimezone() = selectTimezone(Timezones.detected().id)
 
         private fun edit(transform: (AvailabilityUiState) -> AvailabilityUiState) {
-            val next = _uiState.updateAndGet(transform)
+            // WR-01: while a save is in flight the screen must keep showing exactly what was sent.
+            val wasSaved =
+                when (_uiState.value.saveState) {
+                    SaveState.Saving -> return
+                    SaveState.Saved -> true
+                    else -> false
+                }
+            // An edit ends the Saved hold; the PUT is long done, so this only cuts the hold delay.
+            if (wasSaved) saveJob?.cancel()
+            val next =
+                _uiState.updateAndGet {
+                    val edited = transform(it)
+                    if (wasSaved) edited.copy(saveState = SaveState.Idle) else edited
+                }
             savedStateHandle[KEY_SCHEDULE] = AvailabilityScheduleLogic.encode(next.days, next.timezoneId)
         }
 
@@ -203,18 +224,19 @@ class AvailabilityViewModel
             if (state.overlappingDays.isNotEmpty()) return
             val request = buildRequest(state)
             _uiState.update { it.copy(saveState = SaveState.Saving) }
-            viewModelScope.launch {
-                try {
-                    // Leaving the screen mid-save still lets the request finish; its result is dropped (UI-SPEC).
-                    withContext(NonCancellable) { repository.put(request) }
-                    _uiState.update { it.copy(saveState = SaveState.Saved) }
-                    savedStateHandle.remove<String>(KEY_SCHEDULE)
-                    delay(Motion.AVAILABILITY_SAVED_HOLD_MS.toLong())
-                    _uiState.update { it.copy(saveState = SaveState.Idle) }
-                } catch (e: ApiException) {
-                    _uiState.update { it.copy(saveState = SaveState.Idle, dialog = e.toExpertDialogError()) }
+            saveJob =
+                viewModelScope.launch {
+                    try {
+                        // Leaving the screen mid-save still lets the request finish; its result is dropped (UI-SPEC).
+                        withContext(NonCancellable) { repository.put(request) }
+                        _uiState.update { it.copy(saveState = SaveState.Saved) }
+                        savedStateHandle.remove<String>(KEY_SCHEDULE)
+                        delay(Motion.AVAILABILITY_SAVED_HOLD_MS.toLong())
+                        _uiState.update { it.copy(saveState = SaveState.Idle) }
+                    } catch (e: ApiException) {
+                        _uiState.update { it.copy(saveState = SaveState.Idle, dialog = e.toExpertDialogError()) }
+                    }
                 }
-            }
         }
 
         /**
