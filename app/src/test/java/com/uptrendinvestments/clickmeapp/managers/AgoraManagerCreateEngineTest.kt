@@ -66,6 +66,40 @@ class AgoraManagerCreateEngineTest {
             assertNoSentinelsLogged()
         }
 
+    @Test
+    fun thrownExceptionReturnsFalseWithRedactedLog() =
+        runTest {
+            val manager =
+                AgoraManager(app, UnconfinedTestDispatcher(testScheduler)) { _ ->
+                    throw IllegalStateException(MESSAGE)
+                }
+
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+
+            val warnings = logs().filter { it.type == Log.WARN }
+            assertEquals(1, warnings.size)
+            val message = warnings.single().msg
+            assertTrue(message, message.startsWith("engine create failed IllegalStateException at "))
+            assertNoSentinelsLogged()
+        }
+
+    @Test
+    fun thrownLinkageErrorReturnsFalseWithRedactedLog() =
+        runTest {
+            val manager =
+                AgoraManager(app, UnconfinedTestDispatcher(testScheduler)) { _ ->
+                    throw UnsatisfiedLinkError(MESSAGE)
+                }
+
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+
+            val warnings = logs().filter { it.type == Log.WARN }
+            assertEquals(1, warnings.size)
+            val message = warnings.single().msg
+            assertTrue(message, message.startsWith("engine create failed UnsatisfiedLinkError at "))
+            assertNoSentinelsLogged()
+        }
+
     private companion object {
         const val TOKEN = "sentinel-rtc-token-7f3a"
         const val CHANNEL = "sentinel-channel-b2c9"

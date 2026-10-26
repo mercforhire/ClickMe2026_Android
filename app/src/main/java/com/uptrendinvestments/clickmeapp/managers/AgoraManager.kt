@@ -128,7 +128,9 @@ class AgoraManager
                             publishMicrophoneTrack = true
                             autoSubscribeAudio = true
                         }
-                    rtc.joinChannel(token, channelName, uid, options) == 0
+                    val code = rtc.joinChannel(token, channelName, uid, options)
+                    if (code != 0) Log.w(TAG, "joinChannel failed code=$code")
+                    code == 0
                 }
             }
 
@@ -150,11 +152,11 @@ class AgoraManager
                 engine = rtc
                 return rtc
             } catch (e: Exception) {
-                Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
+                Log.w(TAG, "engine create failed ${describeEngineFailure(e)}")
                 return null
             } catch (e: LinkageError) {
                 // A native library that fails to load (UnsatisfiedLinkError) is an Error, not an Exception (WR-10).
-                Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
+                Log.w(TAG, "engine create failed ${describeEngineFailure(e)}")
                 return null
             }
         }
