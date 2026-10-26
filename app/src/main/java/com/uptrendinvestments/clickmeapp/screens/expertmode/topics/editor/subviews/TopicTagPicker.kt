@@ -45,6 +45,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import java.util.Locale
 
 private val AddIconSize = 16.dp
 private val SpinnerSize = 16.dp
@@ -64,7 +65,8 @@ const val TOPIC_TAG_FILTER_TAG = "topic_editor_tag_filter"
  * as [visibleTags], already ordered selected-first and filtered by `TopicEditorRules.visibleTags`). Once three tags
  * are chosen ([atCap]) unselected chips are disabled and announce "Limit reached"; selected chips stay tappable so
  * they can be removed. States, in priority order: [isLoading], [loadFailed], [hasProfileTags] false (offers
- * "Add Expertise"), then the filter plus chips. Stateless.
+ * "Add Expertise"), then the filter plus chips. In the [loadFailed] state the topic's selected tags stay visible as
+ * removable chips above the retry row, because Save still sends them (WR-05). Stateless.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -87,7 +89,29 @@ fun TopicTagPicker(
         TagHeader(onAddExpertise = onAddExpertise, enabled = enabled)
         when {
             isLoading -> LoadingRow()
-            loadFailed -> FailedRow(onRetry = onRetry)
+            loadFailed -> {
+                val selectedIdsLower = selectedIds.map { it.lowercase(Locale.ROOT) }.toSet()
+                val selectedTags = visibleTags.filter { it.id.lowercase(Locale.ROOT) in selectedIdsLower }
+                if (selectedTags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        selectedTags.forEach { tag ->
+                            SelectableChip(
+                                label = tag.label,
+                                selected = true,
+                                onClick = { onToggle(tag) },
+                                enabled = enabled,
+                                removeContentDescription = stringResource(R.string.topic_editor_tags_remove, tag.label),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.size(Spacing.sm))
+                }
+                FailedRow(onRetry = onRetry)
+            }
             !hasProfileTags -> NoTagsBody(onAddExpertise = onAddExpertise, enabled = enabled)
             else -> {
                 TagFilterField(filter = filter, onFilterChange = onFilterChange, enabled = enabled)

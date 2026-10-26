@@ -424,6 +424,29 @@ class TopicEditorViewModelTest {
             assertTrue(vm.uiState.value.tags is TopicTagsLoad.Loaded)
         }
 
+    private fun selectedIds(vm: TopicEditorViewModel): List<String> {
+        val selected = vm.uiState.value.selectedTags
+        return selected.map { it.id }
+    }
+
+    @Test
+    fun aTagRemovedWhileTheProfileTagsFailedIsNotSent() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.expertProfileHandler = { throw env.api.httpError(500, """{"message":"boom"}""") }
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(tags = listOf(tag("tax", "Tax"), tag("law", "Law"))))
+            assertEquals(TopicTagsLoad.Failed, vm.uiState.value.tags)
+            assertEquals(listOf("tax", "law"), selectedIds(vm))
+            vm.toggleTag(tag("law", "Law"))
+            assertEquals(listOf("tax"), selectedIds(vm))
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertEquals(listOf("tax"), request.expertiseTagIds)
+        }
+
     @Test
     fun tagsSavedInTheExpertiseSheetBecomeTheAvailableTags() =
         runTest(main.testDispatcher) {
