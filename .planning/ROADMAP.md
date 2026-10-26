@@ -552,7 +552,7 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 15/15 plans executed
+**Plans:** 15/16 plans executed
 Plans:
 **Wave 1**
 
@@ -580,6 +580,12 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 11-15-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device checks, follow-ups, backend notes and hand-offs (all)
+
+**Gap closure** *(from 11-UAT.md G-11-1, blocker: AgoraManager.createEngine NPE, so every in-app voice join failed)*
+
+**Wave 1**
+
+- [ ] 11-16-PLAN.md — G-11-1: engine config built from the injected application context (extracted builder, factory seam), explicit null create, redacted class + top-frame failure logs and joinChannel code, Robolectric regression test through join(), full gate, device re-check logged in STATE (EXP-08)
 
 **UI hint**: yes
 
