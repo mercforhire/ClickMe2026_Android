@@ -126,6 +126,15 @@ Recent decisions affecting current work:
 - [Phase 10] Backend notes: `DELETE /expert/topics/:id` is a soft delete with no active-booking check (never 409); `price_amount` has no upper bound in zod, so an absurd amount is a Postgres INTEGER overflow 500 (Android caps at 7 integer digits); the server now accepts `hourly_rate.amount = 0` for free topics while Android still sends the floor or 100 (D-11); `price.currency` is "" for free topics created without a currency; `PATCH /expert/profile` tag replace has no count cap; a 422 `VALIDATION_ERROR` carries "Validation failed" with the useful text in `errors[]`.
 - [Phase 10] Open items (ask the user): offering midnight (12:00 AM, "24:00") as a selectable End time is a one-row change in `AvailabilityScheduleLogic.endOptions` (backend accepts it, Android already round-trips it) - research open question 1; the Edit Expertise sheet keeps the iOS "at least one tag" guard - confirm (research open question 2). Plan deviations worth knowing from the 10-xx SUMMARYs: 10-09 restarts an Initial load (not Quiet) when a saved-topic event arrives while the list is Loading; 10-11 matches tag ids case-insensitively; 10-10 round-trips `TopicEditorKey` through a hand-written encoder in the test (no `kotlinx-serialization-json` on the test classpath).
 - [Phase 10] Hand-offs: Phase 11 adds the Dashboard entry to Availability by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (add the enum entry; the origin keeps keys distinct across tab stacks); Phase 14 replaces the expert Profile "Availability" placeholder row (D-01) and reuses `ExpertiseEditorSheet` / `ExpertiseTagsRepository` from `screens/expertmode/settings/`.
+- [Phase 10] Deferred review findings (10-REVIEW.md; the gap pass 10-17..10-20 fixed CR-01, WR-01, WR-02, WR-04, WR-05):
+  - WR-03: keep `UserManager.expertHasTopics()` lenient with a lightweight payload, so a strict `ExpertTopicItem` decode failure cannot route an expert to Client mode on first launch.
+  - IN-01: show the saved-topic snackbar even when the list is not Loaded.
+  - IN-02: use `Locale.ROOT` / `selectedIds` directly in `TopicTagPicker`.
+  - IN-03: keep only the `finally` reset of `deletingId`.
+  - IN-04: pass `TopicEditorRules.DESCRIPTION_MAX` into the counter string.
+  - IN-05: move `capNotes` to a shared util.
+  - IN-06: optional, clear the per-opening `ExpertiseEditorViewModel`.
+  - IN-07: change the "Overlap dialog" comment to "Overlap banner".
 
 ### Blockers/Concerns
 
@@ -185,13 +194,14 @@ Recent decisions affecting current work:
   - [ ] SC-5 A full paid session end to end with `confirm-connection` sent exactly once (backend logs). BLOCKED on the test-mode Stripe backend for the paid part (see "[Phase 7] Stripe key and mode"); a free booking covers everything else.
   - [ ] Android 17 check on the `Medium_Phone_API_37.0` emulator with `adb shell cmd audio set-enable-hardening enable` (background audio and focus while backgrounded); confirm the targetSdk 37 local-network permission does not block Agora.
   - [ ] 200% font scale on the Connected pair, the final-stretch banner and the external variant; TalkBack order on the layer; POST_NOTIFICATIONS denied on API 33+ (call still runs, pill remains; notification-only request path); Bluetooth headset routing (Open Question 4); an incoming GSM call during the call (A6); Samsung battery / sleeping-apps behaviour (Pitfall 14); cold-start notification tap after a task swipe; pill position over gesture nav versus 3-button nav. Phase 13 internal testing and Phase 16 QA re-run these.
-- [Phase 10] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (2541 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F (devDebug, production backend) logged in as an expert, with the iOS app as the client:
+- [Phase 10] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (2558 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F (devDebug, production backend) logged in as an expert, with the iOS app as the client:
   - [ ] (a) SC-1 Topics: create a paid topic, edit it (an existing 12.50 price shows "12.50"), delete with the confirmation; a price below the floor shows the live error, and a server `422 PRICE_BELOW_MINIMUM` shows on the price field; a blank price saves a free topic shown as "Free"; Edit Expertise adds a profile tag that then appears in the editor's picker.
   - [ ] (b) SC-2 Availability: edit slots with Select Time Range; two overlapping slots show the banner and disable Save; Save shows the check for 2 s; reopening shows the same HH:mm values; during a live call Save shows "End the call to edit your availability." and nothing is sent.
   - [ ] (c) SC-3 Timezone: an expert whose server zone is UTC (no availability saved yet) on a non-UTC device sees the device zone filled without a prompt and it is stored server-side (reopen); picking a zone then Save persists it.
   - [ ] (d) SC-4 cross-client: on the iOS client, the Android expert's new topic is listed and the booking slots match the saved availability in the expert's timezone (research open question 3).
   - [ ] (e) French (Canada) locale: typing "12,50" saves 1250 minor units (RESEARCH A2, Pitfall 3).
   - [ ] (f) 200% font scale on Topics, the Topic Editor with an error line, an overlapping day with the banner and the Time Range sheet; rotation on the editor with an error showing; TalkBack on the Time Range sheet. Also from 10-13: focus movement into the first invalid field and scroll-into-view in the Topic Editor.
+  - [ ] (g) Gap closure: open Edit Expertise in airplane mode; it shows "Couldn't load your current tags" with Save Expertise disabled, and Retry after reconnecting loads the tags and enables Save; open a topic created on another client with a 45- or 600-minute duration, change only the title, save, and confirm the duration is unchanged on iOS.
 
 ## Deferred Items
 

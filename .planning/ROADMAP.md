@@ -488,7 +488,7 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 19/20 plans executed
+**Plans:** 20/20 plans executed
 Plans:
 **Wave 1**
 
@@ -534,7 +534,7 @@ Plans:
 
 **Wave 2** *(blocked on gap Wave 1 completion)*
 
-- [ ] 10-20-PLAN.md — Gap-pass gate (both flavors, lint, R8), VALIDATION rows, review disposition ledger, STATE carry-forward of deferred findings (all)
+- [x] 10-20-PLAN.md — Gap-pass gate (both flavors, lint, R8), VALIDATION rows, review disposition ledger, STATE carry-forward of deferred findings (all)
 
 **UI hint**: yes
 
@@ -667,7 +667,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 19/20 | In Progress | - |
+| 10. Expert Topics & Availability | 20/20 | In Progress | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
