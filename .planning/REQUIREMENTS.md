@@ -120,11 +120,11 @@ From the PRD's Topics + Topic Editor, Availability, Expert Dashboard, Incoming R
 - [x] **EXP-02**: The topic price floor comes from `pricing_limits` in `/me`, fetched fresh rather than cached across launches (PRICING-LIMITS.md). A `422 PRICE_BELOW_MINIMUM` error shows on the price field.
 - [x] **EXP-03**: Expert can edit weekly availability (slots stored as minutes from midnight, sent as `HH:mm`) using a time-range picker sheet, with overlap validation per day. (Phase 10: a stored 24:00 end round-trips losslessly; the picker caps End at 23:30 like iOS.)
 - [x] **EXP-04**: Expert can pick the timezone for their availability. If the server timezone is UTC, the device timezone is filled in quietly.
-- [ ] **EXP-05**: Expert sees a simplified Dashboard: pending request count, upcoming sessions, weekly earnings text and a payout onboarding card.
-- [ ] **EXP-06**: Expert can open Incoming Requests and either accept a request with an optional message or decline it with a reason code. After accepting, they see the Confirmed screen. (Phase 11: decline uses the backend codes CONFLICT / OUT_OF_SCOPE / UNAVAILABLE / OTHER; an empty note sends the reason label as reason_text.)
-- [ ] **EXP-07**: Expert can add a confirmed session to their calendar through an `Intent.ACTION_INSERT` calendar intent.
-- [ ] **EXP-08**: Expert can view Upcoming and Past bookings. A Join button appears inside the join window and opens the same call experience the client uses.
-- [ ] **EXP-09**: From the expert Booking Summary, the expert can accept or decline a client's reschedule request (handling `409 SLOT_UNAVAILABLE`) and can cancel the booking.
+- [x] **EXP-05**: Expert sees a simplified Dashboard: pending request count, upcoming sessions, weekly earnings text and a payout onboarding card.
+- [x] **EXP-06**: Expert can open Incoming Requests and either accept a request with an optional message or decline it with a reason code. After accepting, they see the Confirmed screen. (Phase 11: decline uses the backend codes CONFLICT / OUT_OF_SCOPE / UNAVAILABLE / OTHER; an empty note sends the reason label as reason_text.)
+- [x] **EXP-07**: Expert can add a confirmed session to their calendar through an `Intent.ACTION_INSERT` calendar intent.
+- [x] **EXP-08**: Expert can view Upcoming and Past bookings. A Join button appears inside the join window and opens the same call experience the client uses.
+- [x] **EXP-09**: From the expert Booking Summary, the expert can accept or decline a client's reschedule request (handling `409 SLOT_UNAVAILABLE`) and can cancel the booking.
 
 ### Chat
 
@@ -311,11 +311,11 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | EXP-02 | Phase 10 | Complete |
 | EXP-03 | Phase 10 | Complete |
 | EXP-04 | Phase 10 | Complete |
-| EXP-05 | Phase 11 | Pending |
-| EXP-06 | Phase 11 | Pending |
-| EXP-07 | Phase 11 | Pending |
-| EXP-08 | Phase 11 | Pending |
-| EXP-09 | Phase 11 | Pending |
+| EXP-05 | Phase 11 | Complete |
+| EXP-06 | Phase 11 | Complete |
+| EXP-07 | Phase 11 | Complete |
+| EXP-08 | Phase 11 | Complete |
+| EXP-09 | Phase 11 | Complete |
 | CHAT-01 | Phase 12 | Pending |
 | CHAT-02 | Phase 12 | Pending |
 | CHAT-03 | Phase 12 | Pending |

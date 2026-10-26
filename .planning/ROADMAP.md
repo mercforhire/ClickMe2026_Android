@@ -552,7 +552,7 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 14/15 plans executed
+**Plans:** 15/15 plans executed
 Plans:
 **Wave 1**
 
@@ -579,7 +579,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 11-15-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device checks, follow-ups, backend notes and hand-offs (all)
+- [x] 11-15-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device checks, follow-ups, backend notes and hand-offs (all)
 
 **UI hint**: yes
 
@@ -696,7 +696,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
-| 11. Expert Requests & Bookings | 14/15 | In Progress | - |
+| 11. Expert Requests & Bookings | 15/15 | In Progress | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
