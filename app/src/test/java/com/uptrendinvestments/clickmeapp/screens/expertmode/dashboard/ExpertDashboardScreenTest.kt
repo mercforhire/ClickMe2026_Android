@@ -24,6 +24,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.D
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
+import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
@@ -62,17 +63,24 @@ class ExpertDashboardScreenTest {
         val vm: ExpertDashboardViewModel,
         val callStarter: FakeCallStarter,
         val launch: ExpertLaunchRequest,
+        val api: FakeClickMeApi,
     )
 
     private suspend fun TestScope.fixture(
         requests: List<BookingRequestItem> = emptyList(),
         bookings: List<ExpertBookingItem> = emptyList(),
         now: Instant = NOW,
+        bookingsFail: Boolean = false,
     ): Fixture {
         val h = SignupTestHarness(this, tmp, main.testDispatcher)
         h.signIn()
         h.api.bookingRequestsHandler = { requests }
-        h.api.expertBookingsHandler = { ExpertBookingsPayload(bookings = bookings) }
+        h.api.expertBookingsHandler = {
+            if (bookingsFail) {
+                throw h.api.httpError(500, """{"status":"error","message":"Server down"}""")
+            }
+            ExpertBookingsPayload(bookings = bookings)
+        }
         val clock = MutableClock(now)
         val callStarter = FakeCallStarter()
         val launch = ExpertLaunchRequest()
@@ -87,7 +95,7 @@ class ExpertDashboardScreenTest {
                 callStarter,
                 JoinClock(clock, backgroundScope),
             )
-        return Fixture(vm, callStarter, launch)
+        return Fixture(vm, callStarter, launch, h.api)
     }
 
     private fun setContent(f: Fixture) {
@@ -214,6 +222,21 @@ class ExpertDashboardScreenTest {
             setContent(f)
 
             rule.onNodeWithTag(DASHBOARD_RESCHEDULE_BANNER_TAG).assertDoesNotExist()
+        }
+
+    @Test
+    fun hardFailureShowsTheErrorStateAndRetryRecovers() =
+        runTest(main.testDispatcher) {
+            val f = fixture(bookingsFail = true)
+            setContent(f)
+
+            rule.onNodeWithText("Couldn't load dashboard").assertExists()
+            rule.onNodeWithText("Server down").assertExists()
+
+            f.api.expertBookingsHandler = { ExpertBookingsPayload() }
+            rule.onNodeWithText("Retry").performClick()
+
+            rule.onNodeWithText("Hello, Ada").assertExists()
         }
 
     private companion object {
