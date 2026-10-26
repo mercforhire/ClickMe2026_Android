@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsNotice
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.subviews.INCOMING_REQUEST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -117,6 +118,43 @@ class IncomingRequestsScreenTest {
         assertEquals(true, opened.single().isExpired)
     }
 
+    private fun showContent(
+        state: IncomingRequestsUiState,
+        calls: MutableList<String>,
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                IncomingRequestsContent(
+                    state = state,
+                    onBack = {},
+                    onOpenRequest = {},
+                    onRetry = {},
+                    onRefresh = {},
+                    onNoticeConsumed = { calls += "notice" },
+                    onRefreshFailureConsumed = { calls += "refreshFailure" },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theDeclinedNoticeShowsASnackbarAndIsConsumed() {
+        val calls = mutableListOf<String>()
+        showContent(IncomingRequestsUiState(notice = IncomingRequestsNotice.Declined), calls)
+
+        rule.onNodeWithText("Request declined").assertExists()
+        assertEquals(listOf("notice"), calls)
+    }
+
+    @Test
+    fun aFailedPullShowsTheRefreshSnackbarAndIsConsumed() {
+        val calls = mutableListOf<String>()
+        showContent(IncomingRequestsUiState(refreshFailed = true), calls)
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        assertEquals(listOf("refreshFailure"), calls)
+    }
+
     @Test
     fun emptyListShowsEmptyState() {
         showScreen()
@@ -139,10 +177,11 @@ class IncomingRequestsScreenTest {
         rule.onNodeWithText("Check your connection and try again.").assertExists()
 
         api.bookingRequestsHandler = { listOf(pending()) }
+        val callsBeforeRetry = api.bookingRequestsCalls
         rule.onNodeWithText("Retry").performClick()
 
         rule.onNodeWithText("Ada Lovelace").assertExists()
-        assertEquals(2, api.bookingRequestsCalls)
+        assertEquals(callsBeforeRetry + 1, api.bookingRequestsCalls)
     }
 
     @Test
