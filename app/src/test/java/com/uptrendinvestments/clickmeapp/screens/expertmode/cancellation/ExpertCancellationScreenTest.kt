@@ -12,8 +12,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelErrorDialog
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelStep
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
@@ -26,6 +29,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subview
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.ExpertCancelConfirmStep
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.label
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -258,6 +262,45 @@ class ExpertCancellationScreenTest {
     }
 
     // endregion
+
+    @Test
+    fun errorDialogShowsTitleAndMessageAndDismisses() {
+        var dismissed = 0
+        rule.setContent {
+            ClickMeTheme {
+                ExpertCancellationContent(
+                    state =
+                        ExpertCancellationUiState(
+                            load = ExpertCancelLoad.Loaded(summary),
+                            step = CancelStep.Confirm,
+                            reason = ExpertCancelReason.Other,
+                            error =
+                                CancelErrorDialog(
+                                    FieldError.Res(R.string.cancel_booking_error_not_cancellable),
+                                    returnToBookings = true,
+                                ),
+                        ),
+                    onBack = {},
+                    onRetry = {},
+                    onSelectReason = {},
+                    onCommentChange = {},
+                    onContinue = {},
+                    onBackToReason = {},
+                    onConfirm = {},
+                    onDismissError = { dismissed++ },
+                    onFinished = {},
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+
+        rule.onNodeWithText("Couldn't cancel booking").assertExists()
+        rule.onNodeWithText("This booking can no longer be cancelled.").assertExists()
+        rule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissed)
+    }
 
     @Test
     fun reasonLabelsEqualTheWireLabels() {

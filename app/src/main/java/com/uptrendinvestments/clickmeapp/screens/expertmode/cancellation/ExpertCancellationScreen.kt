@@ -43,6 +43,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelS
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.ExpertCancelConfirmStep
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.subviews.ExpertCancelReasonStep
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -83,6 +84,7 @@ fun ExpertCancellationScreen(
         onContinue = viewModel::continueToConfirm,
         onBackToReason = viewModel::backToReason,
         onConfirm = viewModel::confirm,
+        onDismissError = viewModel::dismissError,
         onFinished = {
             viewModel.consumeFinished()
             onCancelled()
@@ -107,6 +109,7 @@ fun ExpertCancellationContent(
     onContinue: () -> Unit,
     onBackToReason: () -> Unit,
     onConfirm: () -> Unit,
+    onDismissError: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
@@ -166,6 +169,14 @@ fun ExpertCancellationContent(
                     }
             }
         }
+    }
+
+    state.error?.let { error ->
+        AuthErrorDialog(
+            message = error.message.asString(),
+            onDismiss = onDismissError,
+            title = stringResource(R.string.cancel_booking_error_title),
+        )
     }
 }
 

@@ -7,12 +7,14 @@ import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelStep
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.capCancelComment
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.CancelFailure
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.util.Money
@@ -158,9 +160,37 @@ class ExpertCancellationViewModel
                 try {
                     val data = repository.cancel(bookingId, expertCancelReason(reason, current.comment))
                     finishCancelled(noticeFor(data.refundAmount, data.currency))
-                } catch (_: ApiException) {
-                    _uiState.update { it.copy(isSubmitting = false) }
+                } catch (e: ApiException) {
+                    if (e.isAlreadyCancelled()) {
+                        finishCancelled(BookingsNotice.Cancelled)
+                    } else {
+                        showFailure(e.toExpertCancelFailure())
+                    }
                 }
+            }
+        }
+
+        private fun showFailure(failure: CancelFailure) {
+            when (failure) {
+                CancelFailure.Silent -> _uiState.update { it.copy(isSubmitting = false) }
+                is CancelFailure.Show ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = CancelErrorDialog(failure.message, failure.returnToBookings),
+                        )
+                    }
+            }
+        }
+
+        /** Closes the error dialog; when the booking is gone or not cancellable, leaves for the refreshed bookings. */
+        fun dismissError() {
+            val error = _uiState.value.error ?: return
+            if (error.returnToBookings) {
+                launchRequest.bookings.post(BookingsLaunch(BookingsTab.Upcoming))
+                _uiState.update { it.copy(error = null, isFinished = true) }
+            } else {
+                _uiState.update { it.copy(error = null) }
             }
         }
 
