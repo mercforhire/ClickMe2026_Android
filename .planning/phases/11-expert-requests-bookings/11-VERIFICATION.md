@@ -1,8 +1,8 @@
 ---
 phase: 11-expert-requests-bookings
-verified: 2026-10-26T20:00:00Z
+verified: 2026-10-26T23:30:00Z
 status: human_needed
-score: 4/4 must-haves verified
+score: 3/4 must-haves verified
 covered_files:
   - .planning/phases/11-expert-requests-bookings/11-01-PLAN.md
   - .planning/phases/11-expert-requests-bookings/11-01-SUMMARY.md
@@ -34,6 +34,10 @@ covered_files:
   - .planning/phases/11-expert-requests-bookings/11-14-SUMMARY.md
   - .planning/phases/11-expert-requests-bookings/11-15-PLAN.md
   - .planning/phases/11-expert-requests-bookings/11-15-SUMMARY.md
+  - .planning/phases/11-expert-requests-bookings/11-16-PLAN.md
+  - .planning/phases/11-expert-requests-bookings/11-16-SUMMARY.md
+  - app/src/main/java/com/uptrendinvestments/clickmeapp/managers/AgoraEngineConfig.kt
+  - app/src/main/java/com/uptrendinvestments/clickmeapp/managers/AgoraManager.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/expertmode/bookingsummary/ExpertBookingSummaryViewModel.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/expertmode/cancellation/ExpertCancellationViewModel.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/expertmode/confirmed/BookingConfirmedScreen.kt
@@ -44,30 +48,53 @@ covered_files:
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/expertmode/incomingrequests/IncomingRequestsViewModel.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/expertmode/requestdecision/RequestDecisionViewModel.kt
   - app/src/main/java/com/uptrendinvestments/clickmeapp/screens/expertmode/upcomingbookings/ExpertBookingsViewModel.kt
-covered_digest: "v3:sha256:673ba07cfd601f29b79f0a21216659729c3892ebfeb47980305f252dacb8acb9"
-behavior_unverified: 0
+  - app/src/test/java/com/uptrendinvestments/clickmeapp/managers/AgoraEngineConfigTest.kt
+  - app/src/test/java/com/uptrendinvestments/clickmeapp/managers/AgoraManagerCreateEngineTest.kt
+covered_digest: "v3:sha256:4a0230e3ae66015a3e79ae31ce5305d0b7d25701cdadd2481785a0a74ef07220"
+behavior_unverified: 1
 overrides_applied: 0
+re_verification:
+  previous_status: human_needed
+  previous_score: 4/4
+  gaps_closed:
+    - "G-11-1: every in-app voice join failed with 'Couldn't join session' (NPE in AgoraManager.createEngine, bare context resolved to RtcEngineConfig.getContext())"
+  gaps_remaining: []
+  regressions: []
+behavior_unverified_items:
+  - truth: "SC-3: the expert can join the call (Dashboard card, Upcoming card, Summary) and both sides end up in the same Agora call"
+    test: "On the Samsung SM-A075F (-s R8YYC1QFA6H, devDebug, production backend) with the iOS app as peer, tap Join from the Dashboard card, an Upcoming card and the Summary inside the join window; capture adb logcat -s ClickMeCall CallService RtcEngine."
+    expected: "No 'engine create failed' or 'engine create returned null' line; joinChannel returns 0; onJoinChannelSuccess then the remote user joins; audio routes to the speaker; mute and speaker toggles work; leave, destroy and a second rejoin work."
+    why_human: "The fix is proven only up to the SDK factory boundary on the JVM (the factory receives a non-null application context, app id and handler). The native engine, joinChannel, audio route and leave/destroy/rejoin have never run on a device. UAT test 1 failed at engine creation, so nothing past it has ever been exercised."
 human_verification:
-  - test: "SC-2 / SC-3 cross-client: an iOS client books; the Android expert sees the request, accepts (with and without a message) and declines (each of the four reasons); then the iOS client and the Android expert both join the call inside the join window (Dashboard card, Upcoming card, Summary)."
-    expected: "Request appears in Incoming Requests; Confirmed screen shows; the iOS client sees the decline; both sides are in the same Agora call (PRD Week 5 checkpoint)."
-    why_human: "Needs a live iOS client and a device with microphone/Agora; cannot be exercised by unit tests or grep. Recorded as non-blocking in STATE.md ([Phase 11] DEFERRED (human), items b and c)."
-  - test: "SC-4 cross-client: the iOS client proposes a reschedule; the expert accepts and declines it from the Summary; produce a SLOT_UNAVAILABLE with two back-to-back bookings; cancel a free and a held paid booking."
-    expected: "Accept/decline succeed; the SLOT_UNAVAILABLE case shows 'That time is no longer available' and the booking stays; cancel lands on the Past tab with the snackbar."
-    why_human: "Needs a second client and real backend state (30-minute session buffer). The error mapping and flows are covered by unit tests; the live backend path is not."
-  - test: "SC-1 device run: Dashboard shows pending count, reschedule banner, Today's Sessions with Join, weekly earnings and the payout onboarding card; the card opens a Stripe Custom Tab and the status refreshes on return; 'Add to Calendar' opens the calendar editor with the right title, times and description."
-    expected: "As described; no flicker on quiet reloads; 200% font scale and TalkBack are usable."
-    why_human: "Visual, real-time and external-service behaviour (Stripe-hosted onboarding, calendar app)."
-  - test: "Prohibition review (judgment): the Phase 11 plans forbid logging client messages, decline/cancel reasons, client names or the Stripe onboarding URL on expert screens."
-    expected: "No logging of that data."
-    why_human: "unverified-prohibition: the plan tagged this test-tier, but no automated negative test enforces it. My grep of the expert screen packages found no Log./Timber/println calls, so this is a non-authoritative pass. Human review recommended."
+  - test: "G-11-1 device re-check (also 11-UAT test 1; 09-HUMAN-UAT items 1, 2 and 5): expert and client voice join end to end with an iOS peer, as described in behavior_unverified_items."
+    expected: "Both sides in the same Agora call; leave/rejoin clean."
+    why_human: "Native Agora runtime, microphone, foreground service and a live iOS peer. Recorded as non-blocking DEFERRED (human) in STATE.md ([Phase 11] G-11-1 entry and item (c))."
+  - test: "Residual UAT-passed items stay passed (11-UAT tests 2, 3, 4: reschedule/SLOT_UNAVAILABLE/cancel, Dashboard/Stripe/calendar, prohibition review). No further action unless the user wants a regression pass."
+    expected: "Unchanged."
+    why_human: "Device-only; already confirmed by the user in UAT."
 ---
 
 # Phase 11: Expert Requests & Bookings Verification Report
 
 **Phase Goal:** An Android expert can see their workload, accept requests, manage bookings and join sessions, so the expert side works end to end.
-**Verified:** 2026-10-26T20:00:00Z
+**Verified:** 2026-10-26T23:30:00Z
 **Status:** human_needed
-**Re-verification:** No, initial verification
+**Re-verification:** Yes, after gap closure plan 11-16 (G-11-1)
+
+## Re-verification: G-11-1 (voice join failed at engine creation)
+
+UAT (`11-UAT.md` test 1) found that every in-app voice join, client and expert, failed with "Couldn't join session". The root cause was in `AgoraManager.createEngine()`: inside `RtcEngineConfig().apply { mContext = context.applicationContext }` the bare `context` resolved to the SDK's `getContext()` (null) instead of the injected application context, so an NPE was thrown before the engine existed.
+
+**The gap is closed in code.** Evidence I checked directly, not from the SUMMARY:
+
+- Pre-fix code (`git show 865e6cd:.../AgoraManager.kt`, line 131) has the exact `RtcEngineConfig().apply { mContext = context.applicationContext ...}` shape the debug session named.
+- Current `AgoraManager.createEngine()` reads `val appContext = context.applicationContext` outside any config scope, then calls `buildRtcEngineConfig(appContext, BuildConfig.AGORA_APP_ID, handler)`. That helper (`AgoraEngineConfig.kt`) takes a parameter named `appContext`, builds `RtcEngineConfig()` and sets `mContext`, `mAppId` and `mEventHandler` by plain assignment, with no receiver scope. A repo-wide grep finds `RtcEngineConfig(` only in that helper, and `io.agora` only in the three `managers` files, so there is no second copy of the bug.
+- Wiring: the single `@Inject` constructor passes `RtcEngine.create(config)`; all six Join sites go through `CallCenter` to `CallEngine.join` to this one path, so one fix covers client and expert.
+- A null `RtcEngine.create` result now returns false with the single log line `engine create returned null`; both catch blocks (`Exception`, `LinkageError`) log `describeEngineFailure(e)` (simple class name plus top frame, no message or cause); a non-zero `joinChannel` code is logged as an integer.
+- Regression test: `AgoraManagerCreateEngineTest` drives `join()` through `createEngine` to the factory seam and asserts the factory is called once with `mContext === app.applicationContext`, the app id and a non-null handler, that the only warning is `engine create returned null`, and that no sentinel token, channel, uid or message appears in any log line. On the pre-fix code the NPE fires while building the config, so the factory call count would be 0 and the test fails (the review confirmed this; 11-16-SUMMARY records the RED run as `expected:<1> but was:<0>`).
+- I re-ran the two test classes: `AgoraManagerCreateEngineTest` 3 tests and `AgoraEngineConfigTest` 4 tests, 0 failures, 0 errors, 0 skipped. The caller reports the post-merge gate on main as passed (`testDevDebugUnitTest`, `ktlintCheck`, `assembleDevDebug`, 2954 tests); I did not re-run the full gate.
+
+**What is still unproven.** The fix is exercised only up to the SDK factory boundary on the JVM. The native `RtcEngine.create`, the four audio setup calls, `joinChannel`, `onJoinChannelSuccess`, the remote join, the audio route, mute and speaker, and leave/destroy/rejoin have never run on a device. UAT test 1 failed at engine creation, so no run has ever gotten past it. A pre-existing gap of this kind is a runtime-behavior claim that presence and unit tests cannot confirm, so truth 3 is carried as present, wired and behavior-unverified, and the device re-check stays required for the voice join path.
 
 ## Goal Achievement
 
@@ -79,10 +106,10 @@ The code delivers every roadmap success criterion. Each screen is real (not a st
 |---|-----------------------------------|--------|----------|
 | 1 | Dashboard shows pending request count, upcoming sessions, weekly earnings text and a payout onboarding card | VERIFIED (code) | `ExpertDashboardRoute` is the Dashboard tab root in `HomeExpertScreen.kt`. `ExpertDashboardViewModel.startLoad` fetches upcoming bookings and pending requests in parallel, then weekly earnings, payout summary and Connect status. `applyLoaded` sets `pendingCount = pending.size`, `todaysSessions`, `rescheduleCount`, `weekly`, `payoutSummary` and `onboarding`. `ExpertDashboardScreen` renders `PendingRequestsBanner`, `RescheduleRequestsBanner`, `TodaysSessionsSection`, `FinancialSummarySection` (EarningsCard + `PayoutOnboardingCard`) and the tools grid. The card mints a Stripe link behind `CallGuard` and opens it in a Custom Tab. The Availability tool pushes `AvailabilityKey(AvailabilityOrigin.Dashboard)`. Live Stripe and visual checks are in human verification. |
 | 2 | Android expert sees an iOS client's request in Incoming Requests, accepts with an optional message or declines with a reason code, sees Confirmed, adds the session to the device calendar | VERIFIED (code) | Dashboard banner and tools navigate to `IncomingRequestsKey`, then `RequestDecisionKey`, then `BookingConfirmedKey`. All are registered in `HomeExpertScreen.detailEntries`. `RequestDecisionViewModel.accept` calls `BookingRequestsRepository.accept` (`POST expert/booking-requests/{id}/accept`, body `{}` or `{message}`) and the screen does `replaceTop(BookingConfirmedKey)`. `decline` sends `reason_code` in `CONFLICT/OUT_OF_SCOPE/UNAVAILABLE/OTHER` and a non-empty `reason_text` (the label when the note is blank). Both match the backend's strict `declineSchema` and `acceptSchema`. `ALREADY_PROCESSED` has its own dialog and refresh. `CalendarIntent.kt` builds an `ACTION_INSERT` intent on `CalendarContract.Events.CONTENT_URI` and handles no-handler with a snackbar. No calendar permission is requested. |
-| 3 | Expert Bookings (Upcoming/Past) shows Join inside the join window and the expert can join the call | VERIFIED (code); cross-client call needs a human | `ExpertBookingsViewModel` loads both buckets. `buildExpertBookingLists` applies the two-bucket and rejoinable-completed rules. `ExpertUpcomingCard` renders the shared `JoinCallButton`, enabled by `isWithinJoinWindow(...)` against the shared `JoinClock`. `join()` calls `CallStarter.startCall` with the client as peer. The same call exists on the Dashboard card and the Summary. Same pattern as the client side (button always shown, enabled only in the window). |
+| 3 | Expert Bookings (Upcoming/Past) shows Join inside the join window and the expert can join the call | PRESENT_BEHAVIOR_UNVERIFIED (Join UI, gating and call start VERIFIED in code; G-11-1 engine-creation defect fixed and JVM-tested; the real Agora join has never run on a device) | `ExpertBookingsViewModel` loads both buckets. `buildExpertBookingLists` applies the two-bucket and rejoinable-completed rules. `ExpertUpcomingCard` renders the shared `JoinCallButton`, enabled by `isWithinJoinWindow(...)` against the shared `JoinClock`. `join()` calls `CallStarter.startCall` with the client as peer. The same call exists on the Dashboard card and the Summary. Same pattern as the client side (button always shown, enabled only in the window). |
 | 4 | Expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking | VERIFIED (code) | `ExpertBookingSummaryViewModel.acceptReschedule` / `declineReschedule` are guarded by `CallGuard.attemptModifyBooking(RespondToReschedule)` and run the shared `RescheduleResponseController` through `ExpertRescheduleResponder`, which calls `expert/bookings/{id}/accept-reschedule` and `/decline-reschedule`. `toExpertRescheduleFailure` maps `ErrorCode.SlotUnavailable` to `expert_reschedule_error_slot_unavailable` ("That time is no longer available...") with a reload. `ErrorCode.SlotUnavailable` exists. Cancel: Summary `attemptCancel` pushes `ExpertCancelKey`; `ExpertCancellationViewModel.confirm` is guarded, posts `expert/bookings/{id}/cancel` and hands the result to the Bookings Past tab. |
 
-**Score:** 4/4 truths verified at code level (0 present, behavior-unverified). Cross-client and device confirmation is carried in `human_verification`.
+**Score:** 3/4 truths verified (1 present, behavior-unverified: truth 3, the live Agora join). Cross-client and device confirmation is carried in `human_verification`.
 
 ### Required Artifacts
 
@@ -128,7 +155,8 @@ The code delivers every roadmap success criterion. Each screen is real (not a st
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
 | Phase 11 unit and Robolectric tests | `./gradlew --offline testDevDebugUnitTest --tests "...screens.expertmode.*" --tests "...network.*Expert*" --tests "...BookingRequestsApiTest" --tests "...RescheduleResponseCardTest" --tests "...ExpertNavigationTest" --tests "...HomeShellsTest"` | BUILD SUCCESSFUL; 58 result files, 769 tests, 0 failures, 0 errors, 0 skipped | PASS |
-| Orchestrator gate | `testDevDebugUnitTest ktlintCheck assembleDevDebug`, plus the 11-15 full gate (both flavors, lint, R8) | Reported green by the caller; not re-run here | NOT RE-RUN |
+| G-11-1 regression: `AgoraManagerCreateEngineTest` + `AgoraEngineConfigTest` | `./gradlew --offline :app:testDevDebugUnitTest --tests "*AgoraManagerCreateEngineTest" --tests "*AgoraEngineConfigTest"` | exit 0; 3 + 4 tests, 0 failures, 0 errors, 0 skipped | PASS |
+| Orchestrator gate | `testDevDebugUnitTest ktlintCheck assembleDevDebug`, plus the 11-15 full gate (both flavors, lint, R8) | Reported green by the caller (post-merge on main, 2954 tests); not re-run here | NOT RE-RUN |
 
 ### Probe Execution
 
@@ -143,7 +171,7 @@ Every ID in the PLAN frontmatter appears in REQUIREMENTS.md, and none is orphane
 | EXP-05 | 11-01, 02, 03, 10, 14, 15 | Dashboard: pending count, upcoming sessions, weekly earnings, payout card | SATISFIED | Truth 1 |
 | EXP-06 | 11-01, 02, 03, 05, 06, 07, 12, 15 | Incoming Requests, accept with message or decline with reason, Confirmed | SATISFIED | Truth 2. The Android side sends the message; the backend discards it (see Gaps Summary, WR-08). |
 | EXP-07 | 11-01, 02, 07, 15 | Add to calendar via `Intent.ACTION_INSERT` | SATISFIED | `CalendarIntent.kt`; `CalendarIntentTest` |
-| EXP-08 | 11-01, 02, 03, 04, 08, 10, 11, 15 | Upcoming and Past bookings, Join inside the window | SATISFIED | Truth 3 |
+| EXP-08 | 11-01, 02, 03, 04, 08, 10, 11, 15, 16 | Upcoming and Past bookings, Join inside the window | SATISFIED in code; live join pending device re-check | Truth 3. 11-16 (gap closure, `requirements: [EXP-08]`) fixed the engine-creation defect; the device run is a deferred human item. |
 | EXP-09 | 11-01, 02, 03, 08, 09, 13, 15 | Accept or decline reschedule (409 SLOT_UNAVAILABLE), cancel | SATISFIED | Truth 4 |
 
 ### Prohibitions (must_haves.prohibitions, plan 11-15)
@@ -162,18 +190,19 @@ Every ID in the PLAN frontmatter appears in REQUIREMENTS.md, and none is orphane
 
 ### Human Verification Required
 
-See the `human_verification` frontmatter. In summary:
+See the `human_verification` and `behavior_unverified_items` frontmatter. In summary:
 
-1. **Cross-client request, accept, decline and join (SC-2, SC-3).** Needs the iOS client and a device.
-2. **Reschedule response, `SLOT_UNAVAILABLE` and cancel against live backend state (SC-4).**
-3. **Dashboard, Stripe onboarding Custom Tab and calendar editor on a device (SC-1, EXP-07).**
-4. **Logging prohibition.** Judgment review, no automated enforcement.
-
-These match the user's `[Phase 11] DEFERRED (human)` list in STATE.md and are non-blocking by the user's rule.
+1. **G-11-1 voice join device re-check (SC-3, EXP-08).** Samsung SM-A075F `-s R8YYC1QFA6H`, devDebug, production backend, iOS app as peer; Join from the Dashboard card, an Upcoming card and the Summary; capture `adb -s R8YYC1QFA6H logcat -s ClickMeCall CallService RtcEngine`. Pass means no `engine create failed` / `engine create returned null` line, `joinChannel` returns 0, `onJoinChannelSuccess` and the remote join arrive, audio is on the speaker, mute and speaker work, and leave/destroy/rejoin are clean. A `joinChannel failed code=N` line carries the Agora error code. This also clears 11-UAT test 1 and 09-HUMAN-UAT items 1, 2 and 5. Non-blocking by the user's rule (STATE.md, `[Phase 11] G-11-1` entry).
+2. The other UAT items passed on device (tests 2, 3, 4) and need no further action.
 
 ### Gaps Summary
 
-No gaps block the phase goal. All four roadmap success criteria and all five requirements are implemented, wired and test-covered. The unit tests are the only runtime evidence available here.
+No gaps block the phase goal in code. All four roadmap success criteria and all five requirements are implemented, wired and test-covered, and the one UAT blocker (G-11-1) is closed in code with a JVM regression test. The verdict stays `human_needed` rather than `passed` because the voice join has never run past engine creation on a device, so SC-3 "the expert can join the call" is unproven at runtime.
+
+New advisory from `11-16-REVIEW.md` (1 warning, 2 info, 0 critical), not blocking:
+
+- **11-16 WR-01.** If `RtcEngine.create` succeeds but one of the four audio setup calls throws, `engine` is never assigned, so `destroy()` (guarded by `engine != null`) never releases the live native engine and a retry may collide with it. Same shape as before the fix, not a regression; worth a follow-up since it is the same failure class G-11-1 exposed.
+- **11-16 IN-01.** `ChannelMediaOptions().apply {}` in `join` has the same SDK-getter shadowing hazard for `token` if a future change reads it inside the block. No live bug today.
 
 Advisory findings from `11-REVIEW.md`. All eight warnings are still `open` in `11-REVIEW-DISPOSITION.md`, and none undermines a must-have:
 
