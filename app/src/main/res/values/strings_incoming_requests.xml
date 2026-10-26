@@ -10,6 +10,9 @@
     <string name="incoming_requests_expires_in">Expires in %1$dh</string>
     <string name="incoming_requests_expires_under_hour">Expires in under 1h</string>
     <string name="incoming_requests_expired">Expired</string>
+    <string name="incoming_requests_empty_heading">No pending requests</string>
+    <string name="incoming_requests_empty_body">New bookings will show up here.</string>
+    <string name="incoming_requests_error_heading">Couldn\'t load requests</string>
     <string name="incoming_requests_open">View request</string>
     <plurals name="incoming_requests_card_a11y_pending">
         <item quantity="one">%1$s, %2$s, %3$s, %4$s, expires in %5$d hour</item>

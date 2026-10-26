@@ -107,7 +107,8 @@ class IncomingRequestsLogicTest {
 
     @Test
     fun aPaidRequestWithoutANetAmountIsPayoutPendingAndNeverShowsGross() {
-        val unavailable = breakdown(feeSource = FEE_SOURCE_UNAVAILABLE, gross = 75.0, fee = null, net = null, pct = null)
+        val unavailable =
+            breakdown(feeSource = FEE_SOURCE_UNAVAILABLE, gross = 75.0, fee = null, net = null, pct = null)
         val item = bookingRequestItem(earnings = 75.0, breakdown = unavailable)
         assertEquals(RequestCardEarnings.PayoutPending, requestCardEarnings(item, Locale.US))
     }
