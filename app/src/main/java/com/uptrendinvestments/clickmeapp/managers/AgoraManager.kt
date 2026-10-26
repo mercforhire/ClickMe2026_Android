@@ -25,7 +25,9 @@ import javax.inject.Singleton
  * Production [CallEngine] over the Agora [RtcEngine]; port of iOS `AgoraManager.swift`.
  *
  * Lives in an app singleton rather than the foreground service so the UI and the service share it without
- * binding. The constructor touches no native code. The engine is created lazily by [join], which
+ * binding. The constructors touch no native code. The internal primary constructor takes the SDK engine
+ * factory so a JVM test can stop at the SDK boundary; Hilt injects through the public secondary constructor,
+ * which passes the real `RtcEngine.create`. The engine is created lazily by [join], which
  * `CallCenter` calls only after `CallForegroundController.startAndAwait` returned true (spike finding), and
  * is released by [destroy] off the main thread, never from a callback (RESEARCH Pitfall 10).
  *
@@ -36,11 +38,17 @@ import javax.inject.Singleton
  */
 @Singleton
 class AgoraManager
-    @Inject
-    constructor(
-        @ApplicationContext private val context: Context,
-        @IoDispatcher private val io: CoroutineDispatcher,
+    internal constructor(
+        private val context: Context,
+        private val io: CoroutineDispatcher,
+        private val createRtcEngine: (RtcEngineConfig) -> RtcEngine?,
     ) : CallEngine {
+        @Inject
+        constructor(
+            @ApplicationContext context: Context,
+            @IoDispatcher io: CoroutineDispatcher,
+        ) : this(context, io, { config -> RtcEngine.create(config) })
+
         /** Guards every engine lifecycle step (join, leave, destroy) and the controls (WR-04). */
         private val mutex = Mutex()
 
@@ -120,34 +128,38 @@ class AgoraManager
                             publishMicrophoneTrack = true
                             autoSubscribeAudio = true
                         }
-                    rtc.joinChannel(token, channelName, uid, options) == 0
+                    val code = rtc.joinChannel(token, channelName, uid, options)
+                    if (code != 0) Log.w(TAG, "joinChannel failed code=$code")
+                    code == 0
                 }
             }
 
         /** Creates the engine with the iOS / spike audio defaults, or null if the SDK cannot start. */
-        private fun createEngine(): RtcEngine? =
+        private fun createEngine(): RtcEngine? {
             try {
-                val config =
-                    RtcEngineConfig().apply {
-                        mContext = context.applicationContext
-                        mAppId = BuildConfig.AGORA_APP_ID
-                        mEventHandler = handler
-                    }
-                RtcEngine.create(config).also { rtc ->
-                    rtc.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD)
-                    rtc.setAudioScenario(Constants.AUDIO_SCENARIO_DEFAULT)
-                    rtc.setDefaultAudioRoutetoSpeakerphone(true)
-                    rtc.setEnableSpeakerphone(true)
-                    engine = rtc
+                // Read before any config scope: inside RtcEngineConfig a bare `context` is the SDK getter (G-11-1).
+                val appContext = context.applicationContext
+                val config = buildRtcEngineConfig(appContext, BuildConfig.AGORA_APP_ID, handler)
+                val rtc: RtcEngine? = createRtcEngine(config)
+                if (rtc == null) {
+                    Log.w(TAG, "engine create returned null")
+                    return null
                 }
+                rtc.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD)
+                rtc.setAudioScenario(Constants.AUDIO_SCENARIO_DEFAULT)
+                rtc.setDefaultAudioRoutetoSpeakerphone(true)
+                rtc.setEnableSpeakerphone(true)
+                engine = rtc
+                return rtc
             } catch (e: Exception) {
-                Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
-                null
+                Log.w(TAG, "engine create failed ${describeEngineFailure(e)}")
+                return null
             } catch (e: LinkageError) {
                 // A native library that fails to load (UnsatisfiedLinkError) is an Error, not an Exception (WR-10).
-                Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
-                null
+                Log.w(TAG, "engine create failed ${describeEngineFailure(e)}")
+                return null
             }
+        }
 
         /** Holds the lock so a leave never interleaves with [destroy] or [join] (WR-04). */
         override suspend fun leave() {
