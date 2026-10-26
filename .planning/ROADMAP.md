@@ -552,7 +552,7 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 3/15 plans executed
+**Plans:** 10/15 plans executed
 Plans:
 **Wave 1**
 
@@ -562,13 +562,13 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 11-04-PLAN.md — Expert Bookings tab: two-bucket rules, ViewModel with refresh triggers, Upcoming cards with Join (EXP-08)
-- [ ] 11-05-PLAN.md — Incoming Requests: expiry/sort/earnings rules, ViewModel, cards, states, declined hand-off (EXP-06)
-- [ ] 11-06-PLAN.md — Request Decision read side: detail load, blocks, expired banner, three-branch earnings section (EXP-06)
-- [ ] 11-07-PLAN.md — Booking Confirmed and Add to Calendar via ACTION_INSERT, Back to Home (EXP-06, EXP-07)
-- [ ] 11-08-PLAN.md — Expert Booking Summary: `/details`, summary card, client's message, Join, guarded Cancel entry, quiet reloads (EXP-08, EXP-09)
-- [ ] 11-09-PLAN.md — Expert cancellation: two steps, iOS reasons, refund preview per D-16 as resolved, errors, hand-off to Past (EXP-09)
-- [ ] 11-10-PLAN.md — Dashboard workload: greeting, pending and reschedule banners, Today's Sessions with Join, states and triggers (EXP-05, EXP-08)
+- [x] 11-04-PLAN.md — Expert Bookings tab: two-bucket rules, ViewModel with refresh triggers, Upcoming cards with Join (EXP-08)
+- [x] 11-05-PLAN.md — Incoming Requests: expiry/sort/earnings rules, ViewModel, cards, states, declined hand-off (EXP-06)
+- [x] 11-06-PLAN.md — Request Decision read side: detail load, blocks, expired banner, three-branch earnings section (EXP-06)
+- [x] 11-07-PLAN.md — Booking Confirmed and Add to Calendar via ACTION_INSERT, Back to Home (EXP-06, EXP-07)
+- [x] 11-08-PLAN.md — Expert Booking Summary: `/details`, summary card, client's message, Join, guarded Cancel entry, quiet reloads (EXP-08, EXP-09)
+- [x] 11-09-PLAN.md — Expert cancellation: two steps, iOS reasons, refund preview per D-16 as resolved, errors, hand-off to Past (EXP-09)
+- [x] 11-10-PLAN.md — Dashboard workload: greeting, pending and reschedule banners, Today's Sessions with Join, states and triggers (EXP-05, EXP-08)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -696,7 +696,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
-| 11. Expert Requests & Bookings | 3/15 | In Progress | - |
+| 11. Expert Requests & Bookings | 10/15 | In Progress | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
