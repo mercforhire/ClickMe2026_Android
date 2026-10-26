@@ -4,8 +4,9 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 
 /**
  * Actions blocked during a live call (D-13: the call sites that exist today). Phase 10 added edit
- * availability; Phases 11 and 14 still add theirs (reschedule, change password, delete account, set up
- * payouts). Each entry maps to a `call_action_*` string in the UI.
+ * availability; Phase 11 adds payout setup (D-09) and the expert reschedule response (D-18); Phase 14 still adds
+ * change password and delete account. The expert cancel reuses [CancelBooking]. Each entry maps to a
+ * `call_action_*` string in the UI.
  */
 enum class RestrictedAction {
     SwitchModes,
@@ -13,6 +14,8 @@ enum class RestrictedAction {
     AddPaymentMethod,
     CancelBooking,
     EditAvailability,
+    SetUpPayouts,
+    RespondToReschedule,
 }
 
 /** Why joining a call failed, shown in the join-error dialog. */

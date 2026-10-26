@@ -163,6 +163,24 @@ class CallDialogsTest {
     }
 
     @Test
+    fun guard_endCallToSetUpPayouts() {
+        assertDialog(
+            CallDialog.Guard(GuardMessage.EndCallTo(RestrictedAction.SetUpPayouts)),
+            "Can't do that during a call",
+            "End the call to set up payouts.",
+        )
+    }
+
+    @Test
+    fun guard_sessionInProgressRespondToReschedule() {
+        assertDialog(
+            CallDialog.Guard(GuardMessage.SessionInProgress(RestrictedAction.RespondToReschedule)),
+            "Can't do that during a call",
+            "This session is in progress. End the call to respond to this reschedule.",
+        )
+    }
+
+    @Test
     fun guard_alreadyOnCall() {
         assertDialog(
             CallDialog.Guard(GuardMessage.AlreadyOnCall),

@@ -57,6 +57,7 @@ class RescheduleResponseCardTest {
         submitting: RescheduleSubmitting = RescheduleSubmitting.None,
         onAccept: () -> Unit = {},
         onDecline: (String) -> Unit = {},
+        viewer: RescheduleViewer = RescheduleViewer.Client,
     ) {
         rule.setContent {
             ClickMeTheme {
@@ -65,6 +66,7 @@ class RescheduleResponseCardTest {
                     submitting = submitting,
                     onAccept = onAccept,
                     onDecline = onDecline,
+                    viewer = viewer,
                     zone = toronto,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     locale = Locale.US,
@@ -207,6 +209,66 @@ class RescheduleResponseCardTest {
     fun noteBlockIsHiddenWhenThereIsNoNote() {
         setCard(proposal(note = null))
         rule.onNodeWithText("Expert's message").assertDoesNotExist()
+    }
+
+    // ---- Expert viewer (Phase 11, D-18) ----
+
+    @Test
+    fun expertViewer_clientProposal_isActionable() {
+        setCard(proposal(initiatedByExpert = false, note = "Please"), viewer = RescheduleViewer.Expert)
+        rule.onNodeWithText("Client proposed a new time").assertExists()
+        rule.onNodeWithText("Client's message").assertExists()
+        rule.onNodeWithText("Please").assertExists()
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).assertIsEnabled()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).assertIsEnabled()
+        rule.onNodeWithText("Awaiting client's response").assertDoesNotExist()
+    }
+
+    @Test
+    fun expertViewer_ownProposal_isReadOnly() {
+        setCard(proposal(initiatedByExpert = true, note = "Sorry"), viewer = RescheduleViewer.Expert)
+        rule.onNodeWithText("You proposed a new time").assertExists()
+        rule.onNodeWithText("Your message").assertExists()
+        rule.onNodeWithText("Awaiting client's response").assertExists()
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun expertViewer_acceptDialog_hasNoPaymentText() {
+        var accepted = 0
+        setCard(
+            proposal(initiatedByExpert = false, showsPaymentDisclosure = true, chargesSoon = true),
+            onAccept = { accepted++ },
+            viewer = RescheduleViewer.Expert,
+        )
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performClick()
+        rule.onNodeWithText("Accept the proposed reschedule?").assertExists()
+        rule.onNodeWithText("The session will move to the new time your client proposed.").assertExists()
+        rule.onNode(dialogContains("Your card hold will be released.")).assertDoesNotExist()
+        rule.onNode(dialogContains("may be charged sooner")).assertDoesNotExist()
+        rule.onNode(inDialog("Accept")).performClick()
+        assertEquals(1, accepted)
+    }
+
+    @Test
+    fun expertViewer_declineDialog_keepLabel() {
+        val reasons = mutableListOf<String>()
+        setCard(proposal(initiatedByExpert = false), onDecline = { reasons += it }, viewer = RescheduleViewer.Expert)
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
+        rule.onNode(inDialog("Keep session as-is")).assertExists()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG).performTextInput("a".repeat(600))
+        val length =
+            rule
+                .onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsProperties.EditableText)
+                ?.text
+                ?.length
+        assertEquals(500, length)
+        rule.onNode(inDialog("Decline")).performClick()
+        assertEquals(listOf("a".repeat(500)), reasons)
     }
 
     private fun setOutcome(
