@@ -20,6 +20,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +29,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
@@ -73,6 +77,13 @@ fun ExpertBookingSummaryScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
+    DisposableEffect(viewModel) { onDispose { viewModel.onScreenHidden() } }
+    // Nav3 may not deliver ON_RESUME to a covered entry (Phase 7 A10), for example back from an aborted Cancel screen;
+    // a coalesced call is a no-op on first launch.
+    LaunchedEffect(Unit) { viewModel.refreshQuietly() }
 
     ExpertBookingSummaryContent(
         state = state,
