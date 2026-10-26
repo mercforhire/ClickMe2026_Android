@@ -45,10 +45,13 @@ class ExpertBookingSummaryViewModelTest {
     private val callStarter = FakeCallStarter()
     private val callGuard = FakeCallGuard()
 
+    private val repository = ExpertBookingsRepository(api)
+
     private fun vm(joinScope: CoroutineScope = CoroutineScope(Job() + main.testDispatcher)) =
         ExpertBookingSummaryViewModel(
             ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Bookings),
-            ExpertBookingsRepository(api),
+            repository,
+            ExpertRescheduleResponder(repository),
             realtime,
             clock,
             callStarter,

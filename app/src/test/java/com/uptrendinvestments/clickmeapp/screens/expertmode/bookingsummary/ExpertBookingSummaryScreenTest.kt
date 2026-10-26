@@ -1,6 +1,9 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -14,7 +17,10 @@ import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.ConsultationFeeDto
+import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
@@ -66,10 +72,12 @@ class ExpertBookingSummaryScreenTest {
     ) {
         api.expertBookingDetailsHandler = handler
         val clock = MutableClock(now)
+        val repository = ExpertBookingsRepository(api)
         val viewModel =
             ExpertBookingSummaryViewModel(
                 ExpertBookingSummaryKey(bookingId, ExpertBookingOrigin.Bookings),
-                ExpertBookingsRepository(api),
+                repository,
+                ExpertRescheduleResponder(repository),
                 FakeRealtimeConnection(),
                 clock,
                 callStarter,
@@ -275,5 +283,67 @@ class ExpertBookingSummaryScreenTest {
         showScreen { throw IOException("offline") }
         rule.onNodeWithText("Couldn't load booking").assertExists()
         rule.onNodeWithText("Retry").assertExists()
+    }
+
+    // ---- Reschedule response (11-13) ----
+
+    private fun proposal(initiatedBy: String) =
+        RescheduleDto(
+            proposedStart = start.plusSeconds(86_400),
+            proposedEnd = start.plusSeconds(86_400 + 3600),
+            initiatedBy = initiatedBy,
+        )
+
+    private fun pendingReschedule(initiatedBy: String) =
+        expertBookingDetail(start = start, statusCode = "pending_reschedule", reschedule = proposal(initiatedBy))
+
+    private fun inDialog(text: String) = hasText(text) and hasAnyAncestor(isDialog())
+
+    @Test
+    fun clientProposalAcceptEndToEnd() {
+        var current = pendingReschedule("client")
+        var detailCalls = 0
+        api.acceptExpertRescheduleHandler = { id, _ ->
+            current = expertBookingDetail(start = start, statusCode = "confirmed")
+            RescheduleResponseData(bookingId = id, status = "confirmed")
+        }
+        showScreen {
+            detailCalls++
+            current
+        }
+        rule.onNodeWithText("Client proposed a new time").assertExists()
+
+        val callsBefore = detailCalls
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNodeWithText("Accept the proposed reschedule?").assertExists()
+        rule.onNode(inDialog("Accept")).performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("b1" to RestrictedAction.RespondToReschedule), callGuard.modifyAttempts)
+        assertEquals(1, api.acceptExpertRescheduleRequests.size)
+        assertEquals("b1", api.acceptExpertRescheduleRequests.single().first)
+        assertTrue(detailCalls > callsBefore)
+        rule.onNodeWithText("Reschedule accepted").assertExists()
+        rule.onAllNodesWithTag(RESCHEDULE_ACCEPT_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun expertProposalIsReadOnly() {
+        showScreen(pendingReschedule("expert"))
+        rule.onNodeWithText("You proposed a new time").assertExists()
+        rule.onNodeWithText("Awaiting client's response").assertExists()
+        rule.onAllNodesWithTag(RESCHEDULE_ACCEPT_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun guardBlocksAccept() {
+        callGuard.blocked = true
+        showScreen(pendingReschedule("client"))
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNode(inDialog("Accept")).performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("b1" to RestrictedAction.RespondToReschedule), callGuard.modifyAttempts)
+        assertEquals(0, api.acceptExpertRescheduleCalls)
     }
 }
