@@ -2,21 +2,29 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,14 +33,27 @@ import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
+import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.subviews.ExpertMessageCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.subviews.ExpertSummaryCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 
+/** Test tag on the Join button. */
+const val EXPERT_SUMMARY_JOIN_TAG = "expert_summary_join"
+
+/** Test tag on the Cancel Booking button. */
+const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
+
+private val CancelMinHeight = 56.dp
+private val CancelIconSize = 24.dp
 private val SummarySkeletonHeight = 224.dp
 private val ButtonSkeletonHeight = 56.dp
 
@@ -51,20 +72,26 @@ fun ExpertBookingSummaryScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
 
     ExpertBookingSummaryContent(
         state = state,
+        joinNow = joinNow,
+        onJoin = viewModel::join,
         onBack = onBack,
         onRetry = viewModel::retry,
-        onCancel = onCancel,
+        onCancel = { if (viewModel.attemptCancel()) onCancel() },
         modifier = modifier,
     )
 }
 
 /** Stateless Expert Booking Summary: loading, failed (with Retry) and loaded states under an app bar. */
 @Composable
+@Suppress("LongParameterList")
 fun ExpertBookingSummaryContent(
     state: ExpertBookingSummaryUiState,
+    joinNow: Instant,
+    onJoin: () -> Unit,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onCancel: () -> Unit,
@@ -97,6 +124,8 @@ fun ExpertBookingSummaryContent(
             is ExpertSummaryLoad.Loaded ->
                 LoadedBody(
                     details = load.details,
+                    joinNow = joinNow,
+                    onJoin = onJoin,
                     onCancel = onCancel,
                     modifier = bodyModifier,
                     zone = zone,
@@ -117,9 +146,12 @@ private fun LoadingBody(modifier: Modifier = Modifier) {
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun LoadedBody(
     details: ExpertSummaryDetails,
+    joinNow: Instant,
+    onJoin: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier,
     zone: ZoneId,
@@ -135,5 +167,27 @@ private fun LoadedBody(
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         ExpertSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
+        details.preparationNotes?.let { ExpertMessageCard(it) }
+        if (details.showsJoin) {
+            JoinCallButton(
+                enabled = isWithinJoinWindow(details.statusCode, details.start, details.end, joinNow),
+                onClick = onJoin,
+                modifier = Modifier.testTag(EXPERT_SUMMARY_JOIN_TAG),
+            )
+        }
+        if (details.canCancel) {
+            DestructiveOutlinedButton(
+                onClick = onCancel,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = CancelMinHeight)
+                        .testTag(EXPERT_SUMMARY_CANCEL_TAG),
+            ) {
+                Icon(Icons.Outlined.Cancel, contentDescription = null, modifier = Modifier.size(CancelIconSize))
+                Spacer(Modifier.width(Spacing.sm))
+                Text(stringResource(R.string.expert_summary_cancel))
+            }
+        }
     }
 }

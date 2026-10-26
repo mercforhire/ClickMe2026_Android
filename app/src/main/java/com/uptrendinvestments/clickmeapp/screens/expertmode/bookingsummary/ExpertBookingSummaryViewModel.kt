@@ -3,8 +3,11 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.CallStarter
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
@@ -68,6 +71,29 @@ class ExpertBookingSummaryViewModel
         fun retry() {
             startLoad()
         }
+
+        /**
+         * Starts the call with the client as the peer. Does nothing before the booking has loaded. The join window only
+         * enables the button; the server has the final say on `/join`, so this does not re-check it (Phase 9 D-02).
+         */
+        fun join() {
+            val details = (_uiState.value.load as? ExpertSummaryLoad.Loaded)?.details ?: return
+            callStarter.startCall(
+                CallStartRequest(
+                    bookingId = details.bookingId,
+                    peerId = details.clientId,
+                    peerName = details.clientName,
+                    peerAvatarUrl = details.clientAvatarUrl,
+                    topic = details.topic,
+                    scheduledStart = details.start,
+                    scheduledEnd = details.end,
+                    meetingType = MeetingType.fromWire(details.meetingType),
+                ),
+            )
+        }
+
+        /** True when Cancel may open; false (with the guard dialog queued) while this booking's call is live (D-17). */
+        fun attemptCancel(): Boolean = callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)
 
         private fun startLoad(): Job {
             loadJob?.cancel()
