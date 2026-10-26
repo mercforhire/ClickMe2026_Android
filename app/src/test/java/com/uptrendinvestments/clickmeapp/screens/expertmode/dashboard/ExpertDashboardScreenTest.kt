@@ -2,8 +2,13 @@
 
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -125,6 +130,8 @@ class ExpertDashboardScreenTest {
                     onOpenRequests = { calls += "requests" },
                     onOpenBookingsUpcoming = { calls += "bookingsUpcoming" },
                     onOpenBooking = { calls += "booking:$it" },
+                    onOpenAvailability = { calls += "availability" },
+                    onOpenTopics = { calls += "topics" },
                     viewModel = f.vm,
                 )
             }
@@ -420,6 +427,68 @@ class ExpertDashboardScreenTest {
             rule.onNodeWithText("Couldn't open payout setup").assertExists()
             rule.onNodeWithText("Only Canadian accounts are supported.").assertExists()
             assertEquals(1, f.api.connectRefreshLinkCalls)
+        }
+
+    @Test
+    fun toolsGridTargets() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_pending").performScrollTo().performClick()
+            rule.onNodeWithTag("dashboard_tool_calendar").performScrollTo().performClick()
+            rule.onNodeWithTag("dashboard_tool_availability").performScrollTo().performClick()
+            rule.onNodeWithTag("dashboard_tool_topics").performScrollTo().performClick()
+
+            assertEquals(listOf("requests", "bookingsUpcoming", "availability", "topics"), calls)
+            assertEquals(BookingsLaunch(BookingsTab.Upcoming), f.launch.bookings.pending.value)
+        }
+
+    @Test
+    fun placeholderToolsShowComingSoon() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_profile").performScrollTo().performClick()
+            rule.onNodeWithText("Profile Settings is coming soon").assertExists()
+
+            assertTrue(calls.isEmpty())
+        }
+
+    @Test
+    fun payoutsToolShowsComingSoon() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_payouts").performScrollTo().performClick()
+            rule.onNodeWithText("Payouts is coming soon").assertExists()
+
+            assertTrue(calls.isEmpty())
+        }
+
+    @Test
+    fun toolCellsAreButtonsWithLabels() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            listOf(
+                "pending" to "Pending Requests",
+                "calendar" to "Calendar",
+                "availability" to "Availability",
+                "topics" to "Topics",
+                "profile" to "Profile Settings",
+                "payouts" to "Payouts",
+            ).forEach { (tag, label) ->
+                rule
+                    .onNodeWithTag("dashboard_tool_$tag")
+                    .performScrollTo()
+                    .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+                    .assert(hasText(label))
+            }
+            rule.onNodeWithText("Expert Tools").assertExists()
         }
 
     private companion object {

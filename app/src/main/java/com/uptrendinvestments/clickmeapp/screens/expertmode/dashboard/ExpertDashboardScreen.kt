@@ -45,6 +45,8 @@ import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLaunche
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DashboardHero
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DashboardSkeleton
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.ExpertTool
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.ExpertToolsGrid
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.FinancialSummarySection
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.PendingRequestsBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.RescheduleRequestsBanner
@@ -62,7 +64,8 @@ import java.time.ZoneId
 /**
  * Hilt-aware expert Dashboard tab root (EXP-05). Navigation is reported through callbacks so the route owns the
  * navigator: [onOpenRequests] opens Incoming Requests, [onOpenBookingsUpcoming] selects the Bookings tab on Upcoming
- * (the screen first posts the hand-off the Bookings tab consumes, D-12) and [onOpenBooking] opens a booking Summary.
+ * (the screen first posts the hand-off the Bookings tab consumes, D-12), [onOpenBooking] opens a booking Summary,
+ * [onOpenAvailability] and [onOpenTopics] are the Expert Tools targets (D-11).
  */
 @Composable
 fun ExpertDashboardScreen(
@@ -71,6 +74,8 @@ fun ExpertDashboardScreen(
     onOpenRequests: () -> Unit,
     onOpenBookingsUpcoming: () -> Unit,
     onOpenBooking: (String) -> Unit,
+    onOpenAvailability: () -> Unit,
+    onOpenTopics: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertDashboardViewModel = hiltViewModel(),
 ) {
@@ -93,6 +98,8 @@ fun ExpertDashboardScreen(
             onOpenBookingsUpcoming()
         },
         onOpenBooking = onOpenBooking,
+        onOpenAvailability = onOpenAvailability,
+        onOpenTopics = onOpenTopics,
         onJoin = viewModel::join,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
@@ -118,6 +125,8 @@ fun ExpertDashboardContent(
     onOpenRequests: () -> Unit,
     onOpenBookingsUpcoming: () -> Unit,
     onOpenBooking: (String) -> Unit,
+    onOpenAvailability: () -> Unit,
+    onOpenTopics: () -> Unit,
     onJoin: (ExpertBookingItem) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
@@ -133,6 +142,21 @@ fun ExpertDashboardContent(
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
     val payoutOpenFailedMessage = stringResource(R.string.dashboard_payout_setup_error_title)
+    val profileComingSoon =
+        stringResource(R.string.dashboard_coming_soon, stringResource(ExpertTool.ProfileSettings.label))
+    val payoutsComingSoon = stringResource(R.string.dashboard_coming_soon, stringResource(ExpertTool.Payouts.label))
+    val onToolClick: (ExpertTool) -> Unit = { tool ->
+        when (tool) {
+            ExpertTool.PendingRequests -> onOpenRequests()
+            ExpertTool.Calendar -> onOpenBookingsUpcoming()
+            ExpertTool.Availability -> onOpenAvailability()
+            ExpertTool.Topics -> onOpenTopics()
+            ExpertTool.ProfileSettings ->
+                scope.launch { snackbarHostState.showSnackbar(profileComingSoon, duration = SnackbarDuration.Short) }
+            ExpertTool.Payouts ->
+                scope.launch { snackbarHostState.showSnackbar(payoutsComingSoon, duration = SnackbarDuration.Short) }
+        }
+    }
     val openTab =
         rememberCustomTabLauncher {
             scope.launch { snackbarHostState.showSnackbar(payoutOpenFailedMessage, duration = SnackbarDuration.Short) }
@@ -241,6 +265,7 @@ fun ExpertDashboardContent(
                             isMinting = state.isMintingLink,
                             onStartPayoutSetup = onStartPayoutSetup,
                         )
+                        ExpertToolsGrid(onToolClick = onToolClick)
                         Spacer(Modifier.fillMaxWidth().height(Spacing.xl))
                     }
                 }

@@ -43,5 +43,13 @@
     <string name="dashboard_payout_manual">Payouts are on manual schedule</string>
     <string name="dashboard_payout_unavailable">Payout schedule unavailable</string>
     <string name="dashboard_amount_unavailable">—</string>
+    <string name="dashboard_expert_tools">Expert Tools</string>
+    <string name="dashboard_tool_pending">Pending Requests</string>
+    <string name="dashboard_tool_calendar">Calendar</string>
+    <string name="dashboard_tool_availability">Availability</string>
+    <string name="dashboard_tool_topics">Topics</string>
+    <string name="dashboard_tool_profile">Profile Settings</string>
+    <string name="dashboard_tool_payouts">Payouts</string>
+    <string name="dashboard_coming_soon">%1$s is coming soon</string>
     <string name="dashboard_payout_setup_error_title">Couldn\'t open payout setup</string>
 </resources>
