@@ -19,6 +19,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.uptrendinvestments.clickmeapp.screens.expertmode.DashboardLaunch
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -159,7 +161,12 @@ class BookingConfirmedScreenTest {
             val noCalendarApp = remember { NoCalendarContext(base) }
             CompositionLocalProvider(LocalContext provides noCalendarApp) {
                 ClickMeTheme {
-                    BookingConfirmedScreen(key = key, onBack = {}, onBackToHome = {})
+                    BookingConfirmedScreen(
+                        key = key,
+                        onBack = {},
+                        onBackToHome = {},
+                        viewModel = BookingConfirmedViewModel(ExpertLaunchRequest()),
+                    )
                 }
             }
         }
@@ -169,5 +176,33 @@ class BookingConfirmedScreenTest {
         rule.waitForIdle()
 
         rule.onNodeWithText("No calendar app found").assertExists()
+    }
+
+    @Test
+    fun backToHomePostsDashboardReload() {
+        val launchRequest = ExpertLaunchRequest()
+        var home = 0
+        var pendingWhenNavigating: DashboardLaunch? = null
+        rule.setContent {
+            ClickMeTheme {
+                BookingConfirmedScreen(
+                    key = key,
+                    onBack = {},
+                    onBackToHome = {
+                        home++
+                        pendingWhenNavigating = launchRequest.dashboard.pending.value
+                    },
+                    viewModel = BookingConfirmedViewModel(launchRequest),
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithTag("confirmed_back_home").performScrollTo().performClick()
+
+        assertEquals(1, home)
+        // The reload is posted before the navigation callback runs and stays pending for the Dashboard.
+        assertEquals(DashboardLaunch, pendingWhenNavigating)
+        assertEquals(DashboardLaunch, launchRequest.dashboard.consume())
     }
 }

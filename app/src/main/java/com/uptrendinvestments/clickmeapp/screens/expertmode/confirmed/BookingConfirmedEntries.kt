@@ -11,7 +11,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.showDashboard
  *
  * Confirmed replaces Request Decision after an accept (D-04, the replace itself is done by the decision screen), so
  * system Back pops to Incoming Requests. "Back to Home" resets the Dashboard stack and selects the Dashboard tab
- * ([showDashboard], D-05).
+ * (D-05).
  */
 fun EntryProviderScope<NavKey>.bookingConfirmedEntries(navigator: Navigator) {
     entry<BookingConfirmedKey>(metadata = BottomBar.hidden()) { key ->

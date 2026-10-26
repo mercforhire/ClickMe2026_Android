@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
@@ -67,7 +68,8 @@ private val BLOCK_DELAYS_MS = listOf(ICON_DELAY_MS, HEADLINE_DELAY_MS, CARD_DELA
  * makes no network request (Pitfall 8).
  *
  * "Add to Calendar" hands a calendar app an `ACTION_INSERT` intent (no permission, D-06) and shows a "No calendar app
- * found" snackbar when nothing can handle it.
+ * found" snackbar when nothing can handle it. "Back to Home" posts a Dashboard reload through [viewModel] and then calls
+ * [onBackToHome].
  */
 @Composable
 fun BookingConfirmedScreen(
@@ -75,6 +77,7 @@ fun BookingConfirmedScreen(
     onBack: () -> Unit,
     onBackToHome: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: BookingConfirmedViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -105,7 +108,11 @@ fun BookingConfirmedScreen(
                 }
             }
         },
-        onBackToHome = onBackToHome,
+        onBackToHome = {
+            // Post the Dashboard reload first, then reset the stacks and select the Dashboard (D-05).
+            viewModel.backToHome()
+            onBackToHome()
+        },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
     )
