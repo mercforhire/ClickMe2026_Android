@@ -101,7 +101,8 @@ class ExpertBookingsViewModelTest {
             )
             assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
             assertEquals(expectedLists(), vm.uiState.value.lists)
-            assertEquals(listOf("r1", "u1"), vm.uiState.value.lists.upcoming.map { it.bookingId })
+            val lists = vm.uiState.value.lists
+            assertEquals(listOf("r1", "u1"), lists.upcoming.map { it.bookingId })
         }
 
     @Test

@@ -10,7 +10,9 @@ import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
+import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository.Companion.PAGE
@@ -24,6 +26,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -40,6 +44,14 @@ import javax.inject.Inject
  *
  * Load modes: Loud shows the skeleton and a failure message, Pull is pull-to-refresh and flags a failure, Quiet keeps
  * the previous lists and swallows a failure (D-13). A newer load cancels the one in flight, so the latest wins.
+ *
+ * Three refresh triggers (D-13): pull-to-refresh ([refresh]); a quiet reload when the screen or the Bookings tab is
+ * shown again ([onScreenShown]); and a quiet reload on any realtime `booking.update`. Quiet reloads never show
+ * Loading and a failed one keeps the previous lists (Pitfall 7).
+ *
+ * D-17 hand-off: the expert cancel flow posts a `BookingsLaunch` to [ExpertLaunchRequest.bookings]. It is consumed in
+ * `init` when posted before this ViewModel exists, and on every later emission otherwise; either way it selects its
+ * tab, carries the notice for the snackbar, forces a fresh reload and is applied exactly once.
  *
  * Switching sub-tabs never fetches, since both buckets are always loaded together.
  *
@@ -87,7 +99,24 @@ class ExpertBookingsViewModel
         private var loadIsCurrent = false
 
         init {
+            // D-13 trigger 3: any booking.update refetches. The payload is never read (T-11-11); startLoad cancels
+            // the in-flight load, so a burst of events ends with one latest-wins result (T-11-12).
+            viewModelScope.launch {
+                realtime.events.filterIsInstance<RealtimeEvent.BookingUpdate>().collect {
+                    startLoad(if (_uiState.value.load is ExpertBookingsLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
+                }
+            }
+            // D-17: a launch posted before this ViewModel existed is applied now, before the first load, so the
+            // first load is the fresh one and no second pair runs.
+            launchRequest.bookings.consume()?.let { applyLaunch(it, reload = false) }
             startLoad(LoadMode.Loud)
+            // A launch posted while this ViewModel lives (the Bookings stack is still on screen under the cancel
+            // flow) selects its tab and forces a fresh reload.
+            viewModelScope.launch {
+                launchRequest.bookings.pending.filterNotNull().collect {
+                    launchRequest.bookings.consume()?.let { launch -> applyLaunch(launch, reload = true) }
+                }
+            }
         }
 
         /**
@@ -113,6 +142,44 @@ class ExpertBookingsViewModel
 
         /** Pull-to-refresh: keeps the lists visible, shows the indicator and flags a failure (D-13). */
         fun refresh() = startLoad(LoadMode.Pull)
+
+        /**
+         * D-13 trigger 2: the screen, or the Bookings tab, is shown again. The screen calls this from
+         * `LifecycleEventEffect(ON_RESUME)` and `LaunchedEffect(Unit)`. A call while a current load runs does
+         * nothing, so first composition never double-loads; a Loaded screen reloads quietly.
+         */
+        fun onScreenShown() {
+            if (loadJob?.isActive == true && loadIsCurrent) return
+            startLoad(if (_uiState.value.load is ExpertBookingsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud)
+        }
+
+        /**
+         * The screen was hidden or disposed (`ON_PAUSE`, `DisposableEffect` disposal; Nav3 may not deliver ON_RESUME
+         * to a covered entry, Phase 7 A10). A load started before this may predate a change made while hidden, so
+         * the next [onScreenShown] restarts it.
+         */
+        fun onScreenHidden() {
+            loadIsCurrent = false
+        }
+
+        fun consumeNotice() {
+            _uiState.update { it.copy(notice = null) }
+        }
+
+        fun consumeRefreshFailure() {
+            _uiState.update { it.copy(refreshFailed = false) }
+        }
+
+        private fun applyLaunch(
+            launch: BookingsLaunch,
+            reload: Boolean,
+        ) {
+            savedStateHandle[KEY_SELECTED_TAB] = launch.tab.name
+            _uiState.update { it.copy(selectedTab = launch.tab, notice = launch.notice) }
+            if (reload) {
+                startLoad(if (_uiState.value.load is ExpertBookingsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud)
+            }
+        }
 
         /** Selects [tab]; no fetch, both buckets are already loaded. Survives rotation and process death. */
         fun selectTab(tab: BookingsTab) {

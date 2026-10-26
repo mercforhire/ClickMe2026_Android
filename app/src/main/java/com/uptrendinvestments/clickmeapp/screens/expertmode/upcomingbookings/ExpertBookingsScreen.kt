@@ -20,6 +20,8 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +33,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
@@ -69,6 +73,11 @@ fun ExpertBookingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
+    DisposableEffect(viewModel) { onDispose { viewModel.onScreenHidden() } }
+    // The Nav3 entry may not receive ON_RESUME when it is re-shown; it leaves and re-enters composition instead.
+    LaunchedEffect(Unit) { viewModel.onScreenShown() }
 
     ExpertBookingsContent(
         state = state,
@@ -79,8 +88,8 @@ fun ExpertBookingsScreen(
         onOpenBooking = onOpenBooking,
         onJoin = viewModel::join,
         onUpdateAvailability = onUpdateAvailability,
-        onNoticeConsumed = {},
-        onRefreshFailureConsumed = {},
+        onNoticeConsumed = viewModel::consumeNotice,
+        onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
         modifier = modifier,
     )
 }
