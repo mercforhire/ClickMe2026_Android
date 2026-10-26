@@ -2,10 +2,13 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
+import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsLaunch
+import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsNotice
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -273,6 +276,69 @@ class RequestDecisionViewModelTest {
 
             assertEquals(0, api.acceptBookingRequestCalls)
             assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+        }
+
+    @Test
+    fun declineSendsCodeAndFallbackText() =
+        runTest(main.testDispatcher) {
+            api.declineBookingRequestHandler = { id, _ -> DeclineBookingRequestData(requestId = id) }
+            val vm = loadedVm()
+
+            vm.decline(DeclineReason.OutsideExpertise, "")
+            runCurrent()
+
+            assertEquals(
+                listOf("r1" to DeclineBookingRequestBody("OUT_OF_SCOPE", "Outside my expertise")),
+                api.declineBookingRequestRequests,
+            )
+            assertEquals(
+                IncomingRequestsLaunch(IncomingRequestsNotice.Declined),
+                launch.incomingRequests.pending.value,
+            )
+            assertEquals(RequestDecisionEvent.Declined, vm.uiState.value.event)
+        }
+
+    @Test
+    fun declineSendsTheTrimmedNote() =
+        runTest(main.testDispatcher) {
+            api.declineBookingRequestHandler = { id, _ -> DeclineBookingRequestData(requestId = id) }
+            val vm = loadedVm()
+
+            vm.decline(DeclineReason.Other, "  Booked solid  ")
+            runCurrent()
+
+            assertEquals(
+                listOf("r1" to DeclineBookingRequestBody("OTHER", "Booked solid")),
+                api.declineBookingRequestRequests,
+            )
+        }
+
+    @Test
+    fun declineIsSingleFlightAndBlocksAccept() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<DeclineBookingRequestData>()
+            api.declineBookingRequestHandler = { _, _ -> gate.await() }
+            val vm = loadedVm()
+
+            vm.decline(DeclineReason.Other, "")
+            vm.decline(DeclineReason.Other, "again")
+            vm.accept("hello")
+            runCurrent()
+
+            assertEquals(1, api.declineBookingRequestCalls)
+            assertEquals(0, api.acceptBookingRequestCalls)
+            assertEquals(DecisionSubmitting.Declining, vm.uiState.value.submitting)
+        }
+
+    @Test
+    fun expiredRequestCannotDecline() =
+        runTest(main.testDispatcher) {
+            val vm = loadedVm(RequestDecisionKey("r1", isExpired = true))
+
+            vm.decline(DeclineReason.Other, "")
+            runCurrent()
+
+            assertEquals(0, api.declineBookingRequestCalls)
         }
 
     @Test

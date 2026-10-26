@@ -7,6 +7,7 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsLaunch
+import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsNotice
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import dagger.assisted.Assisted
@@ -85,6 +86,27 @@ class RequestDecisionViewModel
                     _uiState.update {
                         it.copy(event = RequestDecisionEvent.Accepted(details.toConfirmedKey(data.bookingId)))
                     }
+                } catch (e: ApiException) {
+                    _uiState.update { it.copy(submitting = DecisionSubmitting.None) }
+                }
+            }
+        }
+
+        /**
+         * Declines the request with a backend [reason] code and the optional [note] (D-01, D-02): a blank note sends
+         * the reason's label as `reason_text`, which the backend requires. On success posts a reload plus the
+         * "Request declined" notice to Incoming Requests and emits [RequestDecisionEvent.Declined] (D-03).
+         */
+        fun decline(
+            reason: DeclineReason,
+            note: String,
+        ) {
+            beginSubmitting(DecisionSubmitting.Declining) ?: return
+            viewModelScope.launch {
+                try {
+                    repository.decline(key.requestId, reason.wire, declineReasonText(reason, note))
+                    launchRequest.incomingRequests.post(IncomingRequestsLaunch(IncomingRequestsNotice.Declined))
+                    _uiState.update { it.copy(event = RequestDecisionEvent.Declined) }
                 } catch (e: ApiException) {
                     _uiState.update { it.copy(submitting = DecisionSubmitting.None) }
                 }

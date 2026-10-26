@@ -1,19 +1,35 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsLaunch
+import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsNotice
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.ACCEPT_MESSAGE_FIELD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.ACCEPT_SHEET_CANCEL_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.ACCEPT_SHEET_CONFIRM_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DECLINE_NOTE_FIELD_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DECLINE_REASON_ROW_TAG_PREFIX
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DECLINE_SHEET_CONFIRM_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DECLINE_SHEET_KEEP_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_DECLINE_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -43,6 +59,7 @@ class RequestDecisionScreenTest {
     private val launch = ExpertLaunchRequest()
     private val accepted = mutableListOf<BookingConfirmedKey>()
     private var backCount = 0
+    private var declinedCount = 0
 
     private fun show(key: RequestDecisionKey) {
         val viewModel = RequestDecisionViewModel(key, BookingRequestsRepository(api), launch)
@@ -52,6 +69,7 @@ class RequestDecisionScreenTest {
                     viewModel = viewModel,
                     onBack = { backCount++ },
                     onAccepted = { accepted += it },
+                    onDeclined = { declinedCount++ },
                 )
             }
         }
@@ -212,6 +230,103 @@ class RequestDecisionScreenTest {
         rule.onNodeWithText("800/1000").assertExists()
 
         rule.onNodeWithTag(ACCEPT_MESSAGE_FIELD_TAG).performTextInput("c".repeat(500))
+        rule.onNodeWithText("1000/1000").assertExists()
+    }
+
+    @Test
+    fun declineDisabledUntilReasonChosen() {
+        pendingRequest()
+        show(RequestDecisionKey("r1"))
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+
+        rule.onNodeWithText("Decline Booking Request?").assertExists()
+        rule.onNodeWithText("This action cannot be undone.").assertExists()
+        DeclineReason.entries.forEach {
+            rule
+                .onNodeWithTag(
+                    DECLINE_REASON_ROW_TAG_PREFIX + it.name,
+                ).assertIsNotSelected()
+        }
+        rule
+            .onNodeWithTag(DECLINE_SHEET_CONFIRM_TAG)
+            .assertIsNotEnabled()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Choose a reason first"))
+
+        rule
+            .onNodeWithTag(
+                DECLINE_REASON_ROW_TAG_PREFIX + DeclineReason.NotAvailable.name,
+            ).performScrollTo()
+            .performClick()
+
+        rule.onNodeWithTag(DECLINE_REASON_ROW_TAG_PREFIX + DeclineReason.NotAvailable.name).assertIsSelected()
+        rule.onNodeWithTag(DECLINE_SHEET_CONFIRM_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun theFourReasonsReadInOrder() {
+        pendingRequest()
+        show(RequestDecisionKey("r1"))
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+
+        val labels = listOf("Schedule conflict", "Outside my expertise", "Not available at that time", "Other reason")
+        DeclineReason.entries.zip(labels).forEach { (reason, label) ->
+            rule
+                .onNodeWithTag(DECLINE_REASON_ROW_TAG_PREFIX + reason.name)
+                .assertTextContains(label)
+        }
+        rule.onNodeWithText("Reason for declining *").assertExists()
+        rule.onNodeWithText("Optional note to the client").assertExists()
+    }
+
+    @Test
+    fun keepRequestClosesTheSheetWithoutSending() {
+        pendingRequest()
+        show(RequestDecisionKey("r1"))
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+
+        rule.onNodeWithTag(DECLINE_SHEET_KEEP_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Decline Booking Request?").assertDoesNotExist()
+        assertEquals(0, api.declineBookingRequestCalls)
+    }
+
+    @Test
+    fun declineSuccessCallsOnDeclined() {
+        pendingRequest()
+        api.declineBookingRequestHandler = { id, _ -> DeclineBookingRequestData(requestId = id) }
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+        rule
+            .onNodeWithTag(
+                DECLINE_REASON_ROW_TAG_PREFIX + DeclineReason.ScheduleConflict.name,
+            ).performScrollTo()
+            .performClick()
+        rule.onNodeWithTag(DECLINE_SHEET_CONFIRM_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        assertEquals(
+            listOf("r1" to DeclineBookingRequestBody("CONFLICT", "Schedule conflict")),
+            api.declineBookingRequestRequests,
+        )
+        assertEquals(1, declinedCount)
+        assertEquals(0, accepted.size)
+        assertEquals(
+            IncomingRequestsLaunch(IncomingRequestsNotice.Declined),
+            launch.incomingRequests.pending.value,
+        )
+    }
+
+    @Test
+    fun declineNoteCounterAppearsFrom800AndIsCapped() {
+        pendingRequest()
+        show(RequestDecisionKey("r1"))
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+
+        rule.onNodeWithTag(DECLINE_NOTE_FIELD_TAG).performTextInput("a".repeat(800))
+        rule.onNodeWithText("800/1000").assertExists()
+        rule.onNodeWithTag(DECLINE_NOTE_FIELD_TAG).performTextInput("b".repeat(400))
         rule.onNodeWithText("1000/1000").assertExists()
     }
 

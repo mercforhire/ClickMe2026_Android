@@ -41,6 +41,7 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.AcceptRequestSheet
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DeclineRequestSheet
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestActionFooter
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestClientHeader
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestDetailsCard
@@ -71,6 +72,7 @@ fun RequestDecisionScreen(
     viewModel: RequestDecisionViewModel,
     onBack: () -> Unit,
     onAccepted: (BookingConfirmedKey) -> Unit,
+    onDeclined: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -78,6 +80,10 @@ fun RequestDecisionScreen(
         when (val event = state.event) {
             is RequestDecisionEvent.Accepted -> {
                 onAccepted(event.confirmed)
+                viewModel.consumeEvent()
+            }
+            RequestDecisionEvent.Declined -> {
+                onDeclined()
                 viewModel.consumeEvent()
             }
             else -> Unit
@@ -88,6 +94,7 @@ fun RequestDecisionScreen(
         onBack = onBack,
         onRetry = viewModel::retry,
         onAccept = viewModel::accept,
+        onDecline = viewModel::decline,
         modifier = modifier,
     )
 }
@@ -102,6 +109,7 @@ fun RequestDecisionContent(
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onAccept: (String) -> Unit,
+    onDecline: (DeclineReason, String) -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
@@ -109,10 +117,19 @@ fun RequestDecisionContent(
 ) {
     var acceptOpen by rememberSaveable { mutableStateOf(false) }
     var acceptText by rememberSaveable { mutableStateOf("") }
+    var declineOpen by rememberSaveable { mutableStateOf(false) }
+    var declineReasonName by rememberSaveable { mutableStateOf<String?>(null) }
+    var declineNote by rememberSaveable { mutableStateOf("") }
+    val declineReason = DeclineReason.entries.firstOrNull { it.name == declineReasonName }
     val submitting = state.submitting != DecisionSubmitting.None
     val canDecide = state.load is RequestDecisionLoad.Loaded && !state.isExpired
     // A finished decision closes its sheet; the screen is replaced or popped right after.
-    LaunchedEffect(state.event) { if (state.event != null) acceptOpen = false }
+    LaunchedEffect(state.event) {
+        if (state.event != null) {
+            acceptOpen = false
+            declineOpen = false
+        }
+    }
     // The call keeps running in the ViewModel, so Back must not leave while it is in flight.
     BackHandler(enabled = submitting) {}
 
@@ -130,7 +147,7 @@ fun RequestDecisionContent(
             if (canDecide) {
                 RequestActionFooter(
                     enabled = !submitting,
-                    onDecline = {},
+                    onDecline = { declineOpen = true },
                     onAccept = { acceptOpen = true },
                 )
             }
@@ -159,6 +176,23 @@ fun RequestDecisionContent(
             isSubmitting = state.submitting == DecisionSubmitting.Accepting,
             onDismiss = { acceptOpen = false },
             onConfirm = { onAccept(acceptText) },
+        )
+    }
+
+    val loaded = state.load as? RequestDecisionLoad.Loaded
+    if (declineOpen && canDecide && loaded != null) {
+        DeclineRequestSheet(
+            details = loaded.details,
+            selected = declineReason,
+            onSelect = { declineReasonName = it.name },
+            note = declineNote,
+            onNoteChange = { declineNote = it },
+            isSubmitting = state.submitting == DecisionSubmitting.Declining,
+            onDismiss = { declineOpen = false },
+            onConfirm = { declineReason?.let { onDecline(it, declineNote) } },
+            zone = zone,
+            timeFormat = timeFormat,
+            locale = locale,
         )
     }
 }

@@ -20,6 +20,7 @@ fun EntryProviderScope<NavKey>.requestDecisionEntries(navigator: Navigator) {
                 ),
             onBack = navigator::goBack,
             onAccepted = { navigator.replaceTop(it) },
+            onDeclined = navigator::goBack,
         )
     }
 }
