@@ -133,29 +133,31 @@ class AgoraManager
             }
 
         /** Creates the engine with the iOS / spike audio defaults, or null if the SDK cannot start. */
-        private fun createEngine(): RtcEngine? =
+        private fun createEngine(): RtcEngine? {
             try {
-                val config =
-                    RtcEngineConfig().apply {
-                        mContext = context.applicationContext
-                        mAppId = BuildConfig.AGORA_APP_ID
-                        mEventHandler = handler
-                    }
-                createRtcEngine(config)!!.also { rtc ->
-                    rtc.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD)
-                    rtc.setAudioScenario(Constants.AUDIO_SCENARIO_DEFAULT)
-                    rtc.setDefaultAudioRoutetoSpeakerphone(true)
-                    rtc.setEnableSpeakerphone(true)
-                    engine = rtc
+                // Read before any config scope: inside RtcEngineConfig a bare `context` is the SDK getter (G-11-1).
+                val appContext = context.applicationContext
+                val config = buildRtcEngineConfig(appContext, BuildConfig.AGORA_APP_ID, handler)
+                val rtc: RtcEngine? = createRtcEngine(config)
+                if (rtc == null) {
+                    Log.w(TAG, "engine create returned null")
+                    return null
                 }
+                rtc.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD)
+                rtc.setAudioScenario(Constants.AUDIO_SCENARIO_DEFAULT)
+                rtc.setDefaultAudioRoutetoSpeakerphone(true)
+                rtc.setEnableSpeakerphone(true)
+                engine = rtc
+                return rtc
             } catch (e: Exception) {
                 Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
-                null
+                return null
             } catch (e: LinkageError) {
                 // A native library that fails to load (UnsatisfiedLinkError) is an Error, not an Exception (WR-10).
                 Log.w(TAG, "engine create failed ${e.javaClass.simpleName}")
-                null
+                return null
             }
+        }
 
         /** Holds the lock so a leave never interleaves with [destroy] or [join] (WR-04). */
         override suspend fun leave() {
