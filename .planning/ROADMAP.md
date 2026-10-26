@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Payment Methods & Paid Booking** - Saved cards, short-lead, long-lead and 3DS paid paths, paid-flow errors (Week 3) (completed 2026-10-23)
 - [x] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4) (completed 2026-10-24)
 - [x] **Phase 9: Voice Call** - Join, Agora call in a microphone foreground service, overlay/pill, rejoin semantics (Week 4) (completed 2026-10-24)
-- [ ] **Phase 10: Expert Topics & Availability** - Topics + Topic Editor with price floor, weekly availability and timezone (Week 5)
+- [x] **Phase 10: Expert Topics & Availability** - Topics + Topic Editor with price floor, weekly availability and timezone (Week 5) (completed 2026-10-25)
 - [ ] **Phase 11: Expert Requests & Bookings** - Expert Dashboard, Incoming Requests → decision → Confirmed, expert bookings with Join and reschedule response (Week 5)
 - [ ] **Phase 12: Chat, Report & Block** - Conversations, realtime chatting, initiateChat entry points, report/block/unblock (Week 6)
 - [ ] **Phase 13: Push, Notifications & Internal Testing** - FCM registration, PushRouter deep links, notifications list, Write Review, internal testing track (Week 6)
@@ -488,7 +488,7 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 20/20 plans executed
+**Plans:** 20/20 plans complete
 Plans:
 **Wave 1**
 
@@ -667,7 +667,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 20/20 | In Progress | - |
+| 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |

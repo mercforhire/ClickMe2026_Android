@@ -1,19 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: 10
-current_phase_name: Expert Topics & Availability
-status: executing
-stopped_at: Phase 10 UI-SPEC approved
-last_updated: "2026-10-26T00:38:06.812Z"
+current_phase: 11
+current_phase_name: Expert Requests & Bookings
+status: ready_to_plan
+stopped_at: Phase 10 complete, ready to plan Phase 11
+last_updated: "2026-10-26T01:19:42.834Z"
 last_activity: 2026-10-25
-last_activity_desc: Phase 10 execution started
-state_head: 72baa1e3504f1989f96bede47f10e7523aafb11c
+last_activity_desc: Phase 10 complete (device UAT deferred), transitioned to Phase 11
+state_head: 19ce9c2361475cd619a7c08869e2028fb70b3477
 progress:
   total_phases: 17
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 148
-  completed_plans: 140
+  completed_plans: 144
+  percent: 53
 milestone_name: milestone
 ---
 
@@ -24,22 +25,22 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 10 — Expert Topics & Availability
+**Current focus:** Phase 11 — Expert Requests & Bookings
 
 ## Current Position
 
-Phase: 10 (Expert Topics & Availability) — EXECUTING
-Plan: 17 of 20
-Status: Executing Phase 10
-Last activity: 2026-10-25 — Phase 10 execution started
+Phase: 11 — Expert Requests & Bookings
+Plan: Not started
+Status: Ready to plan (Phase 2 plans 02-09/02-15/02-16 remain open as deferred device runs)
+Last activity: 2026-10-25 — Phase 10 complete (7 device checks deferred in 10-UAT.md), transitioned to Phase 11
 
-Progress: [█████████░] 94%
+Progress: [█████░░░░░] 53%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 112
+- Total plans completed: 132
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -55,6 +56,7 @@ Progress: [█████████░] 94%
 | 07 | 14 | - | - |
 | 08 | 15 | - | - |
 | 9 | 17 | - | - |
+| 10 | 20 | - | - |
 
 **Recent Trend:**
 
@@ -194,7 +196,7 @@ Recent decisions affecting current work:
   - [ ] SC-5 A full paid session end to end with `confirm-connection` sent exactly once (backend logs). BLOCKED on the test-mode Stripe backend for the paid part (see "[Phase 7] Stripe key and mode"); a free booking covers everything else.
   - [ ] Android 17 check on the `Medium_Phone_API_37.0` emulator with `adb shell cmd audio set-enable-hardening enable` (background audio and focus while backgrounded); confirm the targetSdk 37 local-network permission does not block Agora.
   - [ ] 200% font scale on the Connected pair, the final-stretch banner and the external variant; TalkBack order on the layer; POST_NOTIFICATIONS denied on API 33+ (call still runs, pill remains; notification-only request path); Bluetooth headset routing (Open Question 4); an incoming GSM call during the call (A6); Samsung battery / sleeping-apps behaviour (Pitfall 14); cold-start notification tap after a task swipe; pill position over gesture nav versus 3-button nav. Phase 13 internal testing and Phase 16 QA re-run these.
-- [Phase 10] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (2558 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F (devDebug, production backend) logged in as an expert, with the iOS app as the client:
+- [Phase 10] DEFERRED (human): non-blocking (user defers manual testing; on 2026-10-25 the user skipped /gsd-verify-work 10 and the 7 checks are recorded as deferred follow-ups in `10-UAT.md`; /gsd-secure-phase 10 and /gsd-ui-review 10 not run). Automated gate green (2558 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F (devDebug, production backend) logged in as an expert, with the iOS app as the client:
   - [ ] (a) SC-1 Topics: create a paid topic, edit it (an existing 12.50 price shows "12.50"), delete with the confirmation; a price below the floor shows the live error, and a server `422 PRICE_BELOW_MINIMUM` shows on the price field; a blank price saves a free topic shown as "Free"; Edit Expertise adds a profile tag that then appears in the editor's picker.
   - [ ] (b) SC-2 Availability: edit slots with Select Time Range; two overlapping slots show the banner and disable Save; Save shows the check for 2 s; reopening shows the same HH:mm values; during a live call Save shows "End the call to edit your availability." and nothing is sent.
   - [ ] (c) SC-3 Timezone: an expert whose server zone is UTC (no availability saved yet) on a non-UTC device sees the device zone filled without a prompt and it is stored server-side (reopen); picking a zone then Save persists it.
@@ -213,6 +215,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-25T01:17:27.957Z
-Stopped at: Phase 10 UI-SPEC approved
-Resume file: .planning/phases/10-expert-topics-availability/10-UI-SPEC.md
+Last session: 2026-10-25
+Stopped at: Phase 10 complete, ready to plan Phase 11
+Resume file: None

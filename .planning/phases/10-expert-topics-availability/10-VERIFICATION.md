@@ -1,7 +1,7 @@
 ---
 phase: 10-expert-topics-availability
 verified: 2026-10-26T00:00:00Z
-status: human_needed
+status: passed
 score: 11/12 must-haves verified
 covered_files:
   - .planning/phases/10-expert-topics-availability/10-01-PLAN.md
