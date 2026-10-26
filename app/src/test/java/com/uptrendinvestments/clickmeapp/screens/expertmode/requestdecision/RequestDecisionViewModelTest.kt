@@ -1,7 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
+import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsLaunch
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -27,7 +32,9 @@ class RequestDecisionViewModelTest {
 
     private val api = FakeClickMeApi()
 
-    private fun vm(key: RequestDecisionKey) = RequestDecisionViewModel(key, BookingRequestsRepository(api))
+    private val launch = ExpertLaunchRequest()
+
+    private fun vm(key: RequestDecisionKey) = RequestDecisionViewModel(key, BookingRequestsRepository(api), launch)
 
     private fun RequestDecisionViewModel.loaded(): RequestDecisionDetails =
         (uiState.value.load as RequestDecisionLoad.Loaded).details
@@ -149,5 +156,135 @@ class RequestDecisionViewModelTest {
             runCurrent()
 
             assertEquals("Fresh", vm.loaded().clientName)
+        }
+
+    private fun loadedVm(
+        key: RequestDecisionKey = RequestDecisionKey("r1"),
+        detail: BookingRequestDetail = bookingRequestDetail(id = key.requestId),
+    ): RequestDecisionViewModel {
+        api.bookingRequestDetailHandler = { detail }
+        val vm = vm(key)
+        main.testDispatcher.scheduler.runCurrent()
+        return vm
+    }
+
+    @Test
+    fun acceptWithoutMessageSendsNull() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ -> AcceptBookingRequestData(bookingId = "b9") }
+            val vm = loadedVm()
+
+            vm.accept("   ")
+            runCurrent()
+
+            assertEquals(listOf("r1" to AcceptBookingRequestBody(null)), api.acceptBookingRequestRequests)
+        }
+
+    @Test
+    fun acceptTrimsMessage() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ -> AcceptBookingRequestData(bookingId = "b9") }
+            val vm = loadedVm()
+
+            vm.accept("  See you  ")
+            runCurrent()
+
+            assertEquals(listOf("r1" to AcceptBookingRequestBody("See you")), api.acceptBookingRequestRequests)
+        }
+
+    @Test
+    fun acceptSuccessEmitsConfirmedKey() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ -> AcceptBookingRequestData(bookingId = "b9") }
+            val vm =
+                loadedVm(
+                    detail =
+                        bookingRequestDetail(
+                            id = "r1",
+                            topic = "Algorithms",
+                            meetingType = "skype_zoom",
+                            message = "Looking forward",
+                        ),
+                )
+
+            vm.accept("")
+            runCurrent()
+
+            val start = Instant.parse("2026-10-24T18:00:00Z").toEpochMilli()
+            val end = Instant.parse("2026-10-24T19:00:00Z").toEpochMilli()
+            val expected =
+                BookingConfirmedKey(
+                    bookingId = "b9",
+                    clientName = "Ada Lovelace",
+                    clientAvatarUrl = null,
+                    topic = "Algorithms",
+                    startMillis = start,
+                    endMillis = end,
+                    meetingType = "skype_zoom",
+                    clientMessage = "Looking forward",
+                )
+            assertEquals(RequestDecisionEvent.Accepted(expected), vm.uiState.value.event)
+            assertEquals(IncomingRequestsLaunch(), launch.incomingRequests.pending.value)
+        }
+
+    @Test
+    fun acceptIsSingleFlight() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<AcceptBookingRequestData>()
+            api.acceptBookingRequestHandler = { _, _ -> gate.await() }
+            val vm = loadedVm()
+
+            vm.accept("one")
+            vm.accept("two")
+            runCurrent()
+
+            assertEquals(1, api.acceptBookingRequestCalls)
+            assertEquals(DecisionSubmitting.Accepting, vm.uiState.value.submitting)
+
+            gate.complete(AcceptBookingRequestData(bookingId = "b9"))
+            runCurrent()
+
+            assertEquals(DecisionSubmitting.Accepting, vm.uiState.value.submitting)
+            assertTrue(vm.uiState.value.event is RequestDecisionEvent.Accepted)
+        }
+
+    @Test
+    fun expiredRequestCannotAccept() =
+        runTest(main.testDispatcher) {
+            val vm = loadedVm(RequestDecisionKey("r1", isExpired = true))
+
+            vm.accept("hello")
+            runCurrent()
+
+            assertEquals(0, api.acceptBookingRequestCalls)
+            assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+        }
+
+    @Test
+    fun acceptBeforeTheRequestLoadsSendsNothing() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<BookingRequestDetail>()
+            api.bookingRequestDetailHandler = { gate.await() }
+            val vm = vm(RequestDecisionKey("r1"))
+            runCurrent()
+
+            vm.accept("hello")
+            runCurrent()
+
+            assertEquals(0, api.acceptBookingRequestCalls)
+            assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+        }
+
+    @Test
+    fun consumeEventClearsTheEvent() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ -> AcceptBookingRequestData(bookingId = "b9") }
+            val vm = loadedVm()
+            vm.accept("")
+            runCurrent()
+
+            vm.consumeEvent()
+
+            assertNull(vm.uiState.value.event)
         }
 }

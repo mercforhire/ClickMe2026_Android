@@ -23,4 +23,15 @@
     <string name="request_decision_estimated_caption">Estimated — fee applies when the booking is charged.</string>
     <string name="request_decision_session_price">Session price</string>
     <string name="request_decision_payout_pending">Payout amount pending</string>
+
+    <!-- Footer and Accept sheet (11-12) -->
+    <string name="request_decision_accept">Accept</string>
+    <string name="request_decision_decline">Decline</string>
+    <string name="accept_sheet_title">Confirm Booking</string>
+    <string name="accept_sheet_label">Add a message (optional)</string>
+    <string name="accept_sheet_placeholder">e.g., Looking forward to our session!</string>
+    <string name="accept_sheet_counter">%1$d/1000</string>
+    <string name="accept_sheet_cancel">Cancel</string>
+    <string name="accept_sheet_confirm">Accept Request</string>
+    <string name="accept_sheet_accepting">Accepting</string>
 </resources>
