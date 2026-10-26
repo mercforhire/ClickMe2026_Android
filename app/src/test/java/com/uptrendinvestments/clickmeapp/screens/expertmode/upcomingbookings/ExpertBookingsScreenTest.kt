@@ -1,9 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -11,6 +13,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
@@ -221,5 +225,53 @@ class ExpertBookingsScreenTest {
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Loading").assertExists()
         assertTrue(rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun emptyUpcomingOffersAvailabilityAndPast() {
+        serve(upcoming = emptyList())
+        var availability = 0
+        val vm = viewModel()
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingsScreen(
+                    onOpenBooking = {},
+                    onUpdateAvailability = { availability++ },
+                    viewModel = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("No Upcoming Sessions Yet").assertExists()
+        val body =
+            "Once a client books a session with you, it will appear here. " +
+                "In the meantime, ensure your availability is up to date."
+        rule.onNodeWithText(body).assertExists()
+        rule.onNodeWithText("Update Availability").performClick()
+        assertEquals(1, availability)
+        rule.onNodeWithText("View Past History").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Past").assertIsSelected()
+        rule.onNodeWithText("No past sessions yet").assertExists()
+    }
+
+    @Test
+    fun emptyPastShowsItsState() {
+        showPast(emptyList())
+        rule.onNodeWithText("No past sessions yet").assertExists()
+        rule.onNodeWithText("Completed and cancelled sessions will appear here.").assertExists()
+        assertTrue(rule.onAllNodesWithText("Update Availability").fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithText("View Past History").fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun emptyStatesStillPullToRefresh() {
+        serve(upcoming = emptyList())
+        show()
+        val before = api.expertBookingsCalls
+        rule.onNodeWithTag(EXPERT_BOOKINGS_STATE_TAG).assert(hasScrollAction())
+        rule.onNodeWithTag(EXPERT_BOOKINGS_STATE_TAG).performTouchInput { swipeDown() }
+        rule.waitForIdle()
+        assertTrue(api.expertBookingsCalls > before)
     }
 }
