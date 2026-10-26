@@ -552,7 +552,35 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** TBD
+**Plans:** 15 plans
+Plans:
+**Wave 1**
+
+- [ ] 11-01-PLAN.md — Network contract: 14 expert endpoints (booking requests, expert bookings with `/details`, weekly earnings, payouts summary, Connect), DTOs, strict bodies, 3 repositories, fakes, fixtures, wire tests (EXP-05..EXP-09)
+- [ ] 11-02-PLAN.md — Navigation skeleton: Dashboard/Bookings tab-root slots, all route keys and origins, Back to Home / post-cancel helpers, ExpertLaunchRequest, per-feature entry registration (EXP-05..EXP-09)
+- [ ] 11-03-PLAN.md — Shared expert UI: reschedule card expert viewer + RescheduleResponding interface, SetUpPayouts / RespondToReschedule guards, shared copy and reschedule badge (EXP-05, EXP-06, EXP-08, EXP-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 11-04-PLAN.md — Expert Bookings tab: two-bucket rules, ViewModel with refresh triggers, Upcoming cards with Join (EXP-08)
+- [ ] 11-05-PLAN.md — Incoming Requests: expiry/sort/earnings rules, ViewModel, cards, states, declined hand-off (EXP-06)
+- [ ] 11-06-PLAN.md — Request Decision read side: detail load, blocks, expired banner, three-branch earnings section (EXP-06)
+- [ ] 11-07-PLAN.md — Booking Confirmed and Add to Calendar via ACTION_INSERT, Back to Home (EXP-06, EXP-07)
+- [ ] 11-08-PLAN.md — Expert Booking Summary: `/details`, summary card, client's message, Join, guarded Cancel entry, quiet reloads (EXP-08, EXP-09)
+- [ ] 11-09-PLAN.md — Expert cancellation: two steps, iOS reasons, refund preview per D-16 as resolved, errors, hand-off to Past (EXP-09)
+- [ ] 11-10-PLAN.md — Dashboard workload: greeting, pending and reschedule banners, Today's Sessions with Join, states and triggers (EXP-05, EXP-08)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 11-11-PLAN.md — Expert Bookings Past tab, empty states and snackbars (EXP-08)
+- [ ] 11-12-PLAN.md — Request Decision actions: footer, Accept/Decline sheets, 4 backend decline codes, ALREADY_PROCESSED, Confirmed replace (EXP-06)
+- [ ] 11-13-PLAN.md — Summary reschedule response: expert responder and mapper, guarded accept/decline, SLOT_UNAVAILABLE (EXP-09)
+- [ ] 11-14-PLAN.md — Dashboard financial summary, payout onboarding (Connect, Custom Tab, https-only), Expert Tools grid (EXP-05)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 11-15-PLAN.md — Phase gate (both flavors, lint, R8), sweeps, VALIDATION sign-off, deferred device checks, follow-ups, backend notes and hand-offs (all)
+
 **UI hint**: yes
 
 ### Phase 12: Chat, Report & Block
