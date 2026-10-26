@@ -7,9 +7,11 @@ import java.util.Locale
 /**
  * Pure form rules for the topic editor, ported from iOS `TopicEditorViewModel` (CONTEXT ported-as-is).
  *
- * Icon slugs are the 24 curated iOS slugs (all in the backend `ICON_SLUGS` enum and in `CategoryIconMap`). Duration
- * is 30..480 minutes in 30 minute steps (the server allows up to 1440, iOS caps at 480). Title and description caps
- * match the server's zod limits. Tags come from the expert's own profile only, and are compared case-insensitively
+ * Icon slugs are the 24 curated iOS slugs (all in the backend `ICON_SLUGS` enum and in `CategoryIconMap`). The
+ * +/- buttons step the duration 30..480 minutes on the 30 minute grid (iOS cap; the server allows up to 1440). A
+ * stored value outside that range or off the grid is shown unchanged and replaced only when the expert steps it;
+ * the VM leaves an unchanged duration out of the PATCH (WR-02). Title and description caps match the server's zod
+ * limits. Tags come from the expert's own profile only, and are compared case-insensitively
  * and sent lower-cased.
  */
 object TopicEditorRules {
@@ -75,17 +77,31 @@ object TopicEditorRules {
             }
         }
 
-    /** Seeds the duration from a stored value: nearest step (ties up), clamped to the range; null is the default. */
-    fun seedDuration(mins: Int?): Int {
-        if (mins == null) return DEFAULT_DURATION
-        val rounded = (mins + DURATION_STEP / 2) / DURATION_STEP * DURATION_STEP
-        return rounded.coerceIn(MIN_DURATION, MAX_DURATION)
-    }
+    /**
+     * Seeds the duration from a stored value, shown unchanged (no rounding, no clamping) so an off-grid or
+     * above-cap length is never altered by opening the editor (WR-02). Null or non-positive is the default.
+     */
+    fun seedDuration(mins: Int?): Int = if (mins != null && mins > 0) mins else DEFAULT_DURATION
 
+    /**
+     * One button press. Returns [current] when that direction is disabled; otherwise moves to the next 30 minute
+     * grid value above or below [current], clamped to [MIN_DURATION]..[MAX_DURATION]. Always a value the server's
+     * `durationMinsSchema` accepts.
+     */
     fun stepDuration(
         current: Int,
         increase: Boolean,
-    ): Int = (if (increase) current + DURATION_STEP else current - DURATION_STEP).coerceIn(MIN_DURATION, MAX_DURATION)
+    ): Int {
+        if (increase && !canIncrease(current)) return current
+        if (!increase && !canDecrease(current)) return current
+        val next =
+            if (increase) {
+                (current / DURATION_STEP + 1) * DURATION_STEP
+            } else {
+                (current - 1) / DURATION_STEP * DURATION_STEP
+            }
+        return next.coerceIn(MIN_DURATION, MAX_DURATION)
+    }
 
     fun canDecrease(current: Int): Boolean = current > MIN_DURATION
 

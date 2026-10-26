@@ -310,6 +310,37 @@ class TopicEditorViewModelTest {
         }
 
     @Test
+    fun aStoredDurationAboveTheCapIsShownAndKeptOnAnUnrelatedEdit() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 600))
+            assertEquals(600, vm.uiState.value.durationMins)
+            vm.onTitleChange("Tax planning 2")
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertNull(request.durationMins)
+        }
+
+    @Test
+    fun anOffGridStoredDurationIsKeptUntilTheUserStepsIt() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 45))
+            assertEquals(45, vm.uiState.value.durationMins)
+            vm.increaseDuration()
+            assertEquals(60, vm.uiState.value.durationMins)
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertEquals(60, request.durationMins)
+        }
+
+    @Test
     fun tappingTheSelectedIconClearsIt() =
         runTest(main.testDispatcher) {
             val env = Env(this)
