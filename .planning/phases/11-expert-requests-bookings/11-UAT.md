@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-26T23:14:00Z
+updated: 2026-10-26T23:19:56.393Z
 ---
 
 ## Current Test
 
-number: 5
-name: Re-test after 11-16 (G-11-1 fix) — Android expert and iOS client join the same call
-expected: |
-  On the Samsung (devDebug, production backend) logged in as the expert, with an iOS client booking inside the join window: tap Join from the Dashboard card, an Upcoming card and the Booking Summary. Each time the call screen opens with no "Couldn't join session" dialog, the iOS client hears you and you hear them, mute and speaker work, and leaving then re-joining works.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -36,15 +32,17 @@ result: pass
 
 ### 5. Re-test after 11-16 (G-11-1 fix) — Android expert and iOS client join the same call
 expected: Join from the Dashboard card, an Upcoming card and the Booking Summary opens the call with no "Couldn't join session" dialog; two-way audio with the iOS client; mute and speaker work; leave then re-join works. (Also clears 09-HUMAN-UAT items 1, 2 and 5.)
-result: [pending]
+result: issue
+reported: \"The call joined successfully, but it's stuck at \\"waiting for the other person.\\"\"
+severity: major
 note: "First attempt (2026-10-26 19:10) ran a stale build installed 17:09, before 11-16 merged at 18:34 — logcat showed the old 'engine create failed NullPointerException' line without a frame. Fixed APK installed 19:13; re-test pending."
 
 ## Summary
 
 total: 5
 passed: 3
-issues: 1
-pending: 1
+issues: 2
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -72,3 +70,12 @@ blocked: 0
     - "Re-run 09-HUMAN-UAT items 1, 2, 5 and 11-UAT test 1 on device after the fix"
   debug_session: ".planning/debug/android-expert-cannot-join-session.md"
 
+- gap_id: G-11-5
+  truth: "Android expert and iOS client join the same Agora call and hear each other (re-test after 11-16)"
+  status: failed
+  reason: "User reported: The call joined successfully, but it's stuck at \"waiting for the other person.\""
+  severity: major
+  test: 5
+  evidence: "Fixed build (installed 19:13). logcat 19:17:51 and 19:18:31: CallService started -> conn state=2 reason=0 -> conn state=3 reason=1 (CONNECTED / JOIN_SUCCESS); no 'engine create' or 'joinChannel failed' line. 19:18:26 conn state=1 reason=5 (left, after ~35 s). onUserJoined/onUserOffline are not logged, so whether the remote uid ever arrived is not visible. User: the iOS client was in its call screen at the same time and also showed 'waiting for the other person' — both sides connected, neither sees the other."
+  artifacts: []  # Filled by diagnosis
+  missing: []    # Filled by diagnosis
