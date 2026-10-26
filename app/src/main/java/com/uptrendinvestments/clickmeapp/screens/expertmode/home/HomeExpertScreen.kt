@@ -36,6 +36,9 @@ import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityScreen
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.expertBookingSummaryEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.expertCancelEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.bookingConfirmedEntries
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertDashboardRoute
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
@@ -44,6 +47,8 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.Expert
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.TopicsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.expertStartTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.expertTabs
+import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.incomingRequestsEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.requestDecisionEntries
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorScreen
@@ -53,7 +58,14 @@ import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwit
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
-/** Hilt-aware entry for the expert shell: supplies the avatar URL, session actions and the debug gate. */
+/**
+ * Hilt-aware entry for the expert shell: supplies the avatar URL, session actions and the debug gate.
+ *
+ * Phase 11 features register their routes from their own packages (`incomingRequestsEntries`,
+ * `requestDecisionEntries`, `bookingConfirmedEntries`, `expertBookingSummaryEntries`, `expertCancelEntries`), and the
+ * Dashboard and Bookings tab roots come from `ExpertDashboardRoute` / `ExpertBookingsRoute`, so a feature plan never
+ * edits this file.
+ */
 @Composable
 fun HomeExpertScreen(
     onSwitchMode: (AppMode) -> Unit,
@@ -96,6 +108,11 @@ fun HomeExpertScreen(
             entry<AvailabilityKey>(metadata = BottomBar.hidden()) {
                 AvailabilityScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)
             }
+            incomingRequestsEntries(navigator)
+            requestDecisionEntries(navigator)
+            bookingConfirmedEntries(navigator)
+            expertBookingSummaryEntries(navigator)
+            expertCancelEntries(navigator)
         },
     )
 }
