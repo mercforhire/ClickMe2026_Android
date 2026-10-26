@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-26T21:26:23.190Z
+updated: 2026-10-26T21:35:16Z
 ---
 
 ## Current Test
@@ -47,5 +47,16 @@ blocked: 0
   reason: "User reported: Android Version shows error: cannot join session."
   severity: blocker
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "AgoraManager.createEngine() throws NullPointerException on every in-app voice join (client and expert alike). Inside `RtcEngineConfig().apply { mContext = context.applicationContext }` the bare `context` resolves to RtcEngineConfig.getContext() (still-null mContext), not AgoraManager's injected @ApplicationContext — so the engine is never created, join() returns false, and CallCenter shows the generic 'Couldn't join session' dialog. Confirmed by device logcat (POST /join 200 → CallService started → 'engine create failed NullPointerException', twice) and compiled bytecode. Regression from the Phase 9 port of the Phase 2 spike; no test covers AgoraManager (CallCenter tests use a fake CallEngine)."
+  artifacts:
+    - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/managers/AgoraManager.kt"
+      issue: "Line 132: `context` shadowed by RtcEngineConfig.getContext() inside apply → NPE; catch blocks log only the exception class, hiding the cause; RtcEngine.create null return not handled explicitly"
+    - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/managers/CallCenter.kt"
+      issue: "Lines 266-268 map join() == false to JoinError(Unknown) — working as designed, only surfaces the failure"
+  missing:
+    - "Assign mContext from AgoraManager's own context (e.g. capture appContext before apply, or this@AgoraManager.context)"
+    - "Log exception class + top frame (no token/channel/uid) in createEngine/join catch blocks; log non-zero joinChannel return code"
+    - "Treat a null RtcEngine.create result as an explicit failure"
+    - "Regression test: extract engine config building into a testable function and assert mContext != null"
+    - "Re-run 09-HUMAN-UAT items 1, 2, 5 and 11-UAT test 1 on device after the fix"
+  debug_session: ".planning/debug/android-expert-cannot-join-session.md"
