@@ -552,7 +552,7 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 16/16 plans executed
+**Plans:** 16/17 plans executed
 Plans:
 **Wave 1**
 
@@ -586,6 +586,12 @@ Plans:
 **Wave 1**
 
 - [x] 11-16-PLAN.md — G-11-1: engine config built from the injected application context (extracted builder, factory seam), explicit null create, redacted class + top-frame failure logs and joinChannel code, Robolectric regression test through join(), full gate, device re-check logged in STATE (EXP-08)
+
+**Gap closure** *(from 11-UAT.md G-11-5, major: Android expert and iOS client both connect but never see each other; the Android engine ran the LIVE_BROADCASTING profile)*
+
+**Wave 1**
+
+- [ ] 11-17-PLAN.md — G-11-5: engine created in the COMMUNICATION profile like iOS, per-join options builder without a receiver scope (IN-01), redacted remote-presence logs, cleanup of an engine whose setup fails (WR-01), regression tests through join(), full gate, two-sided device re-test as a STATE hand-off (EXP-08)
 
 **UI hint**: yes
 
