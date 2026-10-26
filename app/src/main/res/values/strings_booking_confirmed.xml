@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="booking_confirmed_title">Booking Confirmed</string>
+    <string name="booking_confirmed_calendar_title">ClickMe · %1$s with %2$s</string>
+    <string name="booking_confirmed_topic_fallback">Session</string>
+    <string name="booking_confirmed_add_to_calendar">Add to Calendar</string>
+    <string name="booking_confirmed_back_home">Back to Home</string>
+    <string name="booking_confirmed_no_calendar">No calendar app found</string>
+</resources>
