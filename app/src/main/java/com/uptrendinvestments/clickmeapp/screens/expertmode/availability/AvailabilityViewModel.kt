@@ -40,11 +40,14 @@ import javax.inject.Inject
  * opening the screen.
  *
  * D-15 runs once per screen session, on the first successful hydrate, and never after a process-death restore or
- * a refresh. A failed silent PUT is only retried by a new screen session.
+ * a refresh. A failed silent PUT is only retried by a new screen session. It is also skipped when hydrate dropped
+ * any malformed or inverted server slot (WR-04), because the PUT would delete those slots; the zone is then only
+ * filled locally and goes out with the next explicit Save.
  *
  * Edits are mirrored into [SavedStateHandle] so unsaved work survives process death (D-16); there are no dirty
  * flags and leaving the screen discards edits without a prompt. Save shows the shared [SaveState]: Idle, Saving,
- * then Saved for the 2-second hold, then Idle.
+ * then Saved for the 2-second hold, then Idle. While saving, edits and pull-to-refresh are ignored, so Saved always
+ * matches what was sent; an edit during the Saved hold ends the hold at once (WR-01).
  */
 @HiltViewModel
 class AvailabilityViewModel
@@ -58,6 +61,9 @@ class AvailabilityViewModel
         val uiState: StateFlow<AvailabilityUiState> = _uiState.asStateFlow()
 
         private var loadJob: Job? = null
+
+        /** The in-flight Save, then its Saved hold; an edit during the hold cancels it (WR-01). */
+        private var saveJob: Job? = null
 
         /** Unsaved edits were restored after process death: the first load must not overwrite them. */
         private var restored = false
@@ -77,7 +83,11 @@ class AvailabilityViewModel
         fun retry() = load(LoadMode.Initial)
 
         /** Pull-to-refresh: overwrites local edits with the server copy (iOS parity); a failure keeps them. */
-        fun refresh() = load(LoadMode.Pull)
+        fun refresh() {
+            // WR-01: a pull during a save could land the pre-PUT copy over the schedule being sent.
+            if (_uiState.value.saveState == SaveState.Saving) return
+            load(LoadMode.Pull)
+        }
 
         private fun load(mode: LoadMode) {
             loadJob?.cancel()
@@ -126,7 +136,8 @@ class AvailabilityViewModel
                     )
                 if (restored) withServer else withServer.copy(days = hydrated, timezoneId = fill ?: serverId)
             }
-            if (fill != null) silentSaveIfNeeded()
+            // WR-04: a lossy hydrate means the PUT body would delete dropped server slots; keep the zone local only.
+            if (fill != null && AvailabilityScheduleLogic.isLossless(rawRanges(data))) silentSaveIfNeeded()
         }
 
         private fun applyPull(data: ExpertAvailabilityScheduleData) {
@@ -145,19 +156,21 @@ class AvailabilityViewModel
             }
         }
 
-        private fun hydrate(data: ExpertAvailabilityScheduleData): List<DaySchedule> {
+        private fun hydrate(data: ExpertAvailabilityScheduleData): List<DaySchedule> =
+            AvailabilityScheduleLogic.hydrate(rawRanges(data))
+
+        /** The server's seven-day ranges as received, before [AvailabilityScheduleLogic.hydrate] drops anything. */
+        private fun rawRanges(data: ExpertAvailabilityScheduleData): Map<DayOfWeek, List<Pair<String?, String?>>> {
             fun ranges(list: List<AvailabilityTimeRangeDto>?) = list.orEmpty().map { it.startTime to it.endTime }
             val schedule = data.recurringSchedule
-            return AvailabilityScheduleLogic.hydrate(
-                mapOf(
-                    DayOfWeek.MONDAY to ranges(schedule?.monday),
-                    DayOfWeek.TUESDAY to ranges(schedule?.tuesday),
-                    DayOfWeek.WEDNESDAY to ranges(schedule?.wednesday),
-                    DayOfWeek.THURSDAY to ranges(schedule?.thursday),
-                    DayOfWeek.FRIDAY to ranges(schedule?.friday),
-                    DayOfWeek.SATURDAY to ranges(schedule?.saturday),
-                    DayOfWeek.SUNDAY to ranges(schedule?.sunday),
-                ),
+            return mapOf(
+                DayOfWeek.MONDAY to ranges(schedule?.monday),
+                DayOfWeek.TUESDAY to ranges(schedule?.tuesday),
+                DayOfWeek.WEDNESDAY to ranges(schedule?.wednesday),
+                DayOfWeek.THURSDAY to ranges(schedule?.thursday),
+                DayOfWeek.FRIDAY to ranges(schedule?.friday),
+                DayOfWeek.SATURDAY to ranges(schedule?.saturday),
+                DayOfWeek.SUNDAY to ranges(schedule?.sunday),
             )
         }
 
@@ -186,7 +199,20 @@ class AvailabilityViewModel
         fun autoDetectTimezone() = selectTimezone(Timezones.detected().id)
 
         private fun edit(transform: (AvailabilityUiState) -> AvailabilityUiState) {
-            val next = _uiState.updateAndGet(transform)
+            // WR-01: while a save is in flight the screen must keep showing exactly what was sent.
+            val wasSaved =
+                when (_uiState.value.saveState) {
+                    SaveState.Saving -> return
+                    SaveState.Saved -> true
+                    else -> false
+                }
+            // An edit ends the Saved hold; the PUT is long done, so this only cuts the hold delay.
+            if (wasSaved) saveJob?.cancel()
+            val next =
+                _uiState.updateAndGet {
+                    val edited = transform(it)
+                    if (wasSaved) edited.copy(saveState = SaveState.Idle) else edited
+                }
             savedStateHandle[KEY_SCHEDULE] = AvailabilityScheduleLogic.encode(next.days, next.timezoneId)
         }
 
@@ -198,23 +224,25 @@ class AvailabilityViewModel
             if (state.overlappingDays.isNotEmpty()) return
             val request = buildRequest(state)
             _uiState.update { it.copy(saveState = SaveState.Saving) }
-            viewModelScope.launch {
-                try {
-                    // Leaving the screen mid-save still lets the request finish; its result is dropped (UI-SPEC).
-                    withContext(NonCancellable) { repository.put(request) }
-                    _uiState.update { it.copy(saveState = SaveState.Saved) }
-                    savedStateHandle.remove<String>(KEY_SCHEDULE)
-                    delay(Motion.AVAILABILITY_SAVED_HOLD_MS.toLong())
-                    _uiState.update { it.copy(saveState = SaveState.Idle) }
-                } catch (e: ApiException) {
-                    _uiState.update { it.copy(saveState = SaveState.Idle, dialog = e.toExpertDialogError()) }
+            saveJob =
+                viewModelScope.launch {
+                    try {
+                        // Leaving the screen mid-save still lets the request finish; its result is dropped (UI-SPEC).
+                        withContext(NonCancellable) { repository.put(request) }
+                        _uiState.update { it.copy(saveState = SaveState.Saved) }
+                        savedStateHandle.remove<String>(KEY_SCHEDULE)
+                        delay(Motion.AVAILABILITY_SAVED_HOLD_MS.toLong())
+                        _uiState.update { it.copy(saveState = SaveState.Idle) }
+                    } catch (e: ApiException) {
+                        _uiState.update { it.copy(saveState = SaveState.Idle, dialog = e.toExpertDialogError()) }
+                    }
                 }
-            }
         }
 
         /**
          * D-15: persists the auto-filled zone without any UI. Skipped while saving, with overlaps, or during a call;
-         * reads `isCallActive` instead of `attempt()` (Pitfall 7). Failures are swallowed.
+         * the caller also skips it when hydrate dropped a server slot (WR-04). The body is the fully hydrated
+         * schedule. Reads `isCallActive` instead of `attempt()` (Pitfall 7). Failures are swallowed.
          */
         private fun silentSaveIfNeeded() {
             val state = _uiState.value

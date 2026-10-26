@@ -12,6 +12,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.availabilityData
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -319,6 +320,85 @@ class AvailabilityViewModelTest {
         }
 
     @Test
+    fun editsAndRefreshAreIgnoredWhileSaving() =
+        runTest(main.testDispatcher) {
+            serverNewYork()
+            val vm = loaded(this)
+            val gate = CompletableDeferred<Unit>()
+            api.updateMyAvailabilityHandler = {
+                gate.await()
+                SuccessMessageResponse(status = "success")
+            }
+
+            vm.save()
+            runCurrent()
+            assertEquals(SaveState.Saving, vm.uiState.value.saveState)
+            val days = vm.uiState.value.days
+            val zone = vm.uiState.value.timezoneId
+
+            vm.setDayEnabled(DayOfWeek.TUESDAY, true)
+            vm.addHours(DayOfWeek.MONDAY)
+            vm.updateSlot(DayOfWeek.MONDAY, 0, TimeSlot(600, 660))
+            vm.removeSlot(DayOfWeek.MONDAY, 0)
+            vm.selectTimezone("Europe/Paris")
+            vm.autoDetectTimezone()
+            val calls = api.myAvailabilityCalls
+            vm.refresh()
+            runCurrent()
+
+            assertEquals(days, vm.uiState.value.days)
+            assertEquals(zone, vm.uiState.value.timezoneId)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertEquals(calls, api.myAvailabilityCalls)
+            assertEquals(SaveState.Saving, vm.uiState.value.saveState)
+
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(SaveState.Saved, vm.uiState.value.saveState)
+            val body = api.updateMyAvailabilityRequests.single()
+            assertEquals(vm.uiState.value.timezoneId, body.timezoneId)
+            assertEquals(listOf(AvailabilityTimeRangeBody("09:00", "17:00")), body.schedule.monday)
+            assertTrue(body.schedule.tuesday.isEmpty())
+            assertEquals(days, vm.uiState.value.days)
+        }
+
+    @Test
+    fun anEditDuringTheSavedHoldEndsTheHoldAndANewSaveIsNotCutShort() =
+        runTest(main.testDispatcher) {
+            serverNewYork()
+            val handle = SavedStateHandle()
+            val vm = loaded(this, handle)
+
+            vm.save()
+            runCurrent()
+            assertEquals(SaveState.Saved, vm.uiState.value.saveState)
+            assertFalse(handle.contains("availability_schedule"))
+
+            vm.addHours(DayOfWeek.MONDAY)
+            assertEquals(SaveState.Idle, vm.uiState.value.saveState)
+            assertEquals(2, vm.day(DayOfWeek.MONDAY).slots.size)
+            assertTrue(handle.contains("availability_schedule"))
+
+            val gate = CompletableDeferred<Unit>()
+            api.updateMyAvailabilityHandler = {
+                gate.await()
+                SuccessMessageResponse(status = "success")
+            }
+            vm.save()
+            runCurrent()
+            assertEquals(SaveState.Saving, vm.uiState.value.saveState)
+
+            advanceTimeBy(2500)
+            runCurrent()
+            assertEquals(SaveState.Saving, vm.uiState.value.saveState)
+
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(SaveState.Saved, vm.uiState.value.saveState)
+        }
+
+    @Test
     fun saveFailureShowsTheFieldMessageAndDismissClearsIt() =
         runTest(main.testDispatcher) {
             serverNewYork()
@@ -411,6 +491,26 @@ class AvailabilityViewModelTest {
 
             assertEquals("America/Toronto", vm.uiState.value.timezoneId)
             assertEquals(0, api.updateMyAvailabilityCalls)
+        }
+
+    @Test
+    fun aSilentPutIsSkippedWhenHydrateDroppedAServerSlot() =
+        runTest(main.testDispatcher) {
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Toronto"))
+            api.myAvailabilityHandler = {
+                availabilityData(
+                    timezoneId = "UTC",
+                    schedule = mapOf(DayOfWeek.MONDAY to listOf("09:00" to "17:00", "12:00" to "11:00")),
+                )
+            }
+            val vm = loaded(this)
+
+            assertEquals("America/Toronto", vm.uiState.value.timezoneId)
+            assertEquals(0, api.updateMyAvailabilityCalls)
+            assertEquals(listOf(TimeSlot(540, 1020)), vm.day(DayOfWeek.MONDAY).slots)
+            assertEquals(SaveState.Idle, vm.uiState.value.saveState)
+            assertTrue(guard.attempts.isEmpty())
+            assertNull(vm.uiState.value.dialog)
         }
 
     @Test
