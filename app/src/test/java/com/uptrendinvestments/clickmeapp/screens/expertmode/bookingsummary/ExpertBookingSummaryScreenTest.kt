@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -13,10 +14,14 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
+import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_REASON_TAG
+import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_TAG
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ConsultationFeeDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
@@ -53,6 +58,7 @@ class ExpertBookingSummaryScreenTest {
     private val callGuard = FakeCallGuard()
     private val ids = mutableListOf<String>()
     private val cancels = mutableListOf<String>()
+    private var backs = 0
 
     /** The clock sits 30 minutes before [start], so a session starting at [start] is inside the join window. */
     private val now: Instant = start.minusSeconds(1800)
@@ -88,7 +94,7 @@ class ExpertBookingSummaryScreenTest {
             ClickMeTheme {
                 ExpertBookingSummaryScreen(
                     viewModel = viewModel,
-                    onBack = {},
+                    onBack = { backs++ },
                     onCancel = { cancels += bookingId },
                 )
             }
@@ -345,5 +351,78 @@ class ExpertBookingSummaryScreenTest {
 
         assertEquals(listOf("b1" to RestrictedAction.RespondToReschedule), callGuard.modifyAttempts)
         assertEquals(0, api.acceptExpertRescheduleCalls)
+    }
+
+    @Test
+    fun declineSendsTheTrimmedReasonAndShowsTheNotice() {
+        var current = pendingReschedule("client")
+        api.declineExpertRescheduleHandler = { id, _ ->
+            current = expertBookingDetail(start = start, statusCode = "confirmed")
+            RescheduleResponseData(bookingId = id, status = "confirmed")
+        }
+        showScreen { current }
+
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performScrollTo().performClick()
+        rule.onNode(inDialog("Keep session as-is")).assertExists()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG).performTextInput("  Busy  ")
+        rule.onNode(inDialog("Decline")).performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("b1" to DeclineRescheduleRequest("Busy")), api.declineExpertRescheduleRequests)
+        rule.onNodeWithText("Reschedule declined").assertExists()
+    }
+
+    @Test
+    fun cancelDisabledWhileResponding() {
+        val gate = CompletableDeferred<RescheduleResponseData>()
+        api.acceptExpertRescheduleHandler = { _, _ -> gate.await() }
+        showScreen(pendingReschedule("client"))
+        rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).performScrollTo().assertIsEnabled()
+
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNode(inDialog("Accept")).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).performScrollTo().assertIsNotEnabled()
+        gate.complete(RescheduleResponseData(bookingId = "b1", status = "confirmed"))
+        rule.waitForIdle()
+        rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun slotUnavailableShowsTheDialogAndKeepsTheProposal() {
+        api.acceptExpertRescheduleHandler = { _, _ ->
+            throw api.httpError(409, """{"status":"error","code":"SLOT_UNAVAILABLE","message":"nope"}""")
+        }
+        showScreen(pendingReschedule("client"))
+
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNode(inDialog("Accept")).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't update booking").assertExists()
+        rule.onNodeWithText("That time is no longer available — the booking stays at its original time.").assertExists()
+        rule.onAllNodesWithText("Reschedule accepted").assertCountEquals(0)
+        // Reloaded from the server: the proposal is still pending and nothing moved.
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).assertExists()
+    }
+
+    @Test
+    fun errorDialogShowsTitleAndOkOnAPopErrorLeavesTheScreen() {
+        api.acceptExpertRescheduleHandler = { _, _ ->
+            throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"gone"}""")
+        }
+        showScreen(pendingReschedule("client"))
+
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNode(inDialog("Accept")).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't update booking").assertExists()
+        rule.onNodeWithText("This booking could not be found.").assertExists()
+        assertEquals(0, backs)
+        rule.onNodeWithText("OK").performClick()
+        rule.waitForIdle()
+        assertEquals(1, backs)
     }
 }

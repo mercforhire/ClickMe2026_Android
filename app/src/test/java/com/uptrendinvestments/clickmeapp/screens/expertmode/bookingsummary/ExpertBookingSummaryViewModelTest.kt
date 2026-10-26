@@ -3,9 +3,16 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
+import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusLabel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleSubmitting
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -318,5 +325,257 @@ class ExpertBookingSummaryViewModelTest {
                 listOf("b1" to RestrictedAction.CancelBooking, "b1" to RestrictedAction.CancelBooking),
                 callGuard.modifyAttempts,
             )
+        }
+
+    // ---- reschedule response (11-13) ----
+
+    private fun proposal(initiatedBy: String = "client") =
+        RescheduleDto(
+            proposedStart = start.plusSeconds(86_400),
+            proposedEnd = start.plusSeconds(86_400 + 3600),
+            initiatedBy = initiatedBy,
+            note = "  Can we move it?  ",
+        )
+
+    private fun pending(initiatedBy: String = "client") =
+        expertBookingDetail(start = start, statusCode = "pending_reschedule", reschedule = proposal(initiatedBy))
+
+    private fun error(
+        status: Int,
+        code: String,
+        message: String = "server says no",
+    ) = api.httpError(status, """{"status":"error","code":"$code","message":"$message"}""")
+
+    private val accepted = RescheduleResponseData(bookingId = "b1", status = "confirmed")
+
+    @Test
+    fun clientProposalMapsToAnActionableProposalWithoutPaymentText() {
+        val ui = pending("client").toSummaryDetails(now, Locale.US).proposal!!
+
+        assertFalse(ui.initiatedByExpert)
+        assertEquals(start, ui.currentStart)
+        assertEquals(start.plusSeconds(86_400), ui.proposedStart)
+        assertEquals("Can we move it?", ui.note)
+        assertFalse(ui.showsPaymentDisclosure)
+        assertFalse(ui.chargesSoon)
+    }
+
+    @Test
+    fun expertProposalMapsToAReadOnlyProposal() {
+        assertTrue(pending("expert").toSummaryDetails(now, Locale.US).proposal!!.initiatedByExpert)
+    }
+
+    @Test
+    fun noProposalOutsidePendingRescheduleOrWithoutATime() {
+        assertNull(detail("confirmed").toSummaryDetails(now, Locale.US).proposal)
+        val noTime = pending().copy(reschedule = RescheduleDto(initiatedBy = "client"))
+        assertNull(noTime.toSummaryDetails(now, Locale.US).proposal)
+    }
+
+    @Test
+    fun acceptSendsAnEmptyBodyGuardedAndReloads() =
+        runTest(main.testDispatcher) {
+            var current = pending()
+            api.expertBookingDetailsHandler = { current }
+            api.acceptExpertRescheduleHandler = { _, _ ->
+                current = detail("confirmed")
+                accepted
+            }
+            val vm = vm()
+            runCurrent()
+            assertEquals("pending_reschedule", loaded(vm).statusCode)
+
+            vm.acceptReschedule()
+            runCurrent()
+
+            assertEquals(listOf("b1" to RestrictedAction.RespondToReschedule), callGuard.modifyAttempts)
+            assertEquals(listOf("b1" to AcceptRescheduleRequest()), api.acceptExpertRescheduleRequests)
+            assertEquals(2, api.expertBookingDetailsCalls)
+            assertEquals("confirmed", loaded(vm).statusCode)
+            assertNull(loaded(vm).proposal)
+            assertEquals(RescheduleNotice.Accepted, vm.rescheduleState.value.notice)
+            assertFalse(vm.rescheduleState.value.isSubmitting)
+        }
+
+    @Test
+    fun declineSendsTrimmedReasonAndReloads() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.declineExpertRescheduleHandler = { _, _ -> accepted }
+            val vm = vm()
+            runCurrent()
+
+            vm.declineReschedule("  Busy  ")
+            runCurrent()
+
+            assertEquals(listOf("b1" to DeclineRescheduleRequest("Busy")), api.declineExpertRescheduleRequests)
+            assertEquals(listOf("b1" to RestrictedAction.RespondToReschedule), callGuard.modifyAttempts)
+            assertEquals(2, api.expertBookingDetailsCalls)
+            assertEquals(RescheduleNotice.Declined, vm.rescheduleState.value.notice)
+        }
+
+    @Test
+    fun blankDeclineReasonSendsNull() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.declineExpertRescheduleHandler = { _, _ -> accepted }
+            val vm = vm()
+            runCurrent()
+
+            vm.declineReschedule("   ")
+            runCurrent()
+
+            assertEquals(listOf("b1" to DeclineRescheduleRequest(null)), api.declineExpertRescheduleRequests)
+        }
+
+    @Test
+    fun aLiveCallOnThisBookingBlocksBothResponses() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            val vm = vm()
+            runCurrent()
+            callGuard.blocked = true
+
+            vm.acceptReschedule()
+            vm.declineReschedule("no")
+            runCurrent()
+
+            assertEquals(0, api.acceptExpertRescheduleCalls)
+            assertEquals(0, api.declineExpertRescheduleCalls)
+            assertFalse(vm.rescheduleState.value.isSubmitting)
+        }
+
+    @Test
+    fun slotUnavailableShowsDialogAndReloadsWithoutAcceptingTheReschedule() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.acceptExpertRescheduleHandler = { _, _ -> throw error(409, "SLOT_UNAVAILABLE") }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+
+            val state = vm.rescheduleState.value
+            assertEquals(
+                RescheduleDialog.Error(FieldError.Res(R.string.expert_reschedule_error_slot_unavailable)),
+                state.dialog,
+            )
+            assertNull(state.notice)
+            assertEquals(2, api.expertBookingDetailsCalls)
+            // The booking is whatever the server says now: still waiting on the client's proposal, never shown as moved.
+            assertEquals("pending_reschedule", loaded(vm).statusCode)
+            assertEquals(start, loaded(vm).start)
+            assertTrue(loaded(vm).proposal != null)
+        }
+
+    @Test
+    fun invalidStatusShowsNotPendingAndReloads() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.acceptExpertRescheduleHandler = { _, _ -> throw error(409, "INVALID_STATUS") }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+
+            assertEquals(
+                RescheduleDialog.Error(FieldError.Res(R.string.reschedule_error_not_pending)),
+                vm.rescheduleState.value.dialog,
+            )
+            assertEquals(2, api.expertBookingDetailsCalls)
+            assertNull(vm.rescheduleState.value.notice)
+        }
+
+    @Test
+    fun serverTextErrorsReload() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.acceptExpertRescheduleHandler = { _, _ -> throw error(409, "CLIENT_UNAVAILABLE", "Client is busy") }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+
+            assertEquals(RescheduleDialog.Error(FieldError.Text("Client is busy")), vm.rescheduleState.value.dialog)
+            assertEquals(2, api.expertBookingDetailsCalls)
+        }
+
+    @Test
+    fun idempotentRepeatIsSuccess() =
+        runTest(main.testDispatcher) {
+            // The booking is already confirmed; the server answers a repeat accept with 200.
+            api.expertBookingDetailsHandler = { detail("confirmed") }
+            api.acceptExpertRescheduleHandler = { _, _ -> accepted }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+
+            assertEquals(RescheduleNotice.Accepted, vm.rescheduleState.value.notice)
+            assertNull(vm.rescheduleState.value.dialog)
+        }
+
+    @Test
+    fun singleFlight() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<RescheduleResponseData>()
+            api.expertBookingDetailsHandler = { pending() }
+            api.acceptExpertRescheduleHandler = { _, _ -> gate.await() }
+            api.declineExpertRescheduleHandler = { _, _ -> accepted }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+            assertEquals(RescheduleSubmitting.Accepting, vm.rescheduleState.value.submitting)
+
+            vm.acceptReschedule()
+            vm.declineReschedule("no")
+            runCurrent()
+            assertEquals(1, api.acceptExpertRescheduleCalls)
+            assertEquals(0, api.declineExpertRescheduleCalls)
+
+            gate.complete(accepted)
+            runCurrent()
+            assertEquals(RescheduleSubmitting.None, vm.rescheduleState.value.submitting)
+            assertEquals(RescheduleNotice.Accepted, vm.rescheduleState.value.notice)
+        }
+
+    @Test
+    fun notFoundPopsAfterDismiss() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.acceptExpertRescheduleHandler = { _, _ -> throw error(404, "NOT_FOUND") }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+
+            assertEquals(
+                RescheduleDialog.Error(FieldError.Res(R.string.reschedule_error_not_found), popOnDismiss = true),
+                vm.rescheduleState.value.dialog,
+            )
+            vm.dismissRescheduleDialog()
+            assertNull(vm.rescheduleState.value.dialog)
+        }
+
+    @Test
+    fun noticeIsConsumedOnce() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { pending() }
+            api.acceptExpertRescheduleHandler = { _, _ -> accepted }
+            val vm = vm()
+            runCurrent()
+
+            vm.acceptReschedule()
+            runCurrent()
+            vm.consumeRescheduleNotice()
+
+            assertNull(vm.rescheduleState.value.notice)
         }
 }
