@@ -155,6 +155,16 @@ class ExpertiseEditorSheetTest {
     }
 
     @Test
+    fun seedLoadingShowsTheLoaderAndDisablesSave() {
+        show(ExpertiseEditorUiState(catalog = loaded, seed = ExpertiseSeedState.Loading))
+
+        rule.onNodeWithText("Loading your tags…").assertIsDisplayed()
+        rule.onAllNodesWithText("Audit").assertCountEquals(0)
+        rule.onAllNodesWithText("Pick at least one expertise tag before saving.").assertCountEquals(0)
+        rule.onNodeWithTag(EXPERTISE_SHEET_SAVE_TAG).assertIsNotEnabled()
+    }
+
+    @Test
     fun aQueryWithNoRowsShowsTheNoMatchBlock() {
         show(
             ExpertiseEditorUiState(

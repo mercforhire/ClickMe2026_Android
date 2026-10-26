@@ -85,8 +85,10 @@ private const val KEY_QUERY = "expertise_query"
 /**
  * Backs the Edit Expertise sheet (iOS `ExpertiseEditorViewModel`, D-08). Loads the full tag catalog and the
  * expert's current profile tags in parallel, keeps the selection in order (first = primary) and saves it with
- * `PATCH /expert/profile`. An empty selection can never be saved, so the profile's tags cannot be wiped by accident
- * (T-10-34). The caller scopes a fresh instance per opening, so every open re-seeds from the server.
+ * `PATCH /expert/profile`, a full replace. Save is possible only once the profile tags have loaded (seed Ready);
+ * selection edits are ignored until then, so the late seed always lands in full, and a failed load shows Retry.
+ * Together these mean a save can never drop tags the expert did not remove (CR-01, T-10-34). An empty selection
+ * still cannot be saved. The caller scopes a fresh instance per opening, so every open re-seeds from the server.
  */
 @HiltViewModel
 class ExpertiseEditorViewModel
@@ -107,9 +109,6 @@ class ExpertiseEditorViewModel
                 ),
             )
         val uiState: StateFlow<ExpertiseEditorUiState> = _uiState.asStateFlow()
-
-        /** True once the user (or a restored state) owns the selection, so a late profile load must not overwrite it. */
-        private var touched: Boolean = restoredSelection != null
 
         init {
             loadCatalog()
@@ -150,10 +149,7 @@ class ExpertiseEditorViewModel
                         _uiState.update { it.copy(seed = ExpertiseSeedState.Failed(e.toSectionMessage())) }
                         return@launch
                     }
-                if (touched) {
-                    _uiState.update { it.copy(seed = ExpertiseSeedState.Ready) }
-                    return@launch
-                }
+                // Selection edits are ignored until Ready, so nothing can have changed it: the seed always lands in full.
                 val ordered = primaryFirst(tags)
                 _uiState.update { it.copy(selected = ordered, seed = ExpertiseSeedState.Ready) }
             }
@@ -178,6 +174,7 @@ class ExpertiseEditorViewModel
 
         /** Adds [tag] at the end, or removes it when already selected. The first selected tag is primary. */
         fun toggle(tag: ExpertiseTagItem) {
+            if (_uiState.value.seed != ExpertiseSeedState.Ready) return
             val id = tag.id.lowercase(Locale.ROOT)
             if (id in _uiState.value.selectedIds) {
                 remove(tag.id)
@@ -191,7 +188,7 @@ class ExpertiseEditorViewModel
         }
 
         private fun updateSelection(transform: (List<ExpertiseTagItem>) -> List<ExpertiseTagItem>) {
-            touched = true
+            if (_uiState.value.seed != ExpertiseSeedState.Ready) return
             val next = transform(_uiState.value.selected)
             savedStateHandle[KEY_SELECTED_IDS] = ArrayList(next.map { it.id })
             savedStateHandle[KEY_SELECTED_LABELS] = ArrayList(next.map { it.label })

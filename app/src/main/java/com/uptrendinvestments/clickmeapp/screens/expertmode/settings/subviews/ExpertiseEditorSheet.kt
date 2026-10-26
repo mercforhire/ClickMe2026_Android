@@ -203,6 +203,12 @@ private fun TagList(
             }
             return@LazyColumn
         }
+        if (seed is ExpertiseSeedState.Loading) {
+            item(key = "seed_loading") {
+                PickerLoading(text = stringResource(R.string.expertise_editor_seed_loading))
+            }
+            return@LazyColumn
+        }
         item(key = "search") {
             ExpertiseTagSearchField(
                 query = state.query,

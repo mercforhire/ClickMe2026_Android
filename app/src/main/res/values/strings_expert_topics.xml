@@ -85,5 +85,6 @@
     <string name="expertise_editor_pick_one">Pick at least one expertise tag before saving.</string>
     <string name="expertise_editor_save_error_title">Couldn\'t save</string>
     <!-- Android CR-01 seed copy: the profile tags that seed the selection could not be loaded. -->
+    <string name="expertise_editor_seed_loading">Loading your tags…</string>
     <string name="expertise_editor_seed_error">Couldn\'t load your current tags</string>
 </resources>
