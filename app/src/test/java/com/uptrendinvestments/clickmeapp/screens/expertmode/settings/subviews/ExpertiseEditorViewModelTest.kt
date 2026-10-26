@@ -205,17 +205,90 @@ class ExpertiseEditorViewModelTest {
         }
 
     @Test
-    fun aProfileLoadFailureLeavesTheSelectionEmptyAndTheCatalogUsable() =
+    fun aProfileLoadFailureFailsTheSeedAndDisablesSave() =
         runTest(main.testDispatcher) {
             api.expertProfileHandler = { throw IOException("offline") }
             val vm = viewModel()
             advanceUntilIdle()
 
+            assertEquals(
+                ExpertiseSeedState.Failed(FieldError.Res(R.string.login_error_network)),
+                vm.uiState.value.seed,
+            )
             assertEquals(emptyList<ExpertiseTagItem>(), vm.uiState.value.selected)
             assertEquals(ExpertiseCatalogState.Loaded(listOf(audit, law, tax)), vm.uiState.value.catalog)
+            assertFalse(vm.uiState.value.canSave)
 
             vm.toggle(law)
-            assertEquals(listOf(law), vm.uiState.value.selected)
+            assertEquals(emptyList<ExpertiseTagItem>(), vm.uiState.value.selected)
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals(0, api.updateExpertProfileTagsCalls)
+            assertFalse(vm.uiState.value.isSaving)
+        }
+
+    @Test
+    fun aTagTappedBeforeTheSeedLandsIsIgnoredAndTheLateSeedKeepsEveryExistingTag() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.expertProfileHandler = {
+                gate.await()
+                ExpertProfileData(
+                    setupCompleted = true,
+                    expertiseTags = listOf(ExpertTag("T2", "Law"), ExpertTag("T1", "Tax", isPrimary = true)),
+                )
+            }
+            val vm = viewModel()
+            runCurrent()
+            assertEquals(ExpertiseSeedState.Loading, vm.uiState.value.seed)
+
+            vm.toggle(audit)
+            vm.remove("T1")
+            assertEquals(emptyList<ExpertiseTagItem>(), vm.uiState.value.selected)
+            assertFalse(vm.uiState.value.canSave)
+            vm.save()
+            runCurrent()
+            assertEquals(0, api.updateExpertProfileTagsCalls)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(ExpertiseSeedState.Ready, vm.uiState.value.seed)
+            assertEquals(listOf(tax, law), vm.uiState.value.selected)
+
+            vm.toggle(audit)
+            assertEquals(listOf(tax, law, audit), vm.uiState.value.selected)
+            vm.save()
+            advanceUntilIdle()
+
+            val sent = api.updateExpertProfileTagsRequests.single().expertiseTags
+            assertEquals(listOf("t1", "t2", "t3"), sent.map { it.tagId })
+            assertEquals(listOf(true, false, false), sent.map { it.isPrimary })
+        }
+
+    @Test
+    fun retryAfterASeedFailureSeedsTheSelectionAndEnablesSave() =
+        runTest(main.testDispatcher) {
+            api.expertProfileHandler = { throw IOException("offline") }
+            val vm = viewModel()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.seed is ExpertiseSeedState.Failed)
+
+            api.expertProfileHandler = {
+                ExpertProfileData(
+                    setupCompleted = true,
+                    expertiseTags = listOf(ExpertTag("T2", "Law"), ExpertTag("T1", "Tax", isPrimary = true)),
+                )
+            }
+            vm.retry()
+            advanceUntilIdle()
+
+            assertEquals(ExpertiseSeedState.Ready, vm.uiState.value.seed)
+            assertEquals(listOf(tax, law), vm.uiState.value.selected)
+            assertTrue(vm.uiState.value.canSave)
+            assertEquals(2, api.expertProfileCalls)
+            assertEquals(1, api.expertiseTagsCalls)
         }
 
     @Test
@@ -232,6 +305,8 @@ class ExpertiseEditorViewModelTest {
 
             assertEquals(listOf(tax, law, audit), restored.uiState.value.selected)
             assertEquals("au", restored.uiState.value.query)
+            assertEquals(ExpertiseSeedState.Ready, restored.uiState.value.seed)
+            assertTrue(restored.uiState.value.canSave)
             assertEquals(1, api.expertProfileCalls)
         }
 }

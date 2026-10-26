@@ -32,11 +32,27 @@ sealed interface ExpertiseCatalogState {
     ) : ExpertiseCatalogState
 }
 
+/**
+ * Load state of the expert's current profile tags, which seed the selection. Save is possible only when [Ready],
+ * because PATCH /expert/profile replaces every tag (CR-01, T-10-34).
+ */
+sealed interface ExpertiseSeedState {
+    data object Loading : ExpertiseSeedState
+
+    data class Failed(
+        val error: FieldError,
+    ) : ExpertiseSeedState
+
+    data object Ready : ExpertiseSeedState
+}
+
 data class ExpertiseEditorUiState(
     val query: String = "",
     /** Selected tags in order; the first one is the primary tag. */
     val selected: List<ExpertiseTagItem> = emptyList(),
     val catalog: ExpertiseCatalogState = ExpertiseCatalogState.Loading,
+    /** Fails closed: Save stays disabled until the profile tags have seeded the selection. */
+    val seed: ExpertiseSeedState = ExpertiseSeedState.Loading,
     val isSaving: Boolean = false,
     val dialog: FieldError? = null,
     /** Set once after a successful save; the sheet hands it to its caller and calls `onSavedConsumed`. */
@@ -59,7 +75,7 @@ data class ExpertiseEditorUiState(
         get() = selected.mapTo(HashSet()) { it.id.lowercase(Locale.ROOT) }
 
     val canSave: Boolean
-        get() = selected.isNotEmpty() && !isSaving
+        get() = seed == ExpertiseSeedState.Ready && selected.isNotEmpty() && !isSaving
 }
 
 private const val KEY_SELECTED_IDS = "expertise_selected_ids"
@@ -69,8 +85,10 @@ private const val KEY_QUERY = "expertise_query"
 /**
  * Backs the Edit Expertise sheet (iOS `ExpertiseEditorViewModel`, D-08). Loads the full tag catalog and the
  * expert's current profile tags in parallel, keeps the selection in order (first = primary) and saves it with
- * `PATCH /expert/profile`. An empty selection can never be saved, so the profile's tags cannot be wiped by accident
- * (T-10-34). The caller scopes a fresh instance per opening, so every open re-seeds from the server.
+ * `PATCH /expert/profile`, a full replace. Save is possible only once the profile tags have loaded (seed Ready);
+ * selection edits are ignored until then, so the late seed always lands in full, and a failed load shows Retry.
+ * Together these mean a save can never drop tags the expert did not remove (CR-01, T-10-34). An empty selection
+ * still cannot be saved. The caller scopes a fresh instance per opening, so every open re-seeds from the server.
  */
 @HiltViewModel
 class ExpertiseEditorViewModel
@@ -86,12 +104,11 @@ class ExpertiseEditorViewModel
                 ExpertiseEditorUiState(
                     query = savedStateHandle.get<String>(KEY_QUERY).orEmpty(),
                     selected = restoredSelection.orEmpty(),
+                    // A restored selection can only have been written after the seed landed.
+                    seed = if (restoredSelection != null) ExpertiseSeedState.Ready else ExpertiseSeedState.Loading,
                 ),
             )
         val uiState: StateFlow<ExpertiseEditorUiState> = _uiState.asStateFlow()
-
-        /** True once the user (or a restored state) owns the selection, so a late profile load must not overwrite it. */
-        private var touched: Boolean = restoredSelection != null
 
         init {
             loadCatalog()
@@ -121,18 +138,20 @@ class ExpertiseEditorViewModel
             }
         }
 
-        /** The profile tags seed the selection, primary first (iOS primaryId rule). A failure leaves it empty. */
+        /** The profile tags seed the selection, primary first (iOS primaryId rule). A failure shows Retry (CR-01). */
         private fun loadProfileTags() {
+            _uiState.update { it.copy(seed = ExpertiseSeedState.Loading) }
             viewModelScope.launch {
                 val tags =
                     try {
                         repository.profileTags()
                     } catch (e: ApiException) {
+                        _uiState.update { it.copy(seed = ExpertiseSeedState.Failed(e.toSectionMessage())) }
                         return@launch
                     }
-                if (touched) return@launch
+                // Selection edits are ignored until Ready, so nothing can have changed it: the seed always lands in full.
                 val ordered = primaryFirst(tags)
-                _uiState.update { it.copy(selected = ordered) }
+                _uiState.update { it.copy(selected = ordered, seed = ExpertiseSeedState.Ready) }
             }
         }
 
@@ -143,7 +162,9 @@ class ExpertiseEditorViewModel
         }
 
         fun retry() {
-            if (_uiState.value.catalog is ExpertiseCatalogState.Failed) loadCatalog()
+            val current = _uiState.value
+            if (current.catalog is ExpertiseCatalogState.Failed) loadCatalog()
+            if (current.seed is ExpertiseSeedState.Failed) loadProfileTags()
         }
 
         fun onQueryChange(value: String) {
@@ -153,6 +174,7 @@ class ExpertiseEditorViewModel
 
         /** Adds [tag] at the end, or removes it when already selected. The first selected tag is primary. */
         fun toggle(tag: ExpertiseTagItem) {
+            if (_uiState.value.seed != ExpertiseSeedState.Ready) return
             val id = tag.id.lowercase(Locale.ROOT)
             if (id in _uiState.value.selectedIds) {
                 remove(tag.id)
@@ -166,17 +188,17 @@ class ExpertiseEditorViewModel
         }
 
         private fun updateSelection(transform: (List<ExpertiseTagItem>) -> List<ExpertiseTagItem>) {
-            touched = true
+            if (_uiState.value.seed != ExpertiseSeedState.Ready) return
             val next = transform(_uiState.value.selected)
             savedStateHandle[KEY_SELECTED_IDS] = ArrayList(next.map { it.id })
             savedStateHandle[KEY_SELECTED_LABELS] = ArrayList(next.map { it.label })
             _uiState.update { it.copy(selected = next) }
         }
 
-        /** Saves the selection. Ignored while saving and for an empty selection (the sheet explains why). */
+        /** Saves the selection. Ignored while saving, before the seed is Ready and for an empty selection. */
         fun save() {
             val current = _uiState.value
-            if (current.isSaving || current.selected.isEmpty()) return
+            if (current.isSaving || current.selected.isEmpty() || current.seed != ExpertiseSeedState.Ready) return
             _uiState.update { it.copy(isSaving = true, dialog = null) }
             viewModelScope.launch {
                 try {
