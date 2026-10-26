@@ -235,7 +235,9 @@ fun ExpertDashboardContent(
                             }
                         }
                         FinancialSummarySection(
+                            weekly = state.weekly,
                             onboarding = state.onboarding,
+                            payoutSummary = state.payoutSummary,
                             isMinting = state.isMintingLink,
                             onStartPayoutSetup = onStartPayoutSetup,
                         )

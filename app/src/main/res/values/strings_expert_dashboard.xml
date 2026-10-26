@@ -32,5 +32,16 @@
     <string name="dashboard_payout_setup_body">Verify your identity and add a bank account to receive earnings.</string>
     <string name="dashboard_payout_setup_busy">Opening secure setup…</string>
     <string name="dashboard_payout_setup_busy_a11y">Opening secure setup</string>
+    <string name="dashboard_this_week">This week</string>
+    <plurals name="dashboard_sessions_count">
+        <item quantity="one">1 session</item>
+        <item quantity="other">%1$d sessions</item>
+    </plurals>
+    <string name="dashboard_earnings_a11y">%1$s this week · %2$s</string>
+    <string name="dashboard_available_payout">Available payout</string>
+    <string name="dashboard_next_payout">Next payout on %1$s</string>
+    <string name="dashboard_payout_manual">Payouts are on manual schedule</string>
+    <string name="dashboard_payout_unavailable">Payout schedule unavailable</string>
+    <string name="dashboard_amount_unavailable">—</string>
     <string name="dashboard_payout_setup_error_title">Couldn\'t open payout setup</string>
 </resources>
