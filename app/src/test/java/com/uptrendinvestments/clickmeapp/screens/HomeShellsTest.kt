@@ -751,6 +751,47 @@ class HomeShellsTest {
     }
 
     @Test
+    fun expertDashboardRootSlotRendersSuppliedContent() {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeExpertShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    dashboardRoot = { Text("dash-slot") },
+                )
+            }
+        }
+        composeRule.onNode(tab("Dashboard")).assertIsSelected()
+        composeRule.onNodeWithText("dash-slot").assertExists()
+        composeRule.onNodeWithText("Nothing here yet.").assertDoesNotExist()
+    }
+
+    @Test
+    fun expertBookingsRootSlotRendersSuppliedContent() {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeExpertShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    bookingsRoot = { Text("bookings-slot") },
+                )
+            }
+        }
+        composeRule.onNodeWithText("bookings-slot").assertDoesNotExist()
+        tapTab("Bookings")
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("bookings-slot").assertExists()
+    }
+
+    @Test
     fun topicEditorRouteHidesTheBarAndBackReturnsToTheTopicsList() {
         setExpertWithSlots(
             topicsRoot = { navigator ->

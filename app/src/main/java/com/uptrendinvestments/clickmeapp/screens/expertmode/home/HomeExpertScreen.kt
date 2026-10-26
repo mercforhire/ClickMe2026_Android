@@ -36,6 +36,7 @@ import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityScreen
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertDashboardRoute
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertChatsRoot
@@ -47,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorViewModel
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRoute
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -66,6 +68,14 @@ fun HomeExpertScreen(
         onLogout = viewModel::logout,
         onDebugForceRefresh = viewModel::debugForceRefresh,
         debugRefreshStatus = debugRefreshStatus,
+        dashboardRoot = { navigator ->
+            ExpertDashboardRoute(
+                navigator = navigator,
+                avatarUrl = avatarUrl,
+                onOpenModeSwitch = { navigator.navigate(ModeSwitchKey) },
+            )
+        },
+        bookingsRoot = { navigator -> ExpertBookingsRoute(navigator) },
         topicsRoot = { navigator ->
             TopicsScreen(
                 onAddTopic = { navigator.navigate(TopicEditorKey.newTopic()) },
@@ -94,9 +104,10 @@ fun HomeExpertScreen(
  * The expert 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Two slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
- * [topicsRoot] renders the Topics tab root (default: the placeholder) and [detailEntries] registers extra routes
- * pushed on top of a tab, such as the Topic Editor and Availability.
+ * Four slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * [topicsRoot], [dashboardRoot] and [bookingsRoot] render the Topics, Dashboard and Bookings tab roots (defaults:
+ * the placeholders, so Robolectric can render the shell with no Hilt graph) and [detailEntries] registers extra
+ * routes pushed on top of a tab, such as the Topic Editor and Availability.
  */
 @Composable
 fun HomeExpertShell(
@@ -107,6 +118,13 @@ fun HomeExpertShell(
     onDebugForceRefresh: () -> Unit,
     debugRefreshStatus: String?,
     modifier: Modifier = Modifier,
+    dashboardRoot: @Composable (navigator: Navigator) -> Unit = { navigator ->
+        ExpertTabRoot(
+            key = DashboardRoot,
+            actions = { TopBarAvatarButton(avatarUrl, onClick = { navigator.navigate(ModeSwitchKey) }) },
+        )
+    },
+    bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(ExpertBookingsRoot) },
     topicsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(TopicsRoot) },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
 ) {
@@ -120,13 +138,8 @@ fun HomeExpertShell(
         modifier = modifier,
         entryProvider =
             entryProvider<NavKey> {
-                entry<DashboardRoot> {
-                    ExpertTabRoot(
-                        key = DashboardRoot,
-                        actions = { TopBarAvatarButton(avatarUrl, onClick = { navigator.navigate(ModeSwitchKey) }) },
-                    )
-                }
-                entry<ExpertBookingsRoot> { ExpertTabRoot(ExpertBookingsRoot) }
+                entry<DashboardRoot> { dashboardRoot(navigator) }
+                entry<ExpertBookingsRoot> { bookingsRoot(navigator) }
                 entry<TopicsRoot> { topicsRoot(navigator) }
                 entry<ExpertChatsRoot> { ExpertTabRoot(ExpertChatsRoot) }
                 entry<ExpertProfileRoot> {
@@ -180,7 +193,7 @@ fun HomeExpertShell(
 }
 
 @Composable
-private fun ExpertTabRoot(
+internal fun ExpertTabRoot(
     key: NavKey,
     actions: @Composable RowScope.() -> Unit = {},
     footer: @Composable ColumnScope.() -> Unit = {},
