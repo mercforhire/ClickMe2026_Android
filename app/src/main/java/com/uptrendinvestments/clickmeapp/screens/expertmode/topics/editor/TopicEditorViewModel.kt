@@ -289,6 +289,7 @@ class TopicEditorViewModel
          * - A free topic (blank or 0) still sends a positive wire amount (D-11).
          * - A server `PRICE_BELOW_MINIMUM` goes on the price field and the editor stays open (EXP-02).
          * - Any other failure opens the error dialog and keeps every field.
+         * - An edit leaves `duration_mins` out of the PATCH when the duration is unchanged (WR-02).
          * - Success hands the saved topic to the list and sets [TopicEditorUiState.finished] (D-07).
          */
         fun save() {
@@ -337,7 +338,10 @@ class TopicEditorViewModel
                                 UpdateExpertTopicRequest(
                                     title = title,
                                     description = description,
-                                    durationMins = current.durationMins,
+                                    durationMins =
+                                        current.durationMins.takeIf {
+                                            it != TopicEditorRules.seedDuration(seed.durationMins)
+                                        },
                                     isFree = isFree,
                                     hourlyRate = hourlyRate,
                                     iconSlug = current.iconSlug,

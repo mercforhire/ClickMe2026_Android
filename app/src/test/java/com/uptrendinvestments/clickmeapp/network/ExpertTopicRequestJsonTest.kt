@@ -17,10 +17,11 @@ class ExpertTopicRequestJsonTest {
     private fun update(
         description: String? = null,
         iconSlug: String? = null,
+        durationMins: Int? = 60,
     ) = UpdateExpertTopicRequest(
         title = "T",
         description = description,
-        durationMins = 60,
+        durationMins = durationMins,
         isFree = false,
         hourlyRate = TopicHourlyRateBody(2500, "CAD"),
         iconSlug = iconSlug,
@@ -42,6 +43,15 @@ class ExpertTopicRequestJsonTest {
             """{"title":"T","description":"D","duration_mins":60,"is_free":false,""" +
                 """"hourly_rate":{"amount":2500,"currency":"CAD"},"icon_slug":"tech","expertise_tag_ids":["a1"]}""",
             moshi.adapter(UpdateExpertTopicRequest::class.java).toJson(update("D", "tech")),
+        )
+    }
+
+    @Test
+    fun patchBodyOmitsAnUnchangedDuration() {
+        assertEquals(
+            """{"title":"T","description":null,"is_free":false,""" +
+                """"hourly_rate":{"amount":2500,"currency":"CAD"},"icon_slug":null,"expertise_tag_ids":["a1"]}""",
+            moshi.adapter(UpdateExpertTopicRequest::class.java).toJson(update(durationMins = null)),
         )
     }
 

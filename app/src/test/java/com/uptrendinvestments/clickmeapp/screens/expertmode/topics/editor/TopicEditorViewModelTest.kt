@@ -596,7 +596,7 @@ class TopicEditorViewModelTest {
                 UpdateExpertTopicRequest(
                     title = "Tax planning",
                     description = null,
-                    durationMins = 90,
+                    durationMins = null,
                     isFree = false,
                     hourlyRate = TopicHourlyRateBody(1250, "USD"),
                     iconSlug = null,
@@ -604,6 +604,34 @@ class TopicEditorViewModelTest {
                 )
             assertEquals(listOf("t1" to expected), env.api.updateTopicRequests)
             assertEquals(0, env.api.createTopicCalls)
+        }
+
+    @Test
+    fun anUnchangedDurationIsLeftOutOfThePatch() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 90))
+            vm.onTitleChange("Tax planning 2")
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertNull(request.durationMins)
+        }
+
+    @Test
+    fun aChangedDurationIsSentInThePatch() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 90))
+            vm.increaseDuration()
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertEquals(120, request.durationMins)
         }
 
     @Test

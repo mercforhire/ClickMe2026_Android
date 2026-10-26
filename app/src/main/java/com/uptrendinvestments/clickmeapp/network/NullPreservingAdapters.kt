@@ -12,7 +12,8 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
  *
  * The app-wide Moshi omits nulls, but the PATCH contract clears those two fields only on a literal
  * `null`. `serializeNulls` is switched on around exactly those two names and restored in a `finally`.
- * Request-only: decoding is unsupported.
+ * `duration_mins` is omitted when null (unchanged); the server rejects an explicit null. Request-only:
+ * decoding is unsupported.
  */
 class UpdateExpertTopicRequestAdapter : JsonAdapter<UpdateExpertTopicRequest>() {
     override fun toJson(
@@ -26,7 +27,7 @@ class UpdateExpertTopicRequestAdapter : JsonAdapter<UpdateExpertTopicRequest>() 
         writer.beginObject()
         writer.name("title").value(value.title)
         writeNullable(writer, "description", value.description)
-        writer.name("duration_mins").value(value.durationMins.toLong())
+        value.durationMins?.let { writer.name("duration_mins").value(it.toLong()) }
         writer.name("is_free").value(value.isFree)
         writer.name("hourly_rate")
         writer.beginObject()
