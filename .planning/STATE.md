@@ -5,14 +5,14 @@ current_phase: 11
 current_phase_name: Expert Requests & Bookings
 status: executing
 stopped_at: Completed 11-15-PLAN.md
-last_updated: "2026-10-26T18:45:59.204Z"
+last_updated: "2026-10-26T22:17:57.133Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 11 execution started
-state_head: c1d34c044473774013f60f6f965ab3fc87c1a6ee
+state_head: 865e6cde989c96d988da008254c19375e14c099b
 progress:
   total_phases: 17
   completed_phases: 9
-  total_plans: 163
+  total_plans: 164
   completed_plans: 159
 milestone_name: milestone
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 11 (Expert Requests & Bookings) — EXECUTING
-Plan: 15 of 15 (all plans executed)
-Status: Phase 11 plans complete, ready for verification
-Last activity: 2026-10-26 — Completed 11-15 (gate, sweeps, close-out)
+Plan: 16 of 16
+Status: Executing Phase 11
+Last activity: 2026-10-26 — Phase 11 execution started
 
 Progress: [█████░░░░░] 53%
 
@@ -216,9 +216,14 @@ Recent decisions affecting current work:
 - [Phase 11] DEFERRED (human): non-blocking (user defers manual testing). Automated gate green (2947 tests per flavor, ktlint, lint, R8 `assembleProdRelease`, design rules). Run on the Samsung SM-A075F (devDebug, production backend) logged in as an expert, with the iOS app as the client:
   - [ ] (a) SC-1 Dashboard: pending count, reschedule banner, Today's Sessions with Starting now and Join, weekly earnings ("—" only on failure), payout onboarding card -> Custom Tab -> return refreshes the status on resume (Stripe-hosted; never with a real card against the live backend, see "[Phase 7] Stripe key and mode"); Expert Tools targets and the two "coming soon" snackbars.
   - [ ] (b) SC-2 A booking from the iOS client appears in Incoming Requests; accept with and without a message -> Confirmed -> Add to Calendar shows the event editor with the D-06 title, times and description; Back -> refreshed Incoming Requests; Back to Home -> Dashboard; decline with each of the four reasons, with and without a note (the iOS client sees the decline); an expired request opens read-only; accept a request the client cancelled meanwhile -> ALREADY_PROCESSED dialog.
-  - [ ] (c) SC-3 Join from the Dashboard card, an Upcoming card and the Summary inside the window, with the iOS client and the Android expert both in the call (PRD Week 5 checkpoint).
+  - [ ] (c) SC-3 Join from the Dashboard card, an Upcoming card and the Summary inside the window, with the iOS client and the Android expert both in the call (PRD Week 5 checkpoint). (could not pass before 11-16, G-11-1; see the G-11-1 entry below)
   - [ ] (d) SC-4 The iOS client proposes a reschedule -> accept and decline from the Summary; SLOT_UNAVAILABLE with two back-to-back bookings (30-minute buffer); expert cancel of a free and a held paid booking (paid part BLOCKED on the test-mode Stripe backend) -> Past tab with the snackbar.
   - [ ] (e) 200% font scale on the Dashboard, a request card, Request Decision with the earnings card and footer, the Decline sheet, Confirmed, an Upcoming card with the reschedule badge and Cancel step 2; TalkBack on the sheets; the Confirmed entry with animations off; quiet reloads on tab return and realtime events without flicker; JPY amounts in the earnings card. Phase 13 internal testing and Phase 16 QA re-run these.
+- [Phase 11] G-11-1 fixed in code by 11-16; DEFERRED (human), non-blocking. Cause: inside the engine config builder lambda `context` resolved to the SDK's own getter, so engine creation threw an NPE and every in-app voice join, client and expert, showed "Couldn't join session". Re-check on the Samsung SM-A075F (`-s R8YYC1QFA6H`, devDebug, production backend) with the iOS app as peer, capturing `adb -s R8YYC1QFA6H logcat -s ClickMeCall CallService RtcEngine`. Residual risk: nothing past engine creation has run on a device (joinChannel result, onJoinChannelSuccess, remote join, audio route, leave/destroy/rejoin, confirm-connection); `joinChannel failed code=N` carries the Agora error code; `engine create returned null` means checking for an `RtcEngine` "failed to load library" line.
+  - [ ] 11-UAT test 1
+  - [ ] 09-HUMAN-UAT item 1
+  - [ ] 09-HUMAN-UAT item 2
+  - [ ] 09-HUMAN-UAT item 5
 
 ## Deferred Items
 
