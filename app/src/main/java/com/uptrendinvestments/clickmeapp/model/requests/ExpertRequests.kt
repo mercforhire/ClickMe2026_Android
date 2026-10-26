@@ -26,14 +26,17 @@ data class TopicHourlyRateBody(
 )
 
 /**
- * `PATCH /expert/topics/{id}` body. Always a full body so a cleared icon or description is sent as an
- * explicit `null`. Deliberately NOT `@JsonClass`: it is serialized only by
- * `UpdateExpertTopicRequestAdapter`, which writes those nulls (codegen would omit them).
+ * `PATCH /expert/topics/{id}` body. A full body so a cleared icon or description is sent as an
+ * explicit `null`, except [durationMins]: null means the duration is unchanged and the key is omitted,
+ * so the server keeps the stored value. A stored value the write schema would reject (an off-grid legacy
+ * row) or that exceeds the 480 button cap is therefore never rewritten by an unrelated edit (WR-02).
+ * Deliberately NOT `@JsonClass`: it is serialized only by `UpdateExpertTopicRequestAdapter`, which writes
+ * those nulls (codegen would omit them).
  */
 data class UpdateExpertTopicRequest(
     val title: String,
     val description: String?,
-    val durationMins: Int,
+    val durationMins: Int?,
     val isFree: Boolean,
     val hourlyRate: TopicHourlyRateBody,
     val iconSlug: String?,

@@ -52,13 +52,29 @@ class TopicEditorRulesTest {
     }
 
     @Test
-    fun seedDuration_roundsAndClamps() {
+    fun seedDuration_keepsTheStoredValue() {
         assertEquals(60, TopicEditorRules.seedDuration(null))
         assertEquals(90, TopicEditorRules.seedDuration(90))
-        assertEquals(30, TopicEditorRules.seedDuration(20))
-        assertEquals(480, TopicEditorRules.seedDuration(1440))
-        assertEquals(60, TopicEditorRules.seedDuration(45))
-        assertEquals(30, TopicEditorRules.seedDuration(0))
+        assertEquals(45, TopicEditorRules.seedDuration(45))
+        assertEquals(20, TopicEditorRules.seedDuration(20))
+        assertEquals(600, TopicEditorRules.seedDuration(600))
+        assertEquals(1440, TopicEditorRules.seedDuration(1440))
+        assertEquals(60, TopicEditorRules.seedDuration(0))
+        assertEquals(60, TopicEditorRules.seedDuration(-30))
+    }
+
+    @Test
+    fun stepDuration_snapsOffGridAndOutOfRangeValuesOntoTheGrid() {
+        assertEquals(60, TopicEditorRules.stepDuration(45, true))
+        assertEquals(30, TopicEditorRules.stepDuration(45, false))
+        assertEquals(480, TopicEditorRules.stepDuration(600, false))
+        assertEquals(600, TopicEditorRules.stepDuration(600, true))
+        assertEquals(15, TopicEditorRules.stepDuration(15, false))
+        assertEquals(30, TopicEditorRules.stepDuration(15, true))
+        assertEquals(30, TopicEditorRules.stepDuration(20, true))
+        assertFalse(TopicEditorRules.canIncrease(600))
+        assertTrue(TopicEditorRules.canDecrease(600))
+        assertFalse(TopicEditorRules.canDecrease(15))
     }
 
     @Test

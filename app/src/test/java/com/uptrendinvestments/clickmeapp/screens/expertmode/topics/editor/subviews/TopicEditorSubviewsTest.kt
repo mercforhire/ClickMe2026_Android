@@ -282,6 +282,17 @@ class TopicEditorSubviewsTest {
     }
 
     @Test
+    fun picker_loadFailed_stillShowsSelectedTagsAsRemovableChips() {
+        val toggled = mutableListOf<ExpertiseTagItem>()
+        setPicker(loadFailed = true, onToggle = { toggled += it })
+        rule.onNodeWithContentDescription("Remove Law").assertIsDisplayed().performClick()
+        assertEquals(listOf(Law), toggled)
+        rule.onNodeWithText("Audit").assertDoesNotExist()
+        rule.onNodeWithText("Couldn't load your tags.").assertIsDisplayed()
+        rule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    @Test
     fun picker_loaded_showsChipsAndTogglesUnselected() {
         val toggled = mutableListOf<ExpertiseTagItem>()
         setPicker(onToggle = { toggled += it })

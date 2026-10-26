@@ -310,6 +310,37 @@ class TopicEditorViewModelTest {
         }
 
     @Test
+    fun aStoredDurationAboveTheCapIsShownAndKeptOnAnUnrelatedEdit() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 600))
+            assertEquals(600, vm.uiState.value.durationMins)
+            vm.onTitleChange("Tax planning 2")
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertNull(request.durationMins)
+        }
+
+    @Test
+    fun anOffGridStoredDurationIsKeptUntilTheUserStepsIt() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 45))
+            assertEquals(45, vm.uiState.value.durationMins)
+            vm.increaseDuration()
+            assertEquals(60, vm.uiState.value.durationMins)
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertEquals(60, request.durationMins)
+        }
+
+    @Test
     fun tappingTheSelectedIconClearsIt() =
         runTest(main.testDispatcher) {
             val env = Env(this)
@@ -391,6 +422,29 @@ class TopicEditorViewModelTest {
             vm.retryTags()
             advanceUntilIdle()
             assertTrue(vm.uiState.value.tags is TopicTagsLoad.Loaded)
+        }
+
+    private fun selectedIds(vm: TopicEditorViewModel): List<String> {
+        val selected = vm.uiState.value.selectedTags
+        return selected.map { it.id }
+    }
+
+    @Test
+    fun aTagRemovedWhileTheProfileTagsFailedIsNotSent() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.expertProfileHandler = { throw env.api.httpError(500, """{"message":"boom"}""") }
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(tags = listOf(tag("tax", "Tax"), tag("law", "Law"))))
+            assertEquals(TopicTagsLoad.Failed, vm.uiState.value.tags)
+            assertEquals(listOf("tax", "law"), selectedIds(vm))
+            vm.toggleTag(tag("law", "Law"))
+            assertEquals(listOf("tax"), selectedIds(vm))
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertEquals(listOf("tax"), request.expertiseTagIds)
         }
 
     @Test
@@ -596,7 +650,7 @@ class TopicEditorViewModelTest {
                 UpdateExpertTopicRequest(
                     title = "Tax planning",
                     description = null,
-                    durationMins = 90,
+                    durationMins = null,
                     isFree = false,
                     hourlyRate = TopicHourlyRateBody(1250, "USD"),
                     iconSlug = null,
@@ -604,6 +658,34 @@ class TopicEditorViewModelTest {
                 )
             assertEquals(listOf("t1" to expected), env.api.updateTopicRequests)
             assertEquals(0, env.api.createTopicCalls)
+        }
+
+    @Test
+    fun anUnchangedDurationIsLeftOutOfThePatch() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 90))
+            vm.onTitleChange("Tax planning 2")
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertNull(request.durationMins)
+        }
+
+    @Test
+    fun aChangedDurationIsSentInThePatch() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe()
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(duration = 90))
+            vm.increaseDuration()
+            vm.save()
+            advanceUntilIdle()
+            val (_, request) = env.api.updateTopicRequests.single()
+            assertEquals(120, request.durationMins)
         }
 
     @Test
