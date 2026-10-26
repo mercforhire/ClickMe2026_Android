@@ -8,8 +8,8 @@ import com.uptrendinvestments.clickmeapp.navigation.Navigator
 
 /**
  * Registers the Request Decision route in the expert shell, pushed on whichever tab stack started it with the bottom
- * bar hidden. The ViewModel is created per key, so each request gets its own load. Plan 11-12 extends this entry with
- * the accept and decline hand-offs.
+ * bar hidden. The ViewModel is created per key, so each request gets its own load. A successful accept replaces this
+ * screen with Booking Confirmed, so Back from Confirmed lands on Incoming Requests (D-04).
  */
 fun EntryProviderScope<NavKey>.requestDecisionEntries(navigator: Navigator) {
     entry<RequestDecisionKey>(metadata = BottomBar.hidden()) { key ->
@@ -19,6 +19,9 @@ fun EntryProviderScope<NavKey>.requestDecisionEntries(navigator: Navigator) {
                     creationCallback = { factory -> factory.create(key) },
                 ),
             onBack = navigator::goBack,
+            onAccepted = { navigator.replaceTop(it) },
+            onDeclined = navigator::goBack,
+            onExitAfterProcessed = navigator::goBack,
         )
     }
 }

@@ -23,4 +23,35 @@
     <string name="request_decision_estimated_caption">Estimated — fee applies when the booking is charged.</string>
     <string name="request_decision_session_price">Session price</string>
     <string name="request_decision_payout_pending">Payout amount pending</string>
+
+    <!-- Footer and Accept sheet (11-12) -->
+    <string name="request_decision_accept">Accept</string>
+    <string name="request_decision_decline">Decline</string>
+    <string name="accept_sheet_title">Confirm Booking</string>
+    <string name="accept_sheet_label">Add a message (optional)</string>
+    <string name="accept_sheet_placeholder">e.g., Looking forward to our session!</string>
+    <string name="accept_sheet_counter">%1$d/1000</string>
+    <string name="accept_sheet_cancel">Cancel</string>
+    <string name="accept_sheet_confirm">Accept Request</string>
+    <string name="accept_sheet_accepting">Accepting</string>
+
+    <string name="request_decision_error_title">Couldn\'t update request</string>
+
+    <!-- Decline sheet (11-12). The four reason labels equal DeclineReason.wireLabel (tested). -->
+    <string name="decline_sheet_title">Decline Booking Request?</string>
+    <string name="decline_sheet_subtitle">This action cannot be undone.</string>
+    <string name="decline_sheet_from">From</string>
+    <string name="decline_sheet_reason_label">Reason for declining</string>
+    <string name="decline_sheet_reason_required_a11y">Reason for declining, required</string>
+    <string name="decline_reason_conflict">Schedule conflict</string>
+    <string name="decline_reason_out_of_scope">Outside my expertise</string>
+    <string name="decline_reason_unavailable">Not available at that time</string>
+    <string name="decline_reason_other">Other reason</string>
+    <string name="decline_sheet_note_label">Optional note to the client</string>
+    <string name="decline_sheet_note_placeholder">e.g. Sorry — booked solid that week.</string>
+    <string name="decline_sheet_counter">%1$d/1000</string>
+    <string name="decline_sheet_keep">Keep Request</string>
+    <string name="decline_sheet_confirm">Decline Request</string>
+    <string name="decline_sheet_choose_reason">Choose a reason first</string>
+    <string name="decline_sheet_declining">Declining</string>
 </resources>

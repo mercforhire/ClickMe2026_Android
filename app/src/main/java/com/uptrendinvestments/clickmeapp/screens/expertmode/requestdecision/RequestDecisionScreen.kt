@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,11 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -34,11 +39,16 @@ import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.AcceptRequestSheet
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DeclineRequestSheet
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestActionFooter
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestClientHeader
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestDetailsCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestEarningsSection
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestExpiredBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestMessageCard
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -55,34 +65,93 @@ private val MessageSkeletonHeight = 96.dp
 private val EarningsSkeletonHeight = 128.dp
 
 /**
- * Request Decision (EXP-06): the client, schedule, message and earnings of one pending request. Plan 11-12 adds the
- * accept and decline footer and sheets on top of this screen.
+ * Request Decision (EXP-06): the client, schedule, message and earnings of one pending request, with a pinned
+ * Decline / Accept footer and the two decision sheets. [onAccepted] replaces this screen with Booking Confirmed (D-04).
  */
 @Composable
 fun RequestDecisionScreen(
     viewModel: RequestDecisionViewModel,
     onBack: () -> Unit,
+    onAccepted: (BookingConfirmedKey) -> Unit,
+    onDeclined: () -> Unit,
+    onExitAfterProcessed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    RequestDecisionContent(state = state, onBack = onBack, onRetry = viewModel::retry, modifier = modifier)
+    LaunchedEffect(state.event) {
+        when (val event = state.event) {
+            is RequestDecisionEvent.Accepted -> onAccepted(event.confirmed)
+            RequestDecisionEvent.Declined -> onDeclined()
+            RequestDecisionEvent.ExitAfterProcessed -> onExitAfterProcessed()
+            null -> return@LaunchedEffect
+        }
+        viewModel.consumeEvent()
+    }
+    RequestDecisionContent(
+        state = state,
+        onBack = onBack,
+        onRetry = viewModel::retry,
+        onAccept = viewModel::accept,
+        onDecline = viewModel::decline,
+        onDismissDialog = viewModel::dismissDialog,
+        modifier = modifier,
+    )
 }
 
-/** Stateless Request Decision screen. [zone] and [timeFormat] are parameters so tests are deterministic. */
+/**
+ * Stateless Request Decision screen. [zone] and [timeFormat] are parameters so tests are deterministic. The sheets'
+ * open flags and typed text are kept here with `rememberSaveable`, so a failed call or a rotation keeps the input.
+ */
 @Composable
 fun RequestDecisionContent(
     state: RequestDecisionUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onAccept: (String) -> Unit,
+    onDecline: (DeclineReason, String) -> Unit,
+    onDismissDialog: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
 ) {
+    var acceptOpen by rememberSaveable { mutableStateOf(false) }
+    var acceptText by rememberSaveable { mutableStateOf("") }
+    var declineOpen by rememberSaveable { mutableStateOf(false) }
+    var declineReasonName by rememberSaveable { mutableStateOf<String?>(null) }
+    var declineNote by rememberSaveable { mutableStateOf("") }
+    val declineReason = DeclineReason.entries.firstOrNull { it.name == declineReasonName }
+    val submitting = state.submitting != DecisionSubmitting.None
+    val canDecide = state.load is RequestDecisionLoad.Loaded && !state.isExpired
+    // A finished decision closes its sheet; the screen is replaced or popped right after.
+    LaunchedEffect(state.event) {
+        if (state.event != null) {
+            acceptOpen = false
+            declineOpen = false
+        }
+    }
+    // The call keeps running in the ViewModel, so Back must not leave while it is in flight.
+    BackHandler(enabled = submitting) {}
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AuthTopAppBar(title = stringResource(R.string.request_decision_title), onBack = onBack) },
+        topBar = {
+            AuthTopAppBar(
+                title = stringResource(R.string.request_decision_title),
+                onBack = onBack,
+                backEnabled = !submitting,
+            )
+        },
+        bottomBar = {
+            if (canDecide) {
+                RequestActionFooter(
+                    enabled = !submitting,
+                    onDecline = { declineOpen = true },
+                    onAccept = { acceptOpen = true },
+                )
+            }
+        },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val load = state.load) {
@@ -98,6 +167,42 @@ fun RequestDecisionContent(
                     )
             }
         }
+    }
+
+    if (acceptOpen && canDecide) {
+        AcceptRequestSheet(
+            message = acceptText,
+            onMessageChange = { acceptText = it },
+            isSubmitting = state.submitting == DecisionSubmitting.Accepting,
+            onDismiss = { acceptOpen = false },
+            onConfirm = { onAccept(acceptText) },
+        )
+    }
+
+    val loaded = state.load as? RequestDecisionLoad.Loaded
+    if (declineOpen && canDecide && loaded != null) {
+        DeclineRequestSheet(
+            details = loaded.details,
+            selected = declineReason,
+            onSelect = { declineReasonName = it.name },
+            note = declineNote,
+            onNoteChange = { declineNote = it },
+            isSubmitting = state.submitting == DecisionSubmitting.Declining,
+            onDismiss = { declineOpen = false },
+            onConfirm = { declineReason?.let { onDecline(it, declineNote) } },
+            zone = zone,
+            timeFormat = timeFormat,
+            locale = locale,
+        )
+    }
+
+    // Drawn last so it sits above an open sheet; a non-exit error leaves the sheet and its inputs as they were.
+    state.dialog?.let { dialog ->
+        AuthErrorDialog(
+            message = dialog.message.asString(),
+            onDismiss = onDismissDialog,
+            title = stringResource(R.string.request_decision_error_title),
+        )
     }
 }
 
