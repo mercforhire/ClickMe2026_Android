@@ -552,7 +552,7 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 10/15 plans executed
+**Plans:** 14/15 plans executed
 Plans:
 **Wave 1**
 
@@ -572,10 +572,10 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 11-11-PLAN.md — Expert Bookings Past tab, empty states and snackbars (EXP-08)
-- [ ] 11-12-PLAN.md — Request Decision actions: footer, Accept/Decline sheets, 4 backend decline codes, ALREADY_PROCESSED, Confirmed replace (EXP-06)
-- [ ] 11-13-PLAN.md — Summary reschedule response: expert responder and mapper, guarded accept/decline, SLOT_UNAVAILABLE (EXP-09)
-- [ ] 11-14-PLAN.md — Dashboard financial summary, payout onboarding (Connect, Custom Tab, https-only), Expert Tools grid (EXP-05)
+- [x] 11-11-PLAN.md — Expert Bookings Past tab, empty states and snackbars (EXP-08)
+- [x] 11-12-PLAN.md — Request Decision actions: footer, Accept/Decline sheets, 4 backend decline codes, ALREADY_PROCESSED, Confirmed replace (EXP-06)
+- [x] 11-13-PLAN.md — Summary reschedule response: expert responder and mapper, guarded accept/decline, SLOT_UNAVAILABLE (EXP-09)
+- [x] 11-14-PLAN.md — Dashboard financial summary, payout onboarding (Connect, Custom Tab, https-only), Expert Tools grid (EXP-05)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -696,7 +696,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
-| 11. Expert Requests & Bookings | 10/15 | In Progress | - |
+| 11. Expert Requests & Bookings | 14/15 | In Progress | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
