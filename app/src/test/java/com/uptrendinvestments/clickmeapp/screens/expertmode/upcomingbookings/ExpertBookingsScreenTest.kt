@@ -1,8 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -10,13 +13,19 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -33,10 +42,14 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.IOException
 import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "w411dp-h1200dp")
 class ExpertBookingsScreenTest {
     @get:Rule
     val rule = createComposeRule()
@@ -143,5 +156,197 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Couldn't load sessions").assertExists()
         rule.onNodeWithText("Check your connection and try again.").assertExists()
         rule.onNodeWithText("Retry").assertExists()
+    }
+
+    private fun showPast(
+        past: List<ExpertBookingItem>,
+        onOpenBooking: (String) -> Unit = {},
+    ) {
+        serve(upcoming = emptyList(), past = past)
+        show(onOpenBooking = onOpenBooking)
+        rule.onNodeWithText("Past").performClick()
+        rule.waitForIdle()
+    }
+
+    private fun pastItem(
+        id: String,
+        status: String,
+        hoursAgo: Long,
+    ) = expertBookingItem(
+        id = id,
+        statusCode = status,
+        start = now.minusSeconds(hoursAgo * 3600),
+    )
+
+    @Test
+    fun pastTabShowsLabelledCards() {
+        showPast(
+            listOf(
+                pastItem("p1", "completed", hoursAgo = 24),
+                pastItem("p2", "declined", hoursAgo = 48),
+                pastItem("p3", "expired", hoursAgo = 72),
+            ),
+        )
+        assertEquals(3, rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().size)
+        rule.onNodeWithText("Completed").assertExists()
+        rule.onNodeWithText("Cancelled").assertExists()
+        rule.onNodeWithText("Missed").assertExists()
+        assertEquals(3, rule.onAllNodesWithText("Topic: Algorithms").fetchSemanticsNodes().size)
+        val date = formatShortDate(now.minusSeconds(24 * 3600).atZone(ZoneId.systemDefault()).toLocalDate(), Locale.US)
+        assertTrue(rule.onAllNodesWithText(date, substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithTag(EXPERT_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithTag(EXPERT_UPCOMING_CARD_TAG).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun pastCardsAreNewestFirst() {
+        showPast(
+            listOf(
+                pastItem("older", "completed", hoursAgo = 72),
+                pastItem("newer", "cancelled", hoursAgo = 24),
+            ),
+        )
+        val cards = rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG)
+        cards[0].assertTextContains("Cancelled", substring = true)
+        cards[1].assertTextContains("Completed", substring = true)
+    }
+
+    @Test
+    fun pastCardOpensSummary() {
+        val opened = mutableListOf<String>()
+        showPast(listOf(pastItem("p1", "completed", hoursAgo = 24)), onOpenBooking = { opened += it })
+        rule.onNodeWithTag(EXPERT_PAST_CARD_TAG).performClick()
+        assertEquals(listOf("p1"), opened)
+    }
+
+    @Test
+    fun pastFirstLoadShowsPastSkeleton() {
+        api.expertBookingsHandler = { awaitCancellation() }
+        show()
+        rule.onNodeWithText("Past").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        assertTrue(rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun emptyUpcomingOffersAvailabilityAndPast() {
+        serve(upcoming = emptyList())
+        var availability = 0
+        val vm = viewModel()
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingsScreen(
+                    onOpenBooking = {},
+                    onUpdateAvailability = { availability++ },
+                    viewModel = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("No Upcoming Sessions Yet").assertExists()
+        val body =
+            "Once a client books a session with you, it will appear here. " +
+                "In the meantime, ensure your availability is up to date."
+        rule.onNodeWithText(body).assertExists()
+        rule.onNodeWithText("Update Availability").performClick()
+        assertEquals(1, availability)
+        rule.onNodeWithText("View Past History").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Past").assertIsSelected()
+        rule.onNodeWithText("No past sessions yet").assertExists()
+    }
+
+    @Test
+    fun emptyPastShowsItsState() {
+        showPast(emptyList())
+        rule.onNodeWithText("No past sessions yet").assertExists()
+        rule.onNodeWithText("Completed and cancelled sessions will appear here.").assertExists()
+        assertTrue(rule.onAllNodesWithText("Update Availability").fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithText("View Past History").fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun emptyStatesStillPullToRefresh() {
+        serve(upcoming = emptyList())
+        show()
+        val before = api.expertBookingsCalls
+        rule.onNodeWithTag(EXPERT_BOOKINGS_STATE_TAG).assert(hasScrollAction())
+        rule.onNodeWithTag(EXPERT_BOOKINGS_STATE_TAG).performTouchInput { swipeDown() }
+        rule.waitForIdle()
+        assertTrue(api.expertBookingsCalls > before)
+    }
+
+    private class NoticeCalls {
+        var noticeConsumed = 0
+        var refreshFailureConsumed = 0
+    }
+
+    private fun showContent(
+        state: ExpertBookingsUiState,
+        calls: NoticeCalls = NoticeCalls(),
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingsContent(
+                    state = state,
+                    joinNow = now,
+                    onSelectTab = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onOpenBooking = {},
+                    onJoin = {},
+                    onUpdateAvailability = {},
+                    onNoticeConsumed = { calls.noticeConsumed++ },
+                    onRefreshFailureConsumed = { calls.refreshFailureConsumed++ },
+                )
+            }
+        }
+        rule.waitForIdle()
+    }
+
+    private fun loadedState(
+        notice: BookingsNotice? = null,
+        refreshFailed: Boolean = false,
+    ) = ExpertBookingsUiState(
+        selectedTab = BookingsTab.Past,
+        load = ExpertBookingsLoad.Loaded,
+        notice = notice,
+        refreshFailed = refreshFailed,
+    )
+
+    @Test
+    fun cancelNoticeShowsOnce() {
+        val calls = NoticeCalls()
+        showContent(loadedState(notice = BookingsNotice.Cancelled), calls)
+        rule.onNodeWithText("Booking cancelled").assertExists()
+        assertEquals(1, calls.noticeConsumed)
+        assertEquals(0, calls.refreshFailureConsumed)
+    }
+
+    @Test
+    fun refundNoticeShowsAmount() {
+        val calls = NoticeCalls()
+        showContent(loadedState(notice = BookingsNotice.CancelledWithRefund("\$75.00")), calls)
+        rule.onNodeWithText("Booking cancelled. Your client will be refunded \$75.00.").assertExists()
+        assertEquals(1, calls.noticeConsumed)
+    }
+
+    @Test
+    fun refreshFailureShowsSnackbar() {
+        val calls = NoticeCalls()
+        showContent(loadedState(refreshFailed = true), calls)
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        assertEquals(1, calls.refreshFailureConsumed)
+        assertEquals(0, calls.noticeConsumed)
+    }
+
+    @Test
+    fun noNoticeNoSnackbar() {
+        val calls = NoticeCalls()
+        showContent(loadedState(), calls)
+        assertTrue(rule.onAllNodesWithText("Booking cancelled").fetchSemanticsNodes().isEmpty())
+        assertEquals(0, calls.noticeConsumed)
+        assertEquals(0, calls.refreshFailureConsumed)
     }
 }

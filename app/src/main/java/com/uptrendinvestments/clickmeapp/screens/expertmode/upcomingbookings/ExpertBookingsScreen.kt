@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,18 +13,26 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -41,13 +51,17 @@ import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertBookingsSkeleton
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertPastCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.asString
+import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -55,6 +69,9 @@ import java.util.Locale
 
 /** Test tag on the expert Bookings list (either tab). */
 const val EXPERT_BOOKINGS_LIST_TAG = "expert_bookings_list"
+
+/** Test tag on the scrollable centered column that holds the empty and error states. */
+const val EXPERT_BOOKINGS_STATE_TAG = "expert_bookings_state"
 
 private val TabMinHeight = 48.dp
 
@@ -100,7 +117,7 @@ fun ExpertBookingsScreen(
  * live within the join window.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("LongParameterList", "UNUSED_PARAMETER")
+@Suppress("LongParameterList")
 @Composable
 fun ExpertBookingsContent(
     state: ExpertBookingsUiState,
@@ -118,10 +135,36 @@ fun ExpertBookingsContent(
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
+    val noticeMessage =
+        when (val notice = state.notice) {
+            null -> null
+            BookingsNotice.Cancelled -> stringResource(R.string.cancel_booking_result_cancelled)
+            is BookingsNotice.CancelledWithRefund ->
+                stringResource(R.string.expert_cancel_result_refunded, notice.amount)
+        }
+
+    LaunchedEffect(state.notice) {
+        if (noticeMessage != null) {
+            // Launched on the composition scope so consuming the notice does not cancel the Snackbar.
+            scope.launch { snackbarHostState.showSnackbar(noticeMessage, duration = SnackbarDuration.Long) }
+            onNoticeConsumed()
+        }
+    }
+    LaunchedEffect(state.refreshFailed) {
+        if (state.refreshFailed) {
+            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
+            onRefreshFailureConsumed()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AuthTopAppBar(title = stringResource(R.string.expert_bookings_title), onBack = null) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             PrimaryTabRow(
@@ -165,10 +208,63 @@ fun ExpertBookingsContent(
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                ExpertBookingsTabBody(
+                Crossfade(
+                    targetState = state.selectedTab,
+                    animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
+                    label = "expertBookingsTab",
+                ) { tab ->
+                    ExpertBookingsTabBody(
+                        tab = tab,
+                        state = state,
+                        joinNow = joinNow,
+                        onRetry = onRetry,
+                        onSelectTab = onSelectTab,
+                        onUpdateAvailability = onUpdateAvailability,
+                        onOpenBooking = onOpenBooking,
+                        onJoin = onJoin,
+                        zone = zone,
+                        timeFormat = timeFormat,
+                        locale = locale,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun ExpertBookingsTabBody(
+    tab: BookingsTab,
+    state: ExpertBookingsUiState,
+    joinNow: Instant,
+    onRetry: () -> Unit,
+    onSelectTab: (BookingsTab) -> Unit,
+    onUpdateAvailability: () -> Unit,
+    onOpenBooking: (String) -> Unit,
+    onJoin: (ExpertBookingItem) -> Unit,
+    zone: ZoneId,
+    timeFormat: DateFormat,
+    locale: Locale,
+) {
+    when (val load = state.load) {
+        ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = tab == BookingsTab.Past)
+        is ExpertBookingsLoad.Failed -> ScrollableCentered { ExpertBookingsError(load.message, onRetry) }
+        ExpertBookingsLoad.Loaded -> {
+            val isEmpty =
+                when (tab) {
+                    BookingsTab.Upcoming -> state.lists.upcoming.isEmpty()
+                    BookingsTab.Past -> state.lists.past.isEmpty()
+                }
+            if (isEmpty) {
+                ScrollableCentered {
+                    ExpertBookingsEmptyState(tab, onSelectTab, onUpdateAvailability)
+                }
+            } else {
+                ExpertBookingsList(
+                    tab = tab,
                     state = state,
                     joinNow = joinNow,
-                    onRetry = onRetry,
                     onOpenBooking = onOpenBooking,
                     onJoin = onJoin,
                     zone = zone,
@@ -182,41 +278,87 @@ fun ExpertBookingsContent(
 
 @Suppress("LongParameterList")
 @Composable
-private fun ExpertBookingsTabBody(
+private fun ExpertBookingsList(
+    tab: BookingsTab,
     state: ExpertBookingsUiState,
     joinNow: Instant,
-    onRetry: () -> Unit,
     onOpenBooking: (String) -> Unit,
     onJoin: (ExpertBookingItem) -> Unit,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
 ) {
-    when (val load = state.load) {
-        ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = state.selectedTab == BookingsTab.Past)
-        is ExpertBookingsLoad.Failed -> ScrollableCentered { ExpertBookingsError(load.message, onRetry) }
-        ExpertBookingsLoad.Loaded ->
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
-                contentPadding =
-                    PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
-                if (state.selectedTab == BookingsTab.Upcoming) {
-                    items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
-                        ExpertUpcomingCard(
-                            item = item,
-                            now = joinNow,
-                            onOpen = { onOpenBooking(item.bookingId) },
-                            onJoin = { onJoin(item) },
-                            modifier = Modifier.animateItem(),
-                            zone = zone,
-                            timeFormat = timeFormat,
-                            locale = locale,
-                        )
-                    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
+        contentPadding =
+            PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        when (tab) {
+            BookingsTab.Upcoming ->
+                items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
+                    ExpertUpcomingCard(
+                        item = item,
+                        now = joinNow,
+                        onOpen = { onOpenBooking(item.bookingId) },
+                        onJoin = { onJoin(item) },
+                        modifier = Modifier.animateItem(),
+                        zone = zone,
+                        timeFormat = timeFormat,
+                        locale = locale,
+                    )
                 }
+            BookingsTab.Past ->
+                items(items = state.lists.past, key = { it.item.bookingId }) { row ->
+                    ExpertPastCard(
+                        row = row,
+                        onOpen = { onOpenBooking(row.item.bookingId) },
+                        modifier = Modifier.animateItem(),
+                        zone = zone,
+                        timeFormat = timeFormat,
+                        locale = locale,
+                    )
+                }
+        }
+    }
+}
+
+/** Empty copy of a tab. Upcoming also offers the availability and Past shortcuts (UI-SPEC A3). */
+@Composable
+private fun ExpertBookingsEmptyState(
+    tab: BookingsTab,
+    onSelectTab: (BookingsTab) -> Unit,
+    onUpdateAvailability: () -> Unit,
+) {
+    when (tab) {
+        BookingsTab.Upcoming -> {
+            EmptyState(
+                icon = Icons.Outlined.CalendarMonth,
+                heading = stringResource(R.string.expert_bookings_empty_upcoming_heading),
+                body = stringResource(R.string.expert_bookings_empty_upcoming_body),
+                action =
+                    EmptyStateAction(
+                        label = stringResource(R.string.expert_bookings_update_availability),
+                        onClick = onUpdateAvailability,
+                    ),
+            )
+            TextButton(
+                onClick = { onSelectTab(BookingsTab.Past) },
+                modifier = Modifier.padding(top = Spacing.sm).heightIn(min = TabMinHeight),
+            ) {
+                Text(
+                    text = stringResource(R.string.expert_bookings_view_past),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
+        }
+        BookingsTab.Past ->
+            EmptyState(
+                icon = Icons.Outlined.History,
+                heading = stringResource(R.string.expert_bookings_empty_past_heading),
+                body = stringResource(R.string.expert_bookings_empty_past_body),
+            )
     }
 }
 
@@ -239,7 +381,7 @@ private fun ExpertBookingsError(
 @Composable
 private fun ScrollableCentered(content: @Composable () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_STATE_TAG).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

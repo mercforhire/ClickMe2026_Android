@@ -9,4 +9,13 @@
     <string name="expert_bookings_earnings">Earnings</string>
     <string name="expert_bookings_open_details">View booking details</string>
     <string name="expert_bookings_error_heading">Couldn\'t load sessions</string>
+    <string name="expert_bookings_topic">Topic: %1$s</string>
+    <!-- Past card announcement: client, topic, date, time range, status label. -->
+    <string name="expert_bookings_past_a11y">%1$s, %2$s, %3$s, %4$s, %5$s</string>
+    <string name="expert_bookings_empty_upcoming_heading">No Upcoming Sessions Yet</string>
+    <string name="expert_bookings_empty_upcoming_body">Once a client books a session with you, it will appear here. In the meantime, ensure your availability is up to date.</string>
+    <string name="expert_bookings_update_availability">Update Availability</string>
+    <string name="expert_bookings_view_past">View Past History</string>
+    <string name="expert_bookings_empty_past_heading">No past sessions yet</string>
+    <string name="expert_bookings_empty_past_body">Completed and cancelled sessions will appear here.</string>
 </resources>
