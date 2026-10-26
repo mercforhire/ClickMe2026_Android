@@ -33,6 +33,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
@@ -52,6 +54,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
@@ -59,6 +62,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -136,6 +140,11 @@ class FakeClickMeApi : ClickMeApi {
         { _, _ -> notStubbed() }
     var declineExpertRescheduleHandler: suspend (String, DeclineRescheduleRequest) -> RescheduleResponseData =
         { _, _ -> notStubbed() }
+    var weeklyEarningsHandler: suspend () -> WeeklyEarningsData = { notStubbed() }
+    var payoutSummaryHandler: suspend () -> PayoutSummaryData = { notStubbed() }
+    var connectStatusHandler: suspend () -> ConnectStatusData = { notStubbed() }
+    var connectOnboardHandler: suspend () -> ConnectLinkData = { notStubbed() }
+    var connectRefreshLinkHandler: suspend () -> ConnectLinkData = { notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -288,6 +297,21 @@ class FakeClickMeApi : ClickMeApi {
         private set
 
     @Volatile var declineExpertRescheduleCalls = 0
+        private set
+
+    @Volatile var weeklyEarningsCalls = 0
+        private set
+
+    @Volatile var payoutSummaryCalls = 0
+        private set
+
+    @Volatile var connectStatusCalls = 0
+        private set
+
+    @Volatile var connectOnboardCalls = 0
+        private set
+
+    @Volatile var connectRefreshLinkCalls = 0
         private set
 
     private val _clientHomeCategories = mutableListOf<String?>()
@@ -780,6 +804,31 @@ class FakeClickMeApi : ClickMeApi {
         declineExpertRescheduleCalls++
         synchronized(_declineExpertRescheduleRequests) { _declineExpertRescheduleRequests += bookingId to body }
         return ok(declineExpertRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun getWeeklyEarnings(): SuccessDataResponse<WeeklyEarningsData> {
+        weeklyEarningsCalls++
+        return ok(weeklyEarningsHandler())
+    }
+
+    override suspend fun getPayoutSummary(): SuccessDataResponse<PayoutSummaryData> {
+        payoutSummaryCalls++
+        return ok(payoutSummaryHandler())
+    }
+
+    override suspend fun getConnectStatus(): SuccessDataResponse<ConnectStatusData> {
+        connectStatusCalls++
+        return ok(connectStatusHandler())
+    }
+
+    override suspend fun startConnectOnboarding(): SuccessDataResponse<ConnectLinkData> {
+        connectOnboardCalls++
+        return ok(connectOnboardHandler())
+    }
+
+    override suspend fun refreshConnectLink(): SuccessDataResponse<ConnectLinkData> {
+        connectRefreshLinkCalls++
+        return ok(connectRefreshLinkHandler())
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

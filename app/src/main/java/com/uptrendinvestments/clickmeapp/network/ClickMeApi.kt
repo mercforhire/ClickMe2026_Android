@@ -32,6 +32,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
@@ -51,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
@@ -58,6 +61,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -432,4 +436,30 @@ interface ClickMeApi {
         @Path("id") bookingId: String,
         @Body body: DeclineRescheduleRequest,
     ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertEarnings getWeeklyEarnings. Amounts are integer MINOR units and `net_amount` is never
+     * null. The optional `week_start` query is not sent: the screen always shows the current week.
+     */
+    @GET(ApiRequestUrls.EXPERT_EARNINGS_WEEKLY)
+    suspend fun getWeeklyEarnings(): SuccessDataResponse<WeeklyEarningsData>
+
+    /** Ports iOS ClickMeAPI+ExpertPayouts getPayoutSummary. MINOR units; 400 `NO_PAYOUT_METHOD` or `KYC_INCOMPLETE`. */
+    @GET(ApiRequestUrls.EXPERT_PAYOUTS_SUMMARY)
+    suspend fun getPayoutSummary(): SuccessDataResponse<PayoutSummaryData>
+
+    /** Ports iOS ClickMeAPI+ExpertConnect getConnectStatus. 404 `NOT_FOUND` when no connected account exists yet. */
+    @GET(ApiRequestUrls.EXPERT_CONNECT_STATUS)
+    suspend fun getConnectStatus(): SuccessDataResponse<ConnectStatusData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertConnect startConnectOnboarding. No `@Body`: the backend route has no schema (like
+     * [joinCall]). The returned URL is a single-use Stripe Account Link.
+     */
+    @POST(ApiRequestUrls.EXPERT_CONNECT_ONBOARD)
+    suspend fun startConnectOnboarding(): SuccessDataResponse<ConnectLinkData>
+
+    /** Ports iOS ClickMeAPI+ExpertConnect refreshConnectLink. No `@Body`; 404 `NOT_FOUND` without a connected account. */
+    @POST(ApiRequestUrls.EXPERT_CONNECT_REFRESH_LINK)
+    suspend fun refreshConnectLink(): SuccessDataResponse<ConnectLinkData>
 }
