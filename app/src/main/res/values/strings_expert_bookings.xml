@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expert Bookings tab (EXP-08). Reused elsewhere, not duplicated here: explore_join_call, expert_refresh_failed,
+         expert_retry, login_error_network, expert_reschedule_badge_client, expert_reschedule_badge_expert,
+         expert_client_fallback_name, content_loading (skeleton description). -->
+    <string name="expert_bookings_title">Bookings</string>
+    <string name="expert_bookings_tab_upcoming">Upcoming</string>
+    <string name="expert_bookings_tab_past">Past</string>
+    <string name="expert_bookings_earnings">Earnings</string>
+    <string name="expert_bookings_open_details">View booking details</string>
+    <string name="expert_bookings_error_heading">Couldn\'t load sessions</string>
+</resources>
