@@ -190,6 +190,19 @@ private fun TagList(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = Spacing.md),
     ) {
+        val seed = state.seed
+        if (seed is ExpertiseSeedState.Failed) {
+            item(key = "seed_error") {
+                EmptyState(
+                    icon = Icons.Outlined.CloudOff,
+                    heading = stringResource(R.string.expertise_editor_seed_error),
+                    body = seed.error.asString(),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xl),
+                    action = EmptyStateAction(stringResource(R.string.expert_retry), onRetry),
+                )
+            }
+            return@LazyColumn
+        }
         item(key = "search") {
             ExpertiseTagSearchField(
                 query = state.query,
@@ -341,6 +354,7 @@ private fun ExpertiseEditorContentPreview() {
                 state =
                     ExpertiseEditorUiState(
                         selected = listOf(tax),
+                        seed = ExpertiseSeedState.Ready,
                         catalog = ExpertiseCatalogState.Loaded(listOf(law, tax)),
                     ),
                 onQueryChange = {},

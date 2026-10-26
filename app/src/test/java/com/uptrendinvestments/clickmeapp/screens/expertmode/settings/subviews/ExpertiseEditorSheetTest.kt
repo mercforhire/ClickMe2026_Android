@@ -65,7 +65,7 @@ class ExpertiseEditorSheetTest {
 
     @Test
     fun loadedCatalogShowsTitleChipsAndCheckedRows() {
-        show(ExpertiseEditorUiState(selected = listOf(tax), catalog = loaded))
+        show(ExpertiseEditorUiState(selected = listOf(tax), catalog = loaded, seed = ExpertiseSeedState.Ready))
 
         rule.onNodeWithText("Edit Expertise").assertIsDisplayed()
         rule.onNodeWithText("Search for tags").assertIsDisplayed()
@@ -82,7 +82,17 @@ class ExpertiseEditorSheetTest {
     @Test
     fun clickingARowTogglesThatTag() {
         var toggled: ExpertiseTagItem? = null
-        show(ExpertiseEditorUiState(selected = listOf(tax), catalog = loaded), onToggle = { toggled = it })
+        show(
+            ExpertiseEditorUiState(
+                selected = listOf(tax),
+                catalog = loaded,
+                seed = ExpertiseSeedState.Ready,
+            ),
+            onToggle = {
+                toggled =
+                    it
+            },
+        )
 
         row("Law").performClick()
 
@@ -91,7 +101,7 @@ class ExpertiseEditorSheetTest {
 
     @Test
     fun emptySelectionExplainsAndDisablesSave() {
-        show(ExpertiseEditorUiState(catalog = loaded))
+        show(ExpertiseEditorUiState(catalog = loaded, seed = ExpertiseSeedState.Ready))
 
         rule.onNodeWithText("Pick at least one expertise tag before saving.").assertIsDisplayed()
         rule.onNodeWithTag(EXPERTISE_SHEET_SAVE_TAG).assertIsNotEnabled()
@@ -100,7 +110,7 @@ class ExpertiseEditorSheetTest {
 
     @Test
     fun loadingShowsTheCaption() {
-        show(ExpertiseEditorUiState(catalog = ExpertiseCatalogState.Loading))
+        show(ExpertiseEditorUiState(catalog = ExpertiseCatalogState.Loading, seed = ExpertiseSeedState.Ready))
         rule.onNodeWithText("Loading tags…").assertIsDisplayed()
     }
 
@@ -108,7 +118,10 @@ class ExpertiseEditorSheetTest {
     fun failedCatalogOffersRetry() {
         var retries = 0
         show(
-            ExpertiseEditorUiState(catalog = ExpertiseCatalogState.Failed(FieldError.Text("Server is down"))),
+            ExpertiseEditorUiState(
+                catalog = ExpertiseCatalogState.Failed(FieldError.Text("Server is down")),
+                seed = ExpertiseSeedState.Ready,
+            ),
             onRetry = { retries++ },
         )
 
@@ -120,8 +133,37 @@ class ExpertiseEditorSheetTest {
     }
 
     @Test
+    fun seedFailureOffersRetryAndDisablesSave() {
+        var retries = 0
+        show(
+            ExpertiseEditorUiState(
+                catalog = loaded,
+                seed = ExpertiseSeedState.Failed(FieldError.Text("Server is down")),
+            ),
+            onRetry = { retries++ },
+        )
+
+        rule.onNodeWithText("Couldn't load your current tags").assertIsDisplayed()
+        rule.onNodeWithText("Server is down").assertIsDisplayed()
+        rule.onAllNodesWithText("Search for tags").assertCountEquals(0)
+        rule.onAllNodesWithText("Audit").assertCountEquals(0)
+        rule.onAllNodesWithText("Pick at least one expertise tag before saving.").assertCountEquals(0)
+        rule.onNodeWithTag(EXPERTISE_SHEET_SAVE_TAG).assertIsNotEnabled()
+        rule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, retries)
+    }
+
+    @Test
     fun aQueryWithNoRowsShowsTheNoMatchBlock() {
-        show(ExpertiseEditorUiState(query = "zz", selected = listOf(tax), catalog = loaded))
+        show(
+            ExpertiseEditorUiState(
+                query = "zz",
+                selected = listOf(tax),
+                catalog = loaded,
+                seed = ExpertiseSeedState.Ready,
+            ),
+        )
 
         rule.onNodeWithText("No tags match “zz”").assertIsDisplayed()
         rule.onNodeWithText("Try a different search term.").assertIsDisplayed()
@@ -129,7 +171,14 @@ class ExpertiseEditorSheetTest {
 
     @Test
     fun savingShowsTheSpinnerStateAndDisablesCancel() {
-        show(ExpertiseEditorUiState(selected = listOf(tax), catalog = loaded, isSaving = true))
+        show(
+            ExpertiseEditorUiState(
+                selected = listOf(tax),
+                catalog = loaded,
+                seed = ExpertiseSeedState.Ready,
+                isSaving = true,
+            ),
+        )
 
         rule
             .onNode(
@@ -145,7 +194,7 @@ class ExpertiseEditorSheetTest {
         var cancelled = 0
         var saved = 0
         show(
-            ExpertiseEditorUiState(selected = listOf(tax), catalog = loaded),
+            ExpertiseEditorUiState(selected = listOf(tax), catalog = loaded, seed = ExpertiseSeedState.Ready),
             onCancel = { cancelled++ },
             onSave = { saved++ },
         )
@@ -164,6 +213,7 @@ class ExpertiseEditorSheetTest {
             ExpertiseEditorUiState(
                 selected = listOf(tax),
                 catalog = loaded,
+                seed = ExpertiseSeedState.Ready,
                 dialog = FieldError.Text("Unknown tag"),
             ),
         )

@@ -205,17 +205,50 @@ class ExpertiseEditorViewModelTest {
         }
 
     @Test
-    fun aProfileLoadFailureLeavesTheSelectionEmptyAndTheCatalogUsable() =
+    fun aProfileLoadFailureFailsTheSeedAndDisablesSave() =
         runTest(main.testDispatcher) {
             api.expertProfileHandler = { throw IOException("offline") }
             val vm = viewModel()
             advanceUntilIdle()
 
+            assertEquals(
+                ExpertiseSeedState.Failed(FieldError.Res(R.string.login_error_network)),
+                vm.uiState.value.seed,
+            )
             assertEquals(emptyList<ExpertiseTagItem>(), vm.uiState.value.selected)
             assertEquals(ExpertiseCatalogState.Loaded(listOf(audit, law, tax)), vm.uiState.value.catalog)
+            assertFalse(vm.uiState.value.canSave)
 
             vm.toggle(law)
-            assertEquals(listOf(law), vm.uiState.value.selected)
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals(0, api.updateExpertProfileTagsCalls)
+            assertFalse(vm.uiState.value.isSaving)
+        }
+
+    @Test
+    fun retryAfterASeedFailureSeedsTheSelectionAndEnablesSave() =
+        runTest(main.testDispatcher) {
+            api.expertProfileHandler = { throw IOException("offline") }
+            val vm = viewModel()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.seed is ExpertiseSeedState.Failed)
+
+            api.expertProfileHandler = {
+                ExpertProfileData(
+                    setupCompleted = true,
+                    expertiseTags = listOf(ExpertTag("T2", "Law"), ExpertTag("T1", "Tax", isPrimary = true)),
+                )
+            }
+            vm.retry()
+            advanceUntilIdle()
+
+            assertEquals(ExpertiseSeedState.Ready, vm.uiState.value.seed)
+            assertEquals(listOf(tax, law), vm.uiState.value.selected)
+            assertTrue(vm.uiState.value.canSave)
+            assertEquals(2, api.expertProfileCalls)
+            assertEquals(1, api.expertiseTagsCalls)
         }
 
     @Test
