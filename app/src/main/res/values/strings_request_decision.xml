@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Request Decision (EXP-06). Reused, not redefined here: expert_retry, price_free, expert_meeting_in_app_voice,
+        expert_meeting_skype_zoom, expert_client_fallback_name, login_error_network, login_error_unknown.
+    -->
+    <string name="request_decision_title">Booking Details</string>
+    <string name="request_decision_date_time">Date &amp; Time</string>
+    <string name="request_decision_date_time_value">%1$s, %2$s</string>
+    <string name="request_decision_topic">Topic</string>
+    <string name="request_decision_meeting_type">Meeting Type</string>
+    <string name="request_decision_message">Message</string>
+    <string name="request_decision_expired_title">This request has expired</string>
+    <string name="request_decision_expired_body">You can no longer accept or decline this booking.</string>
+    <string name="request_decision_load_error">Couldn\'t load request</string>
+</resources>
