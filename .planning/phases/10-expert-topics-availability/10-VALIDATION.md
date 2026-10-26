@@ -65,6 +65,14 @@ Filled at planning time (plan/task ids from 10-01..10-16); statuses are set by t
 | EXP-03 / EXP-04 | Availability screen: states, banner text, Save enabled rule, sheet slots, day card callbacks | 10-14 T2 | Robolectric | `--tests "*AvailabilityScreenTest"` | ✅ (10-14) | ✅ green |
 | D-01 | Topics slot, editor and Availability entries, Profile Availability row (both stacks) | 10-15 T2 | Robolectric | `--tests "*HomeShellsTest"` | ✅ (extended) | ✅ green |
 | All | Full gate both flavors + lint + R8 + design rules + sweeps | 10-16 T1 | build | see 10-16 verify chain | n/a | ✅ green |
+| EXP-01 (CR-01) | Seed Failed disables Save and Retry seeds | 10-17 T1 | unit (VM) + Robolectric | `--tests "*ExpertiseEditorViewModelTest" --tests "*ExpertiseEditorSheetTest"` | ✅ (gap) | ✅ green |
+| EXP-01 (CR-01) | Edits blocked until the seed is Ready, late seed kept | 10-17 T2 | unit (VM) + Robolectric | `--tests "*ExpertiseEditorViewModelTest" --tests "*ExpertiseEditorSheetTest"` | ✅ (gap) | ✅ green |
+| EXP-01 / EXP-02 (WR-02) | Unchanged duration omitted from PATCH | 10-18 T1 | adapter unit + VM | `--tests "*ExpertTopicRequestJsonTest" --tests "*TopicEditorViewModelTest"` | ✅ (gap) | ✅ green |
+| EXP-01 (WR-02) | Stored duration kept, stepper snaps onto the grid | 10-18 T2 | pure unit + VM | `--tests "*TopicEditorRulesTest" --tests "*TopicEditorViewModelTest"` | ✅ (gap) | ✅ green |
+| EXP-01 (WR-05) | Failed tag load keeps selected chips removable | 10-18 T3 | Robolectric + VM | `--tests "*TopicEditorSubviewsTest" --tests "*TopicEditorViewModelTest"` | ✅ (gap) | ✅ green |
+| EXP-04 (WR-04) | Silent PUT skipped when hydrate is lossy | 10-19 T1 | pure unit + VM | `--tests "*AvailabilityScheduleLogicTest" --tests "*AvailabilityViewModelTest"` | ✅ (gap) | ✅ green |
+| EXP-03 (WR-01) | Edits and refresh ignored while saving, edit ends the Saved hold | 10-19 T2 | VM + virtual time | `--tests "*AvailabilityViewModelTest"` | ✅ (gap) | ✅ green |
+| All | Gap-pass full gate (2558 tests per flavor) | 10-20 T1 | build | see the 10-20 verify chain | n/a | ✅ green |
 | SC-4 | iOS client sees topic and matching slots | 10-16 T2 (logged) | manual cross-client | none (deferred human check in STATE) | manual | ✅ logged (device check deferred, see STATE) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -102,3 +110,5 @@ Filled at planning time (plan/task ids from 10-01..10-16); statuses are set by t
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** approved 2026-10-25 (plan 10-16 gate)
+
+Gap closure 10-17..10-20 verified 2026-10-25
