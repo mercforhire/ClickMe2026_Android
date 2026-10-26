@@ -8,7 +8,9 @@ package com.uptrendinvestments.clickmeapp.network
  * details and reviews). Phase 6 adds the booking group (availability, booking request, booking detail). Phase 7 adds the payment
  * group (saved cards, setup and payment intents, booking confirm). Phase 8 adds the client booking actions
  * (cancel, accept and decline a reschedule). Phase 9 adds the call group (join, confirm connection, end).
- * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability.
+ * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability. Phase 11 adds the
+ * expert request, booking, earnings and payout groups (booking requests, expert bookings, weekly earnings, payout
+ * summary and Stripe Connect).
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -68,6 +70,27 @@ object ApiRequestUrls {
      * `experts/{id}/availability` route (note the singular/plural difference).
      */
     const val EXPERT_MY_AVAILABILITY = "expert/availability"
+
+    // Phase 11: expert requests, bookings, earnings and payouts.
+    const val EXPERT_BOOKING_REQUESTS = "expert/booking-requests"
+    const val EXPERT_BOOKING_REQUEST = "expert/booking-requests/{id}"
+    const val EXPERT_BOOKING_REQUEST_ACCEPT = "expert/booking-requests/{id}/accept"
+    const val EXPERT_BOOKING_REQUEST_DECLINE = "expert/booking-requests/{id}/decline"
+    const val EXPERT_BOOKINGS = "expert/bookings"
+
+    /**
+     * The expert booking detail route ends in `/details`. The backend has no GET on the bare booking id, so a
+     * request there is a 404 (RESEARCH C1).
+     */
+    const val EXPERT_BOOKING_DETAILS = "expert/bookings/{id}/details"
+    const val EXPERT_BOOKING_CANCEL = "expert/bookings/{id}/cancel"
+    const val EXPERT_BOOKING_ACCEPT_RESCHEDULE = "expert/bookings/{id}/accept-reschedule"
+    const val EXPERT_BOOKING_DECLINE_RESCHEDULE = "expert/bookings/{id}/decline-reschedule"
+    const val EXPERT_EARNINGS_WEEKLY = "expert/earnings/weekly"
+    const val EXPERT_PAYOUTS_SUMMARY = "expert/payouts/summary"
+    const val EXPERT_CONNECT_STATUS = "expert/connect/status"
+    const val EXPERT_CONNECT_ONBOARD = "expert/connect/onboard"
+    const val EXPERT_CONNECT_REFRESH_LINK = "expert/connect/refresh-link"
 
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is

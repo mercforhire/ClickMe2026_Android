@@ -1,11 +1,13 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
@@ -18,8 +20,11 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
+import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
@@ -27,10 +32,15 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -43,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
@@ -50,6 +61,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -339,4 +351,115 @@ interface ClickMeApi {
     suspend fun updateExpertProfileTags(
         @Body body: UpdateExpertTagsRequest,
     ): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+BookingRequests getBookingRequests. The list endpoint returns every pending request in one
+     * response and ignores paging, so no `page` or `limit` is sent (RESEARCH C2).
+     */
+    @GET(ApiRequestUrls.EXPERT_BOOKING_REQUESTS)
+    suspend fun getBookingRequests(): SuccessDataResponse<BookingRequestsPayload>
+
+    /** Ports iOS ClickMeAPI+BookingRequests getBookingRequestDetail. 404 `NOT_FOUND` when the request is missing. */
+    @GET(ApiRequestUrls.EXPERT_BOOKING_REQUEST)
+    suspend fun getBookingRequest(
+        @Path("id") requestId: String,
+    ): SuccessDataResponse<BookingRequestDetail>
+
+    /**
+     * Ports iOS ClickMeAPI+BookingRequests acceptBookingRequest. The backend `acceptSchema` is `.strict()` and a
+     * missing body fails validation, so an explicit [AcceptBookingRequestBody] is always passed (`{}` when empty).
+     * 409 `ALREADY_PROCESSED` when the request is no longer pending.
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_REQUEST_ACCEPT)
+    suspend fun acceptBookingRequest(
+        @Path("id") requestId: String,
+        @Body body: AcceptBookingRequestBody,
+    ): SuccessDataResponse<AcceptBookingRequestData>
+
+    /**
+     * Ports iOS ClickMeAPI+BookingRequests declineBookingRequest. The backend `declineSchema` is `.strict()` and
+     * requires both `reason_code` and `reason_text`. 409 `ALREADY_PROCESSED` when the request is no longer pending.
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_REQUEST_DECLINE)
+    suspend fun declineBookingRequest(
+        @Path("id") requestId: String,
+        @Body body: DeclineBookingRequestBody,
+    ): SuccessDataResponse<DeclineBookingRequestData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings getExpertBookings. `type` is `upcoming` or `past` and is required (422
+     * otherwise); `limit` is 1 to 100.
+     */
+    @GET(ApiRequestUrls.EXPERT_BOOKINGS)
+    suspend fun getExpertBookings(
+        @Query("type") type: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ExpertBookingsPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings getExpertBookingDetails. The route ends in `/details`; the backend has no
+     * GET on the bare booking id (RESEARCH C1).
+     */
+    @GET(ApiRequestUrls.EXPERT_BOOKING_DETAILS)
+    suspend fun getExpertBookingDetails(
+        @Path("id") bookingId: String,
+    ): SuccessDataResponse<ExpertBookingDetail>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings cancelExpertBooking. The backend schema is `.strict()` with `reason` as
+     * its only key, so an explicit body is always passed. A second cancel on a cancelled booking is 409
+     * `INVALID_STATUS`; only the lost race is `ALREADY_CANCELLED` (RESEARCH C8). The refund is in MAJOR units.
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_CANCEL)
+    suspend fun cancelExpertBooking(
+        @Path("id") bookingId: String,
+        @Body body: CancelBookingRequest,
+    ): SuccessDataResponse<CancelBookingData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings acceptExpertReschedule. The backend schema is `.strict()`, so an explicit
+     * `{}` body is always passed. A repeat on an already confirmed booking is an idempotent 200 (RESEARCH C9).
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_ACCEPT_RESCHEDULE)
+    suspend fun acceptExpertReschedule(
+        @Path("id") bookingId: String,
+        @Body body: AcceptRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertBookings declineExpertReschedule. The backend schema is `.strict()` (`reason`
+     * only). A repeat on an already resolved booking is an idempotent 200 (RESEARCH C9).
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_DECLINE_RESCHEDULE)
+    suspend fun declineExpertReschedule(
+        @Path("id") bookingId: String,
+        @Body body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertEarnings getWeeklyEarnings. Amounts are integer MINOR units and `net_amount` is never
+     * null. The optional `week_start` query is not sent: the screen always shows the current week.
+     */
+    @GET(ApiRequestUrls.EXPERT_EARNINGS_WEEKLY)
+    suspend fun getWeeklyEarnings(): SuccessDataResponse<WeeklyEarningsData>
+
+    /** Ports iOS ClickMeAPI+ExpertPayouts getPayoutSummary. MINOR units; 400 `NO_PAYOUT_METHOD` or `KYC_INCOMPLETE`. */
+    @GET(ApiRequestUrls.EXPERT_PAYOUTS_SUMMARY)
+    suspend fun getPayoutSummary(): SuccessDataResponse<PayoutSummaryData>
+
+    /** Ports iOS ClickMeAPI+ExpertConnect getConnectStatus. 404 `NOT_FOUND` when no connected account exists yet. */
+    @GET(ApiRequestUrls.EXPERT_CONNECT_STATUS)
+    suspend fun getConnectStatus(): SuccessDataResponse<ConnectStatusData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertConnect startConnectOnboarding. No `@Body`: the backend route has no schema (like
+     * [joinCall]). The returned URL is a single-use Stripe Account Link.
+     */
+    @POST(ApiRequestUrls.EXPERT_CONNECT_ONBOARD)
+    suspend fun startConnectOnboarding(): SuccessDataResponse<ConnectLinkData>
+
+    /** Ports iOS ClickMeAPI+ExpertConnect refreshConnectLink. No `@Body`; 404 `NOT_FOUND` without a connected account. */
+    @POST(ApiRequestUrls.EXPERT_CONNECT_REFRESH_LINK)
+    suspend fun refreshConnectLink(): SuccessDataResponse<ConnectLinkData>
 }

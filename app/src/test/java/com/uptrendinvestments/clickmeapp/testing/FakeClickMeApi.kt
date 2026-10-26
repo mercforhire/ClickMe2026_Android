@@ -1,11 +1,13 @@
 package com.uptrendinvestments.clickmeapp.testing
 
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
@@ -18,8 +20,12 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
+import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestItem
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
@@ -27,10 +33,15 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -43,6 +54,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
@@ -50,6 +62,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -113,6 +126,25 @@ class FakeClickMeApi : ClickMeApi {
         { notStubbed() }
     var updateExpertProfileTagsHandler: suspend (UpdateExpertTagsRequest) -> SuccessMessageResponse =
         { notStubbed() }
+    var bookingRequestsHandler: suspend () -> List<BookingRequestItem> = { notStubbed() }
+    var bookingRequestDetailHandler: suspend (String) -> BookingRequestDetail = { notStubbed() }
+    var acceptBookingRequestHandler: suspend (String, AcceptBookingRequestBody) -> AcceptBookingRequestData =
+        { _, _ -> notStubbed() }
+    var declineBookingRequestHandler: suspend (String, DeclineBookingRequestBody) -> DeclineBookingRequestData =
+        { _, _ -> notStubbed() }
+    var expertBookingsHandler: suspend (type: String) -> ExpertBookingsPayload = { notStubbed() }
+    var expertBookingDetailsHandler: suspend (String) -> ExpertBookingDetail = { notStubbed() }
+    var cancelExpertBookingHandler: suspend (String, CancelBookingRequest) -> CancelBookingData =
+        { _, _ -> notStubbed() }
+    var acceptExpertRescheduleHandler: suspend (String, AcceptRescheduleRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
+    var declineExpertRescheduleHandler: suspend (String, DeclineRescheduleRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
+    var weeklyEarningsHandler: suspend () -> WeeklyEarningsData = { notStubbed() }
+    var payoutSummaryHandler: suspend () -> PayoutSummaryData = { notStubbed() }
+    var connectStatusHandler: suspend () -> ConnectStatusData = { notStubbed() }
+    var connectOnboardHandler: suspend () -> ConnectLinkData = { notStubbed() }
+    var connectRefreshLinkHandler: suspend () -> ConnectLinkData = { notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -240,6 +272,48 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var updateExpertProfileTagsCalls = 0
         private set
 
+    @Volatile var bookingRequestsCalls = 0
+        private set
+
+    @Volatile var bookingRequestDetailCalls = 0
+        private set
+
+    @Volatile var acceptBookingRequestCalls = 0
+        private set
+
+    @Volatile var declineBookingRequestCalls = 0
+        private set
+
+    @Volatile var expertBookingsCalls = 0
+        private set
+
+    @Volatile var expertBookingDetailsCalls = 0
+        private set
+
+    @Volatile var cancelExpertBookingCalls = 0
+        private set
+
+    @Volatile var acceptExpertRescheduleCalls = 0
+        private set
+
+    @Volatile var declineExpertRescheduleCalls = 0
+        private set
+
+    @Volatile var weeklyEarningsCalls = 0
+        private set
+
+    @Volatile var payoutSummaryCalls = 0
+        private set
+
+    @Volatile var connectStatusCalls = 0
+        private set
+
+    @Volatile var connectOnboardCalls = 0
+        private set
+
+    @Volatile var connectRefreshLinkCalls = 0
+        private set
+
     private val _clientHomeCategories = mutableListOf<String?>()
 
     /** The `category` argument of every getClientHome call, in call order (null means unfiltered). */
@@ -340,6 +414,42 @@ class FakeClickMeApi : ClickMeApi {
     /** Every PATCH /expert/profile tags body received, in call order. */
     val updateExpertProfileTagsRequests: List<UpdateExpertTagsRequest>
         get() = synchronized(_updateExpertProfileTagsRequests) { _updateExpertProfileTagsRequests.toList() }
+
+    private val _acceptBookingRequestRequests = mutableListOf<Pair<String, AcceptBookingRequestBody>>()
+
+    /** Every POST /expert/booking-requests/{id}/accept call (id, body), in call order. */
+    val acceptBookingRequestRequests: List<Pair<String, AcceptBookingRequestBody>>
+        get() = synchronized(_acceptBookingRequestRequests) { _acceptBookingRequestRequests.toList() }
+
+    private val _declineBookingRequestRequests = mutableListOf<Pair<String, DeclineBookingRequestBody>>()
+
+    /** Every POST /expert/booking-requests/{id}/decline call (id, body), in call order. */
+    val declineBookingRequestRequests: List<Pair<String, DeclineBookingRequestBody>>
+        get() = synchronized(_declineBookingRequestRequests) { _declineBookingRequestRequests.toList() }
+
+    private val _expertBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
+
+    /** The (type, page, limit) of every getExpertBookings call, in call order. */
+    val expertBookingsQueries: List<Triple<String, Int, Int>>
+        get() = synchronized(_expertBookingsQueries) { _expertBookingsQueries.toList() }
+
+    private val _cancelExpertBookingRequests = mutableListOf<Pair<String, CancelBookingRequest>>()
+
+    /** Every POST /expert/bookings/{id}/cancel call (id, body), in call order. */
+    val cancelExpertBookingRequests: List<Pair<String, CancelBookingRequest>>
+        get() = synchronized(_cancelExpertBookingRequests) { _cancelExpertBookingRequests.toList() }
+
+    private val _acceptExpertRescheduleRequests = mutableListOf<Pair<String, AcceptRescheduleRequest>>()
+
+    /** Every POST /expert/bookings/{id}/accept-reschedule call (id, body), in call order. */
+    val acceptExpertRescheduleRequests: List<Pair<String, AcceptRescheduleRequest>>
+        get() = synchronized(_acceptExpertRescheduleRequests) { _acceptExpertRescheduleRequests.toList() }
+
+    private val _declineExpertRescheduleRequests = mutableListOf<Pair<String, DeclineRescheduleRequest>>()
+
+    /** Every POST /expert/bookings/{id}/decline-reschedule call (id, body), in call order. */
+    val declineExpertRescheduleRequests: List<Pair<String, DeclineRescheduleRequest>>
+        get() = synchronized(_declineExpertRescheduleRequests) { _declineExpertRescheduleRequests.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -624,6 +734,101 @@ class FakeClickMeApi : ClickMeApi {
         updateExpertProfileTagsCalls++
         synchronized(_updateExpertProfileTagsRequests) { _updateExpertProfileTagsRequests += body }
         return updateExpertProfileTagsHandler(body)
+    }
+
+    override suspend fun getBookingRequests(): SuccessDataResponse<BookingRequestsPayload> {
+        bookingRequestsCalls++
+        return ok(BookingRequestsPayload(requests = bookingRequestsHandler()))
+    }
+
+    override suspend fun getBookingRequest(requestId: String): SuccessDataResponse<BookingRequestDetail> {
+        bookingRequestDetailCalls++
+        return ok(bookingRequestDetailHandler(requestId))
+    }
+
+    override suspend fun acceptBookingRequest(
+        requestId: String,
+        body: AcceptBookingRequestBody,
+    ): SuccessDataResponse<AcceptBookingRequestData> {
+        acceptBookingRequestCalls++
+        synchronized(_acceptBookingRequestRequests) { _acceptBookingRequestRequests += requestId to body }
+        return ok(acceptBookingRequestHandler(requestId, body))
+    }
+
+    override suspend fun declineBookingRequest(
+        requestId: String,
+        body: DeclineBookingRequestBody,
+    ): SuccessDataResponse<DeclineBookingRequestData> {
+        declineBookingRequestCalls++
+        synchronized(_declineBookingRequestRequests) { _declineBookingRequestRequests += requestId to body }
+        return ok(declineBookingRequestHandler(requestId, body))
+    }
+
+    override suspend fun getExpertBookings(
+        type: String,
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ExpertBookingsPayload> {
+        expertBookingsCalls++
+        synchronized(_expertBookingsQueries) { _expertBookingsQueries += Triple(type, page, limit) }
+        return ok(expertBookingsHandler(type))
+    }
+
+    override suspend fun getExpertBookingDetails(bookingId: String): SuccessDataResponse<ExpertBookingDetail> {
+        expertBookingDetailsCalls++
+        return ok(expertBookingDetailsHandler(bookingId))
+    }
+
+    override suspend fun cancelExpertBooking(
+        bookingId: String,
+        body: CancelBookingRequest,
+    ): SuccessDataResponse<CancelBookingData> {
+        cancelExpertBookingCalls++
+        synchronized(_cancelExpertBookingRequests) { _cancelExpertBookingRequests += bookingId to body }
+        return ok(cancelExpertBookingHandler(bookingId, body))
+    }
+
+    override suspend fun acceptExpertReschedule(
+        bookingId: String,
+        body: AcceptRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        acceptExpertRescheduleCalls++
+        synchronized(_acceptExpertRescheduleRequests) { _acceptExpertRescheduleRequests += bookingId to body }
+        return ok(acceptExpertRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun declineExpertReschedule(
+        bookingId: String,
+        body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        declineExpertRescheduleCalls++
+        synchronized(_declineExpertRescheduleRequests) { _declineExpertRescheduleRequests += bookingId to body }
+        return ok(declineExpertRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun getWeeklyEarnings(): SuccessDataResponse<WeeklyEarningsData> {
+        weeklyEarningsCalls++
+        return ok(weeklyEarningsHandler())
+    }
+
+    override suspend fun getPayoutSummary(): SuccessDataResponse<PayoutSummaryData> {
+        payoutSummaryCalls++
+        return ok(payoutSummaryHandler())
+    }
+
+    override suspend fun getConnectStatus(): SuccessDataResponse<ConnectStatusData> {
+        connectStatusCalls++
+        return ok(connectStatusHandler())
+    }
+
+    override suspend fun startConnectOnboarding(): SuccessDataResponse<ConnectLinkData> {
+        connectOnboardCalls++
+        return ok(connectOnboardHandler())
+    }
+
+    override suspend fun refreshConnectLink(): SuccessDataResponse<ConnectLinkData> {
+        connectRefreshLinkCalls++
+        return ok(connectRefreshLinkHandler())
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

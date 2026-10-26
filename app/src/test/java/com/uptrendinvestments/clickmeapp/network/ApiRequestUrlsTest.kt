@@ -200,4 +200,45 @@ class ApiRequestUrlsTest {
         }
         assertEquals(5, ApiRequestUrls.publicPaths.size)
     }
+
+    @Test
+    fun phaseElevenConstants_haveExactRelativeValues() {
+        assertEquals("expert/booking-requests", ApiRequestUrls.EXPERT_BOOKING_REQUESTS)
+        assertEquals("expert/booking-requests/{id}", ApiRequestUrls.EXPERT_BOOKING_REQUEST)
+        assertEquals("expert/booking-requests/{id}/accept", ApiRequestUrls.EXPERT_BOOKING_REQUEST_ACCEPT)
+        assertEquals("expert/booking-requests/{id}/decline", ApiRequestUrls.EXPERT_BOOKING_REQUEST_DECLINE)
+        assertEquals("expert/bookings", ApiRequestUrls.EXPERT_BOOKINGS)
+        assertEquals("expert/bookings/{id}/details", ApiRequestUrls.EXPERT_BOOKING_DETAILS)
+        assertEquals("expert/bookings/{id}/cancel", ApiRequestUrls.EXPERT_BOOKING_CANCEL)
+        assertEquals("expert/bookings/{id}/accept-reschedule", ApiRequestUrls.EXPERT_BOOKING_ACCEPT_RESCHEDULE)
+        assertEquals("expert/bookings/{id}/decline-reschedule", ApiRequestUrls.EXPERT_BOOKING_DECLINE_RESCHEDULE)
+        assertEquals("expert/earnings/weekly", ApiRequestUrls.EXPERT_EARNINGS_WEEKLY)
+        assertEquals("expert/payouts/summary", ApiRequestUrls.EXPERT_PAYOUTS_SUMMARY)
+        assertEquals("expert/connect/status", ApiRequestUrls.EXPERT_CONNECT_STATUS)
+        assertEquals("expert/connect/onboard", ApiRequestUrls.EXPERT_CONNECT_ONBOARD)
+        assertEquals("expert/connect/refresh-link", ApiRequestUrls.EXPERT_CONNECT_REFRESH_LINK)
+    }
+
+    @Test
+    fun phaseElevenPaths_needAuthToken() {
+        listOf(
+            "/api/v1/expert/booking-requests",
+            "/api/v1/expert/booking-requests/r1",
+            "/api/v1/expert/booking-requests/r1/accept",
+            "/api/v1/expert/booking-requests/r1/decline",
+            "/api/v1/expert/bookings",
+            "/api/v1/expert/bookings/b1/details",
+            "/api/v1/expert/bookings/b1/cancel",
+            "/api/v1/expert/bookings/b1/accept-reschedule",
+            "/api/v1/expert/bookings/b1/decline-reschedule",
+            "/api/v1/expert/earnings/weekly",
+            "/api/v1/expert/payouts/summary",
+            "/api/v1/expert/connect/status",
+            "/api/v1/expert/connect/onboard",
+            "/api/v1/expert/connect/refresh-link",
+        ).forEach { path ->
+            assertTrue(path, ApiRequestUrls.needAuthToken(path))
+        }
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
 }
