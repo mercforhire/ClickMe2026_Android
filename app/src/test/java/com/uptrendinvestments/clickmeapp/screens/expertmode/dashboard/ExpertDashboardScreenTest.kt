@@ -2,27 +2,41 @@
 
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestItem
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.RESCHEDULE_INITIATED_BY_CLIENT
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
+import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_EARNINGS_CARD_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_PAYOUT_ONBOARDING_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_PENDING_BANNER_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_RESCHEDULE_BANNER_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_SESSION_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_VIEW_CALENDAR_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
@@ -32,6 +46,7 @@ import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.bookingRequestItem
 import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.util.Money
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -71,9 +86,15 @@ class ExpertDashboardScreenTest {
         bookings: List<ExpertBookingItem> = emptyList(),
         now: Instant = NOW,
         bookingsFail: Boolean = false,
+        weekly: WeeklyEarningsData? = null,
+        status: ConnectStatusData? = null,
+        summary: PayoutSummaryData? = null,
     ): Fixture {
         val h = SignupTestHarness(this, tmp, main.testDispatcher)
         h.signIn()
+        weekly?.let { h.api.weeklyEarningsHandler = { it } }
+        status?.let { h.api.connectStatusHandler = { it } }
+        summary?.let { h.api.payoutSummaryHandler = { it } }
         h.api.bookingRequestsHandler = { requests }
         h.api.expertBookingsHandler = {
             if (bookingsFail) {
@@ -93,6 +114,8 @@ class ExpertDashboardScreenTest {
                 clock,
                 launch,
                 callStarter,
+                ExpertFinancialRepository(h.api),
+                FakeCallGuard(),
                 JoinClock(clock, backgroundScope),
             )
         return Fixture(vm, callStarter, launch, h.api)
@@ -107,6 +130,8 @@ class ExpertDashboardScreenTest {
                     onOpenRequests = { calls += "requests" },
                     onOpenBookingsUpcoming = { calls += "bookingsUpcoming" },
                     onOpenBooking = { calls += "booking:$it" },
+                    onOpenAvailability = { calls += "availability" },
+                    onOpenTopics = { calls += "topics" },
                     viewModel = f.vm,
                 )
             }
@@ -237,6 +262,233 @@ class ExpertDashboardScreenTest {
             rule.onNodeWithText("Retry").performClick()
 
             rule.onNodeWithText("Hello, Ada").assertExists()
+        }
+
+    private fun week(
+        net: Long,
+        sessions: Int,
+        currency: String = "CAD",
+    ) = WeeklyEarningsData(
+        weekStart = "2026-11-02",
+        weekEnd = "2026-11-08",
+        grossAmount = net + 1_000,
+        netAmount = net,
+        currency = currency,
+        sessionCount = sessions,
+    )
+
+    private val complete = ConnectStatusData(chargesEnabled = true)
+
+    @Test
+    fun weeklyEarningsShowsNetAndSessions() =
+        runTest(main.testDispatcher) {
+            val net = Money.format(12_750, "CAD")
+            val f = fixture(weekly = week(12_750, 3), status = complete, summary = PayoutSummaryData(0, 0, "CAD"))
+            setContent(f)
+
+            rule.onNodeWithText("Financial Summary").assertExists()
+            rule.onNodeWithTag(DASHBOARD_EARNINGS_CARD_TAG).assertExists()
+            rule.onNodeWithText("This week").assertExists()
+            rule.onNodeWithText(net).assertExists()
+            rule.onNodeWithText("3 sessions").assertExists()
+            rule.onNodeWithContentDescription("$net this week · 3 sessions").assertExists()
+            // The gross amount is never shown in place of the net.
+            rule.onNodeWithText(Money.format(13_750, "CAD")).assertDoesNotExist()
+        }
+
+    @Test
+    fun oneSessionIsSingular() =
+        runTest(main.testDispatcher) {
+            val f = fixture(weekly = week(5_000, 1), status = complete, summary = PayoutSummaryData(0, 0, "CAD"))
+            setContent(f)
+
+            rule.onNodeWithText("1 session").assertExists()
+        }
+
+    @Test
+    fun jpyAmountHasNoDecimals() =
+        runTest(main.testDispatcher) {
+            val yen = Money.format(7_500, "JPY")
+            val f = fixture(weekly = week(7_500, 2, "JPY"), status = complete, summary = PayoutSummaryData(0, 0, "JPY"))
+            setContent(f)
+
+            assertTrue(yen, yen.contains("7,500") && !yen.contains("."))
+            rule.onNodeWithText(yen).assertExists()
+        }
+
+    @Test
+    fun zeroWeekShowsZeroNotDash() =
+        runTest(main.testDispatcher) {
+            val f = fixture(weekly = week(0, 0), status = complete, summary = PayoutSummaryData(4_000, 0, "CAD"))
+            setContent(f)
+
+            rule.onNodeWithText(Money.format(0, "CAD")).assertExists()
+            rule.onNodeWithText("0 sessions").assertExists()
+            rule.onAllNodesWithText("—").assertCountEquals(0)
+        }
+
+    @Test
+    fun weeklyFailureShowsDash() =
+        runTest(main.testDispatcher) {
+            val f = fixture(status = complete, summary = PayoutSummaryData(4_000, 0, "CAD"))
+            setContent(f)
+
+            rule.onAllNodesWithText("—").assertCountEquals(1)
+            rule.onNodeWithText("0 sessions").assertDoesNotExist()
+            rule.onNodeWithText(Money.format(4_000, "CAD")).assertExists()
+        }
+
+    @Test
+    fun onboardedShowsAvailablePayoutAndNextDate() =
+        runTest(main.testDispatcher) {
+            val f =
+                fixture(
+                    weekly = week(1_000, 1),
+                    status = complete,
+                    summary = PayoutSummaryData(5_000, 0, "CAD", nextPayoutDate = "2026-11-06"),
+                )
+            setContent(f)
+
+            rule.onNodeWithText("Available payout").assertExists()
+            rule.onNodeWithText(Money.format(5_000, "CAD")).assertExists()
+            rule.onNodeWithText("Next payout on Nov 6, 2026").assertExists()
+            rule.onNodeWithTag(DASHBOARD_PAYOUT_ONBOARDING_TAG).assertDoesNotExist()
+        }
+
+    @Test
+    fun noNextPayoutDateReadsManualSchedule() =
+        runTest(main.testDispatcher) {
+            val f = fixture(weekly = week(1_000, 1), status = complete, summary = PayoutSummaryData(5_000, 0, "CAD"))
+            setContent(f)
+
+            rule.onNodeWithText("Payouts are on manual schedule").assertExists()
+        }
+
+    @Test
+    fun malformedNextPayoutDateReadsManualSchedule() =
+        runTest(main.testDispatcher) {
+            val summary = PayoutSummaryData(5_000, 0, "CAD", nextPayoutDate = "soon")
+            val f = fixture(weekly = week(1_000, 1), status = complete, summary = summary)
+            setContent(f)
+
+            rule.onNodeWithText("Payouts are on manual schedule").assertExists()
+        }
+
+    @Test
+    fun onboardedWithoutSummaryShowsDashAndUnavailable() =
+        runTest(main.testDispatcher) {
+            val f = fixture(weekly = week(1_000, 1), status = complete)
+            setContent(f)
+
+            rule.onAllNodesWithText("—").assertCountEquals(1)
+            rule.onNodeWithText("Payout schedule unavailable").assertExists()
+        }
+
+    @Test
+    fun unknownShowsDashAndNoCard() =
+        runTest(main.testDispatcher) {
+            val f = fixture(weekly = week(1_000, 1))
+            setContent(f)
+
+            rule.onAllNodesWithText("—").assertCountEquals(1)
+            rule.onNodeWithTag(DASHBOARD_PAYOUT_ONBOARDING_TAG).assertDoesNotExist()
+        }
+
+    @Test
+    fun incompleteAccountShowsTheOnboardingCard() =
+        runTest(main.testDispatcher) {
+            val incomplete = ConnectStatusData(chargesEnabled = false, currentlyDue = listOf("external_account"))
+            val f = fixture(weekly = week(1_000, 1), status = incomplete)
+            setContent(f)
+
+            rule.onNodeWithTag(DASHBOARD_PAYOUT_ONBOARDING_TAG).assertExists()
+            rule.onNodeWithText("Complete payout setup").assertExists()
+            rule.onNodeWithText("Verify your identity and add a bank account to receive earnings.").assertExists()
+        }
+
+    @Test
+    fun aFailedMintShowsTheServerMessageInADialog() =
+        runTest(main.testDispatcher) {
+            val incomplete = ConnectStatusData(chargesEnabled = false, currentlyDue = listOf("external_account"))
+            val f = fixture(weekly = week(1_000, 1), status = incomplete)
+            f.api.connectRefreshLinkHandler = {
+                throw f.api.httpError(
+                    422,
+                    """{"status":"error","code":"INVALID_COUNTRY","message":"Only Canadian accounts are supported."}""",
+                )
+            }
+            setContent(f)
+
+            rule
+                .onNodeWithTag(DASHBOARD_PAYOUT_ONBOARDING_TAG)
+                .performScrollTo()
+                .performClick()
+
+            rule.onNodeWithText("Couldn't open payout setup").assertExists()
+            rule.onNodeWithText("Only Canadian accounts are supported.").assertExists()
+            assertEquals(1, f.api.connectRefreshLinkCalls)
+        }
+
+    @Test
+    fun toolsGridTargets() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_pending").performScrollTo().performClick()
+            rule.onNodeWithTag("dashboard_tool_calendar").performScrollTo().performClick()
+            rule.onNodeWithTag("dashboard_tool_availability").performScrollTo().performClick()
+            rule.onNodeWithTag("dashboard_tool_topics").performScrollTo().performClick()
+
+            assertEquals(listOf("requests", "bookingsUpcoming", "availability", "topics"), calls)
+            assertEquals(BookingsLaunch(BookingsTab.Upcoming), f.launch.bookings.pending.value)
+        }
+
+    @Test
+    fun placeholderToolsShowComingSoon() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_profile").performScrollTo().performClick()
+            rule.onNodeWithText("Profile Settings is coming soon").assertExists()
+
+            assertTrue(calls.isEmpty())
+        }
+
+    @Test
+    fun payoutsToolShowsComingSoon() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_payouts").performScrollTo().performClick()
+            rule.onNodeWithText("Payouts is coming soon").assertExists()
+
+            assertTrue(calls.isEmpty())
+        }
+
+    @Test
+    fun toolCellsAreButtonsWithLabels() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            listOf(
+                "pending" to "Pending Requests",
+                "calendar" to "Calendar",
+                "availability" to "Availability",
+                "topics" to "Topics",
+                "profile" to "Profile Settings",
+                "payouts" to "Payouts",
+            ).forEach { (tag, label) ->
+                rule
+                    .onNodeWithTag("dashboard_tool_$tag")
+                    .performScrollTo()
+                    .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+                    .assert(hasText(label))
+            }
+            rule.onNodeWithText("Expert Tools").assertExists()
         }
 
     private companion object {

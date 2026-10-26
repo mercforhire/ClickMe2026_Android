@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
+import android.net.Uri
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,14 +41,19 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
+import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DashboardHero
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DashboardSkeleton
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.ExpertTool
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.ExpertToolsGrid
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.FinancialSummarySection
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.PendingRequestsBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.RescheduleRequestsBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.TodaysSessionCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.TodaysSessionsEmpty
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.TodaysSessionsHeader
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -58,7 +64,8 @@ import java.time.ZoneId
 /**
  * Hilt-aware expert Dashboard tab root (EXP-05). Navigation is reported through callbacks so the route owns the
  * navigator: [onOpenRequests] opens Incoming Requests, [onOpenBookingsUpcoming] selects the Bookings tab on Upcoming
- * (the screen first posts the hand-off the Bookings tab consumes, D-12) and [onOpenBooking] opens a booking Summary.
+ * (the screen first posts the hand-off the Bookings tab consumes, D-12), [onOpenBooking] opens a booking Summary,
+ * [onOpenAvailability] and [onOpenTopics] are the Expert Tools targets (D-11).
  */
 @Composable
 fun ExpertDashboardScreen(
@@ -67,6 +74,8 @@ fun ExpertDashboardScreen(
     onOpenRequests: () -> Unit,
     onOpenBookingsUpcoming: () -> Unit,
     onOpenBooking: (String) -> Unit,
+    onOpenAvailability: () -> Unit,
+    onOpenTopics: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertDashboardViewModel = hiltViewModel(),
 ) {
@@ -89,10 +98,15 @@ fun ExpertDashboardScreen(
             onOpenBookingsUpcoming()
         },
         onOpenBooking = onOpenBooking,
+        onOpenAvailability = onOpenAvailability,
+        onOpenTopics = onOpenTopics,
         onJoin = viewModel::join,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
         onRefreshFailureShown = viewModel::consumeRefreshFailure,
+        onStartPayoutSetup = viewModel::startPayoutSetup,
+        onOnboardingUrl = viewModel::consumeOnboardingUrl,
+        onDismissOnboardingError = viewModel::dismissOnboardingError,
         modifier = modifier,
     )
 }
@@ -111,10 +125,15 @@ fun ExpertDashboardContent(
     onOpenRequests: () -> Unit,
     onOpenBookingsUpcoming: () -> Unit,
     onOpenBooking: (String) -> Unit,
+    onOpenAvailability: () -> Unit,
+    onOpenTopics: () -> Unit,
     onJoin: (ExpertBookingItem) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshFailureShown: () -> Unit,
+    onStartPayoutSetup: () -> Unit,
+    onOnboardingUrl: () -> Unit,
+    onDismissOnboardingError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val zone = ZoneId.systemDefault()
@@ -122,6 +141,39 @@ fun ExpertDashboardContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
+    val payoutOpenFailedMessage = stringResource(R.string.dashboard_payout_setup_error_title)
+    val profileComingSoon =
+        stringResource(R.string.dashboard_coming_soon, stringResource(ExpertTool.ProfileSettings.label))
+    val payoutsComingSoon = stringResource(R.string.dashboard_coming_soon, stringResource(ExpertTool.Payouts.label))
+    val onToolClick: (ExpertTool) -> Unit = { tool ->
+        when (tool) {
+            ExpertTool.PendingRequests -> onOpenRequests()
+            ExpertTool.Calendar -> onOpenBookingsUpcoming()
+            ExpertTool.Availability -> onOpenAvailability()
+            ExpertTool.Topics -> onOpenTopics()
+            ExpertTool.ProfileSettings ->
+                scope.launch { snackbarHostState.showSnackbar(profileComingSoon, duration = SnackbarDuration.Short) }
+            ExpertTool.Payouts ->
+                scope.launch { snackbarHostState.showSnackbar(payoutsComingSoon, duration = SnackbarDuration.Short) }
+        }
+    }
+    val openTab =
+        rememberCustomTabLauncher {
+            scope.launch { snackbarHostState.showSnackbar(payoutOpenFailedMessage, duration = SnackbarDuration.Short) }
+        }
+    // T-11-44: the single-use Stripe link is read once, cleared from the state right away, then opened.
+    LaunchedEffect(state.onboardingUrl) {
+        val url = state.onboardingUrl ?: return@LaunchedEffect
+        onOnboardingUrl()
+        openTab(Uri.parse(url))
+    }
+    state.onboardingError?.let { error ->
+        AuthErrorDialog(
+            title = stringResource(R.string.dashboard_payout_setup_error_title),
+            message = error.asString(),
+            onDismiss = onDismissOnboardingError,
+        )
+    }
     LaunchedEffect(state.refreshFailed) {
         if (state.refreshFailed) {
             // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
@@ -206,6 +258,14 @@ fun ExpertDashboardContent(
                                 }
                             }
                         }
+                        FinancialSummarySection(
+                            weekly = state.weekly,
+                            onboarding = state.onboarding,
+                            payoutSummary = state.payoutSummary,
+                            isMinting = state.isMintingLink,
+                            onStartPayoutSetup = onStartPayoutSetup,
+                        )
+                        ExpertToolsGrid(onToolClick = onToolClick)
                         Spacer(Modifier.fillMaxWidth().height(Spacing.xl))
                     }
                 }
