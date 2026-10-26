@@ -488,7 +488,7 @@ Plans:
   4. An iOS client sees the Android expert's new topic, with booking slots that match the saved availability.
 
 **Planning notes:** Phase 9 hand-off (D-13): guard availability edits with `CallGuard.attempt(RestrictedAction.EditAvailability)` (add the `RestrictedAction` entry and its `call_action_*` string) so an expert cannot change availability during a live call.
-**Plans:** 16/20 plans executed
+**Plans:** 19/20 plans executed
 Plans:
 **Wave 1**
 
@@ -528,9 +528,9 @@ Plans:
 
 **Wave 1**
 
-- [ ] 10-17-PLAN.md — CR-01: Edit Expertise seed state (Loading / Failed / Ready) gates Save, Retry on failure, edits blocked until the profile tags load (EXP-01)
-- [ ] 10-18-PLAN.md — WR-02: stored topic duration kept and omitted from PATCH unless changed, stepper snaps onto the grid; WR-05: selected tags stay removable when the tag load fails (EXP-01, EXP-02)
-- [ ] 10-19-PLAN.md — WR-04: silent UTC PUT only when hydrate is lossless (D-15 body kept); WR-01: edits and refresh ignored while saving, edit ends the Saved hold (EXP-03, EXP-04)
+- [x] 10-17-PLAN.md — CR-01: Edit Expertise seed state (Loading / Failed / Ready) gates Save, Retry on failure, edits blocked until the profile tags load (EXP-01)
+- [x] 10-18-PLAN.md — WR-02: stored topic duration kept and omitted from PATCH unless changed, stepper snaps onto the grid; WR-05: selected tags stay removable when the tag load fails (EXP-01, EXP-02)
+- [x] 10-19-PLAN.md — WR-04: silent UTC PUT only when hydrate is lossless (D-15 body kept); WR-01: edits and refresh ignored while saving, edit ends the Saved hold (EXP-03, EXP-04)
 
 **Wave 2** *(blocked on gap Wave 1 completion)*
 
@@ -667,7 +667,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 7. Payment Methods & Paid Booking | 14/14 | Complete    | 2026-10-23 |
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
-| 10. Expert Topics & Availability | 16/16 | In Progress | - |
+| 10. Expert Topics & Availability | 19/20 | In Progress | - |
 | 11. Expert Requests & Bookings | 0/TBD | Not started | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
