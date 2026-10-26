@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Copy shared by every Phase 11 expert surface (D-12). Reused, not redefined here:
+        login_error_network, expert_error_generic, expert_refresh_failed, explore_join_call.
+    -->
+    <string name="expert_meeting_in_app_voice">In-App Voice</string>
+    <string name="expert_meeting_skype_zoom">Skype/Zoom</string>
+    <string name="expert_client_fallback_name">Client</string>
+    <string name="expert_reschedule_badge_client">Client proposed a new time · Tap to review</string>
+    <string name="expert_reschedule_badge_expert">Reschedule pending client\'s response</string>
+</resources>
