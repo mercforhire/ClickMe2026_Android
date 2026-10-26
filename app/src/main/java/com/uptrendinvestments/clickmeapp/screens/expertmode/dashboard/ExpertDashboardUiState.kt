@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
+import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 
 /**
@@ -22,6 +24,10 @@ sealed interface DashboardLoad {
  * State of the expert Dashboard. [pendingCount] is the size of the pending-requests list (RESEARCH C2), [firstName] is
  * null when no name is known (the hero then reads "Hello, there"), and [rescheduleCount] counts only reschedules the
  * client proposed. [isRefreshing] drives the pull-to-refresh indicator and [refreshFailed] the one-shot snackbar.
+ *
+ * The financial fields are soft: [weekly] and [payoutSummary] are null when their fetch failed (the card then reads
+ * "—"), and [onboarding] is [PayoutOnboarding.Unknown] until the Connect status or the payout summary answers.
+ * [onboardingUrl] is the single-use Stripe link, held in memory only until the screen opens it (T-11-44).
  */
 data class ExpertDashboardUiState(
     val load: DashboardLoad = DashboardLoad.Loading,
@@ -31,4 +37,10 @@ data class ExpertDashboardUiState(
     val todaysSessions: List<ExpertBookingItem> = emptyList(),
     val isRefreshing: Boolean = false,
     val refreshFailed: Boolean = false,
+    val weekly: WeeklyEarningsData? = null,
+    val onboarding: PayoutOnboarding = PayoutOnboarding.Unknown,
+    val payoutSummary: PayoutSummaryData? = null,
+    val isMintingLink: Boolean = false,
+    val onboardingUrl: String? = null,
+    val onboardingError: FieldError? = null,
 )

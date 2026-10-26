@@ -27,4 +27,10 @@
     <string name="dashboard_no_sessions_body">Enjoy the breather — new bookings will show up here.</string>
     <string name="dashboard_open_booking">View booking details</string>
     <string name="dashboard_error_heading">Couldn\'t load dashboard</string>
+    <string name="dashboard_financial_summary">Financial Summary</string>
+    <string name="dashboard_payout_setup_title">Complete payout setup</string>
+    <string name="dashboard_payout_setup_body">Verify your identity and add a bank account to receive earnings.</string>
+    <string name="dashboard_payout_setup_busy">Opening secure setup…</string>
+    <string name="dashboard_payout_setup_busy_a11y">Opening secure setup</string>
+    <string name="dashboard_payout_setup_error_title">Couldn\'t open payout setup</string>
 </resources>

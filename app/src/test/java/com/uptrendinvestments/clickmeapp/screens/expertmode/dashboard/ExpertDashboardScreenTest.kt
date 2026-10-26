@@ -23,6 +23,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.D
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DASHBOARD_VIEW_CALENDAR_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
@@ -93,6 +94,8 @@ class ExpertDashboardScreenTest {
                 clock,
                 launch,
                 callStarter,
+                ExpertFinancialRepository(h.api),
+                FakeCallGuard(),
                 JoinClock(clock, backgroundScope),
             )
         return Fixture(vm, callStarter, launch, h.api)

@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
+import android.net.Uri
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,14 +41,17 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
+import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DashboardHero
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.DashboardSkeleton
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.FinancialSummarySection
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.PendingRequestsBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.RescheduleRequestsBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.TodaysSessionCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.TodaysSessionsEmpty
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews.TodaysSessionsHeader
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -93,6 +97,9 @@ fun ExpertDashboardScreen(
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
         onRefreshFailureShown = viewModel::consumeRefreshFailure,
+        onStartPayoutSetup = viewModel::startPayoutSetup,
+        onOnboardingUrl = viewModel::consumeOnboardingUrl,
+        onDismissOnboardingError = viewModel::dismissOnboardingError,
         modifier = modifier,
     )
 }
@@ -115,6 +122,9 @@ fun ExpertDashboardContent(
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshFailureShown: () -> Unit,
+    onStartPayoutSetup: () -> Unit,
+    onOnboardingUrl: () -> Unit,
+    onDismissOnboardingError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val zone = ZoneId.systemDefault()
@@ -122,6 +132,24 @@ fun ExpertDashboardContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
+    val payoutOpenFailedMessage = stringResource(R.string.dashboard_payout_setup_error_title)
+    val openTab =
+        rememberCustomTabLauncher {
+            scope.launch { snackbarHostState.showSnackbar(payoutOpenFailedMessage, duration = SnackbarDuration.Short) }
+        }
+    // T-11-44: the single-use Stripe link is read once, cleared from the state right away, then opened.
+    LaunchedEffect(state.onboardingUrl) {
+        val url = state.onboardingUrl ?: return@LaunchedEffect
+        onOnboardingUrl()
+        openTab(Uri.parse(url))
+    }
+    state.onboardingError?.let { error ->
+        AuthErrorDialog(
+            title = stringResource(R.string.dashboard_payout_setup_error_title),
+            message = error.asString(),
+            onDismiss = onDismissOnboardingError,
+        )
+    }
     LaunchedEffect(state.refreshFailed) {
         if (state.refreshFailed) {
             // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
@@ -206,6 +234,11 @@ fun ExpertDashboardContent(
                                 }
                             }
                         }
+                        FinancialSummarySection(
+                            onboarding = state.onboarding,
+                            isMinting = state.isMintingLink,
+                            onStartPayoutSetup = onStartPayoutSetup,
+                        )
                         Spacer(Modifier.fillMaxWidth().height(Spacing.xl))
                     }
                 }
