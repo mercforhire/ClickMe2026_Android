@@ -1,8 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -16,6 +18,7 @@ import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.bookingRequestItem
 import com.uptrendinvestments.clickmeapp.testing.breakdown
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
@@ -23,6 +26,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.IOException
 import java.time.Duration
 import java.time.Instant
 
@@ -111,5 +115,51 @@ class IncomingRequestsScreenTest {
         rule.onNodeWithTag(INCOMING_REQUEST_CARD_TAG).performClick()
 
         assertEquals(true, opened.single().isExpired)
+    }
+
+    @Test
+    fun emptyListShowsEmptyState() {
+        showScreen()
+
+        rule.onNodeWithText("No pending requests").assertExists()
+        rule.onNodeWithText("New bookings will show up here.").assertExists()
+        rule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun failureShowsErrorWithRetry() {
+        api.bookingRequestsHandler = { throw IOException("offline") }
+        rule.setContent {
+            ClickMeTheme {
+                IncomingRequestsScreen(onBack = {}, onOpenRequest = { opened += it }, viewModel = viewModel())
+            }
+        }
+
+        rule.onNodeWithText("Couldn't load requests").assertExists()
+        rule.onNodeWithText("Check your connection and try again.").assertExists()
+
+        api.bookingRequestsHandler = { listOf(pending()) }
+        rule.onNodeWithText("Retry").performClick()
+
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        assertEquals(2, api.bookingRequestsCalls)
+    }
+
+    @Test
+    fun firstLoadShowsSkeleton() {
+        val gate = CompletableDeferred<List<BookingRequestItem>>()
+        api.bookingRequestsHandler = { gate.await() }
+        rule.setContent {
+            ClickMeTheme {
+                IncomingRequestsScreen(onBack = {}, onOpenRequest = { opened += it }, viewModel = viewModel())
+            }
+        }
+
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onAllNodesWithTag(INCOMING_REQUEST_CARD_TAG).assertCountEquals(0)
+
+        gate.complete(listOf(pending()))
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        rule.onNodeWithContentDescription("Loading").assertDoesNotExist()
     }
 }
