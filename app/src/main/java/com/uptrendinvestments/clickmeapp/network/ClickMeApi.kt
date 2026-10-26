@@ -1,11 +1,13 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
@@ -18,8 +20,11 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
+import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
+import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
@@ -27,6 +32,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
+import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -339,4 +345,38 @@ interface ClickMeApi {
     suspend fun updateExpertProfileTags(
         @Body body: UpdateExpertTagsRequest,
     ): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+BookingRequests getBookingRequests. The list endpoint returns every pending request in one
+     * response and ignores paging, so no `page` or `limit` is sent (RESEARCH C2).
+     */
+    @GET(ApiRequestUrls.EXPERT_BOOKING_REQUESTS)
+    suspend fun getBookingRequests(): SuccessDataResponse<BookingRequestsPayload>
+
+    /** Ports iOS ClickMeAPI+BookingRequests getBookingRequestDetail. 404 `NOT_FOUND` when the request is missing. */
+    @GET(ApiRequestUrls.EXPERT_BOOKING_REQUEST)
+    suspend fun getBookingRequest(
+        @Path("id") requestId: String,
+    ): SuccessDataResponse<BookingRequestDetail>
+
+    /**
+     * Ports iOS ClickMeAPI+BookingRequests acceptBookingRequest. The backend `acceptSchema` is `.strict()` and a
+     * missing body fails validation, so an explicit [AcceptBookingRequestBody] is always passed (`{}` when empty).
+     * 409 `ALREADY_PROCESSED` when the request is no longer pending.
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_REQUEST_ACCEPT)
+    suspend fun acceptBookingRequest(
+        @Path("id") requestId: String,
+        @Body body: AcceptBookingRequestBody,
+    ): SuccessDataResponse<AcceptBookingRequestData>
+
+    /**
+     * Ports iOS ClickMeAPI+BookingRequests declineBookingRequest. The backend `declineSchema` is `.strict()` and
+     * requires both `reason_code` and `reason_text`. 409 `ALREADY_PROCESSED` when the request is no longer pending.
+     */
+    @POST(ApiRequestUrls.EXPERT_BOOKING_REQUEST_DECLINE)
+    suspend fun declineBookingRequest(
+        @Path("id") requestId: String,
+        @Body body: DeclineBookingRequestBody,
+    ): SuccessDataResponse<DeclineBookingRequestData>
 }
