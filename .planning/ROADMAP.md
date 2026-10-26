@@ -552,13 +552,13 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 15 plans
+**Plans:** 3/15 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 11-01-PLAN.md — Network contract: 14 expert endpoints (booking requests, expert bookings with `/details`, weekly earnings, payouts summary, Connect), DTOs, strict bodies, 3 repositories, fakes, fixtures, wire tests (EXP-05..EXP-09)
-- [ ] 11-02-PLAN.md — Navigation skeleton: Dashboard/Bookings tab-root slots, all route keys and origins, Back to Home / post-cancel helpers, ExpertLaunchRequest, per-feature entry registration (EXP-05..EXP-09)
-- [ ] 11-03-PLAN.md — Shared expert UI: reschedule card expert viewer + RescheduleResponding interface, SetUpPayouts / RespondToReschedule guards, shared copy and reschedule badge (EXP-05, EXP-06, EXP-08, EXP-09)
+- [x] 11-01-PLAN.md — Network contract: 14 expert endpoints (booking requests, expert bookings with `/details`, weekly earnings, payouts summary, Connect), DTOs, strict bodies, 3 repositories, fakes, fixtures, wire tests (EXP-05..EXP-09)
+- [x] 11-02-PLAN.md — Navigation skeleton: Dashboard/Bookings tab-root slots, all route keys and origins, Back to Home / post-cancel helpers, ExpertLaunchRequest, per-feature entry registration (EXP-05..EXP-09)
+- [x] 11-03-PLAN.md — Shared expert UI: reschedule card expert viewer + RescheduleResponding interface, SetUpPayouts / RespondToReschedule guards, shared copy and reschedule badge (EXP-05, EXP-06, EXP-08, EXP-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -696,7 +696,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
-| 11. Expert Requests & Bookings | 0/TBD | Not started | - |
+| 11. Expert Requests & Bookings | 3/15 | In Progress | - |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
