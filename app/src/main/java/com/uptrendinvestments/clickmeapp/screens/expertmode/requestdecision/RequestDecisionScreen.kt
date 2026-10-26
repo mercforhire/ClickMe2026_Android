@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subv
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestEarningsSection
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestExpiredBanner
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestMessageCard
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -73,21 +74,18 @@ fun RequestDecisionScreen(
     onBack: () -> Unit,
     onAccepted: (BookingConfirmedKey) -> Unit,
     onDeclined: () -> Unit,
+    onExitAfterProcessed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.event) {
         when (val event = state.event) {
-            is RequestDecisionEvent.Accepted -> {
-                onAccepted(event.confirmed)
-                viewModel.consumeEvent()
-            }
-            RequestDecisionEvent.Declined -> {
-                onDeclined()
-                viewModel.consumeEvent()
-            }
-            else -> Unit
+            is RequestDecisionEvent.Accepted -> onAccepted(event.confirmed)
+            RequestDecisionEvent.Declined -> onDeclined()
+            RequestDecisionEvent.ExitAfterProcessed -> onExitAfterProcessed()
+            null -> return@LaunchedEffect
         }
+        viewModel.consumeEvent()
     }
     RequestDecisionContent(
         state = state,
@@ -95,6 +93,7 @@ fun RequestDecisionScreen(
         onRetry = viewModel::retry,
         onAccept = viewModel::accept,
         onDecline = viewModel::decline,
+        onDismissDialog = viewModel::dismissDialog,
         modifier = modifier,
     )
 }
@@ -110,6 +109,7 @@ fun RequestDecisionContent(
     onRetry: () -> Unit,
     onAccept: (String) -> Unit,
     onDecline: (DeclineReason, String) -> Unit,
+    onDismissDialog: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
@@ -193,6 +193,15 @@ fun RequestDecisionContent(
             zone = zone,
             timeFormat = timeFormat,
             locale = locale,
+        )
+    }
+
+    // Drawn last so it sits above an open sheet; a non-exit error leaves the sheet and its inputs as they were.
+    state.dialog?.let { dialog ->
+        AuthErrorDialog(
+            message = dialog.message.asString(),
+            onDismiss = onDismissDialog,
+            title = stringResource(R.string.request_decision_error_title),
         )
     }
 }

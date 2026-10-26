@@ -341,6 +341,154 @@ class RequestDecisionViewModelTest {
             assertEquals(0, api.declineBookingRequestCalls)
         }
 
+    private fun failure(
+        status: Int,
+        code: String,
+        message: String?,
+    ): Throwable {
+        val text = message?.let { ",\"message\":\"$it\"" }.orEmpty()
+        return api.httpError(status, "{\"status\":\"error\",\"code\":\"$code\"$text}")
+    }
+
+    @Test
+    fun alreadyProcessedShowsDialogThenExits() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ ->
+                throw failure(409, "ALREADY_PROCESSED", "This request has already been handled.")
+            }
+            val vm = loadedVm()
+
+            vm.accept("hi")
+            runCurrent()
+
+            assertEquals(
+                RequestDecisionDialog(FieldError.Text("This request has already been handled."), popOnDismiss = true),
+                vm.uiState.value.dialog,
+            )
+            assertNull(vm.uiState.value.event)
+            assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+            assertNull(launch.incomingRequests.pending.value)
+
+            vm.dismissDialog()
+
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(RequestDecisionEvent.ExitAfterProcessed, vm.uiState.value.event)
+            assertEquals(IncomingRequestsLaunch(), launch.incomingRequests.pending.value)
+        }
+
+    @Test
+    fun alreadyProcessedOnDeclineIsNeverReportedAsDeclined() =
+        runTest(main.testDispatcher) {
+            api.declineBookingRequestHandler = { _, _ -> throw failure(409, "ALREADY_PROCESSED", "Handled.") }
+            val vm = loadedVm()
+
+            vm.decline(DeclineReason.Other, "")
+            runCurrent()
+            vm.dismissDialog()
+
+            assertEquals(RequestDecisionEvent.ExitAfterProcessed, vm.uiState.value.event)
+            // A reload without the "Request declined" notice.
+            assertEquals(IncomingRequestsLaunch(null), launch.incomingRequests.pending.value)
+        }
+
+    @Test
+    fun otherErrorStays() =
+        runTest(main.testDispatcher) {
+            api.declineBookingRequestHandler = { _, _ -> throw failure(500, "INTERNAL_ERROR", "Boom") }
+            val vm = loadedVm()
+
+            vm.decline(DeclineReason.Other, "note")
+            runCurrent()
+
+            assertEquals(RequestDecisionDialog(FieldError.Text("Boom"), popOnDismiss = false), vm.uiState.value.dialog)
+            assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+
+            vm.dismissDialog()
+
+            assertNull(vm.uiState.value.dialog)
+            assertNull(vm.uiState.value.event)
+            assertNull(launch.incomingRequests.pending.value)
+        }
+
+    @Test
+    fun errorWithoutServerTextUsesTheGenericCopy() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ -> throw failure(500, "INTERNAL_ERROR", null) }
+            val vm = loadedVm()
+
+            vm.accept("")
+            runCurrent()
+
+            assertEquals(
+                RequestDecisionDialog(FieldError.Res(R.string.login_error_unknown), popOnDismiss = false),
+                vm.uiState.value.dialog,
+            )
+        }
+
+    @Test
+    fun networkErrorShowsTheConnectionCopy() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ -> throw IOException("offline") }
+            val vm = loadedVm()
+
+            vm.accept("")
+            runCurrent()
+
+            assertEquals(
+                RequestDecisionDialog(FieldError.Res(R.string.login_error_network), popOnDismiss = false),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+        }
+
+    @Test
+    fun accountSuspendedShowsNothing() =
+        runTest(main.testDispatcher) {
+            api.acceptBookingRequestHandler = { _, _ ->
+                throw failure(403, "ACCOUNT_SUSPENDED", "Your account is suspended.")
+            }
+            val vm = loadedVm()
+
+            vm.accept("")
+            runCurrent()
+
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(DecisionSubmitting.None, vm.uiState.value.submitting)
+            assertNull(vm.uiState.value.event)
+        }
+
+    @Test
+    fun aFailedAcceptCanBeRetried() =
+        runTest(main.testDispatcher) {
+            var calls = 0
+            api.acceptBookingRequestHandler = { _, _ ->
+                calls++
+                if (calls == 1) throw failure(500, "INTERNAL_ERROR", "Boom")
+                AcceptBookingRequestData(bookingId = "b9")
+            }
+            val vm = loadedVm()
+
+            vm.accept("hi")
+            runCurrent()
+            vm.dismissDialog()
+            vm.accept("hi")
+            runCurrent()
+
+            assertEquals(2, api.acceptBookingRequestCalls)
+            assertTrue(vm.uiState.value.event is RequestDecisionEvent.Accepted)
+        }
+
+    @Test
+    fun dismissingWithoutADialogDoesNothing() =
+        runTest(main.testDispatcher) {
+            val vm = loadedVm()
+
+            vm.dismissDialog()
+
+            assertNull(vm.uiState.value.event)
+            assertNull(launch.incomingRequests.pending.value)
+        }
+
     @Test
     fun consumeEventClearsTheEvent() =
         runTest(main.testDispatcher) {

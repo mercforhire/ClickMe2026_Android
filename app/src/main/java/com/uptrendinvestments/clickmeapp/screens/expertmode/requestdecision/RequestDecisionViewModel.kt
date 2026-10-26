@@ -87,7 +87,7 @@ class RequestDecisionViewModel
                         it.copy(event = RequestDecisionEvent.Accepted(details.toConfirmedKey(data.bookingId)))
                     }
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(submitting = DecisionSubmitting.None) }
+                    onDecisionFailed(e)
                 }
             }
         }
@@ -108,8 +108,36 @@ class RequestDecisionViewModel
                     launchRequest.incomingRequests.post(IncomingRequestsLaunch(IncomingRequestsNotice.Declined))
                     _uiState.update { it.copy(event = RequestDecisionEvent.Declined) }
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(submitting = DecisionSubmitting.None) }
+                    onDecisionFailed(e)
                 }
+            }
+        }
+
+        /**
+         * A failed accept or decline unlocks the screen and maps the error (D-07). ALREADY_PROCESSED is never a
+         * success: its dialog sends the expert back to a refreshed list. Other errors keep the sheet inputs.
+         */
+        private fun onDecisionFailed(e: ApiException) {
+            val dialog =
+                when (val failure = e.toRequestDecisionFailure()) {
+                    RequestDecisionFailure.Silent -> null
+                    is RequestDecisionFailure.AlreadyProcessed -> RequestDecisionDialog(failure.message, true)
+                    is RequestDecisionFailure.Show -> RequestDecisionDialog(failure.message, false)
+                }
+            _uiState.update { it.copy(submitting = DecisionSubmitting.None, dialog = dialog) }
+        }
+
+        /**
+         * Closes the error dialog. After ALREADY_PROCESSED it also asks Incoming Requests to reload, so the stale
+         * request is gone, and leaves this screen ([RequestDecisionEvent.ExitAfterProcessed]).
+         */
+        fun dismissDialog() {
+            val dialog = _uiState.value.dialog ?: return
+            if (dialog.popOnDismiss) {
+                launchRequest.incomingRequests.post(IncomingRequestsLaunch())
+                _uiState.update { it.copy(dialog = null, event = RequestDecisionEvent.ExitAfterProcessed) }
+            } else {
+                _uiState.update { it.copy(dialog = null) }
             }
         }
 

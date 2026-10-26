@@ -35,6 +35,8 @@
     <string name="accept_sheet_confirm">Accept Request</string>
     <string name="accept_sheet_accepting">Accepting</string>
 
+    <string name="request_decision_error_title">Couldn\'t update request</string>
+
     <!-- Decline sheet (11-12). The four reason labels equal DeclineReason.wireLabel (tested). -->
     <string name="decline_sheet_title">Decline Booking Request?</string>
     <string name="decline_sheet_subtitle">This action cannot be undone.</string>

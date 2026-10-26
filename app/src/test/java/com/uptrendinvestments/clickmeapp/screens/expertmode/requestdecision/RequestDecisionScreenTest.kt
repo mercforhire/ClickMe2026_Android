@@ -1,5 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -9,6 +12,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -45,6 +49,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
+import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -60,6 +65,7 @@ class RequestDecisionScreenTest {
     private val accepted = mutableListOf<BookingConfirmedKey>()
     private var backCount = 0
     private var declinedCount = 0
+    private var exitCount = 0
 
     private fun show(key: RequestDecisionKey) {
         val viewModel = RequestDecisionViewModel(key, BookingRequestsRepository(api), launch)
@@ -70,10 +76,57 @@ class RequestDecisionScreenTest {
                     onBack = { backCount++ },
                     onAccepted = { accepted += it },
                     onDeclined = { declinedCount++ },
+                    onExitAfterProcessed = { exitCount++ },
                 )
             }
         }
         rule.waitForIdle()
+    }
+
+    private val details =
+        RequestDecisionDetails(
+            requestId = "r1",
+            clientName = "Ada Lovelace",
+            clientAvatarUrl = null,
+            start = Instant.parse("2026-10-24T18:00:00Z"),
+            end = Instant.parse("2026-10-24T19:00:00Z"),
+            topic = "Algorithms",
+            meetingType = "in_app_voice",
+            clientMessage = null,
+            earnings = RequestEarningsUi.Free,
+        )
+
+    /** Renders [state] under an outer Back handler like NavDisplay's and returns how often it fired on system Back. */
+    private fun systemBackReachesNavigation(state: RequestDecisionUiState): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                RequestDecisionContent(
+                    state = state,
+                    onBack = { backCount++ },
+                    onRetry = {},
+                    onAccept = {},
+                    onDecline = { _, _ -> },
+                    onDismissDialog = {},
+                )
+            }
+        }
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+        return navBacks
+    }
+
+    private fun failAccept(
+        status: Int,
+        code: String,
+        message: String,
+    ) {
+        api.acceptBookingRequestHandler = { _, _ ->
+            throw api.httpError(status, """{"status":"error","code":"$code","message":"$message"}""")
+        }
     }
 
     private fun pendingRequest() {
@@ -328,6 +381,95 @@ class RequestDecisionScreenTest {
         rule.onNodeWithText("800/1000").assertExists()
         rule.onNodeWithTag(DECLINE_NOTE_FIELD_TAG).performTextInput("b".repeat(400))
         rule.onNodeWithText("1000/1000").assertExists()
+    }
+
+    @Test
+    fun backIsLockedWhileSubmitting() {
+        val state =
+            RequestDecisionUiState(
+                load = RequestDecisionLoad.Loaded(details),
+                submitting = DecisionSubmitting.Accepting,
+            )
+
+        assertEquals(0, systemBackReachesNavigation(state))
+        rule.onNodeWithContentDescription("Back").assertIsNotEnabled()
+    }
+
+    @Test
+    fun backWorksWhenNothingIsInFlight() {
+        val state = RequestDecisionUiState(load = RequestDecisionLoad.Loaded(details))
+
+        assertEquals(1, systemBackReachesNavigation(state))
+        rule.onNodeWithContentDescription("Back").assertIsEnabled().performClick()
+        assertEquals(1, backCount)
+    }
+
+    @Test
+    fun errorDialogKeepsSheetInputs() {
+        pendingRequest()
+        failAccept(500, "INTERNAL_ERROR", "Boom")
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).performClick()
+        rule.onNodeWithTag(ACCEPT_MESSAGE_FIELD_TAG).performTextInput("Hi there")
+        rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't update request").assertExists()
+        rule.onNodeWithText("Boom").assertExists()
+
+        rule.onNodeWithText("OK").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't update request").assertDoesNotExist()
+        rule.onNodeWithText("Confirm Booking").assertExists()
+        rule.onNodeWithTag(ACCEPT_MESSAGE_FIELD_TAG).assertTextContains("Hi there")
+        rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).assertIsEnabled()
+        assertEquals(0, exitCount)
+        assertEquals(0, accepted.size)
+    }
+
+    @Test
+    fun alreadyProcessedExitsToARefreshedList() {
+        pendingRequest()
+        failAccept(409, "ALREADY_PROCESSED", "This request has already been handled.")
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).performClick()
+        rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't update request").assertExists()
+        rule.onNodeWithText("This request has already been handled.").assertExists()
+        assertEquals(0, exitCount)
+
+        rule.onNodeWithText("OK").performClick()
+        rule.waitForIdle()
+
+        assertEquals(1, exitCount)
+        assertEquals(0, accepted.size)
+        assertEquals(0, declinedCount)
+        assertEquals(IncomingRequestsLaunch(), launch.incomingRequests.pending.value)
+    }
+
+    @Test
+    fun alreadyProcessedOnDeclineNeverReportsADecline() {
+        pendingRequest()
+        api.declineBookingRequestHandler = { _, _ ->
+            throw api.httpError(409, """{"status":"error","code":"ALREADY_PROCESSED","message":"Already handled."}""")
+        }
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+        rule.onNodeWithTag(DECLINE_REASON_ROW_TAG_PREFIX + DeclineReason.Other.name).performScrollTo().performClick()
+        rule.onNodeWithTag(DECLINE_SHEET_CONFIRM_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("OK").performClick()
+        rule.waitForIdle()
+
+        assertEquals(1, exitCount)
+        assertEquals(0, declinedCount)
+        assertEquals(IncomingRequestsLaunch(), launch.incomingRequests.pending.value)
     }
 
     @Test
