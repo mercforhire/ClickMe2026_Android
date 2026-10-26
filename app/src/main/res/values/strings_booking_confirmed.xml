@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="booking_confirmed_title">Booking Confirmed</string>
+    <string name="booking_confirmed_headline">Booking Confirmed!</string>
+    <string name="booking_confirmed_body">Your meeting with %1$s on %2$s, at %3$s has been successfully booked.</string>
+    <string name="booking_confirmed_when">%1$s, %2$s (%3$s)</string>
     <string name="booking_confirmed_calendar_title">ClickMe · %1$s with %2$s</string>
     <string name="booking_confirmed_topic_fallback">Session</string>
     <string name="booking_confirmed_add_to_calendar">Add to Calendar</string>
