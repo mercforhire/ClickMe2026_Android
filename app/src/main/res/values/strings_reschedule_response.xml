@@ -38,4 +38,13 @@
     <string name="reschedule_error_not_found">This booking could not be found.</string>
     <!-- Android-only: used when RESCHEDULE_OUTSIDE_AUTH_WINDOW carries no server message. -->
     <string name="reschedule_error_outside_window">This new time can\'t be accepted with your current payment. You can cancel and book the new time instead.</string>
+    <!-- Expert viewer of the same card (Phase 11, D-18). -->
+    <string name="reschedule_expert_title_by_client">Client proposed a new time</string>
+    <string name="reschedule_expert_title_by_you">You proposed a new time</string>
+    <string name="reschedule_expert_note_client">Client\'s message</string>
+    <string name="reschedule_expert_note_you">Your message</string>
+    <string name="reschedule_expert_awaiting_client">Awaiting client\'s response</string>
+    <string name="reschedule_expert_accept_dialog_message">The session will move to the new time your client proposed.</string>
+    <string name="reschedule_expert_decline_keep">Keep session as-is</string>
+    <string name="expert_reschedule_error_slot_unavailable">That time is no longer available — the booking stays at its original time.</string>
 </resources>

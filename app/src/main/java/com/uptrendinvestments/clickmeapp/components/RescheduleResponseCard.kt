@@ -68,17 +68,23 @@ const val RESCHEDULE_ACCEPT_TAG = "reschedule_accept"
 const val RESCHEDULE_DECLINE_TAG = "reschedule_decline"
 const val RESCHEDULE_DECLINE_REASON_TAG = "reschedule_decline_reason"
 
+/** Who is looking at the card: the client (Phase 8) or the expert (Phase 11, D-18). */
+enum class RescheduleViewer { Client, Expert }
+
 private val ActionHeight = 56.dp
 private val NarrowWidth = 320.dp
 private const val LARGE_FONT_SCALE = 1.5f
 
 /**
- * The reschedule response card shared by Upcoming Booking Details and Booking Summary (D-01). It is stateless apart
- * from its two confirm dialogs: the owner passes the proposal, the in-flight state and the callbacks.
+ * The reschedule response card shared by Upcoming Booking Details and Booking Summary (D-01), and by the expert
+ * Booking Summary (D-18). It is stateless apart from its two confirm dialogs: the owner passes the proposal, the
+ * in-flight state and the callbacks.
  *
- * An expert-initiated proposal shows Decline and Accept, each behind a confirm dialog. A client-initiated proposal is
- * read-only with "Awaiting expert's response" (D-03). Times use [zone] and [timeFormat] so the viewer's zone and
- * 12/24 hour setting win. There is deliberately no action to start a reschedule here (DEF-1).
+ * For the [RescheduleViewer.Client] viewer an expert-initiated proposal shows Decline and Accept, each behind a confirm
+ * dialog, and a client-initiated proposal is read-only with "Awaiting expert's response" (D-03). For the
+ * [RescheduleViewer.Expert] viewer it is the other way round, with expert copy and an accept dialog that never
+ * mentions payment. Times use [zone] and [timeFormat] so the viewer's zone and 12/24 hour setting win. There is
+ * deliberately no action to start a reschedule here (DEF-1).
  */
 @Composable
 fun RescheduleResponseCard(
@@ -87,6 +93,7 @@ fun RescheduleResponseCard(
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
     modifier: Modifier = Modifier,
+    viewer: RescheduleViewer = RescheduleViewer.Client,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -94,6 +101,8 @@ fun RescheduleResponseCard(
     var showAccept by rememberSaveable { mutableStateOf(false) }
     var showDecline by rememberSaveable { mutableStateOf(false) }
     var declineText by rememberSaveable { mutableStateOf("") }
+    // The viewer responds to the other party's proposal and only watches their own.
+    val actionable = proposal.isActionableFor(viewer)
 
     Surface(
         modifier = modifier.fillMaxWidth().testTag(RESCHEDULE_CARD_TAG),
@@ -105,17 +114,17 @@ fun RescheduleResponseCard(
             modifier = Modifier.padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            ProposalHeader(initiatedByExpert = proposal.initiatedByExpert)
+            ProposalHeader(viewer = viewer, byViewer = !actionable)
             ProposalTimes(proposal = proposal, zone = zone, timeFormat = timeFormat, locale = locale)
-            proposal.note?.let { note -> ProposalNote(note = note, initiatedByExpert = proposal.initiatedByExpert) }
-            if (proposal.initiatedByExpert) {
+            proposal.note?.let { note -> ProposalNote(note = note, viewer = viewer, byViewer = !actionable) }
+            if (actionable) {
                 ProposalActions(
                     submitting = submitting,
                     onAcceptClick = { showAccept = true },
                     onDeclineClick = { showDecline = true },
                 )
             } else {
-                AwaitingPill()
+                AwaitingPill(viewer = viewer)
             }
         }
     }
@@ -123,6 +132,7 @@ fun RescheduleResponseCard(
     if (showAccept) {
         AcceptDialog(
             proposal = proposal,
+            viewer = viewer,
             onDismiss = { showAccept = false },
             onConfirm = {
                 showAccept = false
@@ -132,6 +142,7 @@ fun RescheduleResponseCard(
     }
     if (showDecline) {
         DeclineDialog(
+            viewer = viewer,
             reason = declineText,
             onReasonChange = { declineText = capNotes(it, DECLINE_REASON_MAX_CHARS) },
             onDismiss = { showDecline = false },
@@ -145,8 +156,17 @@ fun RescheduleResponseCard(
     }
 }
 
+private fun RescheduleProposalUi.isActionableFor(viewer: RescheduleViewer): Boolean =
+    when (viewer) {
+        RescheduleViewer.Client -> initiatedByExpert
+        RescheduleViewer.Expert -> !initiatedByExpert
+    }
+
 @Composable
-private fun ProposalHeader(initiatedByExpert: Boolean) {
+private fun ProposalHeader(
+    viewer: RescheduleViewer,
+    byViewer: Boolean,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -160,7 +180,16 @@ private fun ProposalHeader(initiatedByExpert: Boolean) {
         Text(
             text =
                 stringResource(
-                    if (initiatedByExpert) R.string.reschedule_title_expert else R.string.reschedule_title_client,
+                    when (viewer) {
+                        RescheduleViewer.Client ->
+                            if (byViewer) R.string.reschedule_title_client else R.string.reschedule_title_expert
+                        RescheduleViewer.Expert ->
+                            if (byViewer) {
+                                R.string.reschedule_expert_title_by_you
+                            } else {
+                                R.string.reschedule_expert_title_by_client
+                            }
+                    },
                 ),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() },
@@ -212,13 +241,23 @@ private fun TimeBlock(
 @Composable
 private fun ProposalNote(
     note: String,
-    initiatedByExpert: Boolean,
+    viewer: RescheduleViewer,
+    byViewer: Boolean,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         Text(
             text =
                 stringResource(
-                    if (initiatedByExpert) R.string.reschedule_note_expert else R.string.reschedule_note_client,
+                    when (viewer) {
+                        RescheduleViewer.Client ->
+                            if (byViewer) R.string.reschedule_note_client else R.string.reschedule_note_expert
+                        RescheduleViewer.Expert ->
+                            if (byViewer) {
+                                R.string.reschedule_expert_note_you
+                            } else {
+                                R.string.reschedule_expert_note_client
+                            }
+                    },
                 ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.extras.onSurfaceMuted,
@@ -230,7 +269,7 @@ private fun ProposalNote(
 }
 
 @Composable
-private fun AwaitingPill() {
+private fun AwaitingPill(viewer: RescheduleViewer) {
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -248,7 +287,13 @@ private fun AwaitingPill() {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = stringResource(R.string.reschedule_awaiting_expert),
+                text =
+                    stringResource(
+                        when (viewer) {
+                            RescheduleViewer.Client -> R.string.reschedule_awaiting_expert
+                            RescheduleViewer.Expert -> R.string.reschedule_expert_awaiting_client
+                        },
+                    ),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -330,17 +375,22 @@ private fun ActionLabel(
 @Composable
 private fun AcceptDialog(
     proposal: RescheduleProposalUi,
+    viewer: RescheduleViewer,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val message = stringResource(R.string.reschedule_accept_dialog_message)
+    val expert = viewer == RescheduleViewer.Expert
+    val message =
+        stringResource(
+            if (expert) R.string.reschedule_expert_accept_dialog_message else R.string.reschedule_accept_dialog_message,
+        )
     val disclosure = stringResource(R.string.reschedule_accept_dialog_disclosure)
     val chargesSoon = stringResource(R.string.reschedule_accept_dialog_charges_soon)
-    // The 48h caveat only makes sense next to the payment disclosure.
+    // The 48h caveat only makes sense next to the payment disclosure. An expert never sees payment text (D-18).
     val body =
         buildString {
             append(message)
-            if (proposal.showsPaymentDisclosure) {
+            if (!expert && proposal.showsPaymentDisclosure) {
                 append("\n\n").append(disclosure)
                 if (proposal.chargesSoon) append("\n\n").append(chargesSoon)
             }
@@ -386,6 +436,7 @@ private fun AcceptDialog(
 
 @Composable
 private fun DeclineDialog(
+    viewer: RescheduleViewer,
     reason: String,
     onReasonChange: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -430,7 +481,13 @@ private fun DeclineDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = stringResource(R.string.reschedule_decline_keep),
+                    text =
+                        stringResource(
+                            when (viewer) {
+                                RescheduleViewer.Client -> R.string.reschedule_decline_keep
+                                RescheduleViewer.Expert -> R.string.reschedule_expert_decline_keep
+                            },
+                        ),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )

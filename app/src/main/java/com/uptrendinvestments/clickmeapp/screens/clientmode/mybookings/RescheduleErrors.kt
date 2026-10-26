@@ -43,7 +43,7 @@ sealed interface CancelFailure {
     ) : CancelFailure
 }
 
-private fun ApiException.Http.serverTextOrUnknown(): FieldError =
+internal fun ApiException.Http.serverTextOrUnknown(): FieldError =
     userMessage?.let { FieldError.Text(it) } ?: FieldError.Res(R.string.login_error_unknown)
 
 /**

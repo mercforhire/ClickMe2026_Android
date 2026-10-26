@@ -46,6 +46,20 @@ fun normalizeDeclineReason(raw: String?): String? =
     raw?.trim()?.takeIf { it.isNotEmpty() }?.let { capNotes(it, DECLINE_REASON_MAX_CHARS) }
 
 /**
+ * The accept and decline calls [RescheduleResponseController] drives. The client implementation is
+ * [RescheduleResponder]; the expert implementation (Phase 11, 11-13) has no saved-card retry. Keeping the controller
+ * typed to this interface means the in-flight, dialog and notice logic exists once (D-18).
+ */
+interface RescheduleResponding {
+    suspend fun accept(bookingId: String): AcceptOutcome
+
+    suspend fun decline(
+        bookingId: String,
+        reason: String?,
+    ): DeclineOutcome
+}
+
+/**
  * Stateless accept and decline of a reschedule proposal, shared by Upcoming Booking Details and Booking Summary
  * (D-01).
  *
@@ -62,8 +76,8 @@ class RescheduleResponder
     constructor(
         private val bookings: ClientBookingsRepository,
         private val paymentMethods: PaymentMethodsRepository,
-    ) {
-        suspend fun accept(bookingId: String): AcceptOutcome {
+    ) : RescheduleResponding {
+        override suspend fun accept(bookingId: String): AcceptOutcome {
             try {
                 bookings.acceptReschedule(bookingId)
                 return AcceptOutcome.Accepted
@@ -91,7 +105,7 @@ class RescheduleResponder
             }
         }
 
-        suspend fun decline(
+        override suspend fun decline(
             bookingId: String,
             reason: String?,
         ): DeclineOutcome =
@@ -117,7 +131,7 @@ class RescheduleResponder
  */
 class RescheduleResponseController(
     private val scope: CoroutineScope,
-    private val responder: RescheduleResponder,
+    private val responder: RescheduleResponding,
     private val bookingId: String,
     private val reload: suspend () -> Unit,
 ) {
