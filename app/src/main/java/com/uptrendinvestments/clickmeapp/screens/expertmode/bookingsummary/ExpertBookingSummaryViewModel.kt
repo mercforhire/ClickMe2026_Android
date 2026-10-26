@@ -13,6 +13,8 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponseController
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -48,6 +50,7 @@ class ExpertBookingSummaryViewModel
     constructor(
         @Assisted key: ExpertBookingSummaryKey,
         private val repository: ExpertBookingsRepository,
+        responder: ExpertRescheduleResponder,
         private val realtime: RealtimeConnection,
         private val clock: Clock,
         private val callStarter: CallStarter,
@@ -73,6 +76,18 @@ class ExpertBookingSummaryViewModel
 
         private var loadJob: Job? = null
         private var loadIsCurrent = false
+
+        // Single-flight accept/decline with a server reload before any dialog or notice (never optimistic, D-18).
+        private val controller =
+            RescheduleResponseController(
+                scope = viewModelScope,
+                responder = responder,
+                bookingId = bookingId,
+                reload = { reloadQuietly() },
+            )
+
+        /** In-flight, dialog and notice state of the reschedule response. */
+        val rescheduleState: StateFlow<RescheduleUiState> = controller.state
 
         init {
             startLoad(quiet = false)
@@ -131,6 +146,25 @@ class ExpertBookingSummaryViewModel
                 ),
             )
         }
+
+        /**
+         * The expert accepts the client's proposed time. Runs the call guard first (D-17): a live call on this booking
+         * blocks the change. The shared controller ignores a second tap while one response is in flight.
+         */
+        fun acceptReschedule() {
+            if (!callGuard.attemptModifyBooking(bookingId, RestrictedAction.RespondToReschedule)) return
+            controller.accept()
+        }
+
+        /** The expert declines the client's proposed time; the optional [reason] is trimmed and capped by the responder. */
+        fun declineReschedule(reason: String) {
+            if (!callGuard.attemptModifyBooking(bookingId, RestrictedAction.RespondToReschedule)) return
+            controller.decline(reason)
+        }
+
+        fun dismissRescheduleDialog() = controller.dismissDialog()
+
+        fun consumeRescheduleNotice() = controller.consumeNotice()
 
         /** True when Cancel may open; false (with the guard dialog queued) while this booking's call is live (D-17). */
         fun attemptCancel(): Boolean = callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)

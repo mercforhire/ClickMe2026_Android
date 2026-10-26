@@ -1,9 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.RESCHEDULE_INITIATED_BY_CLIENT
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.JOINABLE_BOOKING_STATUSES
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.summaryStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.util.Money
@@ -41,6 +44,8 @@ sealed interface SummaryFee {
  *   log it.
  * @property canCancel the server's `actions.can_cancel`, the only gate for Cancel Booking (RESEARCH C8).
  * @property showsJoin Join is offered for joinable and rejoinable states (D-14); the join window only enables it.
+ * @property proposal the pending reschedule shown as the first block (EXP-09), or null. Only a proposal made by the
+ *   client is actionable for the expert; the card shows the expert's own as read-only (D-18).
  */
 @Suppress("LongParameterList")
 data class ExpertSummaryDetails(
@@ -60,6 +65,7 @@ data class ExpertSummaryDetails(
     val preparationNotes: String?,
     val canCancel: Boolean,
     val showsJoin: Boolean,
+    val proposal: RescheduleProposalUi? = null,
 )
 
 /** Load state of the summary. */
@@ -109,6 +115,25 @@ fun ExpertBookingDetail.toSummaryDetails(
         preparationNotes = preparationNotes?.text?.trim()?.takeIf { it.isNotEmpty() },
         canCancel = actions.canCancel,
         showsJoin = code in JOINABLE_BOOKING_STATUSES || (code == STATUS_COMPLETED && endTime.isAfter(now)),
+        proposal = rescheduleProposal(),
+    )
+}
+
+/**
+ * The reschedule card's content, built only for a `pending_reschedule` booking with a proposed start. There is no
+ * payment text for the expert (D-18), so the disclosure flags stay off.
+ */
+private fun ExpertBookingDetail.rescheduleProposal(): RescheduleProposalUi? {
+    val proposed = reschedule?.proposedStart
+    if (status.code != STATUS_PENDING_RESCHEDULE || reschedule == null || proposed == null) return null
+    return RescheduleProposalUi(
+        currentStart = startTime,
+        proposedStart = proposed,
+        proposedEnd = reschedule.proposedEnd,
+        note = reschedule.note?.trim()?.takeIf { it.isNotEmpty() },
+        initiatedByExpert = reschedule.initiatedBy != RESCHEDULE_INITIATED_BY_CLIENT,
+        showsPaymentDisclosure = false,
+        chargesSoon = false,
     )
 }
 
