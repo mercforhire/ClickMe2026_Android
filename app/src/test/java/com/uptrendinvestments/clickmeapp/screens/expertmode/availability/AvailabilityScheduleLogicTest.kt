@@ -75,6 +75,44 @@ class AvailabilityScheduleLogicTest {
         }
     }
 
+    // --- isLossless (WR-04) ---
+
+    @Test
+    fun isLossless_trueWhenEveryServerRangeHydrates() {
+        assertTrue(logic.isLossless(emptyMap()))
+        assertTrue(
+            logic.isLossless(
+                mapOf(
+                    DayOfWeek.MONDAY to listOf("09:00" to "17:00"),
+                    DayOfWeek.TUESDAY to listOf("22:00" to "24:00"),
+                    DayOfWeek.WEDNESDAY to emptyList(),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun isLossless_falseWhenAnyRangeIsMalformedOrInverted() {
+        val bad =
+            listOf(
+                "9:30" to "10:00",
+                "12:00" to "11:00",
+                null to "10:00",
+                "25:00" to "26:00",
+            )
+        for (range in bad) {
+            assertFalse(
+                "$range",
+                logic.isLossless(
+                    mapOf(
+                        DayOfWeek.MONDAY to listOf("09:00" to "17:00"),
+                        DayOfWeek.FRIDAY to listOf("08:00" to "09:00", range),
+                    ),
+                ),
+            )
+        }
+    }
+
     // --- hydrate ---
 
     @Test

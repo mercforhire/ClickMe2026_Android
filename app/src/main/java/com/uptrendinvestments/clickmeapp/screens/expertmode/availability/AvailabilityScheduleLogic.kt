@@ -86,14 +86,24 @@ object AvailabilityScheduleLogic {
      */
     fun hydrate(raw: Map<DayOfWeek, List<Pair<String?, String?>>>): List<DaySchedule> =
         WEEK.map { day ->
-            val slots =
-                raw[day].orEmpty().mapNotNull { (s, e) ->
-                    val start = parseHhmm(s)
-                    val end = parseHhmm(e)
-                    if (start != null && end != null && end > start) TimeSlot(start, end) else null
-                }
+            val slots = raw[day].orEmpty().mapNotNull { parseRange(it) }
             DaySchedule(day, slots.isNotEmpty(), slots)
         }
+
+    /**
+     * True when [hydrate] keeps every server range of [raw]. The silent D-15 timezone PUT is only safe then: the
+     * hydrated schedule equals the server's, whereas otherwise the PUT would delete the dropped slots server-side
+     * (WR-04).
+     */
+    fun isLossless(raw: Map<DayOfWeek, List<Pair<String?, String?>>>): Boolean =
+        raw.values.all { ranges -> ranges.all { parseRange(it) != null } }
+
+    /** The one rule shared by [hydrate] and [isLossless]: both ends parse and `end > start`, else null. */
+    private fun parseRange(range: Pair<String?, String?>): TimeSlot? {
+        val start = parseHhmm(range.first)
+        val end = parseHhmm(range.second)
+        return if (start != null && end != null && end > start) TimeSlot(start, end) else null
+    }
 
     /**
      * True when any slot starts strictly before the running maximum end of the earlier slots, which matches the

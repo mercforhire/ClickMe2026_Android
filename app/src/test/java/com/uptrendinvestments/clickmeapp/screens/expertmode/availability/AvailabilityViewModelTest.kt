@@ -414,6 +414,26 @@ class AvailabilityViewModelTest {
         }
 
     @Test
+    fun aSilentPutIsSkippedWhenHydrateDroppedAServerSlot() =
+        runTest(main.testDispatcher) {
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Toronto"))
+            api.myAvailabilityHandler = {
+                availabilityData(
+                    timezoneId = "UTC",
+                    schedule = mapOf(DayOfWeek.MONDAY to listOf("09:00" to "17:00", "12:00" to "11:00")),
+                )
+            }
+            val vm = loaded(this)
+
+            assertEquals("America/Toronto", vm.uiState.value.timezoneId)
+            assertEquals(0, api.updateMyAvailabilityCalls)
+            assertEquals(listOf(TimeSlot(540, 1020)), vm.day(DayOfWeek.MONDAY).slots)
+            assertEquals(SaveState.Idle, vm.uiState.value.saveState)
+            assertTrue(guard.attempts.isEmpty())
+            assertNull(vm.uiState.value.dialog)
+        }
+
+    @Test
     fun aFailedSilentPutIsQuietAndNeverRepeatedInTheSameSession() =
         runTest(main.testDispatcher) {
             TimeZone.setDefault(TimeZone.getTimeZone("America/Toronto"))

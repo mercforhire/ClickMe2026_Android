@@ -40,7 +40,9 @@ import javax.inject.Inject
  * opening the screen.
  *
  * D-15 runs once per screen session, on the first successful hydrate, and never after a process-death restore or
- * a refresh. A failed silent PUT is only retried by a new screen session.
+ * a refresh. A failed silent PUT is only retried by a new screen session. It is also skipped when hydrate dropped
+ * any malformed or inverted server slot (WR-04), because the PUT would delete those slots; the zone is then only
+ * filled locally and goes out with the next explicit Save.
  *
  * Edits are mirrored into [SavedStateHandle] so unsaved work survives process death (D-16); there are no dirty
  * flags and leaving the screen discards edits without a prompt. Save shows the shared [SaveState]: Idle, Saving,
@@ -126,7 +128,8 @@ class AvailabilityViewModel
                     )
                 if (restored) withServer else withServer.copy(days = hydrated, timezoneId = fill ?: serverId)
             }
-            if (fill != null) silentSaveIfNeeded()
+            // WR-04: a lossy hydrate means the PUT body would delete dropped server slots; keep the zone local only.
+            if (fill != null && AvailabilityScheduleLogic.isLossless(rawRanges(data))) silentSaveIfNeeded()
         }
 
         private fun applyPull(data: ExpertAvailabilityScheduleData) {
@@ -145,19 +148,21 @@ class AvailabilityViewModel
             }
         }
 
-        private fun hydrate(data: ExpertAvailabilityScheduleData): List<DaySchedule> {
+        private fun hydrate(data: ExpertAvailabilityScheduleData): List<DaySchedule> =
+            AvailabilityScheduleLogic.hydrate(rawRanges(data))
+
+        /** The server's seven-day ranges as received, before [AvailabilityScheduleLogic.hydrate] drops anything. */
+        private fun rawRanges(data: ExpertAvailabilityScheduleData): Map<DayOfWeek, List<Pair<String?, String?>>> {
             fun ranges(list: List<AvailabilityTimeRangeDto>?) = list.orEmpty().map { it.startTime to it.endTime }
             val schedule = data.recurringSchedule
-            return AvailabilityScheduleLogic.hydrate(
-                mapOf(
-                    DayOfWeek.MONDAY to ranges(schedule?.monday),
-                    DayOfWeek.TUESDAY to ranges(schedule?.tuesday),
-                    DayOfWeek.WEDNESDAY to ranges(schedule?.wednesday),
-                    DayOfWeek.THURSDAY to ranges(schedule?.thursday),
-                    DayOfWeek.FRIDAY to ranges(schedule?.friday),
-                    DayOfWeek.SATURDAY to ranges(schedule?.saturday),
-                    DayOfWeek.SUNDAY to ranges(schedule?.sunday),
-                ),
+            return mapOf(
+                DayOfWeek.MONDAY to ranges(schedule?.monday),
+                DayOfWeek.TUESDAY to ranges(schedule?.tuesday),
+                DayOfWeek.WEDNESDAY to ranges(schedule?.wednesday),
+                DayOfWeek.THURSDAY to ranges(schedule?.thursday),
+                DayOfWeek.FRIDAY to ranges(schedule?.friday),
+                DayOfWeek.SATURDAY to ranges(schedule?.saturday),
+                DayOfWeek.SUNDAY to ranges(schedule?.sunday),
             )
         }
 
@@ -214,7 +219,8 @@ class AvailabilityViewModel
 
         /**
          * D-15: persists the auto-filled zone without any UI. Skipped while saving, with overlaps, or during a call;
-         * reads `isCallActive` instead of `attempt()` (Pitfall 7). Failures are swallowed.
+         * the caller also skips it when hydrate dropped a server slot (WR-04). The body is the fully hydrated
+         * schedule. Reads `isCallActive` instead of `attempt()` (Pitfall 7). Failures are swallowed.
          */
         private fun silentSaveIfNeeded() {
             val state = _uiState.value
