@@ -20,6 +20,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,6 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -46,6 +51,7 @@ import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertPastCard
@@ -55,6 +61,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -110,7 +117,7 @@ fun ExpertBookingsScreen(
  * live within the join window.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("LongParameterList", "UNUSED_PARAMETER")
+@Suppress("LongParameterList")
 @Composable
 fun ExpertBookingsContent(
     state: ExpertBookingsUiState,
@@ -128,10 +135,36 @@ fun ExpertBookingsContent(
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
+    val noticeMessage =
+        when (val notice = state.notice) {
+            null -> null
+            BookingsNotice.Cancelled -> stringResource(R.string.cancel_booking_result_cancelled)
+            is BookingsNotice.CancelledWithRefund ->
+                stringResource(R.string.expert_cancel_result_refunded, notice.amount)
+        }
+
+    LaunchedEffect(state.notice) {
+        if (noticeMessage != null) {
+            // Launched on the composition scope so consuming the notice does not cancel the Snackbar.
+            scope.launch { snackbarHostState.showSnackbar(noticeMessage, duration = SnackbarDuration.Long) }
+            onNoticeConsumed()
+        }
+    }
+    LaunchedEffect(state.refreshFailed) {
+        if (state.refreshFailed) {
+            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
+            onRefreshFailureConsumed()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AuthTopAppBar(title = stringResource(R.string.expert_bookings_title), onBack = null) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             PrimaryTabRow(

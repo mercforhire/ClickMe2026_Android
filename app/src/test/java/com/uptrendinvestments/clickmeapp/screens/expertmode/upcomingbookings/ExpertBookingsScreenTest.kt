@@ -21,6 +21,8 @@ import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
@@ -273,5 +275,78 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithTag(EXPERT_BOOKINGS_STATE_TAG).performTouchInput { swipeDown() }
         rule.waitForIdle()
         assertTrue(api.expertBookingsCalls > before)
+    }
+
+    private class NoticeCalls {
+        var noticeConsumed = 0
+        var refreshFailureConsumed = 0
+    }
+
+    private fun showContent(
+        state: ExpertBookingsUiState,
+        calls: NoticeCalls = NoticeCalls(),
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingsContent(
+                    state = state,
+                    joinNow = now,
+                    onSelectTab = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onOpenBooking = {},
+                    onJoin = {},
+                    onUpdateAvailability = {},
+                    onNoticeConsumed = { calls.noticeConsumed++ },
+                    onRefreshFailureConsumed = { calls.refreshFailureConsumed++ },
+                )
+            }
+        }
+        rule.waitForIdle()
+    }
+
+    private fun loadedState(
+        notice: BookingsNotice? = null,
+        refreshFailed: Boolean = false,
+    ) = ExpertBookingsUiState(
+        selectedTab = BookingsTab.Past,
+        load = ExpertBookingsLoad.Loaded,
+        notice = notice,
+        refreshFailed = refreshFailed,
+    )
+
+    @Test
+    fun cancelNoticeShowsOnce() {
+        val calls = NoticeCalls()
+        showContent(loadedState(notice = BookingsNotice.Cancelled), calls)
+        rule.onNodeWithText("Booking cancelled").assertExists()
+        assertEquals(1, calls.noticeConsumed)
+        assertEquals(0, calls.refreshFailureConsumed)
+    }
+
+    @Test
+    fun refundNoticeShowsAmount() {
+        val calls = NoticeCalls()
+        showContent(loadedState(notice = BookingsNotice.CancelledWithRefund("\$75.00")), calls)
+        rule.onNodeWithText("Booking cancelled. Your client will be refunded \$75.00.").assertExists()
+        assertEquals(1, calls.noticeConsumed)
+    }
+
+    @Test
+    fun refreshFailureShowsSnackbar() {
+        val calls = NoticeCalls()
+        showContent(loadedState(refreshFailed = true), calls)
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        assertEquals(1, calls.refreshFailureConsumed)
+        assertEquals(0, calls.noticeConsumed)
+    }
+
+    @Test
+    fun noNoticeNoSnackbar() {
+        val calls = NoticeCalls()
+        showContent(loadedState(), calls)
+        assertTrue(rule.onAllNodesWithText("Booking cancelled").fetchSemanticsNodes().isEmpty())
+        assertEquals(0, calls.noticeConsumed)
+        assertEquals(0, calls.refreshFailureConsumed)
     }
 }
