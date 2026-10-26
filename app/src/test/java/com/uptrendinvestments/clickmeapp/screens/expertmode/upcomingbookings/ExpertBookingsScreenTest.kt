@@ -4,7 +4,9 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -24,11 +26,14 @@ import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.IOException
 import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
@@ -109,5 +114,34 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Upcoming").assertIsSelected()
         rule.onNodeWithText("Past").assertIsNotSelected()
         assertEquals(0, rule.onAllNodesWithText("Message").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun firstLoadShowsSkeleton() {
+        api.expertBookingsHandler = { awaitCancellation() }
+        show()
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        assertTrue(rule.onAllNodesWithTag(EXPERT_UPCOMING_CARD_TAG).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun hardFailureShowsTheServerMessageWithRetry() {
+        api.expertBookingsHandler = { throw api.httpError(500, """{"status":"error","message":"Boom"}""") }
+        show()
+        rule.onNodeWithText("Couldn't load sessions").assertExists()
+        rule.onNodeWithText("Boom").assertExists()
+        val before = api.expertBookingsCalls
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertTrue(api.expertBookingsCalls > before)
+    }
+
+    @Test
+    fun aNetworkFailureShowsTheConnectionMessage() {
+        api.expertBookingsHandler = { throw IOException("offline") }
+        show()
+        rule.onNodeWithText("Couldn't load sessions").assertExists()
+        rule.onNodeWithText("Check your connection and try again.").assertExists()
+        rule.onNodeWithText("Retry").assertExists()
     }
 }

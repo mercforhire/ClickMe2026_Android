@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -17,19 +21,28 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.EmptyState
+import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import java.text.DateFormat
 import java.time.Instant
@@ -143,27 +156,84 @@ fun ExpertBookingsContent(
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
-                    contentPadding =
-                        PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    if (state.selectedTab == BookingsTab.Upcoming) {
-                        items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
-                            ExpertUpcomingCard(
-                                item = item,
-                                now = joinNow,
-                                onOpen = { onOpenBooking(item.bookingId) },
-                                onJoin = { onJoin(item) },
-                                zone = zone,
-                                timeFormat = timeFormat,
-                                locale = locale,
-                            )
-                        }
+                ExpertBookingsTabBody(
+                    state = state,
+                    joinNow = joinNow,
+                    onRetry = onRetry,
+                    onOpenBooking = onOpenBooking,
+                    onJoin = onJoin,
+                    zone = zone,
+                    timeFormat = timeFormat,
+                    locale = locale,
+                )
+            }
+        }
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun ExpertBookingsTabBody(
+    state: ExpertBookingsUiState,
+    joinNow: Instant,
+    onRetry: () -> Unit,
+    onOpenBooking: (String) -> Unit,
+    onJoin: (ExpertBookingItem) -> Unit,
+    zone: ZoneId,
+    timeFormat: DateFormat,
+    locale: Locale,
+) {
+    when (val load = state.load) {
+        ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = state.selectedTab == BookingsTab.Past)
+        is ExpertBookingsLoad.Failed -> ScrollableCentered { ExpertBookingsError(load.message, onRetry) }
+        ExpertBookingsLoad.Loaded ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
+                contentPadding =
+                    PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                if (state.selectedTab == BookingsTab.Upcoming) {
+                    items(items = state.lists.upcoming, key = { it.bookingId }) { item ->
+                        ExpertUpcomingCard(
+                            item = item,
+                            now = joinNow,
+                            onOpen = { onOpenBooking(item.bookingId) },
+                            onJoin = { onJoin(item) },
+                            modifier = Modifier.animateItem(),
+                            zone = zone,
+                            timeFormat = timeFormat,
+                            locale = locale,
+                        )
                     }
                 }
             }
-        }
+    }
+}
+
+/** First-load failure with Retry: the server message, or the connection message for a network error. */
+@Composable
+private fun ExpertBookingsError(
+    message: FieldError,
+    onRetry: () -> Unit,
+) {
+    EmptyState(
+        icon = Icons.Outlined.ErrorOutline,
+        heading = stringResource(R.string.expert_bookings_error_heading),
+        body = message.asString(),
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        action = EmptyStateAction(stringResource(R.string.expert_retry), onRetry),
+    )
+}
+
+/** Vertically scrollable, centered column so pull-to-refresh works from the error state. */
+@Composable
+private fun ScrollableCentered(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        content()
     }
 }
