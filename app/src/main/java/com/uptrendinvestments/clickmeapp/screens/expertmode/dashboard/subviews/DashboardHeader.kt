@@ -1,5 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.subviews
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,11 +21,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,15 +45,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag on the pending-requests banner. */
 const val DASHBOARD_PENDING_BANNER_TAG = "dashboard_pending_banner"
 
+/** Test tag on the reschedule-requests banner. */
+const val DASHBOARD_RESCHEDULE_BANNER_TAG = "dashboard_reschedule_banner"
+
 private val TileSize = 48.dp
 private val TileIconSize = 24.dp
 private const val TILE_ALPHA = 0.12f
+private const val BANNER_FILL_ALPHA = 0.10f
+private const val BANNER_BORDER_ALPHA = 0.45f
+private const val VISIBILITY_MS = Motion.STRENGTH_METER_VISIBILITY_MS
 
 /**
  * The greeting at the top of the Dashboard (UI-SPEC surface 1, block 1): the "Dashboard overview" caption over
@@ -105,6 +123,41 @@ fun PendingRequestsBanner(
         subtitleColor = MaterialTheme.extras.onSurfaceMuted,
         modifier = modifier.testTag(DASHBOARD_PENDING_BANNER_TAG),
     )
+}
+
+/**
+ * "N Reschedule Requests" banner (D-12): shown only while [count] (client-proposed reschedules) is above zero, with a
+ * 200 ms fade and expand. It keeps the last positive count while it animates out so the title never flashes "0". The
+ * `lg` gap to the block above lives inside the animated content, so a hidden banner leaves no empty gap.
+ */
+@Composable
+fun RescheduleRequestsBanner(
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var shownCount by remember { mutableIntStateOf(count) }
+    if (count > 0) shownCount = count
+    AnimatedVisibility(
+        visible = count > 0,
+        modifier = modifier,
+        enter = fadeIn(tween(VISIBILITY_MS)) + expandVertically(tween(VISIBILITY_MS)),
+        exit = fadeOut(tween(VISIBILITY_MS)) + shrinkVertically(tween(VISIBILITY_MS)),
+    ) {
+        val tertiary = MaterialTheme.colorScheme.tertiary
+        DashboardBanner(
+            icon = Icons.Outlined.Update,
+            title = pluralStringResource(R.plurals.dashboard_reschedule_requests, shownCount, shownCount),
+            subtitle = stringResource(R.string.dashboard_reschedule_subtitle),
+            onClickLabel = stringResource(R.string.dashboard_review_reschedules),
+            onClick = onClick,
+            accent = tertiary,
+            container = tertiary.copy(alpha = BANNER_FILL_ALPHA),
+            border = tertiary.copy(alpha = BANNER_BORDER_ALPHA),
+            subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Spacing.lg).testTag(DASHBOARD_RESCHEDULE_BANNER_TAG),
+        )
+    }
 }
 
 /**

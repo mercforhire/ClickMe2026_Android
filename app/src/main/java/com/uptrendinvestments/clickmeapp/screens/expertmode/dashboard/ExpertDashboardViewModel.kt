@@ -2,10 +2,13 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.CallStarter
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestItem
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
@@ -25,6 +28,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -46,10 +51,13 @@ class ExpertDashboardViewModel
         private val clock: Clock,
         private val launchRequest: ExpertLaunchRequest,
         private val callStarter: CallStarter,
-        private val joinClock: JoinClock,
+        joinClock: JoinClock,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ExpertDashboardUiState())
         val uiState: StateFlow<ExpertDashboardUiState> = _uiState.asStateFlow()
+
+        /** Shared 30 s wall clock that turns a visible Join button on without leaving the screen (Phase 9 D-03). */
+        val joinNow: StateFlow<Instant> = joinClock.now
 
         init {
             startLoad()
@@ -58,6 +66,25 @@ class ExpertDashboardViewModel
         fun retry() {
             _uiState.update { it.copy(load = DashboardLoad.Loading) }
             startLoad()
+        }
+
+        /**
+         * Starts the call for [item] with the client as the peer (D-14, Join site 2). The server has the final say on
+         * `POST /join`, so the window is not re-checked here (Phase 9 D-02).
+         */
+        fun join(item: ExpertBookingItem) {
+            callStarter.startCall(
+                CallStartRequest(
+                    bookingId = item.bookingId,
+                    peerId = item.client.id,
+                    peerName = item.client.name,
+                    peerAvatarUrl = item.client.avatarUrl,
+                    topic = item.topic,
+                    scheduledStart = item.startTime,
+                    scheduledEnd = item.endTime,
+                    meetingType = MeetingType.fromWire(item.session.meetingType),
+                ),
+            )
         }
 
         /**
@@ -99,5 +126,7 @@ class ExpertDashboardViewModel
                         userManager.profile.value?.let { it.personalDetails.firstName },
                     ),
                 pendingCount = pending.size,
+                rescheduleCount = upcoming.bookings.clientRescheduleCount(),
+                todaysSessions = upcoming.bookings.expertTodaysSessions(clock, ZoneId.systemDefault()),
             )
     }

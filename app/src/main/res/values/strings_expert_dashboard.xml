@@ -15,5 +15,16 @@
     <string name="dashboard_pending_zero_title">No pending requests</string>
     <string name="dashboard_pending_zero_subtitle">New bookings will show up here</string>
     <string name="dashboard_review_requests">Review requests</string>
+    <string name="dashboard_todays_sessions">Today\'s Sessions</string>
+    <string name="dashboard_view_calendar">View Calendar</string>
+    <plurals name="dashboard_reschedule_requests">
+        <item quantity="one">1 Reschedule Request</item>
+        <item quantity="other">%1$d Reschedule Requests</item>
+    </plurals>
+    <string name="dashboard_reschedule_subtitle">Review pending time changes</string>
+    <string name="dashboard_review_reschedules">Review reschedule requests</string>
+    <string name="dashboard_no_sessions">No sessions today</string>
+    <string name="dashboard_no_sessions_body">Enjoy the breather — new bookings will show up here.</string>
+    <string name="dashboard_open_booking">View booking details</string>
     <string name="dashboard_error_heading">Couldn\'t load dashboard</string>
 </resources>
