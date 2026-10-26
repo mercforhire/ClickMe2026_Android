@@ -1,10 +1,27 @@
 ---
 phase: 10
 review: 10-REVIEW.md
-recorded: 2026-10-25T23:59:00Z
+recorded: 2026-10-26T01:12:35Z
 ---
 
 # Phase 10: Code Review Disposition
+
+Re-review of the gap-closure changes (10-17..10-19), scoped to files changed since 6eb390b.
+
+| Finding | Severity | Disposition | Source |
+|---------|----------|-------------|--------|
+| WR-01 | warning | open | 10-REVIEW.md |
+| WR-02 | warning | open | 10-REVIEW.md |
+| WR-03 | warning | open | 10-REVIEW.md |
+| IN-01 | info | open | 10-REVIEW.md |
+| IN-02 | info | open | 10-REVIEW.md |
+| IN-03 | info | open | 10-REVIEW.md |
+| IN-04 | info | open | 10-REVIEW.md |
+| IN-05 | info | open | 10-REVIEW.md |
+
+## Prior review (6eb390b) — triage from the 10-20 gap pass
+
+The IDs below refer to the first review (`git show 6eb390b:.planning/phases/10-expert-topics-availability/10-REVIEW.md`), not the table above. The re-review confirms CR-01, WR-02, WR-04 and WR-05 fixed; prior WR-01 is partially fixed (reverse order is the new WR-01).
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
