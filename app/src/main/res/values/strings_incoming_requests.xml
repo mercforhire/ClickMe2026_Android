@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Incoming Requests (Phase 11, EXP-06). Reused, not redefined here: price_free, expert_retry,
+        expert_refresh_failed, login_error_network, content_loading, my_bookings_date_time.
+    -->
+    <string name="incoming_requests_title">Incoming Requests</string>
+    <string name="incoming_requests_earnings">Earnings</string>
+    <string name="incoming_requests_payout_pending">Payout pending</string>
+    <string name="incoming_requests_expires_in">Expires in %1$dh</string>
+    <string name="incoming_requests_expires_under_hour">Expires in under 1h</string>
+    <string name="incoming_requests_expired">Expired</string>
+    <string name="incoming_requests_empty_heading">No pending requests</string>
+    <string name="incoming_requests_empty_body">New bookings will show up here.</string>
+    <string name="incoming_requests_error_heading">Couldn\'t load requests</string>
+    <string name="incoming_requests_declined_snackbar">Request declined</string>
+    <string name="incoming_requests_open">View request</string>
+    <plurals name="incoming_requests_card_a11y_pending">
+        <item quantity="one">%1$s, %2$s, %3$s, %4$s, expires in %5$d hour</item>
+        <item quantity="other">%1$s, %2$s, %3$s, %4$s, expires in %5$d hours</item>
+    </plurals>
+    <string name="incoming_requests_card_a11y_under_hour">%1$s, %2$s, %3$s, %4$s, expires in under 1 hour</string>
+    <string name="incoming_requests_card_a11y_no_expiry">%1$s, %2$s, %3$s, %4$s</string>
+    <string name="incoming_requests_card_a11y_expired">%1$s, %2$s, %3$s, %4$s, expired</string>
+</resources>
