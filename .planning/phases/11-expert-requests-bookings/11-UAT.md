@@ -1,14 +1,18 @@
 ---
-status: complete
+status: testing
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-26T23:10:38.703Z
+updated: 2026-10-26T23:14:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 5
+name: Re-test after 11-16 (G-11-1 fix) — Android expert and iOS client join the same call
+expected: |
+  On the Samsung (devDebug, production backend) logged in as the expert, with an iOS client booking inside the join window: tap Join from the Dashboard card, an Upcoming card and the Booking Summary. Each time the call screen opens with no "Couldn't join session" dialog, the iOS client hears you and you hear them, mute and speaker work, and leaving then re-joining works.
+awaiting: user response
 
 ## Tests
 
@@ -32,16 +36,15 @@ result: pass
 
 ### 5. Re-test after 11-16 (G-11-1 fix) — Android expert and iOS client join the same call
 expected: Join from the Dashboard card, an Upcoming card and the Booking Summary opens the call with no "Couldn't join session" dialog; two-way audio with the iOS client; mute and speaker work; leave then re-join works. (Also clears 09-HUMAN-UAT items 1, 2 and 5.)
-result: issue
-reported: "After the call screen shows up, an error dialog says, \"Couldn't join session. Something went wrong. Please try again.\""
-severity: blocker
+result: [pending]
+note: "First attempt (2026-10-26 19:10) ran a stale build installed 17:09, before 11-16 merged at 18:34 — logcat showed the old 'engine create failed NullPointerException' line without a frame. Fixed APK installed 19:13; re-test pending."
 
 ## Summary
 
 total: 5
 passed: 3
-issues: 2
-pending: 0
+issues: 1
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -69,11 +72,3 @@ blocked: 0
     - "Re-run 09-HUMAN-UAT items 1, 2, 5 and 11-UAT test 1 on device after the fix"
   debug_session: ".planning/debug/android-expert-cannot-join-session.md"
 
-- gap_id: G-11-5
-  truth: "Android expert and iOS client join the same Agora call from the Dashboard card, an Upcoming card and the Booking Summary, with two-way audio (re-test after 11-16)"
-  status: failed
-  reason: "User reported: After the call screen shows up, an error dialog says, \"Couldn't join session. Something went wrong. Please try again.\""
-  severity: blocker
-  test: 5
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
