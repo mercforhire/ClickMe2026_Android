@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,7 +55,11 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
@@ -74,6 +79,9 @@ import java.util.Locale
 /** Test tag on the Join button. */
 const val EXPERT_SUMMARY_JOIN_TAG = "expert_summary_join"
 
+/** Test tag on the Message Client button. */
+const val MESSAGE_CLIENT_TAG = "message_client"
+
 /** Test tag on the Cancel Booking button. */
 const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
 
@@ -84,8 +92,9 @@ private val ButtonSkeletonHeight = 56.dp
 
 /**
  * Expert Booking Summary (EXP-08 / EXP-09), opened from the Bookings tab or the Dashboard. Port of iOS
- * `ExpertBookingSummaryView` without Message, Reschedule, the meeting-link row and the private note (DEF-1, Phase 12,
- * RESEARCH C11, Phase 8 D-16).
+ * `ExpertBookingSummaryView` with Message Client (D-14) but without Reschedule, the meeting-link row and the private
+ * note (DEF-1, RESEARCH C11, Phase 8 D-16). It has no Report or Block control: experts report and block clients only
+ * from the chat (D-11).
  *
  * [onCancel] runs only when the call guard allows it (D-17); the caller pushes the Cancel route.
  */
@@ -95,8 +104,10 @@ fun ExpertBookingSummaryScreen(
     onBack: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
 
@@ -120,7 +131,12 @@ fun ExpertBookingSummaryScreen(
         onDismissRescheduleDialog = viewModel::dismissRescheduleDialog,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
         modifier = modifier,
+        messageBusy = entryState.busyPeerId != null,
+        onMessage = { details ->
+            chatEntry.open(ChatPeer(details.clientId, details.clientName, details.clientAvatarUrl, isExpert = false))
+        },
     )
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 }
 
 /**
@@ -146,6 +162,8 @@ fun ExpertBookingSummaryContent(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
+    messageBusy: Boolean = false,
+    onMessage: (ExpertSummaryDetails) -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -198,6 +216,8 @@ fun ExpertBookingSummaryContent(
                     zone = zone,
                     timeFormat = timeFormat,
                     locale = locale,
+                    messageBusy = messageBusy,
+                    onMessage = { onMessage(load.details) },
                 )
         }
     }
@@ -239,6 +259,8 @@ private fun LoadedBody(
     zone: ZoneId,
     timeFormat: java.text.DateFormat,
     locale: Locale,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
 ) {
     // Keep the last proposal so the card can fade out after the reload cleared it (UI-SPEC Motion, 200 ms).
     var lastProposal by remember { mutableStateOf<RescheduleProposalUi?>(null) }
@@ -284,6 +306,12 @@ private fun LoadedBody(
                     modifier = Modifier.testTag(EXPERT_SUMMARY_JOIN_TAG),
                 )
             }
+            MessageButton(
+                label = stringResource(R.string.chat_entry_message_client),
+                onClick = onMessage,
+                modifier = Modifier.fillMaxWidth().testTag(MESSAGE_CLIENT_TAG),
+                busy = messageBusy,
+            )
             if (details.canCancel) {
                 DestructiveOutlinedButton(
                     onClick = onCancel,
