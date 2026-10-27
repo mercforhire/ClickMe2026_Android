@@ -1,4 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="chat_thread_title_fallback">Chat</string>
+    <string name="chat_thread_sending">Sending…</string>
+    <string name="chat_thread_read">Read</string>
+    <string name="chat_thread_you">You</string>
+    <string name="chat_thread_loading">Loading</string>
+    <string name="chat_thread_today">Today</string>
+    <string name="chat_thread_yesterday">Yesterday</string>
+    <string name="chat_thread_load_earlier">Load earlier</string>
+    <string name="chat_thread_loading_earlier">Loading…</string>
+    <string name="chat_event_booking_request">Booking Request</string>
+    <string name="chat_event_booking_confirmed">Booking Confirmed</string>
+    <string name="chat_event_booking_declined">Booking Declined</string>
+    <string name="chat_event_booking_cancelled">Booking Cancelled</string>
+    <string name="chat_event_booking_rescheduled">Booking Rescheduled</string>
+    <string name="chat_event_booking_completed">Session Completed</string>
+    <string name="chat_event_booking_expired">Request Expired</string>
+    <string name="chat_event_unknown">Booking update</string>
+    <string name="chat_event_view_booking">View booking</string>
+    <string name="chat_thread_error_heading">Couldn\'t load messages</string>
+    <string name="chat_thread_retry">Retry</string>
+    <string name="chat_thread_empty_heading">Start your conversation here.</string>
+    <string name="chat_thread_empty_body">Say hello!</string>
+    <string name="chat_thread_typing">%1$s is typing…</string>
+    <string name="chat_thread_jump_latest">Jump to latest message</string>
+    <string name="chat_thread_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
+    <string name="chat_thread_menu_more">More options</string>
+    <string name="chat_thread_menu_view_profile">View profile</string>
+    <string name="chat_thread_menu_block_or_report">Block or report</string>
+    <string name="chat_thread_menu_unblock_or_report">Unblock or report</string>
+    <string name="chat_thread_menu_report">Report</string>
 </resources>
