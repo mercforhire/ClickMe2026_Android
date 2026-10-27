@@ -79,6 +79,91 @@ object ThreadReducer {
         return order(result)
     }
 
+    /** The send of [clientMsgId] failed: the Sending bubble becomes Failed. */
+    fun fail(
+        items: List<ThreadItem>,
+        clientMsgId: String,
+    ): List<ThreadItem> = updateLocal(items, clientMsgId, from = Delivery.Sending, to = Delivery.Failed)
+
+    /** Retry: the Failed bubble goes back to Sending with the same client_msg_id (D-01). */
+    fun retry(
+        items: List<ThreadItem>,
+        clientMsgId: String,
+    ): List<ThreadItem> = updateLocal(items, clientMsgId, from = Delivery.Failed, to = Delivery.Sending)
+
+    /** Deletes a local unsent bubble. A row that already has a server id is never removed. */
+    fun remove(
+        items: List<ThreadItem>,
+        clientMsgId: String,
+    ): List<ThreadItem> =
+        items.filterNot {
+            it is ThreadItem.Message && it.mine && it.serverId == null && it.clientMsgId.sameId(clientMsgId)
+        }
+
+    /**
+     * A `message.new` socket event. Ignored when [myId] sent it (the sender is never echoed, but be safe) or when
+     * the server id is already shown; otherwise it is added in createdAt order.
+     */
+    fun onIncoming(
+        items: List<ThreadItem>,
+        message: ThreadItem.Message,
+        myId: String?,
+    ): List<ThreadItem> {
+        if (message.senderId.sameId(myId)) return items
+        if (items.any { it.serverId.sameId(message.serverId) }) return items
+        return order(items + message)
+    }
+
+    /** A `message.read` event: my messages whose server id is in [ids] become Read. */
+    fun markRead(
+        items: List<ThreadItem>,
+        ids: Collection<String>,
+    ): List<ThreadItem> =
+        items.map { item ->
+            val serverId = item.serverId
+            val isMineWithId = item is ThreadItem.Message && item.mine && serverId != null
+            if (isMineWithId && item is ThreadItem.Message && ids.any { it.equals(serverId, ignoreCase = true) }) {
+                item.copy(delivery = Delivery.Read)
+            } else {
+                item
+            }
+        }
+
+    /**
+     * Server ids of peer messages that are not Read yet and not in [alreadyEmitted] (lower-cased ids), in list
+     * order. The caller emits a read receipt for them.
+     */
+    fun unreadPeerIds(
+        items: List<ThreadItem>,
+        alreadyEmitted: Set<String>,
+    ): List<String> {
+        val emitted = alreadyEmitted.map { it.lowercase() }.toSet()
+        return items.mapNotNull { item ->
+            val id = item.serverId
+            when {
+                item !is ThreadItem.Message || item.mine || id == null -> null
+                item.delivery == Delivery.Read -> null
+                id.lowercase() in emitted -> null
+                else -> id
+            }
+        }
+    }
+
+    private fun updateLocal(
+        items: List<ThreadItem>,
+        clientMsgId: String,
+        from: Delivery,
+        to: Delivery,
+    ): List<ThreadItem> =
+        items.map {
+            val isTarget = it is ThreadItem.Message && it.mine && it.serverId == null && it.delivery == from
+            if (isTarget && it is ThreadItem.Message && it.clientMsgId.sameId(clientMsgId)) {
+                it.copy(delivery = to)
+            } else {
+                it
+            }
+        }
+
     /** The own message with [clientMsgId], or null. */
     fun findMine(
         items: List<ThreadItem>,
