@@ -7,6 +7,9 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.composerMode
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 
+/** Composer limit in UTF-16 code units, the backend `content` max (`z.string().min(1).max(10000)`, D-04). */
+const val CHAT_COMPOSER_MAX = 10_000
+
 /** Load state of the first page of a thread. A quiet reload never leaves [Loaded]. */
 sealed interface ThreadLoad {
     data object Loading : ThreadLoad
@@ -49,6 +52,10 @@ data class ChatThreadUiState(
 
     val menuEntry: ThreadMenuEntry
         get() = block.menuEntry
+
+    /** True when the composer holds [CHAT_COMPOSER_MAX] units: the UI shows its counter. */
+    val isComposerAtCap: Boolean
+        get() = composerText.length >= CHAT_COMPOSER_MAX
 
     val canSend: Boolean
         get() = load is ThreadLoad.Loaded && composerMode == ComposerMode.Normal && composerText.isNotBlank()
