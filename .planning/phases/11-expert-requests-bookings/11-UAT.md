@@ -1,9 +1,9 @@
 ---
-status: complete
+status: testing
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-27T01:39:08.143Z
+updated: 2026-10-27T01:45:00Z
 ---
 
 ## Current Test
@@ -39,16 +39,15 @@ note: "First attempt (2026-10-26 19:10) ran a stale build installed 17:09, befor
 
 ### 6. Re-test after 11-17 (G-11-5 fix) — Android expert and iOS client see and hear each other
 expected: Fresh APK installed (lastUpdateTime after the 11-17 / WR fix merges). Android expert and iOS client open the same booking's call inside the join window. Within a few seconds both sides leave "waiting for the other person" and show the active call; two-way audio works; mute and speaker work; leave then re-join reconnects both sides. logcat shows a remote-user-joined line and agoraapi.log shows channelProfile:0 at initializeEx. (Also clears 09-HUMAN-UAT items 1, 2 and 5.)
-result: issue
-reported: "Both phones are saying they are waiting for the other person."
-severity: major
+result: [pending]
+note: "First attempt (2026-10-26 ~21:35) ran a stale build installed 19:16, before 11-17 (channel profile fix) merged at 20:16 — user saw both phones stuck at 'waiting for the other person', which is the pre-fix G-11-5 symptom and does not test 11-17. Current HEAD APK (Gradle up-to-date, includes 11-17 + WR-01/WR-02) installed 21:39:38; re-test pending."
 
 ## Summary
 
 total: 6
 passed: 3
-issues: 3
-pending: 0
+issues: 2
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -101,11 +100,3 @@ blocked: 0
     - "Two-sided re-test of 11-UAT test 5 on a freshly installed APK (check lastUpdateTime); pull agoraapi.log and confirm channelProfile:0 at initializeEx plus a remote-join callback and Active status; then 09-HUMAN-UAT items 1, 2, 5"
   debug_session: ".planning/debug/android-ios-call-peers-never-meet.md"
 
-- gap_id: G-11-6
-  truth: "Android expert and iOS client see and hear each other in the same Agora call (re-test after 11-17)"
-  status: failed
-  reason: "User reported: Both phones are saying they are waiting for the other person."
-  severity: major
-  test: 6
-  artifacts: []
-  missing: []
