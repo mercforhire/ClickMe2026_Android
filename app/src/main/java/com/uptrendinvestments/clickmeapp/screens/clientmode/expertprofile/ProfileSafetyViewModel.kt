@@ -11,8 +11,11 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.SafetyDialog
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
+import com.uptrendinvestments.clickmeapp.screens.chat.isAccountSuspended
 import com.uptrendinvestments.clickmeapp.screens.chat.toBlockFailure
 import com.uptrendinvestments.clickmeapp.screens.chat.toChatEntryError
+import com.uptrendinvestments.clickmeapp.screens.chat.toReportFailure
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,7 +80,9 @@ class ProfileSafetyViewModel
             _state.update { it.copy(sheetOpen = true) }
         }
 
+        /** Closes the sheet. Ignored while a report is in flight so the request cannot be abandoned half way. */
         fun dismissReport() {
+            if (_state.value.reportSubmitting) return
             savedStateHandle[KEY_SHEET_OPEN] = false
             _state.update { it.copy(sheetOpen = false) }
         }
@@ -120,8 +125,13 @@ class ProfileSafetyViewModel
                         )
                     }
                 } catch (e: ApiException) {
-                    // Failure copy is added with the error mapping; the inputs stay so the user can retry.
-                    _state.update { it.copy(reportSubmitting = false) }
+                    // The sheet and the inputs stay as they are so the user can retry.
+                    _state.update {
+                        it.copy(
+                            reportSubmitting = false,
+                            dialog = failureDialog(R.string.report_error_title, e, ApiException::toReportFailure),
+                        )
+                    }
                 }
             }
         }
@@ -164,7 +174,7 @@ class ProfileSafetyViewModel
                         it.copy(
                             blockInFlight = false,
                             blockConfirmOpen = false,
-                            dialog = SafetyDialog(R.string.block_error_title, e.toBlockFailure()),
+                            dialog = failureDialog(R.string.block_error_title, e, ApiException::toBlockFailure),
                         )
                     }
                 }
@@ -180,11 +190,18 @@ class ProfileSafetyViewModel
                     it.copy(
                         blockInFlight = false,
                         blockConfirmOpen = false,
-                        dialog = SafetyDialog(R.string.block_error_title, e.toChatEntryError()),
+                        dialog = failureDialog(R.string.block_error_title, e, ApiException::toChatEntryError),
                     )
                 }
                 null
             }
+
+        /** The error dialog for [e], or null when the global suspended-account dialog owns the failure. */
+        private fun failureDialog(
+            titleRes: Int,
+            e: ApiException,
+            message: (ApiException) -> FieldError,
+        ): SafetyDialog? = if (e.isAccountSuspended()) null else SafetyDialog(titleRes, message(e))
 
         fun dismissDialog() {
             _state.update { it.copy(dialog = null) }

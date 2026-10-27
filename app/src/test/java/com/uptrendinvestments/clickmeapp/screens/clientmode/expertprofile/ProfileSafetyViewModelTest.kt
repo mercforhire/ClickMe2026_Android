@@ -23,6 +23,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProfileSafetyViewModelTest {
@@ -169,4 +170,91 @@ class ProfileSafetyViewModelTest {
             vm.openBlock()
             assertTrue(vm.state.value.blockConfirmOpen)
         }
+
+    private fun ProfileSafetyViewModel.fillReport() {
+        openReport()
+        selectReason(UserReportReason.Spam)
+        onDetailsChange("details")
+    }
+
+    @Test
+    fun report429KeepsInputsAndSheet() =
+        runTest(main.testDispatcher) {
+            api.reportUserHandler = { _, _ -> throw apiError(429) }
+            val vm = vm()
+            vm.fillReport()
+            vm.submitReport("e1")
+            runCurrent()
+
+            val state = vm.state.value
+            assertEquals(R.string.report_error_title, state.dialog?.titleRes)
+            assertEquals(FieldError.Res(R.string.report_error_rate_limited), state.dialog?.message)
+            assertTrue(state.sheetOpen)
+            assertEquals(UserReportReason.Spam, state.reason)
+            assertEquals("details", state.details)
+            assertFalse(state.reportSubmitting)
+            assertNull(state.snackbar)
+        }
+
+    @Test
+    fun report404AndNetworkUseTheirCopy() =
+        runTest(main.testDispatcher) {
+            api.reportUserHandler = { _, _ -> throw apiError(404) }
+            val vm = vm()
+            vm.fillReport()
+            vm.submitReport("e1")
+            runCurrent()
+            assertEquals(
+                FieldError.Res(R.string.report_error_unavailable),
+                vm.state.value.dialog
+                    ?.message,
+            )
+
+            vm.dismissDialog()
+            api.reportUserHandler = { _, _ -> throw IOException("offline") }
+            vm.submitReport("e1")
+            runCurrent()
+            assertEquals(
+                FieldError.Res(R.string.login_error_network),
+                vm.state.value.dialog
+                    ?.message,
+            )
+            assertTrue(vm.state.value.sheetOpen)
+        }
+
+    @Test
+    fun dismissIgnoredWhileSubmitting() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.reportUserHandler = { _, _ ->
+                gate.await()
+                reportData()
+            }
+            val vm = vm()
+            vm.fillReport()
+            vm.submitReport("e1")
+            vm.submitReport("e1")
+            runCurrent()
+            assertTrue(vm.state.value.reportSubmitting)
+
+            vm.dismissReport()
+            vm.selectReason(UserReportReason.Harassment)
+            assertTrue(vm.state.value.sheetOpen)
+            assertEquals(UserReportReason.Spam, vm.state.value.reason)
+
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(1, api.reportUserRequests.size)
+            assertFalse(vm.state.value.sheetOpen)
+        }
+
+    @Test
+    fun stateRestoredFromSavedState() {
+        val handle = SavedStateHandle(mapOf("sheet_open" to true, "reason" to "spam", "details" to "x"))
+        val state = vm(handle).state.value
+
+        assertTrue(state.sheetOpen)
+        assertEquals(UserReportReason.Spam, state.reason)
+        assertEquals("x", state.details)
+    }
 }
