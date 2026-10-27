@@ -78,6 +78,8 @@ Plan and task IDs filled at planning (2026-10-26). Requirement-to-test targets c
 | EXP-08 (G-11-5) | Engine config and per-join options both use the COMMUNICATION profile (iOS parity); options built without a receiver scope | Robolectric unit | `*AgoraEngineConfigTest` | 11-17 T1 | ✅ (gap) | ✅ green |
 | EXP-08 (G-11-5) | join() hands the factory a COMMUNICATION config; remote-presence callbacks log codes only (no uid, token or channel) and still emit their events | Robolectric unit | `*AgoraManagerCreateEngineTest` | 11-17 T1-T2 | ✅ (gap) | ✅ green |
 | All | Gap-pass full gate | build | see the 11-17 T3 verify chain | 11-17 T3 | ✅ (gap) | ✅ green |
+| EXP-08 (G-11-6) | Backend join signs and returns the canonical lowercase booking.id for uppercase and lowercase `:id`; confirm-connection and end echo it | jest (backend repo, tests/call.test.js) | `cd "/Users/LeonChen/Documents/ClickMe2026 Backend" && npm test -- tests/call.test.js` | 11-18 T1-T2 | ✅ (gap) | ✅ green |
+| EXP-08 (G-11-6) | Backend deployed and two-sided Android/iOS device re-test of 11-UAT test 6 | manual (human) | see 11-18 T3-T4 | 11-18 T3-T4 | ✅ (gap) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -122,3 +124,5 @@ These are deferred. Per the project preference, they are logged as open items an
 Gap closure 11-16 (G-11-1, Agora engine config context) verified 2026-10-26; device re-check deferred, see STATE
 
 Gap closure 11-17 (G-11-5, Agora channel profile parity and remote-presence logging) verified 2026-10-26; two-sided device re-test deferred, see STATE
+
+Gap closure 11-18 (G-11-6, server-side canonical Agora channel in the backend repo) verified 2026-10-26; deploy 4c694e7 (`/health` live-checked); two-sided device re-test deferred, see SUMMARY
