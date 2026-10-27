@@ -88,6 +88,9 @@ class ApiErrorParserTest {
             "INTERNAL_ERROR",
         )
 
+    /** Codes the backend returns that iOS `ErrorCode.swift` lacks; appended after the 65 iOS cases. */
+    private val androidOnlyWireValues = listOf("CANNOT_CHAT_WITH_SELF")
+
     private fun httpException(
         status: Int,
         body: String,
@@ -97,16 +100,16 @@ class ApiErrorParserTest {
     }
 
     @Test
-    fun errorCode_hasExactly65Cases() {
-        assertEquals(65, ErrorCode.entries.size)
+    fun errorCode_has65IosCasesThenAndroidAdditions() {
         assertEquals(65, iosWireValues.size)
+        assertEquals(66, ErrorCode.entries.size)
     }
 
     @Test
     fun errorCode_wireValuesAreUniqueAndMatchIosInOrder() {
-        assertEquals(iosWireValues, ErrorCode.entries.map { it.wire })
+        assertEquals(iosWireValues + androidOnlyWireValues, ErrorCode.entries.map { it.wire })
         assertEquals(
-            65,
+            66,
             ErrorCode.entries
                 .map { it.wire }
                 .toSet()
