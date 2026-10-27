@@ -85,6 +85,11 @@ Targeted rows use the quick run command with the listed `--tests` filters plus `
 | 12-14-03 | 14 | 4 | SAFE-03, SAFE-04 | T-12-39, T-12-40, T-12-41 | Composer capped; error text plain | Robolectric | `--tests` *ChatThreadScreenTest *ChatComposerTest *ChatThreadViewModelSendTest *ThreadRowsTest | ✅ W0 | ✅ green |
 | 12-15-01 | 15 | 5 | all | T-12-42, T-12-43 | No Log calls in Phase 12 code; R8 keeps keys and adapters | full gate | full suite both flavors + ktlint + assemble + lint (separate) + assembleProdRelease (separate) + design rules | ✅ | ✅ green |
 | 12-15-02 | 15 | 5 | all | — | N/A | doc greps | grep STATE / REQUIREMENTS / ROADMAP markers | ✅ | ✅ green |
+| 12-16-01 | 16 | 1 | SAFE-03 | T-12-47 | Unblocked notice applies CHAT-UNBLOCK section 6; stale scan restarted | unit | `--tests` *ChatThreadViewModelTest *ReportAndBlockViewModelTest *BlockStateTest | ✅ | ✅ green |
+| 12-16-02 | 16 | 1 | CHAT-02 | T-12-45 | Peer-chosen client_msg_id cannot duplicate a list key | unit + Robolectric | `--tests` *ThreadReducerTest *ThreadRowsTest *ChatThreadScreenTest *ChatThreadViewModelSendTest | ✅ | ✅ green |
+| 12-16-03 | 16 | 1 | CHAT-03 | T-12-44, T-12-46 | Kept text owner-keyed, memory only, cleared on logout | unit + build | `--tests` *ChatThreadViewModelSendTest *ChatThreadViewModelTest *ChatThreadViewModelRealtimeTest *ChatSessionStateTest + :app:assembleDevDebug | ✅ | ✅ green |
+| 12-17-01 | 17 | 2 | SAFE-01, SAFE-02 | T-12-48 | Confirmations visible, consumed once | Robolectric + unit | `--tests` *ExpertProfileScreenTest *ProfileSafetyViewModelTest *ExpertProfileViewModelTest | ✅ | ✅ green |
+| 12-17-02 | 17 | 2 | all gap items | — | N/A | scoped gate + doc greps | the scoped gate + lintDevDebug + design rules + doc greps | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -126,3 +131,5 @@ All rows are deferred per the user's manual-testing preference and are logged as
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** approved 2026-10-27 (12-15 gate: 3310 tests per flavor, ktlint, lint, R8 assembleProdRelease, design rules green; manual rows deferred to STATE)
+
+**Gap pass (12-16, 12-17) gate 2026-10-27:** scoped devDebug tests (`*screens.chat.*`, `*ProfileSafetyViewModelTest`, `*ExpertProfile*`) 343 tests, 0 failures; ktlintCheck, `:app:assembleDevDebug`, `:app:lintDevDebug` (no errors) and the design-rules script green.
