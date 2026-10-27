@@ -141,9 +141,9 @@ fun MeetingCallControlButton(
 
 /**
  * The control row. In-app: Minimize, Chat, Mute, Speaker spread evenly (iOS layout). External
- * ([showAudioControls] false): Minimize and Chat only, centered, since there is no in-app audio (D-05). Chat is
- * disabled with "Available soon" until Phase 12 wires chat (D-11). Mute and Speaker are disabled when
- * [audioControlsEnabled] is false (while the call is ending, WR-04).
+ * ([showAudioControls] false): Minimize and Chat only, centered, since there is no in-app audio (D-05). Chat opens the
+ * thread with the counterpart (D-11): it is enabled when [chatEnabled] (the peer id is known) and ignores taps while
+ * [chatBusy]. Mute and Speaker are disabled when [audioControlsEnabled] is false (while the call is ending, WR-04).
  */
 @Composable
 fun MeetingCallControls(
@@ -153,6 +153,9 @@ fun MeetingCallControls(
     onMinimize: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
+    onChat: () -> Unit,
+    chatEnabled: Boolean,
+    chatBusy: Boolean,
     modifier: Modifier = Modifier,
     audioControlsEnabled: Boolean = true,
 ) {
@@ -178,11 +181,9 @@ fun MeetingCallControls(
         MeetingCallControlButton(
             icon = Icons.Outlined.Forum,
             label = stringResource(R.string.call_control_chat),
-            onClick = {},
+            onClick = { if (!chatBusy) onChat() },
             modifier = cell.testTag(CALL_CONTROL_CHAT_TAG),
-            // PHASE-12: enable once in-call chat exists (D-11).
-            enabled = false,
-            stateDescription = stringResource(R.string.call_control_chat_unavailable),
+            enabled = chatEnabled,
         )
         if (showAudioControls) {
             MeetingCallControlButton(
@@ -221,8 +222,8 @@ private fun MeetingCallControlsPreview() {
     ClickMeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-                MeetingCallControls(true, isMuted = false, isSpeakerOn = true, {}, {}, {})
-                MeetingCallControls(false, isMuted = false, isSpeakerOn = false, {}, {}, {})
+                MeetingCallControls(true, isMuted = false, isSpeakerOn = true, {}, {}, {}, {}, true, false)
+                MeetingCallControls(false, isMuted = false, isSpeakerOn = false, {}, {}, {}, {}, false, false)
             }
         }
     }

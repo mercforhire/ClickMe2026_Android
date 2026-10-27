@@ -31,11 +31,15 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.web.rememberExternalMeetingLauncher
 import com.uptrendinvestments.clickmeapp.managers.CallDialog
 import com.uptrendinvestments.clickmeapp.managers.MicPermissionResult
 import com.uptrendinvestments.clickmeapp.managers.PendingMicPermission
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MeetingCallPill
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlin.coroutines.cancellation.CancellationException
@@ -54,17 +58,23 @@ private const val BACK_TRANSLATION_FRACTION = 0.2f
 /**
  * Hilt-aware root call overlay (D-08). Mounted once around the route switch so the expanded call and the pill
  * survive every tab change and the Client/Expert mode switch; the call itself lives in `CallCenter`.
+ *
+ * The Chat control opens the thread with the counterpart through [chatEntry] and minimizes the call once the thread
+ * was handed to the Chats tab (Phase 9 D-11); the call keeps running in the pill. `isExpert` is null because the call
+ * layer does not know the mode; the thread fills it from the scanned row.
  */
 @Composable
 fun CallOverlayHost(
     modifier: Modifier = Modifier,
     viewModel: MeetingCallViewModel = hiltViewModel(),
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
     content: @Composable () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val isMinimized by viewModel.isMinimized.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val pendingPermission by viewModel.pendingPermission.collectAsStateWithLifecycle()
+    val entry by chatEntry.state.collectAsStateWithLifecycle()
     // App first, Custom Tab fallback (D-06). A link nothing can open shows a dialog (WR-07).
     val launchMeeting = rememberExternalMeetingLauncher(onFailure = viewModel::onExternalLinkFailed)
     CallOverlayContent(
@@ -86,6 +96,17 @@ fun CallOverlayHost(
         onDismissDialog = viewModel::dismissDialog,
         onPermissionResult = viewModel::onPermissionResult,
         modifier = modifier,
+        chatBusy = entry.busyPeerId != null,
+        onChat = {
+            state?.peerId?.let { peerId ->
+                chatEntry.open(
+                    ChatPeer(peerId, state?.peerName, state?.peerAvatarUrl, isExpert = null),
+                    onOpened = viewModel::minimize,
+                )
+            }
+        },
+        chatError = entry.error,
+        onDismissChatError = chatEntry::dismissError,
         content = content,
     )
 }
@@ -117,6 +138,10 @@ fun CallOverlayContent(
     onDismissDialog: () -> Unit,
     onPermissionResult: (Long, MicPermissionResult) -> Unit,
     modifier: Modifier = Modifier,
+    chatBusy: Boolean = false,
+    onChat: () -> Unit = {},
+    chatError: FieldError? = null,
+    onDismissChatError: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val expanded = state != null && !isMinimized
@@ -187,6 +212,8 @@ fun CallOverlayContent(
                         onToggleSpeaker = onToggleSpeaker,
                         onEndCall = onEndCall,
                         onOpenExternal = onOpenExternal,
+                        chatBusy = chatBusy,
+                        onChat = onChat,
                     )
                 }
             }
@@ -207,5 +234,6 @@ fun CallOverlayContent(
 
         MicPermissionRequester(pendingPermission, onPermissionResult)
         CallDialogHost(dialog, onDismissDialog)
+        ChatEntryErrorDialog(chatError, onDismissChatError)
     }
 }

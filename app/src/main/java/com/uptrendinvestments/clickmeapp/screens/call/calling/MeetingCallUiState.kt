@@ -24,6 +24,8 @@ data class MeetingCallUiState(
     val externalJoinUrl: String?,
     val provider: ExternalMeetingProvider,
     val hasOpenedExternalLink: Boolean,
+    /** The counterpart's user id; null until the session knows it, which keeps the Chat control disabled. */
+    val peerId: String? = null,
 )
 
 /**
@@ -51,5 +53,6 @@ fun CallSession.toMeetingCallUiState(
         externalJoinUrl = externalJoinUrl,
         provider = ExternalMeetingProvider.detect(externalJoinUrl),
         hasOpenedExternalLink = hasOpenedExternalLink,
+        peerId = peerId,
     )
 }

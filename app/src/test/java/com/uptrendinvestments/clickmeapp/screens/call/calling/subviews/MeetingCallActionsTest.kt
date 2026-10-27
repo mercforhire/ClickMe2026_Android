@@ -40,6 +40,9 @@ class MeetingCallActionsTest {
         onToggleMute: () -> Unit = {},
         onToggleSpeaker: () -> Unit = {},
         audioControlsEnabled: Boolean = true,
+        onChat: () -> Unit = {},
+        chatEnabled: Boolean = true,
+        chatBusy: Boolean = false,
     ) = show {
         MeetingCallControls(
             showAudioControls = showAudioControls,
@@ -48,6 +51,9 @@ class MeetingCallActionsTest {
             onMinimize = onMinimize,
             onToggleMute = onToggleMute,
             onToggleSpeaker = onToggleSpeaker,
+            onChat = onChat,
+            chatEnabled = chatEnabled,
+            chatBusy = chatBusy,
             audioControlsEnabled = audioControlsEnabled,
         )
     }
@@ -108,12 +114,23 @@ class MeetingCallActionsTest {
     }
 
     @Test
-    fun chatIsDisabledWithAvailableSoon() {
-        controls()
+    fun chatControlEnabledAndClicks() {
+        var chats = 0
+        controls(chatEnabled = true, onChat = { chats++ })
         rule
             .onNodeWithTag(CALL_CONTROL_CHAT_TAG)
-            .assertIsNotEnabled()
-            .assert(hasStateDescription("Available soon"))
+            .assertIsEnabled()
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+            .performClick()
+        assertEquals(1, chats)
+    }
+
+    @Test
+    fun chatControlIsNotEnabledWithoutAPeerAndIgnoresTaps() {
+        var chats = 0
+        controls(chatEnabled = false, onChat = { chats++ })
+        rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).assertIsNotEnabled().performClick()
+        assertEquals(0, chats)
     }
 
     @Test
@@ -166,7 +183,7 @@ class MeetingCallActionsTest {
     fun externalControlsHaveOnlyMinimizeAndChat() {
         controls(showAudioControls = false)
         rule.onNodeWithTag(CALL_CONTROL_MINIMIZE_TAG).assertExists()
-        rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).assertExists().assertIsNotEnabled()
+        rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).assertExists().assertIsEnabled()
         rule.onNodeWithTag(CALL_CONTROL_MUTE_TAG).assertDoesNotExist()
         rule.onNodeWithTag(CALL_CONTROL_SPEAKER_TAG).assertDoesNotExist()
     }
