@@ -1,6 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
+import com.uptrendinvestments.clickmeapp.model.responses.ChatSendAckData
+import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.ME
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.chatMessage
@@ -328,5 +332,131 @@ class ChatThreadViewModelSendTest {
                     .single()
                     .second.content,
             )
+        }
+
+    private fun refuse(
+        status: Int,
+        code: String?,
+        message: String? = null,
+    ): suspend (String, SendMessageRequest) -> ChatSendAckData =
+        { _, _ ->
+            val codePart = code?.let { ""","code":"$it"""" }.orEmpty()
+            val messagePart = message?.let { ""","message":"$it"""" }.orEmpty()
+            throw h.api.httpError(status, """{"status":"error"$codePart$messagePart}""")
+        }
+
+    private fun TestScope.refusedViewModel(
+        status: Int,
+        code: String?,
+        message: String? = null,
+    ): ChatThreadViewModel {
+        h.api.sendChatMessageHandler = refuse(status, code, message)
+        val vm = loadedViewModel()
+        vm.onComposerChanged("hi")
+        vm.send()
+        runCurrent()
+        return vm
+    }
+
+    @Test
+    fun threadBlockedRemovesBubbleRestoresTextAndBlocks() =
+        runTest(main.testDispatcher) {
+            h.api.chatsHandler = { _, _ -> chatsPayload(chatThreadItem(isBlocked = true, blockedByMe = true)) }
+            val vm = refusedViewModel(403, "THREAD_BLOCKED")
+            assertTrue(vm.state.items.isEmpty())
+            assertEquals("hi", vm.state.composerText)
+            assertTrue(vm.state.block.isBlocked)
+            assertNull(vm.state.sendError)
+            assertEquals(ComposerMode.BlockedByMe, vm.state.composerMode)
+            assertEquals(Pair(1, 100), h.api.chatsQueries.last())
+        }
+
+    @Test
+    fun threadBlockedWithRowAbsentAndSessionMarkIsBlockedByMe() =
+        runTest(main.testDispatcher) {
+            h.session.markBlockedByMe("t1")
+            val vm = refusedViewModel(403, "THREAD_BLOCKED")
+            assertEquals(ComposerMode.BlockedByMe, vm.state.composerMode)
+        }
+
+    @Test
+    fun threadBlockedWithRowAbsentAndNoMarkIsBlockedByPeer() =
+        runTest(main.testDispatcher) {
+            val vm = refusedViewModel(403, "THREAD_BLOCKED")
+            assertTrue(vm.state.block.isBlocked)
+            assertEquals(ComposerMode.BlockedByPeer, vm.state.composerMode)
+        }
+
+    @Test
+    fun threadBlockedByPeerRowIsBlockedByPeer() =
+        runTest(main.testDispatcher) {
+            h.api.chatsHandler = { _, _ -> chatsPayload(chatThreadItem(isBlocked = true, blockedByMe = false)) }
+            val vm = refusedViewModel(403, "THREAD_BLOCKED")
+            assertEquals(ComposerMode.BlockedByPeer, vm.state.composerMode)
+        }
+
+    @Test
+    fun recipientUnavailableSwitchesComposer() =
+        runTest(main.testDispatcher) {
+            val vm = refusedViewModel(403, "RECIPIENT_UNAVAILABLE")
+            assertTrue(vm.state.items.isEmpty())
+            assertEquals("hi", vm.state.composerText)
+            assertEquals(ComposerMode.Unavailable, vm.state.composerMode)
+            assertNull(vm.state.sendError)
+            assertEquals(ComposerMode.Normal, loadedViewModel().state.composerMode)
+        }
+
+    @Test
+    fun otherClientErrorShowsDialogAndRestores() =
+        runTest(main.testDispatcher) {
+            val vm = refusedViewModel(422, "VALIDATION_ERROR", "Validation failed")
+            assertTrue(vm.state.items.isEmpty())
+            assertEquals("hi", vm.state.composerText)
+            assertEquals(FieldError.Text("Validation failed"), vm.state.sendError)
+            vm.dismissSendError()
+            assertNull(vm.state.sendError)
+        }
+
+    @Test
+    fun clientErrorWithoutMessageUsesGenericCopy() =
+        runTest(main.testDispatcher) {
+            val vm = refusedViewModel(404, null)
+            assertEquals(FieldError.Res(R.string.login_error_unknown), vm.state.sendError)
+            assertEquals("hi", vm.state.composerText)
+        }
+
+    @Test
+    fun restoreKeepsNewerDraft() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            h.api.sendChatMessageHandler = { _, _ ->
+                gate.await()
+                throw h.api.httpError(403, """{"status":"error","code":"THREAD_BLOCKED"}""")
+            }
+            val vm = loadedViewModel()
+            vm.onComposerChanged("hi")
+            vm.send()
+            vm.onComposerChanged("later")
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals("hi\nlater", vm.state.composerText)
+        }
+
+    @Test
+    fun restoredTextIsCappedAtTheLimit() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            h.api.sendChatMessageHandler = { _, _ ->
+                gate.await()
+                throw h.api.httpError(422, """{"status":"error"}""")
+            }
+            val vm = loadedViewModel()
+            vm.onComposerChanged("a".repeat(9_000))
+            vm.send()
+            vm.onComposerChanged("b".repeat(5_000))
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(10_000, vm.state.composerText.length)
+            assertTrue(vm.state.composerText.startsWith("a".repeat(9_000) + "\nb"))
         }
 }

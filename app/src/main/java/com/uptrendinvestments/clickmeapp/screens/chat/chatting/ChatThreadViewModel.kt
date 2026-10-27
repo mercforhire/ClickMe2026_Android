@@ -3,7 +3,9 @@ package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CurrentUserIdProvider
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.ConnectionState
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
@@ -15,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ClientMsgIdGenerator
 import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -31,11 +34,11 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 /**
- * Chat thread state machine, read side (CHAT-02, CHAT-04, SAFE-03). Port of iOS `ChattingViewModel`.
+ * Chat thread state machine (CHAT-02, CHAT-03, CHAT-04, SAFE-03, SAFE-04). Port of iOS `ChattingViewModel`.
  *
  * Page 1 holds the newest [ChatsRepository.PAGE_SIZE] messages (ascending within the page); every page is merged
  * into the current rows by [ThreadReducer.mergePage], so reloads keep older pages and local unsent bubbles.
- * The constructor already takes everything the send flow (12-08) needs so that plan adds no parameter.
+ * Sends are optimistic (D-01): [send] shows a Sending bubble at once; [retry] and [delete] act on a Failed one.
  */
 @HiltViewModel(assistedFactory = ChatThreadViewModel.Factory::class)
 class ChatThreadViewModel
@@ -203,12 +206,63 @@ class ChatThreadViewModel
                         it.copy(items = ThreadReducer.ack(it.items, clientMsgId, ack.messageId, ack.timestamp))
                     }
                 } catch (e: ApiException) {
-                    // A network error, a 5xx or an unreadable response keeps the bubble as Failed (D-01, no dialog).
-                    _uiState.update { it.copy(items = ThreadReducer.fail(it.items, clientMsgId)) }
+                    if (e is ApiException.Http && e.status < SERVER_ERROR_FROM) {
+                        handleSendFailure(clientMsgId, text, e)
+                    } else {
+                        // A network error, a 5xx or an unreadable response keeps the bubble as Failed (D-01).
+                        _uiState.update { it.copy(items = ThreadReducer.fail(it.items, clientMsgId)) }
+                    }
                 } finally {
                     inFlight -= clientMsgId
                 }
             }
+        }
+
+        /**
+         * A 4xx answer to a send (D-03): the server refused the message, so the bubble goes away and its text returns
+         * to the composer instead of staying as a Failed bubble that could never succeed.
+         * - 403 THREAD_BLOCKED: the thread is blocked; the scan of `GET /chats` decides who blocked it (no dialog).
+         * - 403 RECIPIENT_UNAVAILABLE: the composer switches to the unavailable mode for this ViewModel only.
+         * - anything else: a "Couldn't send message" dialog with the server message or the generic copy.
+         */
+        private fun handleSendFailure(
+            clientMsgId: String,
+            text: String,
+            error: ApiException.Http,
+        ) {
+            _uiState.update { it.copy(items = ThreadReducer.remove(it.items, clientMsgId)) }
+            restoreToComposer(text)
+            when (error.code) {
+                ErrorCode.ThreadBlocked -> {
+                    _uiState.update { it.copy(block = it.block.onThreadBlocked()) }
+                    refreshBlockState()
+                }
+                ErrorCode.RecipientUnavailable -> _uiState.update { it.copy(recipientUnavailable = true) }
+                else ->
+                    _uiState.update {
+                        it.copy(
+                            sendError =
+                                error.userMessage?.let { message -> FieldError.Text(message) }
+                                    ?: FieldError.Res(R.string.login_error_unknown),
+                        )
+                    }
+            }
+        }
+
+        /**
+         * Puts [text] back in the composer ahead of whatever the user has typed since (D-03), separated by a new line,
+         * capped at [COMPOSER_MAX]. A refused message is never lost.
+         */
+        private fun restoreToComposer(text: String) {
+            val draft = _uiState.value.composerText
+            val restored = capText(if (draft.isBlank()) text else text + "\n" + draft, COMPOSER_MAX)
+            _uiState.update { it.copy(composerText = restored) }
+            savedStateHandle[KEY_COMPOSER] = restored
+        }
+
+        /** Closes the "Couldn't send message" dialog. */
+        fun dismissSendError() {
+            _uiState.update { it.copy(sendError = null) }
         }
 
         /**
@@ -481,5 +535,6 @@ class ChatThreadViewModel
             /** Safety net that clears the peer typing indicator when no `typing.stop` or message arrives. */
             const val PEER_TYPING_TIMEOUT_MS = 6_000L
             private const val ROLE_EXPERT = "expert"
+            private const val SERVER_ERROR_FROM = 500
         }
     }
