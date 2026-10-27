@@ -8,7 +8,11 @@ updated: 2026-10-27T01:45:00Z
 
 ## Current Test
 
-[testing complete]
+number: 6
+name: Re-test after 11-17 (G-11-5 fix) — Android expert and iOS client see and hear each other
+expected: |
+  Fresh APK installed (lastUpdateTime after the 11-17 / WR fix merges). Android expert and iOS client open the same booking's call inside the join window. Within a few seconds both sides leave "waiting for the other person" and show the active call; two-way audio works; mute and speaker work; leave then re-join reconnects both sides. logcat shows a remote-user-joined line and agoraapi.log shows channelProfile:0 at initializeEx.
+awaiting: user response
 
 ## Tests
 
