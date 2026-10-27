@@ -11,9 +11,11 @@ import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBod
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
@@ -27,6 +29,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ChatMessagesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ChatSendAckData
+import com.uptrendinvestments.clickmeapp.model.responses.ChatsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
@@ -44,6 +49,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
@@ -462,4 +468,35 @@ interface ClickMeApi {
     /** Ports iOS ClickMeAPI+ExpertConnect refreshConnectLink. No `@Body`; 404 `NOT_FOUND` without a connected account. */
     @POST(ApiRequestUrls.EXPERT_CONNECT_REFRESH_LINK)
     suspend fun refreshConnectLink(): SuccessDataResponse<ConnectLinkData>
+
+    /**
+     * Ports iOS ClickMeAPI+Chats initiateChat. The body is `{peer_id}` only (the deprecated `expert_id` is never
+     * sent). 201 for a new thread, 200 for an existing one.
+     */
+    @POST(ApiRequestUrls.CHATS_INITIATE)
+    suspend fun initiateChat(
+        @Body body: InitiateChatRequest,
+    ): SuccessDataResponse<InitiateChatData>
+
+    /** Ports iOS ClickMeAPI+Chats getChats. `limit` is capped at 100 by the backend. */
+    @GET(ApiRequestUrls.CHATS)
+    suspend fun getChats(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ChatsPayload>
+
+    /** Ports iOS ClickMeAPI+Chats getChatMessages. */
+    @GET(ApiRequestUrls.CHAT_MESSAGES)
+    suspend fun getChatMessages(
+        @Path("id") threadId: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ChatMessagesPayload>
+
+    /** Ports iOS ClickMeAPI+Chats sendChatMessage. 403 `THREAD_BLOCKED` or `RECIPIENT_UNAVAILABLE` when refused. */
+    @POST(ApiRequestUrls.CHAT_SEND)
+    suspend fun sendChatMessage(
+        @Path("id") threadId: String,
+        @Body body: SendMessageRequest,
+    ): SuccessDataResponse<ChatSendAckData>
 }

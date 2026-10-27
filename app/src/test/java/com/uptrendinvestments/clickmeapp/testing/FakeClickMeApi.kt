@@ -11,9 +11,11 @@ import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBod
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
@@ -28,6 +30,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestItem
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ChatMessagesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ChatSendAckData
+import com.uptrendinvestments.clickmeapp.model.responses.ChatsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
@@ -45,6 +50,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
@@ -145,6 +151,12 @@ class FakeClickMeApi : ClickMeApi {
     var connectStatusHandler: suspend () -> ConnectStatusData = { notStubbed() }
     var connectOnboardHandler: suspend () -> ConnectLinkData = { notStubbed() }
     var connectRefreshLinkHandler: suspend () -> ConnectLinkData = { notStubbed() }
+    var initiateChatHandler: suspend (InitiateChatRequest) -> InitiateChatData = { notStubbed() }
+    var chatsHandler: suspend (page: Int, limit: Int) -> ChatsPayload = { _, _ -> notStubbed() }
+    var chatMessagesHandler: suspend (threadId: String, page: Int, limit: Int) -> ChatMessagesPayload =
+        { _, _, _ -> notStubbed() }
+    var sendChatMessageHandler: suspend (threadId: String, body: SendMessageRequest) -> ChatSendAckData =
+        { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -450,6 +462,30 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /expert/bookings/{id}/decline-reschedule call (id, body), in call order. */
     val declineExpertRescheduleRequests: List<Pair<String, DeclineRescheduleRequest>>
         get() = synchronized(_declineExpertRescheduleRequests) { _declineExpertRescheduleRequests.toList() }
+
+    private val _initiateChatRequests = mutableListOf<InitiateChatRequest>()
+
+    /** Every POST /chats/initiate body received, in call order. */
+    val initiateChatRequests: List<InitiateChatRequest>
+        get() = synchronized(_initiateChatRequests) { _initiateChatRequests.toList() }
+
+    private val _chatsQueries = mutableListOf<Pair<Int, Int>>()
+
+    /** The (page, limit) of every getChats call, in call order. */
+    val chatsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_chatsQueries) { _chatsQueries.toList() }
+
+    private val _chatMessagesQueries = mutableListOf<Triple<String, Int, Int>>()
+
+    /** The (threadId, page, limit) of every getChatMessages call, in call order. */
+    val chatMessagesQueries: List<Triple<String, Int, Int>>
+        get() = synchronized(_chatMessagesQueries) { _chatMessagesQueries.toList() }
+
+    private val _sentChatMessages = mutableListOf<Pair<String, SendMessageRequest>>()
+
+    /** Every POST /chats/{id}/send call (threadId, body), in call order. */
+    val sentChatMessages: List<Pair<String, SendMessageRequest>>
+        get() = synchronized(_sentChatMessages) { _sentChatMessages.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -829,6 +865,36 @@ class FakeClickMeApi : ClickMeApi {
     override suspend fun refreshConnectLink(): SuccessDataResponse<ConnectLinkData> {
         connectRefreshLinkCalls++
         return ok(connectRefreshLinkHandler())
+    }
+
+    override suspend fun initiateChat(body: InitiateChatRequest): SuccessDataResponse<InitiateChatData> {
+        synchronized(_initiateChatRequests) { _initiateChatRequests += body }
+        return ok(initiateChatHandler(body))
+    }
+
+    override suspend fun getChats(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ChatsPayload> {
+        synchronized(_chatsQueries) { _chatsQueries += page to limit }
+        return ok(chatsHandler(page, limit))
+    }
+
+    override suspend fun getChatMessages(
+        threadId: String,
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ChatMessagesPayload> {
+        synchronized(_chatMessagesQueries) { _chatMessagesQueries += Triple(threadId, page, limit) }
+        return ok(chatMessagesHandler(threadId, page, limit))
+    }
+
+    override suspend fun sendChatMessage(
+        threadId: String,
+        body: SendMessageRequest,
+    ): SuccessDataResponse<ChatSendAckData> {
+        synchronized(_sentChatMessages) { _sentChatMessages += threadId to body }
+        return ok(sendChatMessageHandler(threadId, body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

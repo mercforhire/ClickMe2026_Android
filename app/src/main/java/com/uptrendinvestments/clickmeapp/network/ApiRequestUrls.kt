@@ -92,6 +92,14 @@ object ApiRequestUrls {
     const val EXPERT_CONNECT_ONBOARD = "expert/connect/onboard"
     const val EXPERT_CONNECT_REFRESH_LINK = "expert/connect/refresh-link"
 
+    // Phase 12: chat and reporting.
+    const val CHATS_INITIATE = "chats/initiate"
+    const val CHATS = "chats"
+    const val CHAT_MESSAGES = "chats/{id}/messages"
+    const val CHAT_SEND = "chats/{id}/send"
+    const val CHAT_ACTIONS = "chats/{id}/actions"
+    const val USER_REPORT = "users/{id}/report"
+
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
      * what stops the refresh from recursing into the authenticator. Everything else, including the email
