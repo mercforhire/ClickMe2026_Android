@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +81,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
+import kotlinx.coroutines.launch
 
 private const val SKELETON_FADE_MS = 150
 private val MenuTarget = 48.dp
@@ -105,6 +107,7 @@ fun ExpertProfileScreen(
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     val safetyState by safety.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val thanks = stringResource(R.string.report_thanks)
     val blocked =
         (safetyState.snackbar as? ProfileSafetySnackbar.Blocked)?.name?.let {
@@ -118,8 +121,9 @@ fun ExpertProfileScreen(
                 null -> null
             }
         if (message != null) {
+            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
+            scope.launch { snackbarHostState.showSnackbar(message) }
             safety.consumeSnackbar()
-            snackbarHostState.showSnackbar(message)
         }
     }
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)

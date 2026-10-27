@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollAction
@@ -23,6 +24,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
+import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.BOOK_SESSION_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.EXPERT_PROFILE_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
@@ -33,10 +41,16 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subvie
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileReviewsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileStatsBar
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileTopicsCard
+import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.reportData
+import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -487,5 +501,80 @@ class ExpertProfileScreenTest {
 
         rule.onNodeWithText("Not accepting bookings").assertIsNotEnabled()
         rule.onAllNodesWithText("Book Session").assertCountEquals(0)
+    }
+
+    private fun setProfileScreen(
+        api: FakeClickMeApi,
+        safety: ProfileSafetyViewModel,
+    ) {
+        api.expertDetailsHandler = { CompletableDeferred<PublicProfileDetailsData>().await() }
+        api.expertReviewsHandler = { CompletableDeferred<ExpertReviewsPayload>().await() }
+        val profile =
+            ExpertProfileViewModel(
+                ExpertProfileKey(expertId = "e1", name = "Ada", title = "", imageUrl = null),
+                ExpertProfileRepository(api),
+            )
+        val entry = testChatEntryViewModel(api)
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileScreen(
+                    viewModel = profile,
+                    onBack = {},
+                    onBook = {},
+                    chatEntry = entry,
+                    safety = safety,
+                )
+            }
+        }
+    }
+
+    private fun safetyViewModel(api: FakeClickMeApi) =
+        ProfileSafetyViewModel(SavedStateHandle(), ChatsRepository(api), ChatSessionState())
+
+    @Test
+    fun reportSuccessShowsThanksSnackbar() {
+        val api = FakeClickMeApi()
+        api.reportUserHandler = { _, _ -> reportData() }
+        val safety = safetyViewModel(api)
+        setProfileScreen(api, safety)
+
+        rule.runOnIdle {
+            safety.selectReason(UserReportReason.Spam)
+            safety.submitReport("e1")
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Thanks, we'll review this.").assertIsDisplayed()
+        assertNull(safety.state.value.snackbar)
+    }
+
+    @Test
+    fun blockSuccessShowsYouBlockedName() {
+        val api = FakeClickMeApi()
+        api.initiateChatHandler = { initiateData("t9") }
+        api.chatActionHandler = { _, _ -> StatusOnlyResponse("success") }
+        val safety = safetyViewModel(api)
+        setProfileScreen(api, safety)
+
+        rule.runOnIdle { safety.confirmBlock("e1", "Ada") }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("You blocked Ada").assertIsDisplayed()
+        assertNull(safety.state.value.snackbar)
+    }
+
+    @Test
+    fun blockSuccessWithoutNameShowsFallback() {
+        val api = FakeClickMeApi()
+        api.initiateChatHandler = { initiateData("t9") }
+        api.chatActionHandler = { _, _ -> StatusOnlyResponse("success") }
+        val safety = safetyViewModel(api)
+        setProfileScreen(api, safety)
+
+        rule.runOnIdle { safety.confirmBlock("e1", "  ") }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("You blocked this user").assertIsDisplayed()
+        assertNull(safety.state.value.snackbar)
     }
 }
