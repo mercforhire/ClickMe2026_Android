@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-27T02:10:00Z
+updated: 2026-10-27T04:08:33.247Z
 ---
 
 ## Current Test
@@ -44,10 +44,15 @@ reported: "Still stuck waiting for the other person."
 severity: major
 note: "First attempt (2026-10-26 ~21:35) ran a stale build installed 19:16, before 11-17 (channel profile fix) merged at 20:16 — user saw both phones stuck at 'waiting for the other person', which is the pre-fix G-11-5 symptom and does not test 11-17. Current HEAD APK (Gradle up-to-date, includes 11-17 + WR-01/WR-02) installed 21:39:38; second attempt on that build also failed."
 
+### 7. Re-test after 11-18 (G-11-6 server fix) — Android expert and iOS client meet in the same call
+expected: Backend live at 4c694e7, Android build installed 21:39:38 (after the last app commit 20:49:51). Same confirmed booking on both phones inside the join window: both leave "waiting for the other person" and show the active call within a few seconds; two-way audio, mute, speaker, leave and re-join work; logcat shows `remote joined elapsed=` and `remote audio state=2`. (Also clears 09-HUMAN-UAT items 1, 2 and 5.)
+result: pass
+evidence: "logcat 2026-10-27 00:02:23 — conn state=3 reason=1, remote joined elapsed=148, remote audio state=2 reason=6; user confirmed pass."
+
 ## Summary
 
-total: 6
-passed: 3
+total: 7
+passed: 4
 issues: 3
 pending: 0
 skipped: 0
@@ -104,7 +109,9 @@ blocked: 0
 
 - gap_id: G-11-6
   truth: "Android expert and iOS client see and hear each other in the same Agora call (re-test after 11-17, fresh APK installed 21:39:38)"
-  status: failed
+  status: resolved
+  resolved_by: 11-18-PLAN.md
+  resolved_at: 2026-10-27
   reason: "User reported: Still stuck waiting for the other person."
   severity: major
   test: 6
