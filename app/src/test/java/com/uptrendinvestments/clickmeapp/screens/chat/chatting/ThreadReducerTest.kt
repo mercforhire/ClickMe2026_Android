@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 
@@ -73,5 +75,160 @@ class ThreadReducerTest {
         items = ThreadReducer.ack(items, "c1", "m9", t(200))
         assertEquals(1, items.size)
         assertEquals("m9", items.single().serverId)
+    }
+
+    @Test
+    fun failRetryRemove() {
+        var items = ThreadReducer.appendLocal(emptyList(), mine(clientMsgId = "c1"))
+
+        items = ThreadReducer.fail(items, "c1")
+        assertEquals(Delivery.Failed, (items.single() as ThreadItem.Message).delivery)
+
+        items = ThreadReducer.retry(items, "c1")
+        val retried = items.single() as ThreadItem.Message
+        assertEquals(Delivery.Sending, retried.delivery)
+        assertEquals("c1", retried.clientMsgId)
+
+        items = ThreadReducer.remove(items, "c1")
+        assertTrue(items.isEmpty())
+
+        val sent = listOf<ThreadItem>(mine(clientMsgId = "c2", serverId = "m2", delivery = Delivery.Sent))
+        assertEquals(sent, ThreadReducer.remove(sent, "c2"))
+    }
+
+    @Test
+    fun lostResponseThenReloadConvergesToOneSentRow() {
+        var items = ThreadReducer.appendLocal(emptyList(), mine(clientMsgId = "c1"))
+        items = ThreadReducer.fail(items, "c1")
+        val server = mine(clientMsgId = "c1", serverId = "m9", delivery = Delivery.Sent, at = 150)
+
+        items = ThreadReducer.mergePage(items, listOf(server))
+
+        val row = items.single() as ThreadItem.Message
+        assertEquals("m9", row.serverId)
+        assertEquals(Delivery.Sent, row.delivery)
+    }
+
+    @Test
+    fun concurrentSendsCoexist() {
+        var items = ThreadReducer.mergePage(emptyList(), listOf(peer("p1", 10), peer("p2", 20)))
+        items = ThreadReducer.appendLocal(items, mine(clientMsgId = "c1"))
+        items = ThreadReducer.appendLocal(items, mine(clientMsgId = "c2"))
+        items = ThreadReducer.appendLocal(items, mine(clientMsgId = "c3"))
+
+        assertEquals(listOf("p1", "p2", null, null, null), items.map { it.serverId })
+        assertEquals(
+            listOf("c1", "c2", "c3"),
+            items.drop(2).map { (it as ThreadItem.Message).clientMsgId },
+        )
+    }
+
+    @Test
+    fun incomingIgnoresOwnAndDuplicates() {
+        val base = ThreadReducer.mergePage(emptyList(), listOf(peer("p1", 10)))
+
+        val own = peer("p2", 20).copy(senderId = "me")
+        assertEquals(base, ThreadReducer.onIncoming(base, own, myId = "ME"))
+
+        val duplicate = peer("P1", 10)
+        assertEquals(base, ThreadReducer.onIncoming(base, duplicate, myId = "ME"))
+
+        val added = ThreadReducer.onIncoming(base, peer("p3", 5), myId = "ME")
+        assertEquals(listOf("p3", "p1"), added.map { it.serverId })
+    }
+
+    @Test
+    fun markReadFlipsMineOnlyAndNeverDowngrades() {
+        val mineRow = mine(clientMsgId = "c1", serverId = "m1", delivery = Delivery.Sent, at = 10)
+        val peerRow = peer("m1-peer", 20)
+        var items = ThreadReducer.mergePage(emptyList(), listOf(mineRow, peerRow))
+
+        items = ThreadReducer.markRead(items, listOf("M1", "m1-peer"))
+
+        val byId = items.associateBy { it.serverId }
+        assertEquals(Delivery.Read, (byId.getValue("m1") as ThreadItem.Message).delivery)
+        assertEquals(Delivery.Sent, (byId.getValue("m1-peer") as ThreadItem.Message).delivery)
+
+        val stale = mine(clientMsgId = "c1", serverId = "m1", delivery = Delivery.Sent, at = 10)
+        items = ThreadReducer.mergePage(items, listOf(stale))
+        assertEquals(Delivery.Read, (ThreadReducer.findMine(items, "c1"))?.delivery)
+    }
+
+    @Test
+    fun prependOlderOverlapHasNoDuplicates() {
+        var items = ThreadReducer.mergePage(emptyList(), listOf(peer("p3", 30), peer("p4", 40)))
+
+        items = ThreadReducer.mergePage(items, listOf(peer("p1", 10), peer("p2", 20), peer("p3", 30), peer("p4", 40)))
+
+        assertEquals(listOf("p1", "p2", "p3", "p4"), items.map { it.serverId })
+    }
+
+    @Test
+    fun equalTimestampsKeepStableOrder() {
+        val page = listOf(peer("b", 10), peer("a", 10), peer("c", 10))
+        val items = ThreadReducer.mergePage(emptyList(), page)
+        assertEquals(listOf("b", "a", "c"), items.map { it.serverId })
+    }
+
+    @Test
+    fun unreadPeerIdsSkipsMineReadAndEmitted() {
+        val items =
+            ThreadReducer.mergePage(
+                emptyList(),
+                listOf(
+                    peer("P1", 10),
+                    peer("p2", 20, Delivery.Read),
+                    peer("p3", 30),
+                    peer("p4", 40),
+                    mine(clientMsgId = "c1", serverId = "m1", delivery = Delivery.Sent, at = 50),
+                ),
+            )
+
+        val unread = ThreadReducer.unreadPeerIds(items, alreadyEmitted = setOf("p3"))
+
+        assertEquals(listOf("P1", "p4"), unread)
+    }
+
+    @Test
+    fun ackDropsBubbleWhenServerRowAlreadyPresentWithoutClientMsgId() {
+        var items = ThreadReducer.appendLocal(emptyList(), mine(clientMsgId = "c1"))
+        items = ThreadReducer.mergePage(items, listOf(mine(serverId = "m9", delivery = Delivery.Read, at = 200)))
+        // The page row has no client_msg_id and a different shape, so the bubble was not matched by it.
+        assertEquals(2, items.size)
+
+        items = ThreadReducer.ack(items, "c1", "M9", t(200))
+
+        val row = items.single() as ThreadItem.Message
+        assertEquals("m9", row.serverId)
+        assertEquals("c1", row.clientMsgId)
+        assertEquals(Delivery.Read, row.delivery)
+    }
+
+    @Test
+    fun ackOnUnknownClientMsgIdChangesNothing() {
+        val items = ThreadReducer.appendLocal(emptyList(), mine(clientMsgId = "c1"))
+        assertEquals(items, ThreadReducer.ack(items, "zzz", "m9", t(1)))
+    }
+
+    @Test
+    fun systemEventKindFromWire() {
+        assertEquals(SystemEventKind.BookingRequest, SystemEventKind.fromWire("booking_request"))
+        assertEquals(SystemEventKind.BookingConfirmed, SystemEventKind.fromWire("BOOKING_CONFIRMED"))
+        assertEquals(SystemEventKind.BookingConfirmed, SystemEventKind.fromWire("booking_confirmed"))
+        assertEquals(SystemEventKind.Unknown, SystemEventKind.fromWire(null))
+        assertEquals(SystemEventKind.Unknown, SystemEventKind.fromWire("something"))
+        assertTrue(SystemEventKind.BookingDeclined.isTerminal)
+        assertTrue(SystemEventKind.BookingCancelled.isTerminal)
+        assertTrue(SystemEventKind.BookingCompleted.isTerminal)
+        assertTrue(SystemEventKind.BookingExpired.isTerminal)
+        assertFalse(SystemEventKind.BookingConfirmed.isTerminal)
+        assertFalse(SystemEventKind.BookingRescheduled.isTerminal)
+    }
+
+    @Test
+    fun deliveryFromServerStatus() {
+        assertEquals(Delivery.Read, Delivery.fromServerStatus("READ"))
+        assertEquals(Delivery.Sent, Delivery.fromServerStatus("sent"))
+        assertEquals(Delivery.Sent, Delivery.fromServerStatus(null))
     }
 }
