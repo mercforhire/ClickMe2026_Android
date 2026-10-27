@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="report_reason_harassment">Harassment or abuse</string>
+    <string name="report_reason_spam">Spam</string>
+    <string name="report_reason_inappropriate_content">Inappropriate content</string>
+    <string name="report_reason_scam_or_fraud">Scam or fraud</string>
+    <string name="report_reason_impersonation">Impersonation</string>
+    <string name="report_reason_other">Something else</string>
+    <string name="report_reason_label">Reason for reporting</string>
+    <string name="report_reason_required_a11y">Reason for reporting, required</string>
+    <string name="report_details_label">Details (optional)</string>
+    <string name="report_details_placeholder">Add any additional context</string>
+    <string name="report_details_counter">%1$d/1000</string>
+    <string name="report_submit">Submit report</string>
+    <string name="report_choose_reason">Choose a reason first</string>
+    <string name="report_submitting">Submitting</string>
+    <string name="report_thanks">Thanks, we\'ll review this.</string>
+    <string name="report_card_title">Report user</string>
+    <string name="report_card_body">If this user is breaking our terms of service, let us know and our team will review it.</string>
+    <string name="report_error_title">Couldn\'t send report</string>
+    <string name="report_error_rate_limited">Please try again later.</string>
+    <string name="report_error_unavailable">This user is unavailable.</string>
+</resources>
