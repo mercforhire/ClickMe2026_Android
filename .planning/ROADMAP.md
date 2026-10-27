@@ -611,7 +611,7 @@ Plans:
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
 **Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
-**Plans:** 7/15 plans executed
+**Plans:** 13/15 plans executed
 
 Plans:
 
@@ -630,12 +630,12 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 12-08-PLAN.md — Thread send: optimistic bubble, ack reconcile, failed/retry/delete, 10000 cap, THREAD_BLOCKED / RECIPIENT_UNAVAILABLE / other 4xx (CHAT-03, SAFE-03, SAFE-04)
-- [ ] 12-09-PLAN.md — Thread screen read side: bubbles, status lines, date separators, system-event rows, Load earlier, typing strip, jump to latest, states, overflow menu and navigation (CHAT-02, CHAT-04, SAFE-03)
-- [ ] 12-10-PLAN.md — Expert Profile Report sheet and Block dialog (initiate then block), snackbars, errors, in-flight locks (SAFE-01, SAFE-02, SAFE-04)
-- [ ] 12-11-PLAN.md — Client Message entry points: Upcoming Booking Details, Booking Summary, My Bookings cards (CHAT-05)
-- [ ] 12-12-PLAN.md — Expert Message entry points: Booking Summary, Request Decision footer and expired state, Upcoming cards (CHAT-05)
-- [ ] 12-13-PLAN.md — In-call Chat control: initiate, minimize to the pill, busy and error states (CHAT-05)
+- [x] 12-08-PLAN.md — Thread send: optimistic bubble, ack reconcile, failed/retry/delete, 10000 cap, THREAD_BLOCKED / RECIPIENT_UNAVAILABLE / other 4xx (CHAT-03, SAFE-03, SAFE-04)
+- [x] 12-09-PLAN.md — Thread screen read side: bubbles, status lines, date separators, system-event rows, Load earlier, typing strip, jump to latest, states, overflow menu and navigation (CHAT-02, CHAT-04, SAFE-03)
+- [x] 12-10-PLAN.md — Expert Profile Report sheet and Block dialog (initiate then block), snackbars, errors, in-flight locks (SAFE-01, SAFE-02, SAFE-04)
+- [x] 12-11-PLAN.md — Client Message entry points: Upcoming Booking Details, Booking Summary, My Bookings cards (CHAT-05)
+- [x] 12-12-PLAN.md — Expert Message entry points: Booking Summary, Request Decision footer and expired state, Upcoming cards (CHAT-05)
+- [x] 12-13-PLAN.md — In-call Chat control: initiate, minimize to the pill, busy and error states (CHAT-05)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -744,7 +744,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
-| 12. Chat, Report & Block | 7/15 | In Progress | - |
+| 12. Chat, Report & Block | 13/15 | In Progress | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
