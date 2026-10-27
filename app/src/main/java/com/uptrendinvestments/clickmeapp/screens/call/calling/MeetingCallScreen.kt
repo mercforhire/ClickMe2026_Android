@@ -70,6 +70,8 @@ fun MeetingCallScreen(
     onEndCall: () -> Unit,
     onOpenExternal: () -> Unit,
     modifier: Modifier = Modifier,
+    chatBusy: Boolean = false,
+    onChat: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
 ) {
@@ -99,9 +101,28 @@ fun MeetingCallScreen(
             ) { variant ->
                 when (variant) {
                     ConnectionType.InAppVoice ->
-                        InAppContent(state, onMinimize, onToggleMute, onToggleSpeaker, onEndCall, zone, timeFormat)
+                        InAppContent(
+                            state = state,
+                            onMinimize = onMinimize,
+                            onToggleMute = onToggleMute,
+                            onToggleSpeaker = onToggleSpeaker,
+                            onEndCall = onEndCall,
+                            onChat = onChat,
+                            chatBusy = chatBusy,
+                            zone = zone,
+                            timeFormat = timeFormat,
+                        )
                     ConnectionType.SkypeZoom ->
-                        ExternalContent(state, onMinimize, onEndCall, onOpenExternal, zone, timeFormat)
+                        ExternalContent(
+                            state = state,
+                            onMinimize = onMinimize,
+                            onEndCall = onEndCall,
+                            onOpenExternal = onOpenExternal,
+                            onChat = onChat,
+                            chatBusy = chatBusy,
+                            zone = zone,
+                            timeFormat = timeFormat,
+                        )
                 }
             }
             Spacer(Modifier.height(Spacing.lg))
@@ -117,6 +138,8 @@ private fun InAppContent(
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
     onEndCall: () -> Unit,
+    onChat: () -> Unit,
+    chatBusy: Boolean,
     zone: ZoneId,
     timeFormat: DateFormat,
 ) {
@@ -148,6 +171,9 @@ private fun InAppContent(
             onMinimize = onMinimize,
             onToggleMute = onToggleMute,
             onToggleSpeaker = onToggleSpeaker,
+            onChat = onChat,
+            chatEnabled = state.peerId != null,
+            chatBusy = chatBusy,
             audioControlsEnabled = !state.isEndingCall,
         )
         Spacer(Modifier.height(Spacing.xl))
@@ -166,6 +192,8 @@ private fun ExternalContent(
     onMinimize: () -> Unit,
     onEndCall: () -> Unit,
     onOpenExternal: () -> Unit,
+    onChat: () -> Unit,
+    chatBusy: Boolean,
     zone: ZoneId,
     timeFormat: DateFormat,
 ) {
@@ -206,6 +234,9 @@ private fun ExternalContent(
             onMinimize = onMinimize,
             onToggleMute = {},
             onToggleSpeaker = {},
+            onChat = onChat,
+            chatEnabled = state.peerId != null,
+            chatBusy = chatBusy,
         )
         Spacer(Modifier.height(Spacing.xl))
         MeetingCallEndButton(

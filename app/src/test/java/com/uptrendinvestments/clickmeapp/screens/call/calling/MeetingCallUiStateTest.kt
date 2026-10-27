@@ -20,10 +20,11 @@ class MeetingCallUiStateTest {
         externalJoinUrl: String? = null,
         hasOpenedExternalLink: Boolean = false,
         endedAt: Instant? = null,
+        peerId: String? = "p1",
     ) = CallSession(
         id = 1,
         bookingId = "b1",
-        peerId = "p1",
+        peerId = peerId,
         peerName = "Alex",
         peerAvatarUrl = "https://img/peer.png",
         topic = "Career advice",
@@ -102,5 +103,11 @@ class MeetingCallUiStateTest {
         assertEquals("Career advice", state.topic)
         assertEquals(start, state.scheduledStart)
         assertEquals(end, state.scheduledEnd)
+    }
+
+    @Test
+    fun peerIdMapsFromSession() {
+        assertEquals("p1", session().toMeetingCallUiState(start, null).peerId)
+        assertNull(session(peerId = null).toMeetingCallUiState(start, null).peerId)
     }
 }

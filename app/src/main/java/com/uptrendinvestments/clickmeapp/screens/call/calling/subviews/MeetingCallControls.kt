@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.MicOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -58,11 +60,13 @@ private val IconSize = 24.dp
 private val MinControlWidth = 48.dp
 private const val DISABLED_ALPHA = 0.38f
 private const val ON_BORDER_ALPHA = 0.5f
+private val SpinnerStroke = 2.dp
 
 /**
  * One round control with a label underneath (iOS `MeetingCallControlButton`). A [toggle] control carries
  * [stateDescription] and `Role.Switch` semantics; a plain control is a button. [isOn] only changes the look (primary
- * icon and border); state is also exposed through [stateDescription] and an icon swap, never color alone.
+ * icon and border); state is also exposed through [stateDescription] and an icon swap, never color alone. While [busy]
+ * a spinner replaces the icon; the caller keeps the control enabled so [stateDescription] stays announced.
  */
 @Composable
 fun MeetingCallControlButton(
@@ -75,6 +79,7 @@ fun MeetingCallControlButton(
     stateDescription: String? = null,
     contentDescription: String? = null,
     toggle: Boolean = false,
+    busy: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val borderColor by animateColorAsState(
@@ -114,17 +119,25 @@ fun MeetingCallControlButton(
             border = BorderStroke(1.dp, borderColor),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Crossfade(
-                    targetState = icon,
-                    animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
-                    label = "controlIconSwap",
-                ) { vector ->
-                    Icon(
-                        imageVector = vector,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSize).alpha(if (enabled) 1f else DISABLED_ALPHA),
-                        tint = iconTint,
+                if (busy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(IconSize).testTag(MESSAGE_BUTTON_SPINNER_TAG),
+                        color = colors.primary,
+                        strokeWidth = SpinnerStroke,
                     )
+                } else {
+                    Crossfade(
+                        targetState = icon,
+                        animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
+                        label = "controlIconSwap",
+                    ) { vector ->
+                        Icon(
+                            imageVector = vector,
+                            contentDescription = null,
+                            modifier = Modifier.size(IconSize).alpha(if (enabled) 1f else DISABLED_ALPHA),
+                            tint = iconTint,
+                        )
+                    }
                 }
             }
         }
@@ -141,9 +154,9 @@ fun MeetingCallControlButton(
 
 /**
  * The control row. In-app: Minimize, Chat, Mute, Speaker spread evenly (iOS layout). External
- * ([showAudioControls] false): Minimize and Chat only, centered, since there is no in-app audio (D-05). Chat is
- * disabled with "Available soon" until Phase 12 wires chat (D-11). Mute and Speaker are disabled when
- * [audioControlsEnabled] is false (while the call is ending, WR-04).
+ * ([showAudioControls] false): Minimize and Chat only, centered, since there is no in-app audio (D-05). Chat opens the
+ * thread with the counterpart (D-11): it is enabled when [chatEnabled] (the peer id is known) and ignores taps while
+ * [chatBusy]. Mute and Speaker are disabled when [audioControlsEnabled] is false (while the call is ending, WR-04).
  */
 @Composable
 fun MeetingCallControls(
@@ -153,6 +166,9 @@ fun MeetingCallControls(
     onMinimize: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
+    onChat: () -> Unit,
+    chatEnabled: Boolean,
+    chatBusy: Boolean,
     modifier: Modifier = Modifier,
     audioControlsEnabled: Boolean = true,
 ) {
@@ -178,11 +194,11 @@ fun MeetingCallControls(
         MeetingCallControlButton(
             icon = Icons.Outlined.Forum,
             label = stringResource(R.string.call_control_chat),
-            onClick = {},
+            onClick = { if (!chatBusy) onChat() },
             modifier = cell.testTag(CALL_CONTROL_CHAT_TAG),
-            // PHASE-12: enable once in-call chat exists (D-11).
-            enabled = false,
-            stateDescription = stringResource(R.string.call_control_chat_unavailable),
+            enabled = chatEnabled,
+            stateDescription = if (chatBusy) stringResource(R.string.chat_entry_opening) else null,
+            busy = chatBusy,
         )
         if (showAudioControls) {
             MeetingCallControlButton(
@@ -221,8 +237,8 @@ private fun MeetingCallControlsPreview() {
     ClickMeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-                MeetingCallControls(true, isMuted = false, isSpeakerOn = true, {}, {}, {})
-                MeetingCallControls(false, isMuted = false, isSpeakerOn = false, {}, {}, {})
+                MeetingCallControls(true, isMuted = false, isSpeakerOn = true, {}, {}, {}, {}, true, false)
+                MeetingCallControls(false, isMuted = false, isSpeakerOn = false, {}, {}, {}, {}, false, false)
             }
         }
     }
