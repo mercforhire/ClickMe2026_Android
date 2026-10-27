@@ -611,7 +611,7 @@ Plans:
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
 **Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
-**Plans:** 3/15 plans executed
+**Plans:** 7/15 plans executed
 
 Plans:
 
@@ -623,10 +623,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 12-04-PLAN.md — Chat entry path: `ChatLauncher` (single flight), `ChatEntryViewModel`, `MessageButton` (text and icon), entry strings, Expert Profile Message button (CHAT-05)
-- [ ] 12-05-PLAN.md — Conversations list: load, realtime move-to-top and presence, session-local unread (`displayUnread`), quiet reloads, search, all states (CHAT-01, CHAT-04)
-- [ ] 12-06-PLAN.md — Thread ViewModel read side: page 1 of 30 with system events, loadEarlier, quiet reloads (shown, booking.update, reconnect), typing both ways, read receipts, block-state read (CHAT-02, CHAT-04, SAFE-03)
-- [ ] 12-07-PLAN.md — Report & Block screen: enum-reason Report card, §5 Block card, shared confirm dialog, unblock with NOT_BLOCKER latch, D-09 exits, error copy, shared safety components (SAFE-01..04)
+- [x] 12-04-PLAN.md — Chat entry path: `ChatLauncher` (single flight), `ChatEntryViewModel`, `MessageButton` (text and icon), entry strings, Expert Profile Message button (CHAT-05)
+- [x] 12-05-PLAN.md — Conversations list: load, realtime move-to-top and presence, session-local unread (`displayUnread`), quiet reloads, search, all states (CHAT-01, CHAT-04)
+- [x] 12-06-PLAN.md — Thread ViewModel read side: page 1 of 30 with system events, loadEarlier, quiet reloads (shown, booking.update, reconnect), typing both ways, read receipts, block-state read (CHAT-02, CHAT-04, SAFE-03)
+- [x] 12-07-PLAN.md — Report & Block screen: enum-reason Report card, §5 Block card, shared confirm dialog, unblock with NOT_BLOCKER latch, D-09 exits, error copy, shared safety components (SAFE-01..04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -744,7 +744,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
-| 12. Chat, Report & Block | 3/15 | In Progress | - |
+| 12. Chat, Report & Block | 7/15 | In Progress | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
