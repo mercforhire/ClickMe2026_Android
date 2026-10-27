@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Client Bookings & Cancellation** - My Bookings, Upcoming Booking Details, cancellation with refund preview, reschedule response (Week 4) (completed 2026-10-24)
 - [x] **Phase 9: Voice Call** - Join, Agora call in a microphone foreground service, overlay/pill, rejoin semantics (Week 4) (completed 2026-10-24)
 - [x] **Phase 10: Expert Topics & Availability** - Topics + Topic Editor with price floor, weekly availability and timezone (Week 5) (completed 2026-10-25)
-- [ ] **Phase 11: Expert Requests & Bookings** - Expert Dashboard, Incoming Requests → decision → Confirmed, expert bookings with Join and reschedule response (Week 5)
+- [x] **Phase 11: Expert Requests & Bookings** - Expert Dashboard, Incoming Requests → decision → Confirmed, expert bookings with Join and reschedule response (Week 5) (completed 2026-10-27)
 - [ ] **Phase 12: Chat, Report & Block** - Conversations, realtime chatting, initiateChat entry points, report/block/unblock (Week 6)
 - [ ] **Phase 13: Push, Notifications & Internal Testing** - FCM registration, PushRouter deep links, notifications list, Write Review, internal testing track (Week 6)
 - [ ] **Phase 14: Payouts & Account Settings** - Stripe Connect onboarding and earnings, profile hubs, edit profile, change password, delete account, help (Week 7)
@@ -552,7 +552,7 @@ Plans:
   4. The expert can accept or decline a client's reschedule request, sees a clear message on `409 SLOT_UNAVAILABLE`, and can cancel a booking.
 
 **Planning notes:** Phase 9 hand-off: the expert Join entry points call `CallStarter.startCall` (the call stack is role-agnostic; reuse `JoinCallButton` / `JoinClock`); guard expert reschedule with `CallGuard.attemptModifyBooking` (D-13). Phase 10 hand-off: add the Dashboard Availability entry by pushing `AvailabilityKey(AvailabilityOrigin.Dashboard)` (new `AvailabilityOrigin` value).
-**Plans:** 18/18 plans executed
+**Plans:** 18/18 plans complete
 Plans:
 - [x] 11-18-PLAN.md
 
@@ -710,7 +710,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 8. Client Bookings & Cancellation | 15/15 | Complete    | 2026-10-24 |
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
-| 11. Expert Requests & Bookings | 18/18 | In Progress | - |
+| 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
 | 12. Chat, Report & Block | 0/TBD | Not started | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |

@@ -1,19 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: 11
-current_phase_name: Expert Requests & Bookings
-status: executing
-stopped_at: Completed 11-15-PLAN.md
-last_updated: "2026-10-26T23:48:46.955Z"
-last_activity: 2026-10-26
-last_activity_desc: Phase 11 execution resumed (wave continue)
-state_head: bc97c5cea844cb8b59a93d2ef934751fa7c5efd9
+current_phase: 12
+current_phase_name: Chat, Report & Block
+status: ready_to_plan
+stopped_at: Phase 11 complete, ready to plan Phase 12
+last_updated: "2026-10-27T04:30:42.957Z"
+last_activity: 2026-10-27
+last_activity_desc: Phase 11 complete, transitioned to Phase 12
+state_head: 6f88534bd5c79f43e6805adadd2f946bd2747f70
 progress:
   total_phases: 17
-  completed_phases: 9
-  total_plans: 165
-  completed_plans: 160
+  completed_phases: 10
+  total_plans: 166
+  completed_plans: 162
+  percent: 59
 milestone_name: milestone
 ---
 
@@ -24,22 +25,22 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-10-19)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 11 — Expert Requests & Bookings
+**Current focus:** Phase 12 — Chat, Report & Block
 
 ## Current Position
 
-Phase: 11 (Expert Requests & Bookings) — EXECUTING
-Plan: 16 of 16
-Status: Executing Phase 11
-Last activity: 2026-10-26 — Phase 11 execution resumed (wave continue)
+Phase: 12 — Chat, Report & Block
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-27 — Phase 11 complete (UAT 7/7 incl. two-sided call re-test, verification passed 4/4, SECURITY threats_open 0); transitioned to Phase 12. Phase 2 still has open plans 02-15/02-16 (deferred).
 
-Progress: [█████░░░░░] 53%
+Progress: [██████░░░░] 59%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 132
+- Total plans completed: 150
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -56,6 +57,7 @@ Progress: [█████░░░░░] 53%
 | 08 | 15 | - | - |
 | 9 | 17 | - | - |
 | 10 | 20 | - | - |
+| 11 | 18 | - | - |
 
 **Recent Trend:**
 
@@ -233,10 +235,11 @@ Recent decisions affecting current work:
   - Reading the result: profile 0 and `remote joined` -> G-11-5 fixed (`/gsd-verify-work 11` resolves it). Profile 0, same booking confirmed, and no `remote joined` -> the profile hypothesis is wrong; capture the iOS Agora info log for the join and `didJoinedOfUid` next and reopen the debug session. `remote offline reason=2` (became audience) should never appear in COMMUNICATION.
 - [Phase 11] G-11-6 fix applied in the backend repo by 11-18; deployed `4c694e7` and /health confirmed; DEFERRED (human), non-blocking for the build, but G-11-6 stays OPEN until the device evidence exists. Symptom: Android expert and iOS client both CONNECT and both stay at "waiting for the other person". Cause (about 85-90%, `.planning/debug/android-ios-peers-never-meet-after-profile-fix.md`): the join endpoint echoed the `:id` URL casing as the Agora channel, so iOS (UPPERCASE) and Android (lowercase) were in different channels. Fix is on the server (backend commits `a2c4fee`..`4c694e7`, pushed per above); no Android change. Re-test on the Samsung SM-A075F (serial R8YYC1QFA6H; devDebug, production backend) as the expert with the iOS app as the client on ONE confirmed booking. adb: `~/Library/Android/sdk/platform-tools/adb -t <transport>`. Deciding evidence, in order:
   - [x] (1) Backend live: `curl -s https://clickme-backend-production.up.railway.app/health` returns `commit` equal to the deployed sha (`4c694e7`, checked 2026-10-26).
-  - [ ] (2) Installed Android build is current: `adb -t <transport> shell dumpsys package com.uptrendinvestments.clickmeapp | grep lastUpdateTime` is later than `git log -1 --format=%ci -- app` (no reinstall is needed otherwise; this plan changes no Android code).
-  - [ ] (3) Same booking on both phones, inside the join window. `adb -t <transport> logcat -c` first.
-  - [ ] (4) `adb -t <transport> logcat -d -s ClickMeCall CallService` shows `remote joined elapsed=` and `remote audio state=2`; both UIs leave "waiting for the other person"; two-way audio, mute, speaker, leave and rejoin work (11-UAT test 6). Optional: the iOS Xcode console join response now shows a lowercase `channel_name`.
+  - [x] (2) Installed Android build is current: `adb -t <transport> shell dumpsys package com.uptrendinvestments.clickmeapp | grep lastUpdateTime` is later than `git log -1 --format=%ci -- app` (no reinstall is needed otherwise; this plan changes no Android code).
+  - [x] (3) Same booking on both phones, inside the join window. `adb -t <transport> logcat -c` first.
+  - [x] (4) `adb -t <transport> logcat -d -s ClickMeCall CallService` shows `remote joined elapsed=` and `remote audio state=2`; both UIs leave "waiting for the other person"; two-way audio, mute, speaker, leave and rejoin work (11-UAT test 6). Optional: the iOS Xcode console join response now shows a lowercase `channel_name`.
   - [ ] (5) Then 09-HUMAN-UAT items 1, 2 and 5.
+  - RESOLVED 2026-10-27: 11-UAT test 7 passed on device (logcat `remote joined elapsed=148`, `remote audio state=2`); G-11-5 and G-11-6 resolved. 09-HUMAN-UAT items 1, 2, 5 are unblocked but not yet run (verifier: test 7 covers them only partly).
   - Reading the result: `remote joined` and Active on both -> G-11-6 fixed (`/gsd-verify-work 11` resolves it, and G-11-5 with it). Backend live, same booking, build current, and still no `remote joined` -> the casing hypothesis alone is not the whole story; capture the iOS Agora info log for the join and `didJoinedOfUid` (iOS DEBUG enables `setLogFilter(.info)`), compare channel strings byte for byte, and reopen the debug session.
 
 ## Deferred Items
@@ -249,6 +252,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-26T18:45:58.837Z
-Stopped at: Completed 11-15-PLAN.md
+Last session: 2026-10-27
+Stopped at: Phase 11 complete, ready to plan Phase 12
 Resume file: None

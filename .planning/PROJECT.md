@@ -23,6 +23,7 @@ The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. An
 - BOOK-01..BOOK-04: Make a Booking (topic sheet, custom month calendar, slots for three months regrouped by the client's local date with dedup and held slots disabled, expert timezone note, meeting type with the meeting-link check, notes), the free path via `POST /bookings/request`, and Request Sent from `GET /client/bookings/:id`. A booking that succeeds after the app is backgrounded survives process death (attempt id in saved state plus a short-lived DataStore record). Validated in Phase 6: Booking Flow & Free Bookings (2026-10-22; 1340 unit tests; three code-review rounds fixed; device UAT 15/16 with the far-zone check skipped; security 47/47 closed).
 - BOOK-05..BOOK-09: My Bookings as the Bookings tab root (Upcoming/Past with the completed-but-not-ended rejoin rule, pull-to-refresh, quiet reloads on resume, tab re-show and `booking.update`), Upcoming Booking Details (status, pending banner, inert Phase 9 join card, Cancel), two-step cancellation with the strict-24h refund preview and a single-flight `POST /client/bookings/:id/cancel`, Booking Summary with Book Again, and the shared reschedule response card (accept with one-shot saved-card recovery, decline with reason). Validated in Phase 8: Client Bookings & Cancellation (2026-10-24; 1888 unit tests per flavor, R8 release green; 6 code-review warnings open in 08-REVIEW.md, WR-01/WR-06 recommended before Phase 9; 5 device checks deferred in 08-HUMAN-UAT.md).
 - CALL-01..CALL-08: in-app Agora voice calls from all three Join sites (Upcoming Details, My Bookings card, Today's Sessions) through one app-scoped `CallCenter`; microphone permission with rationale and settings recovery; a microphone foreground service with an ongoing notification (tap to expand, End call); a root call overlay that minimizes to a pill across tabs and mode switches; the "you're in a call" guard on mode switch, logout, add payment method and cancel; waiting-for-peer on peer hang-up, rejoin, a schedule-anchored timer with the 5-minute amber stretch and the end + 3600 s cutoff; confirm-connection exactly once; leave-then-`/end` hang-up and local teardown on forced logout. External (Skype/Zoom) links open app-first with a Custom Tab fallback. Android keeps Join enabled until max(start + 60 min, scheduled end), unlike iOS. `:spikes:agora` removed. Validated in Phase 9: Voice Call (2026-10-24; 2237 unit tests per flavor, lint and R8 release green; all 10 code-review warnings fixed; 9 device checks deferred in 09-HUMAN-UAT.md, paid end-to-end blocked on the test-mode Stripe backend).
+- EXP-05..EXP-09: the Expert Dashboard (pending count, reschedule banner, Today's Sessions with Join, weekly earnings, Stripe payout onboarding card opened in a Custom Tab), Incoming Requests → Request Decision (net earnings only, accept/decline with reason, expiry and ALREADY_PROCESSED handling) → Booking Confirmed with Add to Calendar, expert Upcoming/Past bookings with Booking Summary, cancellation and the expert reschedule response, and expert Join into the shared `CallCenter`. Cross-platform calls work: Android ↔ iOS meet in one Agora channel after three gap fixes (engine context NPE, COMMUNICATION profile, and a backend fix that derives the channel from `booking.id` in lowercase, deployed `4c694e7`). Validated in Phase 11: Expert Requests & Bookings (2026-10-27; 2961 unit tests; UAT 7/7 incl. a two-sided Android expert ↔ iOS client call; verification 4/4; security 70/70 closed; review WR-01/IN-02 open in 11-REVIEW-DISPOSITION.md; 09-HUMAN-UAT items 1, 2, 5 unblocked but not yet run).
 
 ### Active
 
@@ -34,7 +35,7 @@ Full checkable list with IDs: `.planning/REQUIREMENTS.md` (99 v1 requirements).
 - [x] Client booking: calendar and slot picker, free booking, My Bookings, details, cancellation, responding to reschedules (BOOK-01 to BOOK-09), Phases 6 and 8
 - [ ] Payments: saved cards, short-lead, long-lead and 3DS paid paths (PAY-01 to PAY-07). Code complete in Phase 7 (2026-10-23; 1556 unit tests; WR-02..07 fixed). Not validated: every card device check is blocked because the only backend runs Stripe in live mode and the dev `pk_test_` key is a sandbox. CR-01 (3DS reachability under off_session + error_on_requires_action) is an open cross-platform design risk. See 07-HUMAN-UAT.md.
 - [ ] Voice call: Agora in a microphone foreground service, overlay/pill, rejoin semantics (CALL-01 to CALL-08)
-- [ ] Expert core: topics, availability, dashboard, requests, expert bookings (EXP-01 to EXP-09)
+- [x] Expert core: topics, availability, dashboard, requests, expert bookings (EXP-01 to EXP-09), Phases 10–11
 - [ ] Chat, report/block/unblock (CHAT-01 to CHAT-05, SAFE-01 to SAFE-04)
 - [ ] Push, notifications list, write review (PUSH-01 to PUSH-05, REV-01)
 - [ ] Payouts, profile and settings, account deletion (PAYOUT-01 to PAYOUT-03, PROF-01 to PROF-05)
@@ -136,12 +137,13 @@ Locked decisions from the ADR (`CLAUDE.md`) and the user's package decision at i
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Reschedule scope: only *initiating* a reschedule is deferred. Responding to one is in the MVP (client BOOK-09, expert EXP-09). | Without a response path, bookings from iOS users stay stuck in `pending_reschedule`. | Pending |
+| Reschedule scope: only *initiating* a reschedule is deferred. Responding to one is in the MVP (client BOOK-09, expert EXP-09). | Without a response path, bookings from iOS users stay stuck in `pending_reschedule`. | Good — client (Phase 8) and expert (Phase 11) response shipped |
 | Package `com.uptrendinvestments.clickmeapp` replaces `com.example.clickme_android` | Play rejects `com.example`. It matches the iOS bundle ID and can't change after the first upload. | Pending |
 | Merge the ~40 per-screen iOS color sets into one Material 3 theme | Platform convention. Avoids copying per-screen styling. | Pending |
 | Fix documented iOS defects instead of copying them | Each fix is backed by a backend spec or by the iOS code's own stated intent. | Pending |
 | Week 7 and Week 8 success criteria (the PRD has none) were confirmed by the user | Week 7: Connect onboarding, profile/avatar/password/delete, and loading/empty/error states. Week 8: the cross-platform matrix passes both ways and the production release is live. | Pending |
 | Roadmap granularity: 17 phases, about 2 per PRD week (3 in Week 3) | Each phase is plannable and executable in 2–4 days. Week 3 is the highest-risk week. | Pending |
+| Server-bound identifiers (Agora channel, echoed booking ids) come from the loaded DB row, never from request path text (G-11-6, backend `4c694e7`) | iOS sends UUIDs uppercase and Android lowercase, so the call peers were split across two channels. Fixing it on the server also covers iOS builds already in the field. | Good — two-sided call verified 2026-10-27 |
 | Keep EncryptedSharedPreferences despite the upstream deprecation | Locked by the ADR. It still works. | Revisit |
 
 ## Evolution
@@ -162,4 +164,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-24 after Phase 9 completion*
+*Last updated: 2026-10-27 after Phase 11 completion*
