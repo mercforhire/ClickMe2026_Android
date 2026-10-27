@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -14,8 +15,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTextInput
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.BlockState
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_INPUT_TAG
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_SEND_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -84,6 +88,8 @@ class ChatThreadScreenTest {
     private var reportBlockCalls = 0
     private var viewProfileCalls = 0
     private var refreshFailureConsumed = 0
+    private val composerEdits = mutableListOf<String>()
+    private var sendCalls = 0
     private var shown by mutableStateOf(ChatThreadUiState(threadId = "t1"))
 
     private fun show(
@@ -107,6 +113,8 @@ class ChatThreadScreenTest {
                     onViewProfile = { viewProfileCalls++ },
                     onOpenReportBlock = { reportBlockCalls++ },
                     onRefreshFailureConsumed = { refreshFailureConsumed++ },
+                    onComposerChanged = { composerEdits += it },
+                    onSend = { sendCalls++ },
                 )
             }
         }
@@ -387,5 +395,46 @@ class ChatThreadScreenTest {
 
         rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertIsDisplayed()
         assertTrue(refreshFailureConsumed >= 1)
+    }
+
+    @Test
+    fun composerShowsWhenLoadedAndBindsSend() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(composerText = "On my way"))
+
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsEnabled()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).performTextInput("!")
+        assertTrue(composerEdits.isNotEmpty())
+        rule.onNodeWithTag(CHAT_SEND_TAG).performClick()
+        assertEquals(1, sendCalls)
+    }
+
+    @Test
+    fun composerShowsPlaceholderWhenEmpty() {
+        show(loaded(listOf(incoming("m1", "Hello"))))
+
+        rule.onNodeWithText("Message").assertIsDisplayed()
+        rule.onNodeWithTag(CHAT_SEND_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun composerDisabledWhileLoadingOrFailed() {
+        show(ChatThreadUiState(threadId = "t1", load = ThreadLoad.Loading))
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsNotEnabled()
+        rule.onNodeWithTag(CHAT_SEND_TAG).assertIsNotEnabled()
+
+        shown = ChatThreadUiState(threadId = "t1", load = ThreadLoad.Failed(FieldError.Text("Down")))
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun ownSendingBubbleVisibleAtBottom() {
+        val base = loaded(manyMessages(20))
+        show(base)
+
+        shown = base.copy(items = base.items + own("c1", "Just sent", Delivery.Sending, at = "2026-10-27T12:00:00Z"))
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Just sent").assertIsDisplayed()
+        rule.onNodeWithText("Sending…").assertIsDisplayed()
     }
 }

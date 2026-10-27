@@ -30,4 +30,6 @@
     <string name="chat_thread_menu_block_or_report">Block or report</string>
     <string name="chat_thread_menu_unblock_or_report">Unblock or report</string>
     <string name="chat_thread_menu_report">Report</string>
+    <string name="chat_composer_placeholder">Message</string>
+    <string name="chat_composer_send">Send message</string>
 </resources>

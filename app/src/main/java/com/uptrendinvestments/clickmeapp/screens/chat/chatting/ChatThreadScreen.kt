@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -55,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatComposer
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatEmptyThread
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadError
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadSkeleton
@@ -125,13 +128,15 @@ fun ChatThreadScreen(
         onViewProfile = onViewProfile,
         onOpenReportBlock = onOpenReportBlock,
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
+        onComposerChanged = viewModel::onComposerChanged,
+        onSend = viewModel::send,
         modifier = modifier,
     )
 }
 
 /**
  * Stateless thread: top bar with the peer and the overflow menu, the message list (oldest to newest, starting at the
- * newest message via `reverseLayout`), the typing strip and the [bottomBar] slot for the composer. The first load shows
+ * newest message via `reverseLayout`), the typing strip and the composer. The first load shows
  * a skeleton, a failed load an error with Retry, and a loaded empty thread the empty state. [zone], [locale] and
  * [timeFormat] are parameters so tests pass fixed values.
  */
@@ -152,9 +157,11 @@ fun ChatThreadContent(
     onViewProfile: () -> Unit,
     onOpenReportBlock: () -> Unit,
     onRefreshFailureConsumed: () -> Unit,
+    onComposerChanged: (String) -> Unit,
+    onSend: () -> Unit,
     modifier: Modifier = Modifier,
-    bottomBar: @Composable () -> Unit = {},
 ) {
+    val focusRequester = remember { FocusRequester() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.chat_thread_refresh_failed)
@@ -184,7 +191,8 @@ fun ChatThreadContent(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // The Scaffold padding already holds the system-bar insets; consuming them stops imePadding adding them twice.
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding)) {
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = onRefresh,
@@ -213,7 +221,15 @@ fun ChatThreadContent(
                 visible = state.peerTyping,
                 name = peerLabel,
             )
-            bottomBar()
+            ChatComposer(
+                text = state.composerText,
+                enabled = state.load is ThreadLoad.Loaded,
+                canSend = state.canSend,
+                atCap = state.isComposerAtCap,
+                onTextChange = onComposerChanged,
+                onSend = onSend,
+                focusRequester = focusRequester,
+            )
         }
     }
 }
