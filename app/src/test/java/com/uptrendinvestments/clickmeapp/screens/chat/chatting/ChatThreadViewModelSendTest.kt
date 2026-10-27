@@ -308,6 +308,112 @@ class ChatThreadViewModelSendTest {
         }
 
     @Test
+    fun sendSurvivesLeavingTheThread() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            var finished = false
+            h.api.sendChatMessageHandler = { _, _ ->
+                gate.await()
+                finished = true
+                sendAck("m9", at(5))
+            }
+            val vm = loadedViewModel()
+            vm.onComposerChanged("hi")
+            vm.send()
+            runCurrent()
+            h.clear(vm)
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(finished)
+            assertEquals(1, h.api.sentChatMessages.size)
+            assertNull(h.session.takeUnsentText("t1", ME))
+        }
+
+    @Test
+    fun networkFailureAfterLeavingRestoresTextOnNextOpen() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            h.api.sendChatMessageHandler = { _, _ ->
+                gate.await()
+                throw IOException("offline")
+            }
+            val vm = loadedViewModel()
+            vm.onComposerChanged("hi")
+            vm.send()
+            runCurrent()
+            h.clear(vm)
+            gate.complete(Unit)
+            runCurrent()
+            val reopened = h.viewModel()
+            runCurrent()
+            assertEquals("hi", reopened.state.composerText)
+            val third = h.viewModel()
+            runCurrent()
+            assertEquals("", third.state.composerText)
+        }
+
+    @Test
+    fun refusedSendAfterLeavingRestoresTextOnNextOpen() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            val refusal = refuse(403, "THREAD_BLOCKED", "x")
+            h.api.sendChatMessageHandler = { id, body ->
+                gate.await()
+                refusal(id, body)
+            }
+            val vm = loadedViewModel()
+            vm.onComposerChanged("hi")
+            vm.send()
+            runCurrent()
+            h.clear(vm)
+            gate.complete(Unit)
+            runCurrent()
+            val reopened = h.viewModel()
+            runCurrent()
+            assertEquals("hi", reopened.state.composerText)
+        }
+
+    @Test
+    fun textKeptWhileTheThreadIsOpenAgainLandsInItsComposer() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            h.api.sendChatMessageHandler = { _, _ ->
+                gate.await()
+                throw IOException("offline")
+            }
+            val first = loadedViewModel()
+            first.onComposerChanged("hi")
+            first.send()
+            runCurrent()
+            h.clear(first)
+            val second = h.viewModel()
+            runCurrent()
+            second.onComposerChanged("later")
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals("hi\nlater", second.state.composerText)
+        }
+
+    @Test
+    fun liveFailureStillKeepsTheFailedBubble() =
+        runTest(main.testDispatcher) {
+            h.api.sendChatMessageHandler = { _, _ -> throw IOException("offline") }
+            val vm = loadedViewModel()
+            vm.onComposerChanged("hi")
+            vm.send()
+            runCurrent()
+            assertEquals(
+                Delivery.Failed,
+                vm.state.items
+                    .single()
+                    .message()
+                    .delivery,
+            )
+            assertEquals("", vm.state.composerText)
+            assertNull(h.session.takeUnsentText("t1", ME))
+        }
+
+    @Test
     fun composerCapTruncatesPaste() =
         runTest(main.testDispatcher) {
             val vm = loadedViewModel()
