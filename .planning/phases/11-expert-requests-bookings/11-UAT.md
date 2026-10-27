@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 11-expert-requests-bookings
 source: [11-VERIFICATION.md]
 started: 2026-10-26T18:58:34Z
-updated: 2026-10-27T01:41:27.200Z
+updated: 2026-10-27T02:10:00Z
 ---
 
 ## Current Test
@@ -108,5 +108,19 @@ blocked: 0
   reason: "User reported: Still stuck waiting for the other person."
   severity: major
   test: 6
-  artifacts: []
-  missing: []
+  evidence: "Fresh build (installed 21:39:38) confirmed channelProfile:0 / clientRoleType:1 in agoraapi.log and conn state=3 reason=1 on the lowercase booking channel; the new remote-presence logging (onUserJoined/onUserOffline/onRemoteAudioStateChanged) never fired across 30+ s alone in the channel. User: two iOS devices meet fine; Android<->iOS never does."
+  root_cause: "Probable (~85-90%): Android and iOS join different Agora channels whose names differ only by letter case. Backend call.controller.js join uses the raw URL param (bookingId = req.params.id) as the token channel and the returned channel_name (agora.js channelName = bookingId). iOS builds the join URL with UUID.uuidString (UPPERCASE in Swift, ClickMeAPI.swift url(_:id:)); Android uses the lowercase id from JSON. Postgres matches uuids case-insensitively, so both joins authorize and succeed with valid tokens for their own string. iOS<->iOS and Android<->Android each share one casing, which is why only the cross-platform pair fails. Also the real cause of G-11-5; the 11-17 profile change is correct and stays."
+  artifacts:
+    - path: "/Users/LeonChen/Documents/ClickMe2026 Backend/src/controllers/call.controller.js"
+      issue: "join: bookingId = req.params.id (raw URL casing) passed to generateToken instead of the loaded booking.id"
+    - path: "/Users/LeonChen/Documents/ClickMe2026 Backend/src/services/agora.js"
+      issue: "channelName = bookingId verbatim"
+    - path: "/Users/LeonChen/Documents/ClickMe2026/ClickMe2026/Network/ClickMeAPI.swift"
+      issue: "url(_:id:) uses id.uuidString (uppercase) for join/confirm/end"
+    - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/network/ (bookings join call)"
+      issue: "Sends the lowercase booking id, so its channel_name differs in case from iOS's"
+  missing:
+    - "Make both platforms land on one channel string: backend canonicalizes the channel to booking.id / lowercase (fixes installed iOS builds, needs Railway deploy + backend test), and/or Android sends the booking id uppercased in the call endpoints' path to match iOS (no backend deploy; Android<->Android also stays consistent). Never re-case channel_name locally: the token is bound to the exact signed string."
+    - "Optional: log a no-value boolean (channel has uppercase) at join"
+    - "Two-sided re-test of 11-UAT test 6 on a fresh APK; expect a 'remote joined' logcat line and Active on both phones; then 09-HUMAN-UAT items 1, 2, 5"
+  debug_session: ".planning/debug/android-ios-peers-never-meet-after-profile-fix.md"
