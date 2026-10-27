@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -66,7 +67,7 @@ class HomeShellsTest {
         composeRule.setContent {
             ClickMeTheme {
                 expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-                val pendingThread = chatLaunch?.thread?.pending?.collectAsState()?.value
+                val pendingThread = pendingThreadOf(chatLaunch)
                 HomeClientShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
@@ -93,7 +94,7 @@ class HomeShellsTest {
         composeRule.setContent {
             ClickMeTheme {
                 expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-                val pendingThread = chatLaunch?.thread?.pending?.collectAsState()?.value
+                val pendingThread = pendingThreadOf(chatLaunch)
                 HomeExpertShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
@@ -847,6 +848,13 @@ class HomeShellsTest {
         }
     }
 
+    @Composable
+    private fun pendingThreadOf(launch: ChatLaunchRequest?): ChatThreadKey? {
+        if (launch == null) return null
+        val pending by launch.thread.pending.collectAsState()
+        return pending
+    }
+
     private fun thread(
         id: String,
         name: String,
@@ -869,7 +877,7 @@ class HomeShellsTest {
         composeRule.setContent {
             ClickMeTheme {
                 expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-                val pendingThread = launch.thread.pending.collectAsState().value
+                val pendingThread = pendingThreadOf(launch)
                 HomeClientShell(
                     avatarUrl = null,
                     showDebugAffordances = false,

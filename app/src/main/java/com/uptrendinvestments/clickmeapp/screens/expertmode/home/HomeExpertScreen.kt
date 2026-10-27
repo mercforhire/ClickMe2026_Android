@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -31,6 +32,9 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.chatEntries
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -70,7 +74,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 fun HomeExpertScreen(
     onSwitchMode: (AppMode) -> Unit,
     viewModel: HomeExpertViewModel = hiltViewModel(),
+    chatLaunch: ChatLaunchViewModel = hiltViewModel(),
 ) {
+    val pendingChatThread by chatLaunch.pendingThread.collectAsStateWithLifecycle()
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
     val debugRefreshStatus by viewModel.debugRefreshStatus.collectAsStateWithLifecycle()
     HomeExpertShell(
@@ -113,7 +119,10 @@ fun HomeExpertScreen(
             bookingConfirmedEntries(navigator)
             expertBookingSummaryEntries(navigator)
             expertCancelEntries(navigator)
+            chatEntries(navigator, AppMode.Expert)
         },
+        pendingChatThread = pendingChatThread,
+        onConsumeChatThread = chatLaunch::consumeThread,
     )
 }
 
@@ -121,10 +130,12 @@ fun HomeExpertScreen(
  * The expert 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Four slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * Five slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [topicsRoot], [dashboardRoot] and [bookingsRoot] render the Topics, Dashboard and Bookings tab roots (defaults:
  * the placeholders, so Robolectric can render the shell with no Hilt graph) and [detailEntries] registers extra
- * routes pushed on top of a tab, such as the Topic Editor and Availability.
+ * routes pushed on top of a tab, such as the Topic Editor and Availability. [pendingChatThread] /
+ * [onConsumeChatThread] are the chat hand-off: when a thread key is pending the shell consumes it and opens it on the
+ * Chats tab ([Navigator.openChatThread]).
  */
 @Composable
 fun HomeExpertShell(
@@ -144,9 +155,18 @@ fun HomeExpertShell(
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(ExpertBookingsRoot) },
     topicsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(TopicsRoot) },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
+    pendingChatThread: ChatThreadKey? = null,
+    onConsumeChatThread: () -> ChatThreadKey? = { null },
 ) {
     val state = rememberNavigationState(expertStartTab, expertTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
+
+    // A Message tap, or the in-call Chat control, posts a thread. Consume the slot so it applies exactly once.
+    LaunchedEffect(pendingChatThread) {
+        if (pendingChatThread != null) {
+            onConsumeChatThread()?.let { navigator.openChatThread(ExpertChatsRoot, it) }
+        }
+    }
 
     HomeTabScaffold(
         tabs = expertTabs,

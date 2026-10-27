@@ -129,6 +129,31 @@ class Navigator(
         state.topLevelRoute = tab
     }
 
+    /**
+     * Select [tab] (the Chats tab) and show [key] (a chat thread) on its stack (D-13: every Message tap switches to
+     * Chats and pushes the thread, from any tab or from the in-call control).
+     *
+     * A deliberate tightening of iOS `chatsPath.push`: when [key] is not already the top of [tab]'s stack, the stack
+     * is popped to its root first, so Back from a thread always lands on the Conversations root and a second
+     * hand-off replaces the open thread instead of stacking on it (UI-SPEC Navigation, RESEARCH A5). When [key] is
+     * already on top, only the tab is selected. The originating tab keeps its own back stack.
+     *
+     * Unlike [navigateInTab] it never leaves stale entries on the target stack.
+     */
+    fun openChatThread(
+        tab: NavKey,
+        key: NavKey,
+    ) {
+        require(tab in state.backStacks) { "Unknown tab: $tab" }
+        val stack = state.backStacks.getValue(tab)
+        if (stack.lastOrNull() != key) {
+            while (stack.size > 1) stack.removeAt(stack.lastIndex)
+            stack.add(key)
+        }
+        state.lastTransition = if (tab == state.topLevelRoute) NavTransition.Push else NavTransition.TabSwitch
+        state.topLevelRoute = tab
+    }
+
     private fun currentStack() =
         state.backStacks[state.topLevelRoute] ?: error("Stack for ${state.topLevelRoute} not found")
 }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -35,6 +36,9 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.chatEntries
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationScreen
@@ -71,7 +75,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 fun HomeClientScreen(
     onSwitchMode: (AppMode) -> Unit,
     viewModel: HomeClientViewModel = hiltViewModel(),
+    chatLaunch: ChatLaunchViewModel = hiltViewModel(),
 ) {
+    val pendingChatThread by chatLaunch.pendingThread.collectAsStateWithLifecycle()
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
     val debugRefreshStatus by viewModel.debugRefreshStatus.collectAsStateWithLifecycle()
     val hasSeenOnboarding by viewModel.hasSeenOnboarding.collectAsStateWithLifecycle()
@@ -181,7 +187,10 @@ fun HomeClientScreen(
                     clientPaymentMethodsEntry(navigator) { onBack ->
                         PaymentMethodsScreen(viewModel = hiltViewModel(), onBack = onBack)
                     }
+                    chatEntries(navigator, AppMode.Client)
                 },
+                pendingChatThread = pendingChatThread,
+                onConsumeChatThread = chatLaunch::consumeThread,
             )
         },
     )
@@ -214,12 +223,13 @@ private const val ONBOARDING_FADE_MS = 200
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Three slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * Four slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button),
  * [bookingsRoot] renders the Bookings tab root (default: the placeholder), and [detailEntries] registers extra
  * routes pushed on top of a tab, such as the Expert Profile, the booking flow routes (see
  * [clientBookingFlowEntries]), the booking-management routes (see [clientBookingManagementEntries]) and Payment
- * Methods (see [clientPaymentMethodsEntry]).
+ * Methods (see [clientPaymentMethodsEntry]). [pendingChatThread] / [onConsumeChatThread] are the chat hand-off: when a
+ * thread key is pending the shell consumes it and opens it on the Chats tab ([Navigator.openChatThread]).
  */
 @Composable
 fun HomeClientShell(
@@ -238,9 +248,18 @@ fun HomeClientShell(
     },
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientBookingsRoot) },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
+    pendingChatThread: ChatThreadKey? = null,
+    onConsumeChatThread: () -> ChatThreadKey? = { null },
 ) {
     val state = rememberNavigationState(clientStartTab, clientTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
+
+    // A Message tap, or the in-call Chat control, posts a thread. Consume the slot so it applies exactly once.
+    LaunchedEffect(pendingChatThread) {
+        if (pendingChatThread != null) {
+            onConsumeChatThread()?.let { navigator.openChatThread(ClientChatsRoot, it) }
+        }
+    }
 
     HomeTabScaffold(
         tabs = clientTabs,
