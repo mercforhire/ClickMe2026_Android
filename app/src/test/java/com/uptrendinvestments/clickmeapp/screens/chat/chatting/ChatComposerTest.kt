@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -40,7 +41,7 @@ class ChatComposerTest {
                     atCap = atCap,
                     onTextChange = { edits += it },
                     onSend = { sends++ },
-                    focusRequester = FocusRequester(),
+                    focusRequester = remember { FocusRequester() },
                 )
             }
         }

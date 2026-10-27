@@ -130,7 +130,7 @@ From the PRD's Topics + Topic Editor, Availability, Expert Dashboard, Incoming R
 
 From the PRD's Chat section (Week 6).
 
-- [ ] **CHAT-01**: User can view their conversations list.
+- [ ] **CHAT-01**: User can view their conversations list. (Phase 12: the row unread badge is session-local until the backend maintains `unread_count`.)
 - [ ] **CHAT-02**: User can read a conversation in pages of 30 messages, newest first, with `loadEarlier` prepending older pages. Booking system-event rows appear inline. Messages are text only.
 - [ ] **CHAT-03**: A sent message appears immediately (optimistic send) and is reconciled with the server copy by `client_msg_id`.
 - [ ] **CHAT-04**: User sees read status and typing indicators driven by realtime events.
@@ -142,7 +142,7 @@ From the PRD's Report / block / unblock (Week 6; USER-REPORTING.md, CHAT-UNBLOCK
 
 - [ ] **SAFE-01**: User can report another user from chat and from Expert Profile. The app sends one of the six report-reason enum values, not a display label.
 - [ ] **SAFE-02**: User can block another user from chat and from Expert Profile.
-- [ ] **SAFE-03**: In a blocked thread the composer is disabled and a banner is shown. Unblock appears only when `blocked_by_me` is true. When the other side blocked the user, the thread shows "You can't reply to this conversation" with no Unblock button.
+- [ ] **SAFE-03**: In a blocked thread the composer is disabled and a banner is shown. Unblock appears only when `blocked_by_me` is true. When the other side blocked the user, the thread shows "You can't reply to this conversation" with no Unblock button. (Phase 12: a thread absent from `GET /chats` that this session blocked shows as blocked by me.)
 - [ ] **SAFE-04**: `THREAD_BLOCKED`, `RECIPIENT_UNAVAILABLE` and `403 NOT_BLOCKER` responses show clear messages instead of generic failures.
 
 ### Push & Notifications
