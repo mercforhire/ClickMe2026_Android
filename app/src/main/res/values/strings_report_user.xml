@@ -20,4 +20,12 @@
     <string name="report_error_title">Couldn\'t send report</string>
     <string name="report_error_rate_limited">Please try again later.</string>
     <string name="report_error_unavailable">This user is unavailable.</string>
+    <string name="profile_menu_more">More options</string>
+    <string name="profile_menu_report">Report this profile</string>
+    <string name="profile_menu_block">Block %1$s</string>
+    <string name="report_sheet_title">Report %1$s</string>
+    <string name="report_sheet_subtitle">Why are you reporting %1$s?</string>
+    <string name="report_sheet_cancel">Cancel</string>
+    <string name="profile_blocked_snackbar">You blocked %1$s</string>
+    <string name="profile_blocked_snackbar_fallback">You blocked this user</string>
 </resources>
