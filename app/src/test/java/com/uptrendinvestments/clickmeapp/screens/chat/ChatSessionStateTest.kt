@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.chat
 
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,5 +45,49 @@ class ChatSessionStateTest {
 
             assertNull(state.openThreadId.value)
             assertFalse(state.isBlockedByMe("T1"))
+        }
+
+    @Test
+    fun unsentTextIsPerOwnerAndThreadAndTakenOnce() {
+        val state = ChatSessionState()
+        state.keepUnsentText("T1", "Me", "hi")
+
+        assertNull(state.takeUnsentText("t1", "other"))
+        assertNull(state.takeUnsentText("t2", "me"))
+        assertNull(state.takeUnsentText("t1", null))
+        assertEquals("hi", state.takeUnsentText("t1", "me"))
+        assertNull(state.takeUnsentText("t1", "me"))
+    }
+
+    @Test
+    fun unsentTextsForOneThreadJoinInOrder() {
+        val state = ChatSessionState()
+        state.keepUnsentText("t1", "me", "a")
+        state.keepUnsentText("T1", "ME", "b")
+
+        assertEquals("a\nb", state.takeUnsentText("t1", "me"))
+    }
+
+    @Test
+    fun unsentKeysSignalCarriesNoText() =
+        runTest {
+            val state = ChatSessionState()
+            state.keepUnsentText("t1", "me", "secret words")
+
+            val keys = state.unsentKeys.first()
+
+            assertEquals(1, keys.size)
+            assertFalse(keys.any { it.contains("secret") })
+        }
+
+    @Test
+    fun clearSessionDataDropsUnsentText() =
+        runTest {
+            val state = ChatSessionState()
+            state.keepUnsentText("t1", "me", "hi")
+
+            state.clearSessionData()
+
+            assertNull(state.takeUnsentText("t1", "me"))
         }
 }

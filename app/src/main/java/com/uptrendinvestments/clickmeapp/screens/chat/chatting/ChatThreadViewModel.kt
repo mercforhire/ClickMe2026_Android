@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.managers.CurrentUserIdProvider
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
@@ -15,6 +16,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.ClientMsgIdGenerator
 import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -22,7 +24,10 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +57,7 @@ class ChatThreadViewModel
         private val currentUser: CurrentUserIdProvider,
         private val launchRequest: ChatLaunchRequest,
         private val clientMsgIds: ClientMsgIdGenerator,
+        @ApplicationScope private val sendScope: CoroutineScope,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -109,6 +115,14 @@ class ChatThreadViewModel
             observeRealtime()
             // Block state is read in parallel with page 1 (SAFE-03); a failed scan keeps the normal composer.
             refreshBlockState()
+            // Text of a send that failed after its screen closed returns to the composer (WR-03). The first emission
+            // takes text kept before this ViewModel existed; later ones take text kept by an older ViewModel of this
+            // thread whose send failed after this one opened.
+            viewModelScope.launch {
+                sessionState.unsentKeys.collect {
+                    sessionState.takeUnsentText(threadId, currentUser.currentUserId())?.let(::restoreToComposer)
+                }
+            }
             // A notice posted before this ViewModel existed, or while it lives, is taken when it is for this thread.
             viewModelScope.launch {
                 launchRequest.threadNotice.pending
@@ -193,15 +207,29 @@ class ChatThreadViewModel
             deliver(id, trimmed)
         }
 
-        /** Posts one message and applies the outcome to its bubble. Several deliveries can be in flight. */
+        /**
+         * Posts one message and applies the outcome to its bubble. Several deliveries can be in flight.
+         *
+         * The POST runs in the application scope ([sendScope]) and is only awaited in `viewModelScope`, so leaving the
+         * thread right after Send does not cancel it (WR-03). iOS does the same with an unstructured `Task`. A request
+         * delivered late or twice is harmless: the server dedupes by (thread, sender, client_msg_id).
+         *
+         * While the screen is alive the outcome is applied to the bubble as before (D-01, D-03). If the screen goes
+         * away first and the request then fails, there is no bubble left, so the text is kept in [ChatSessionState]
+         * and returned to this thread's composer the next time this user opens it. That is the only state shared across
+         * screens: there is no queue and no automatic retry (D-02). A request that succeeds keeps nothing, because the
+         * server has the message and the next load shows it as sent.
+         */
         private fun deliver(
             clientMsgId: String,
             text: String,
         ) {
             inFlight += clientMsgId
+            val ownerId = currentUser.currentUserId()
+            val request = sendScope.async { repository.send(threadId, text, clientMsgId) }
             viewModelScope.launch {
                 try {
-                    val ack = repository.send(threadId, text, clientMsgId)
+                    val ack = request.await()
                     _uiState.update {
                         it.copy(items = ThreadReducer.ack(it.items, clientMsgId, ack.messageId, ack.timestamp))
                     }
@@ -212,6 +240,14 @@ class ChatThreadViewModel
                         // A network error, a 5xx or an unreadable response keeps the bubble as Failed (D-01).
                         _uiState.update { it.copy(items = ThreadReducer.fail(it.items, clientMsgId)) }
                     }
+                } catch (e: CancellationException) {
+                    // This ViewModel was cleared while the request ran; the request itself carries on.
+                    if (ownerId != null) {
+                        request.invokeOnCompletion { cause ->
+                            if (cause != null) sessionState.keepUnsentText(threadId, ownerId, text)
+                        }
+                    }
+                    throw e
                 } finally {
                     inFlight -= clientMsgId
                 }
@@ -438,12 +474,28 @@ class ChatThreadViewModel
             startLoad(if (_uiState.value.load is ThreadLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
         }
 
+        /**
+         * Takes a one-time notice that belongs to this thread. A [ThreadNotice.Unblocked] notice also carries the
+         * CHAT-UNBLOCK section 6 transition ("unblock 200 sets is_blocked = false locally", D-09), so the block state
+         * becomes [BlockState.onUnblockSucceeded] at once instead of waiting for a `GET /chats` scan: an empty thread is
+         * absent from that list (A4) and a scan may fail, and either case would leave the composer locked. A scan
+         * already running was started before the unblock and could still answer "blocked", so it is restarted.
+         */
         private fun takeNoticeIfForThisThread() {
             val pending = launchRequest.threadNotice.pending.value ?: return
             if (!pending.threadId.equals(threadId, ignoreCase = true)) return
-            launchRequest.threadNotice.consume()?.let { notice ->
-                if (notice.threadId.equals(threadId, ignoreCase = true)) _uiState.update { it.copy(notice = notice) }
+            val notice = launchRequest.threadNotice.consume() ?: return
+            if (!notice.threadId.equals(threadId, ignoreCase = true)) return
+            _uiState.update {
+                it.copy(
+                    notice = notice,
+                    block =
+                        when (notice) {
+                            is ThreadNotice.Unblocked -> it.block.onUnblockSucceeded()
+                        },
+                )
             }
+            if (blockJob?.isActive == true) refreshBlockState()
         }
 
         private fun refreshBlockState() {
