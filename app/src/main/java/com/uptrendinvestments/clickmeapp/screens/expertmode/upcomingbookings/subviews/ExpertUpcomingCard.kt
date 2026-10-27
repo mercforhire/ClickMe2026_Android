@@ -34,6 +34,8 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ExpertRescheduleBadge
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
 import com.uptrendinvestments.clickmeapp.managers.isStartingNow
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingClientDto
@@ -62,6 +64,10 @@ const val EXPERT_UPCOMING_CARD_TAG = "expert_bookings_upcoming_card"
 /** Test tag on the Join button of an expert Upcoming card: enabled by the join window, live on the clock tick. */
 const val EXPERT_BOOKINGS_JOIN_TAG = "expert_bookings_join"
 
+/** Test tag on the Message icon button of an expert Upcoming card. */
+const val EXPERT_BOOKINGS_MESSAGE_TAG = "expert_bookings_message"
+
+private val MessageIconTarget = 56.dp
 private val IconSize = 20.dp
 private val AvatarSize = 56.dp
 private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
@@ -79,12 +85,14 @@ internal fun ExpertBookingItem.netEarningsText(locale: Locale): String? {
 
 /**
  * An expert Upcoming booking card (iOS expert session card, UI-SPEC surface 5). The card body opens the expert Booking
- * Summary; Join is its own target, live within the join window (D-14). There is no Message, Reschedule or Private Note
- * control (Phase 12, DEF-1, Phase 8 D-16).
+ * Summary; Join is its own target, live within the join window (D-14), with the icon-form Message beside it (Phase 12
+ * D-14). There is no Reschedule or Private Note control (DEF-1, Phase 8 D-16).
  *
  * @param now the shared join clock value; drives the Join button and the "Starting now" badge.
  * @param onOpen opens the summary; tapping Join does not.
  * @param onJoin starts the call with the client as the peer.
+ * @param messageBusy true while the chat with this client is being opened; Message shows a spinner and ignores taps.
+ * @param onMessage opens the chat with the client; tapping it does not open the summary.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
  */
@@ -95,6 +103,8 @@ fun ExpertUpcomingCard(
     now: Instant,
     onOpen: () -> Unit,
     onJoin: () -> Unit,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
@@ -180,11 +190,27 @@ fun ExpertUpcomingCard(
                     initiatedByClient = item.reschedule?.initiatedBy == RESCHEDULE_INITIATED_BY_CLIENT,
                 )
             }
-            JoinCallButton(
-                enabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now),
-                onClick = onJoin,
-                modifier = Modifier.testTag(EXPERT_BOOKINGS_JOIN_TAG),
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                JoinCallButton(
+                    enabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now),
+                    onClick = onJoin,
+                    modifier = Modifier.weight(1f).testTag(EXPERT_BOOKINGS_JOIN_TAG),
+                )
+                val messageLabel =
+                    stringResource(R.string.chat_entry_message_name, clientDisplayName(item.client.name))
+                MessageButton(
+                    label = messageLabel,
+                    onClick = onMessage,
+                    modifier = Modifier.testTag(EXPERT_BOOKINGS_MESSAGE_TAG),
+                    busy = messageBusy,
+                    variant = MessageButtonVariant.Icon,
+                    contentDescription = messageLabel,
+                    iconTarget = MessageIconTarget,
+                )
+            }
         }
     }
 }
@@ -231,6 +257,8 @@ private fun ExpertUpcomingCardPreview() {
                 now = PREVIEW_START,
                 onOpen = {},
                 onJoin = {},
+                messageBusy = false,
+                onMessage = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }
