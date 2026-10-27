@@ -226,6 +226,43 @@ class AgoraManagerCreateEngineTest {
             assertEquals(0, destroyed)
         }
 
+    @Test
+    fun destroyThatThrowsStillResetsEngineSoNextJoinRecreatesIt() =
+        runTest {
+            var created = 0
+            var destroyed = 0
+            val engine = Mockito.mock(RtcEngine::class.java)
+            val manager =
+                AgoraManager(
+                    app,
+                    UnconfinedTestDispatcher(testScheduler),
+                    {
+                        destroyed++
+                        throw IllegalStateException(MESSAGE)
+                    },
+                ) { _ ->
+                    created++
+                    engine
+                }
+            assertTrue(manager.join(TOKEN, CHANNEL, UID))
+            assertEquals(1, created)
+
+            manager.destroy()
+
+            assertEquals(1, destroyed)
+            val warnings = logs().filter { it.type == Log.WARN }
+            assertEquals(1, warnings.size)
+            assertTrue(
+                warnings.single().msg,
+                warnings.single().msg.startsWith("engine destroy failed IllegalStateException at "),
+            )
+            assertNoSentinelsLogged()
+
+            // The dead engine was dropped, so the next join creates a new one instead of reusing it.
+            assertTrue(manager.join(TOKEN, CHANNEL, UID))
+            assertEquals(2, created)
+        }
+
     private companion object {
         const val TOKEN = "sentinel-rtc-token-7f3a"
         const val CHANNEL = "sentinel-channel-b2c9"

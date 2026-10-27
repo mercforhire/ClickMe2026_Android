@@ -219,10 +219,19 @@ class AgoraManager
             withContext(io) {
                 mutex.withLock {
                     if (engine != null) {
-                        RtcEngine.destroy()
-                        engine = null
-                        isLeaving = false
-                        leaveSignal = null
+                        // Reset in finally so a throwing release never leaves a dead engine for the next join, and
+                        // swallow the failure (redacted) so CallCenter's remaining teardown still runs (11-REVIEW WR-02).
+                        try {
+                            destroyRtcEngine()
+                        } catch (e: Exception) {
+                            Log.w(TAG, "engine destroy failed ${describeEngineFailure(e)}")
+                        } catch (e: LinkageError) {
+                            Log.w(TAG, "engine destroy failed ${describeEngineFailure(e)}")
+                        } finally {
+                            engine = null
+                            isLeaving = false
+                            leaveSignal = null
+                        }
                     }
                 }
             }
