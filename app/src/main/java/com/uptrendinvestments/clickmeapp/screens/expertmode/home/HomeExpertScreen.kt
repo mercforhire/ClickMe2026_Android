@@ -35,6 +35,7 @@ import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.chatEntries
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
+import com.uptrendinvestments.clickmeapp.screens.chat.conversations.ConversationsRoute
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -101,6 +102,14 @@ fun HomeExpertScreen(
                 onOpenAvailability = { navigator.navigate(AvailabilityKey(AvailabilityOrigin.Topics)) },
             )
         },
+        chatsRoot = { navigator ->
+            ConversationsRoute(
+                navigator = navigator,
+                mode = AppMode.Expert,
+                avatarUrl = avatarUrl,
+                onOpenModeSwitch = { navigator.navigate(ModeSwitchKey) },
+            )
+        },
         detailEntries = { navigator ->
             entry<TopicEditorKey>(metadata = BottomBar.hidden()) { key ->
                 TopicEditorScreen(
@@ -130,8 +139,9 @@ fun HomeExpertScreen(
  * The expert 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Five slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
- * [topicsRoot], [dashboardRoot] and [bookingsRoot] render the Topics, Dashboard and Bookings tab roots (defaults:
+ * Six slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * [topicsRoot], [dashboardRoot], [bookingsRoot] and [chatsRoot] render the Topics, Dashboard, Bookings and Chats
+ * tab roots (defaults:
  * the placeholders, so Robolectric can render the shell with no Hilt graph) and [detailEntries] registers extra
  * routes pushed on top of a tab, such as the Topic Editor and Availability. [pendingChatThread] /
  * [onConsumeChatThread] are the chat hand-off: when a thread key is pending the shell consumes it and opens it on the
@@ -154,6 +164,7 @@ fun HomeExpertShell(
     },
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(ExpertBookingsRoot) },
     topicsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(TopicsRoot) },
+    chatsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(ExpertChatsRoot) },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
     pendingChatThread: ChatThreadKey? = null,
     onConsumeChatThread: () -> ChatThreadKey? = { null },
@@ -178,7 +189,7 @@ fun HomeExpertShell(
                 entry<DashboardRoot> { dashboardRoot(navigator) }
                 entry<ExpertBookingsRoot> { bookingsRoot(navigator) }
                 entry<TopicsRoot> { topicsRoot(navigator) }
-                entry<ExpertChatsRoot> { ExpertTabRoot(ExpertChatsRoot) }
+                entry<ExpertChatsRoot> { chatsRoot(navigator) }
                 entry<ExpertProfileRoot> {
                     ExpertTabRoot(
                         key = ExpertProfileRoot,

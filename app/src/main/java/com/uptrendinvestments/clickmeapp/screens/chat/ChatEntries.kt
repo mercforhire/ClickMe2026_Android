@@ -7,6 +7,8 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadRoute
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.ChatReportBlockKey
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.ReportAndBlockRoute
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertChatsRoot
 
@@ -19,6 +21,7 @@ fun EntryProviderScope<NavKey>.chatEntries(
     mode: AppMode,
 ) {
     entry<ChatThreadKey>(metadata = BottomBar.hidden()) { ChatThreadRoute(it, navigator, mode) }
+    entry<ChatReportBlockKey>(metadata = BottomBar.hidden()) { ReportAndBlockRoute(it, navigator, mode) }
 }
 
 /** The Chats tab root key of [mode]'s shell. */

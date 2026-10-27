@@ -39,6 +39,7 @@ import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.chatEntries
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
+import com.uptrendinvestments.clickmeapp.screens.chat.conversations.ConversationsRoute
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationScreen
@@ -105,6 +106,14 @@ fun HomeClientScreen(
                         onOpenUpcoming = navigator::openUpcomingBooking,
                         onOpenPast = navigator::openBookingSummary,
                         onExploreExperts = navigator::showExplore,
+                    )
+                },
+                chatsRoot = { navigator ->
+                    ConversationsRoute(
+                        navigator = navigator,
+                        mode = AppMode.Client,
+                        avatarUrl = avatarUrl,
+                        onOpenModeSwitch = { navigator.navigate(ModeSwitchKey) },
                     )
                 },
                 detailEntries = { navigator ->
@@ -223,9 +232,10 @@ private const val ONBOARDING_FADE_MS = 200
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Four slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * Five slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button),
- * [bookingsRoot] renders the Bookings tab root (default: the placeholder), and [detailEntries] registers extra
+ * [bookingsRoot] renders the Bookings tab root (default: the placeholder), [chatsRoot] renders the Chats tab root
+ * (default: the placeholder), and [detailEntries] registers extra
  * routes pushed on top of a tab, such as the Expert Profile, the booking flow routes (see
  * [clientBookingFlowEntries]), the booking-management routes (see [clientBookingManagementEntries]) and Payment
  * Methods (see [clientPaymentMethodsEntry]). [pendingChatThread] / [onConsumeChatThread] are the chat hand-off: when a
@@ -247,6 +257,7 @@ fun HomeClientShell(
         )
     },
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientBookingsRoot) },
+    chatsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientChatsRoot) },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
     pendingChatThread: ChatThreadKey? = null,
     onConsumeChatThread: () -> ChatThreadKey? = { null },
@@ -271,7 +282,7 @@ fun HomeClientShell(
                 entry<ExploreRoot> { exploreRoot(navigator, avatarUrl) }
                 entry<SearchRoot> { ClientTabRoot(SearchRoot) }
                 entry<ClientBookingsRoot> { bookingsRoot(navigator) }
-                entry<ClientChatsRoot> { ClientTabRoot(ClientChatsRoot) }
+                entry<ClientChatsRoot> { chatsRoot(navigator) }
                 entry<ClientProfileRoot> {
                     ClientTabRoot(
                         key = ClientProfileRoot,
