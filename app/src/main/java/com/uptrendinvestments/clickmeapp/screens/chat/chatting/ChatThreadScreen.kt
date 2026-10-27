@@ -1,5 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,7 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -53,11 +61,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatComposer
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatEmptyThread
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadError
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadSkeleton
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ComposerBlockedBanner
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.DateSeparator
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.JumpToLatestButton
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.LoadEarlierButton
@@ -68,6 +81,8 @@ import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.TypingSt
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSlotTime
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -80,6 +95,7 @@ const val CHAT_THREAD_LIST_TAG = "chat_thread_list"
 
 private val TopBarAvatarSize = 32.dp
 private const val LOAD_EARLIER_KEY = "load_earlier"
+private const val COMPOSER_SWAP_MS = 200
 
 /** The key this thread was opened with, rebuilt from the live state so View profile and Report use the filled-in peer. */
 fun ChatThreadUiState.toThreadKey(): ChatThreadKey =
@@ -119,19 +135,25 @@ fun ChatThreadScreen(
         timeFormat = rememberDeviceTimeFormat(),
         onBack = onBack,
         onRetry = viewModel::retry,
+        onRetryMessage = viewModel::retry,
+        onDeleteMessage = viewModel::delete,
         onRefresh = viewModel::refresh,
         onLoadEarlier = viewModel::loadEarlier,
         onOpenBooking = onOpenBooking,
         onViewProfile = onViewProfile,
         onOpenReportBlock = onOpenReportBlock,
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
+        onComposerChanged = viewModel::onComposerChanged,
+        onSend = viewModel::send,
+        onDismissSendError = viewModel::dismissSendError,
+        onNoticeConsumed = viewModel::consumeNotice,
         modifier = modifier,
     )
 }
 
 /**
  * Stateless thread: top bar with the peer and the overflow menu, the message list (oldest to newest, starting at the
- * newest message via `reverseLayout`), the typing strip and the [bottomBar] slot for the composer. The first load shows
+ * newest message via `reverseLayout`), the typing strip and the composer. The first load shows
  * a skeleton, a failed load an error with Retry, and a loaded empty thread the empty state. [zone], [locale] and
  * [timeFormat] are parameters so tests pass fixed values.
  */
@@ -152,9 +174,16 @@ fun ChatThreadContent(
     onViewProfile: () -> Unit,
     onOpenReportBlock: () -> Unit,
     onRefreshFailureConsumed: () -> Unit,
+    onComposerChanged: (String) -> Unit,
+    onSend: () -> Unit,
+    onDismissSendError: () -> Unit,
+    onNoticeConsumed: () -> Unit,
+    onRetryMessage: (clientMsgId: String) -> Unit,
+    onDeleteMessage: (clientMsgId: String) -> Unit,
     modifier: Modifier = Modifier,
-    bottomBar: @Composable () -> Unit = {},
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.chat_thread_refresh_failed)
@@ -166,6 +195,30 @@ fun ChatThreadContent(
             onRefreshFailureConsumed()
         }
     }
+
+    val unblockedNotice = state.notice as? ThreadNotice.Unblocked
+    val unblockedName =
+        unblockedNotice?.peerName?.takeIf { it.isNotBlank() } ?: state.peerName?.takeIf { it.isNotBlank() }
+    val unblockedMessage =
+        if (unblockedName != null) {
+            stringResource(R.string.chat_thread_unblocked_snackbar, unblockedName)
+        } else {
+            stringResource(R.string.chat_thread_unblocked_snackbar_nameless)
+        }
+    LaunchedEffect(state.notice) {
+        if (state.notice is ThreadNotice.Unblocked) {
+            scope.launch { snackbarHostState.showSnackbar(unblockedMessage, duration = SnackbarDuration.Long) }
+            onNoticeConsumed()
+        }
+    }
+    state.sendError?.let { error ->
+        AuthErrorDialog(
+            message = error.asString(),
+            title = stringResource(R.string.chat_send_error_title),
+            onDismiss = onDismissSendError,
+        )
+    }
+    val sendMessageLabel = stringResource(R.string.chat_thread_empty_action)
 
     Scaffold(
         modifier = modifier,
@@ -184,7 +237,8 @@ fun ChatThreadContent(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // The Scaffold padding already holds the system-bar insets; consuming them stops imePadding adding them twice.
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding)) {
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = onRefresh,
@@ -195,7 +249,15 @@ fun ChatThreadContent(
                     is ThreadLoad.Failed -> ScrollableCentered { ChatThreadError(load.message, onRetry) }
                     ThreadLoad.Loaded ->
                         if (state.items.isEmpty()) {
-                            ScrollableCentered { ChatEmptyThread() }
+                            ScrollableCentered {
+                                ChatEmptyThread(
+                                    action =
+                                        EmptyStateAction(sendMessageLabel) {
+                                            focusRequester.requestFocus()
+                                            keyboardController?.show()
+                                        },
+                                )
+                            }
                         } else {
                             ThreadList(
                                 state = state,
@@ -204,6 +266,8 @@ fun ChatThreadContent(
                                 timeFormat = timeFormat,
                                 onLoadEarlier = onLoadEarlier,
                                 onOpenBooking = onOpenBooking,
+                                onRetryMessage = onRetryMessage,
+                                onDeleteMessage = onDeleteMessage,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -213,7 +277,25 @@ fun ChatThreadContent(
                 visible = state.peerTyping,
                 name = peerLabel,
             )
-            bottomBar()
+            AnimatedContent(
+                targetState = state.composerMode,
+                transitionSpec = { fadeIn(tween(COMPOSER_SWAP_MS)) togetherWith fadeOut(tween(COMPOSER_SWAP_MS)) },
+                label = "composerSwap",
+            ) { composerMode ->
+                if (composerMode == ComposerMode.Normal) {
+                    ChatComposer(
+                        text = state.composerText,
+                        enabled = state.load is ThreadLoad.Loaded,
+                        canSend = state.canSend,
+                        atCap = state.isComposerAtCap,
+                        onTextChange = onComposerChanged,
+                        onSend = onSend,
+                        focusRequester = focusRequester,
+                    )
+                } else {
+                    ComposerBlockedBanner(mode = composerMode)
+                }
+            }
         }
     }
 }
@@ -239,6 +321,8 @@ private fun ThreadList(
     timeFormat: DateFormat,
     onLoadEarlier: () -> Unit,
     onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
+    onRetryMessage: (clientMsgId: String) -> Unit,
+    onDeleteMessage: (clientMsgId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = remember(state.items, zone) { buildThreadRows(state.items, zone).asReversed() }
@@ -268,7 +352,16 @@ private fun ThreadList(
                         )
                     is ThreadRow.Entry ->
                         Box(Modifier.padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm).animateItem()) {
-                            EntryContent(row, state, zone, locale, timeFormat, onOpenBooking)
+                            EntryContent(
+                                row = row,
+                                state = state,
+                                zone = zone,
+                                locale = locale,
+                                timeFormat = timeFormat,
+                                onOpenBooking = onOpenBooking,
+                                onRetryMessage = onRetryMessage,
+                                onDeleteMessage = onDeleteMessage,
+                            )
                         }
                 }
             }
@@ -317,6 +410,8 @@ private fun EntryContent(
     locale: Locale,
     timeFormat: DateFormat,
     onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
+    onRetryMessage: (clientMsgId: String) -> Unit,
+    onDeleteMessage: (clientMsgId: String) -> Unit,
 ) {
     when (val item = row.item) {
         is ThreadItem.Message ->
@@ -326,6 +421,8 @@ private fun EntryContent(
                 peerAvatarUrl = state.peerAvatarUrl,
                 showAvatar = row.showAvatar,
                 timeText = formatSlotTime(item.createdAt, zone, timeFormat),
+                onRetry = { item.clientMsgId?.let(onRetryMessage) },
+                onDelete = { item.clientMsgId?.let(onDeleteMessage) },
             )
         is ThreadItem.SystemEvent ->
             SystemEventRow(
