@@ -3,11 +3,16 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.safety.REPORT_DETAILS_MAX
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
 import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
+import com.uptrendinvestments.clickmeapp.screens.chat.SafetyDialog
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
+import com.uptrendinvestments.clickmeapp.screens.chat.toBlockFailure
+import com.uptrendinvestments.clickmeapp.screens.chat.toChatEntryError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,13 +41,18 @@ data class ProfileSafetyState(
     val reason: UserReportReason? = null,
     val details: String = "",
     val reportSubmitting: Boolean = false,
+    val blockConfirmOpen: Boolean = false,
+    val blockInFlight: Boolean = false,
+    val dialog: SafetyDialog? = null,
     val snackbar: ProfileSafetySnackbar? = null,
 )
 
 /**
- * Report from the Expert Profile (SAFE-01). Posts `POST users/{id}/report` with the enum wire reason. The open sheet,
- * the chosen reason and the details are mirrored to [SavedStateHandle] so they survive rotation and process death.
- * The details are report text: they are never logged.
+ * Report and Block from the Expert Profile (SAFE-01, SAFE-02). Report posts `POST users/{id}/report` with the enum
+ * wire reason. The open sheet, the chosen reason and the details are mirrored to [SavedStateHandle] so they survive
+ * rotation and process death. The details are report text: they are never logged.
+ *
+ * Block has no endpoint on a user id, so it initiates the thread first and then blocks it (D-05).
  */
 @HiltViewModel
 class ProfileSafetyViewModel
@@ -50,6 +60,7 @@ class ProfileSafetyViewModel
     constructor(
         private val savedStateHandle: SavedStateHandle,
         private val repository: ChatsRepository,
+        private val sessionState: ChatSessionState,
     ) : ViewModel() {
         private val _state =
             MutableStateFlow(
@@ -113,6 +124,70 @@ class ProfileSafetyViewModel
                     _state.update { it.copy(reportSubmitting = false) }
                 }
             }
+        }
+
+        fun openBlock() {
+            _state.update { it.copy(blockConfirmOpen = true) }
+        }
+
+        fun dismissBlock() {
+            _state.update { if (it.blockInFlight) it else it.copy(blockConfirmOpen = false) }
+        }
+
+        /**
+         * Blocks [expertId] after the confirm dialog: `chats/initiate` (idempotent, D-05) then the block action on the
+         * returned thread. A re-block is a 200 no-op on the server, so no block state is read (D-07). Single flight.
+         * On success the thread is marked blocked by me for this session, which covers the gap where an empty thread
+         * is not in `GET /chats` yet, so a later Message shows the blocked state (A4, RESEARCH Pitfall 2). The user
+         * stays on the profile.
+         */
+        fun confirmBlock(
+            expertId: String,
+            name: String?,
+        ) {
+            if (_state.value.blockInFlight) return
+            _state.update { it.copy(blockInFlight = true) }
+            viewModelScope.launch {
+                try {
+                    val threadId = initiate(expertId) ?: return@launch
+                    repository.block(threadId)
+                    sessionState.markBlockedByMe(threadId)
+                    _state.update {
+                        it.copy(
+                            blockInFlight = false,
+                            blockConfirmOpen = false,
+                            snackbar = ProfileSafetySnackbar.Blocked(name?.takeIf { n -> n.isNotBlank() }),
+                        )
+                    }
+                } catch (e: ApiException) {
+                    _state.update {
+                        it.copy(
+                            blockInFlight = false,
+                            blockConfirmOpen = false,
+                            dialog = SafetyDialog(R.string.block_error_title, e.toBlockFailure()),
+                        )
+                    }
+                }
+            }
+        }
+
+        /** The thread id for [expertId], or null after surfacing an initiate failure (404 is "unavailable"). */
+        private suspend fun initiate(expertId: String): String? =
+            try {
+                repository.initiate(expertId).threadId
+            } catch (e: ApiException) {
+                _state.update {
+                    it.copy(
+                        blockInFlight = false,
+                        blockConfirmOpen = false,
+                        dialog = SafetyDialog(R.string.block_error_title, e.toChatEntryError()),
+                    )
+                }
+                null
+            }
+
+        fun dismissDialog() {
+            _state.update { it.copy(dialog = null) }
         }
 
         fun consumeSnackbar() {

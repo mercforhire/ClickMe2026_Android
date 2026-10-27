@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
+import com.uptrendinvestments.clickmeapp.components.safety.BlockUserDialog
 import com.uptrendinvestments.clickmeapp.components.safety.ReportUserSheet
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
@@ -74,6 +75,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subvie
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileStatsBarSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileTopicsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -103,11 +106,20 @@ fun ExpertProfileScreen(
     val safetyState by safety.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val thanks = stringResource(R.string.report_thanks)
+    val blocked =
+        (safetyState.snackbar as? ProfileSafetySnackbar.Blocked)?.name?.let {
+            stringResource(R.string.profile_blocked_snackbar, it)
+        } ?: stringResource(R.string.profile_blocked_snackbar_fallback)
     LaunchedEffect(safetyState.snackbar) {
-        val message = safetyState.snackbar
+        val message =
+            when (safetyState.snackbar) {
+                ProfileSafetySnackbar.ReportThanks -> thanks
+                is ProfileSafetySnackbar.Blocked -> blocked
+                null -> null
+            }
         if (message != null) {
-            snackbarHostState.showSnackbar(thanks)
             safety.consumeSnackbar()
+            snackbarHostState.showSnackbar(message)
         }
     }
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
@@ -123,6 +135,21 @@ fun ExpertProfileScreen(
             onDismiss = safety::dismissReport,
         )
     }
+    if (safetyState.blockConfirmOpen) {
+        BlockUserDialog(
+            name = state.name,
+            inFlight = safetyState.blockInFlight,
+            onConfirm = { safety.confirmBlock(state.expertId, state.name) },
+            onDismiss = safety::dismissBlock,
+        )
+    }
+    safetyState.dialog?.let { dialog ->
+        AuthErrorDialog(
+            message = dialog.message.asString(),
+            title = stringResource(dialog.titleRes),
+            onDismiss = safety::dismissDialog,
+        )
+    }
     ExpertProfileContent(
         state = state,
         onBack = onBack,
@@ -134,7 +161,7 @@ fun ExpertProfileScreen(
         onMessage = { chatEntry.open(ChatPeer(state.expertId, state.name, state.imageUrl, isExpert = true)) },
         showSafetyMenu = !chatEntry.isSelf(state.expertId) && state.details is DetailsState.Loaded,
         onReport = safety::openReport,
-        onBlock = {},
+        onBlock = safety::openBlock,
         snackbarHostState = snackbarHostState,
     )
 }

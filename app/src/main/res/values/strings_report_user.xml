@@ -27,4 +27,5 @@
     <string name="report_sheet_subtitle">Why are you reporting %1$s?</string>
     <string name="report_sheet_cancel">Cancel</string>
     <string name="profile_blocked_snackbar">You blocked %1$s</string>
+    <string name="profile_blocked_snackbar_fallback">You blocked this user</string>
 </resources>

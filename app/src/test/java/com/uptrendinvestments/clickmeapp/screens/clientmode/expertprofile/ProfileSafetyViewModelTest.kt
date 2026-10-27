@@ -1,18 +1,26 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
+import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
+import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.reportData
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -23,7 +31,23 @@ class ProfileSafetyViewModelTest {
 
     private val api = FakeClickMeApi()
 
-    private fun vm(handle: SavedStateHandle = SavedStateHandle()) = ProfileSafetyViewModel(handle, ChatsRepository(api))
+    private val session = ChatSessionState()
+
+    private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
+        ProfileSafetyViewModel(handle, ChatsRepository(api), session)
+
+    private fun apiError(
+        status: Int,
+        code: String? = null,
+        message: String = "msg",
+    ) = api.httpError(
+        status,
+        if (code == null) {
+            """{"status":"error","message":"$message"}"""
+        } else {
+            """{"status":"error","code":"$code","message":"$message"}"""
+        },
+    )
 
     @Test
     fun reportSendsWireValueClosesSheetAndThanks() =
@@ -58,5 +82,91 @@ class ProfileSafetyViewModelTest {
             runCurrent()
 
             assertEquals(0, api.reportUserRequests.size)
+        }
+
+    @Test
+    fun blockInitiatesThenBlocksAndMarksSession() =
+        runTest(main.testDispatcher) {
+            api.initiateChatHandler = { InitiateChatData(threadId = "t1") }
+            val vm = vm()
+
+            vm.openBlock()
+            assertTrue(vm.state.value.blockConfirmOpen)
+            vm.confirmBlock("e1", "Ada")
+            runCurrent()
+
+            assertEquals(listOf(InitiateChatRequest("e1")), api.initiateChatRequests)
+            assertEquals(listOf("t1" to ChatActionRequest("block")), api.chatActions)
+            assertTrue(session.isBlockedByMe("t1"))
+            val state = vm.state.value
+            assertFalse(state.blockConfirmOpen)
+            assertFalse(state.blockInFlight)
+            assertEquals(ProfileSafetySnackbar.Blocked("Ada"), state.snackbar)
+            assertNull(state.dialog)
+        }
+
+    @Test
+    fun repeatConfirmWhileInFlightIgnored() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.initiateChatHandler = {
+                gate.await()
+                InitiateChatData(threadId = "t1")
+            }
+            val vm = vm()
+            vm.openBlock()
+
+            vm.confirmBlock("e1", "Ada")
+            vm.confirmBlock("e1", "Ada")
+            runCurrent()
+            assertTrue(vm.state.value.blockInFlight)
+            vm.dismissBlock()
+            assertTrue(vm.state.value.blockConfirmOpen)
+
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(1, api.initiateChatRequests.size)
+            assertEquals(1, api.chatActions.size)
+        }
+
+    @Test
+    fun initiate404ShowsUnavailable() =
+        runTest(main.testDispatcher) {
+            api.initiateChatHandler = { throw apiError(404) }
+            val vm = vm()
+            vm.openBlock()
+            vm.confirmBlock("e1", "Ada")
+            runCurrent()
+
+            val dialog = vm.state.value.dialog
+            assertEquals(R.string.block_error_title, dialog?.titleRes)
+            assertEquals(FieldError.Res(R.string.chat_entry_error_unavailable), dialog?.message)
+            assertEquals(0, api.chatActions.size)
+            assertFalse(session.isBlockedByMe("t1"))
+            assertFalse(vm.state.value.blockInFlight)
+        }
+
+    @Test
+    fun blockFailureUsesBlockMapping() =
+        runTest(main.testDispatcher) {
+            api.initiateChatHandler = { InitiateChatData(threadId = "t1") }
+            api.chatActionHandler = { _, _ -> throw apiError(404) }
+            val vm = vm()
+            vm.openBlock()
+            vm.confirmBlock("e1", "Ada")
+            runCurrent()
+
+            val state = vm.state.value
+            assertEquals(FieldError.Res(R.string.block_error_conversation_unavailable), state.dialog?.message)
+            assertFalse(state.blockInFlight)
+            assertFalse(state.blockConfirmOpen)
+            assertNull(state.snackbar)
+            assertFalse(session.isBlockedByMe("t1"))
+
+            vm.dismissDialog()
+            assertNull(vm.state.value.dialog)
+            vm.openBlock()
+            assertTrue(vm.state.value.blockConfirmOpen)
         }
 }
