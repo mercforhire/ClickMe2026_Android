@@ -10,11 +10,12 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.ME
 import com.uptrendinvestments.clickmeapp.testing.chatsPayload
+import com.uptrendinvestments.clickmeapp.testing.sendAck
 import kotlinx.coroutines.CoroutineScope
 
 /**
- * Builds a [ChatThreadViewModel] over the fakes. The block-state scan answers an empty list by default so a test that
- * ignores blocking is not hit by an unstubbed endpoint. 12-08 extends this class with defaults only.
+ * Builds a [ChatThreadViewModel] over the fakes. The block-state scan answers an empty list and a send answers an
+ * ack by default, so a test that ignores them is not hit by an unstubbed endpoint.
  */
 class ChatThreadTestHarness(
     val scope: CoroutineScope? = null,
@@ -32,6 +33,7 @@ class ChatThreadTestHarness(
 
     init {
         api.chatsHandler = { _, _ -> chatsPayload() }
+        api.sendChatMessageHandler = { _, _ -> sendAck() }
     }
 
     fun viewModel(

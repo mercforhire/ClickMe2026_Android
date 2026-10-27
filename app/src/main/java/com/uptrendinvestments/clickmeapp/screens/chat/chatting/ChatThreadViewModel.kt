@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /**
  * Chat thread state machine, read side (CHAT-02, CHAT-04, SAFE-03). Port of iOS `ChattingViewModel`.
@@ -93,6 +94,9 @@ class ChatThreadViewModel
         /** True between [onScreenShown] and [onScreenHidden]; read receipts are only sent while it is true. */
         private var screenShown = false
 
+        /** client_msg_ids with a send request running (main thread only). */
+        private val inFlight = mutableSetOf<String>()
+
         /** Lower-cased ids a `message.read` was actually emitted for. */
         private val emittedReadIds = mutableSetOf<String>()
 
@@ -150,6 +154,55 @@ class ChatThreadViewModel
                         delay(TYPING_IDLE_MS)
                         stopTypingNow()
                     }
+            }
+        }
+
+        /**
+         * Sends the composer text (CHAT-03). The trimmed text is added at once as a Sending bubble with a fresh
+         * client_msg_id, the composer is cleared, typing stops and the POST starts. Sends never wait for each other.
+         *
+         * Deviates from iOS, which waits for the ack before showing the message (D-01). The server dedupes by
+         * (thread, sender, client_msg_id) and returns the existing row with 201, so [retry] with the same id is safe.
+         * Does nothing unless [ChatThreadUiState.canSend].
+         */
+        fun send() {
+            val state = _uiState.value
+            val trimmed = state.composerText.trim()
+            if (trimmed.isEmpty() || !state.canSend) return
+            val id = clientMsgIds.next()
+            val bubble =
+                ThreadItem.Message(
+                    serverId = null,
+                    clientMsgId = id,
+                    senderId = currentUser.currentUserId(),
+                    text = trimmed,
+                    createdAt = Instant.now(),
+                    mine = true,
+                    delivery = Delivery.Sending,
+                )
+            _uiState.update { it.copy(items = ThreadReducer.appendLocal(it.items, bubble), composerText = "") }
+            savedStateHandle[KEY_COMPOSER] = ""
+            stopTypingNow()
+            deliver(id, trimmed)
+        }
+
+        /** Posts one message and applies the outcome to its bubble. Several deliveries can be in flight. */
+        private fun deliver(
+            clientMsgId: String,
+            text: String,
+        ) {
+            inFlight += clientMsgId
+            viewModelScope.launch {
+                try {
+                    val ack = repository.send(threadId, text, clientMsgId)
+                    _uiState.update {
+                        it.copy(items = ThreadReducer.ack(it.items, clientMsgId, ack.messageId, ack.timestamp))
+                    }
+                } catch (e: ApiException) {
+                    _uiState.update { it.copy(items = ThreadReducer.fail(it.items, clientMsgId)) }
+                } finally {
+                    inFlight -= clientMsgId
+                }
             }
         }
 
