@@ -5,6 +5,7 @@ import android.util.Log
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.agora.rtc2.ClientRoleOptions
 import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
@@ -60,7 +61,9 @@ class AgoraManager
         private val _events = MutableSharedFlow<EngineEvent>(extraBufferCapacity = EVENT_BUFFER)
         override val events = _events.asSharedFlow()
 
-        // Callbacks run on SDK threads: they only tryEmit / complete and never touch other state.
+        // Callbacks run on SDK threads: they only log codes, tryEmit or complete, and never touch other state.
+        // The remote-presence lines carry state, reason and role codes and elapsed milliseconds only, never the uid
+        // (T-09-02). They exist so a device run shows whether the remote peer arrived (G-11-5).
         private val handler =
             object : IRtcEngineEventHandler() {
                 override fun onJoinChannelSuccess(
@@ -83,6 +86,7 @@ class AgoraManager
                     uid: Int,
                     elapsed: Int,
                 ) {
+                    Log.i(TAG, "remote joined elapsed=$elapsed")
                     _events.tryEmit(EngineEvent.RemoteJoined(uid))
                 }
 
@@ -90,7 +94,25 @@ class AgoraManager
                     uid: Int,
                     reason: Int,
                 ) {
+                    Log.i(TAG, "remote offline reason=$reason")
                     _events.tryEmit(mapUserOffline(uid, reason))
+                }
+
+                override fun onRemoteAudioStateChanged(
+                    uid: Int,
+                    state: Int,
+                    reason: Int,
+                    elapsed: Int,
+                ) {
+                    Log.i(TAG, "remote audio state=$state reason=$reason")
+                }
+
+                override fun onClientRoleChanged(
+                    oldRole: Int,
+                    newRole: Int,
+                    newRoleOptions: ClientRoleOptions?,
+                ) {
+                    Log.i(TAG, "client role old=$oldRole new=$newRole")
                 }
 
                 override fun onConnectionStateChanged(
