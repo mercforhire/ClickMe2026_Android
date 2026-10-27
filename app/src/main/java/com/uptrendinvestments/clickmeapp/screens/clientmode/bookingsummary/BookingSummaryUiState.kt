@@ -36,7 +36,9 @@ data class BookAgainSeed(
 
 /**
  * What Booking Summary shows for one booking (D-13). There is deliberately no private note, review or feedback
- * field here (D-16, Phases 12-13).
+ * field here (D-16, Phase 13).
+ *
+ * @property expertId the expert's user id, the peer for Message Expert (D-14); null disables the control.
  */
 data class BookingSummaryDetails(
     val bookingId: String,
@@ -44,6 +46,7 @@ data class BookingSummaryDetails(
     val expertName: String?,
     val expertTitle: String?,
     val expertAvatarUrl: String?,
+    val expertId: String? = null,
     val topicTitle: String?,
     val start: Instant,
     val end: Instant,
@@ -78,6 +81,7 @@ fun ClientBookingDetail.toSummaryDetails(now: Instant): BookingSummaryDetails =
         expertName = expert.fullName?.takeIf(String::isNotBlank),
         expertTitle = expert.title?.takeIf(String::isNotBlank),
         expertAvatarUrl = expert.avatarUrl?.takeIf(String::isNotBlank),
+        expertId = expert.id?.takeIf(String::isNotBlank),
         topicTitle = topic.title.takeIf(String::isNotBlank),
         start = startTime,
         end = endTime ?: startTime.plus(Duration.ofMinutes((topic.durationMins ?: DEFAULT_DURATION_MINS).toLong())),

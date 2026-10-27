@@ -2,6 +2,8 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary
 
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -16,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
+import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
@@ -61,12 +64,14 @@ class BookingSummaryScreenTest {
         priceLabel: SummaryPriceLabel = SummaryPriceLabel.PricePaid,
         bookAgain: BookAgainSeed? = BookAgainSeed("e1", "Ada Lovelace", "Engineer", null),
         reschedule: RescheduleProposalUi? = null,
+        expertId: String? = "e1",
     ) = BookingSummaryDetails(
         bookingId = "b1",
         status = summaryStatusDisplay(status),
         expertName = "Ada Lovelace",
         expertTitle = "Engineer",
         expertAvatarUrl = null,
+        expertId = expertId,
         topicTitle = "Algorithms",
         start = Instant.parse("2026-10-24T18:00:00Z"),
         end = Instant.parse("2026-10-24T19:00:00Z"),
@@ -85,6 +90,7 @@ class BookingSummaryScreenTest {
         state: BookingSummaryUiState,
         rescheduleState: RescheduleUiState = RescheduleUiState(),
         calls: Calls = Calls(),
+        messageBusy: Boolean = false,
     ): Calls {
         rule.setContent {
             ClickMeTheme {
@@ -99,6 +105,8 @@ class BookingSummaryScreenTest {
                     onDismissRescheduleDialog = { calls.events += "dismiss" },
                     onOpenPaymentMethods = { calls.events += "paymentMethods" },
                     onRescheduleNoticeConsumed = { calls.events += "consumed" },
+                    messageBusy = messageBusy,
+                    onMessage = { calls.events += "message" },
                     zone = zone,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     locale = Locale.US,
@@ -243,10 +251,53 @@ class BookingSummaryScreenTest {
     }
 
     @Test
-    fun phaseTwelveAndThirteenElementsDoNotRender() {
+    fun phaseThirteenElementsDoNotRender() {
         setScreen(BookingSummaryUiState.Loaded(details()))
-        listOf("Message Expert", "Leave a Review", "Feedback", "My Note").forEach {
+        listOf("Leave a Review", "Feedback", "My Note").forEach {
             rule.onAllNodesWithText(it).assertCountEquals(0)
         }
+    }
+
+    // ---- Message Expert (D-14) ----
+
+    @Test
+    fun messageExpertBelowSummaryCallsOnMessage() {
+        val calls = setScreen(BookingSummaryUiState.Loaded(details()))
+        rule.onNodeWithText("Message Expert").assertExists()
+        rule
+            .onNodeWithTag(BOOKING_SUMMARY_MESSAGE_TAG)
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        assertEquals(listOf("message"), calls.events)
+    }
+
+    @Test
+    fun messageExpertSitsBelowTheSummaryCard() {
+        setScreen(BookingSummaryUiState.Loaded(details()))
+        val bookAgainY =
+            rule
+                .onNodeWithTag(BOOKING_SUMMARY_BOOK_AGAIN_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val messageY =
+            rule
+                .onNodeWithTag(BOOKING_SUMMARY_MESSAGE_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        assertTrue(bookAgainY < messageY)
+    }
+
+    @Test
+    fun messageExpertIsDisabledWithoutAnExpertId() {
+        setScreen(BookingSummaryUiState.Loaded(details(expertId = null)))
+        rule.onNodeWithTag(BOOKING_SUMMARY_MESSAGE_TAG).performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test
+    fun messageExpertShowsTheSpinnerWhileBusy() {
+        setScreen(BookingSummaryUiState.Loaded(details()), messageBusy = true)
+        rule.onNodeWithTag(BOOKING_SUMMARY_MESSAGE_TAG).performScrollTo()
+        rule.onNodeWithTag(MESSAGE_BUTTON_SPINNER_TAG, useUnmergedTree = true).assertExists()
     }
 }
