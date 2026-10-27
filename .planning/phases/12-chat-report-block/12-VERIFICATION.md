@@ -1,8 +1,8 @@
 ---
 phase: 12-chat-report-block
 verified: 2026-10-27T00:00:00Z
-status: gaps_found
-score: 4/6 must-haves verified
+status: human_needed
+score: 6/6 must-haves verified
 covered_files:
   - ".planning/phases/12-chat-report-block/12-01-PLAN.md"
   - ".planning/phases/12-chat-report-block/12-01-SUMMARY.md"
@@ -34,6 +34,10 @@ covered_files:
   - ".planning/phases/12-chat-report-block/12-14-SUMMARY.md"
   - ".planning/phases/12-chat-report-block/12-15-PLAN.md"
   - ".planning/phases/12-chat-report-block/12-15-SUMMARY.md"
+  - ".planning/phases/12-chat-report-block/12-16-PLAN.md"
+  - ".planning/phases/12-chat-report-block/12-16-SUMMARY.md"
+  - ".planning/phases/12-chat-report-block/12-17-PLAN.md"
+  - ".planning/phases/12-chat-report-block/12-17-SUMMARY.md"
   - "app/src/main/java/com/uptrendinvestments/clickmeapp/model/enums/UserReportReason.kt"
   - "app/src/main/java/com/uptrendinvestments/clickmeapp/model/requests/ChatRequests.kt"
   - "app/src/main/java/com/uptrendinvestments/clickmeapp/navigation/Navigator.kt"
@@ -49,44 +53,32 @@ covered_files:
   - "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/chat/reportandblock/ReportAndBlockViewModel.kt"
   - "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/expertprofile/ExpertProfileScreen.kt"
   - "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/expertprofile/ProfileSafetyViewModel.kt"
-covered_digest: "v3:sha256:29bb5c458ed532b864096a2f572a3945354ec4c77a2d68079bac758c38f159e8"
+covered_digest: "v3:sha256:875af1b89db02a852c4c554e836b0baa13f19cf15434a3732141e27918713fee"
 behavior_unverified: 0
 overrides_applied: 0
-gaps:
-  - truth: "Expert Profile report/block success shows the confirmation snackbars \"Thanks, we'll review this.\" and \"You blocked {name}\" (12-10 must_haves; SAFE-01, SAFE-02; roadmap SC-3 profile path)"
-    status: failed
-    reason: "ExpertProfileScreen.kt:113-124 keys LaunchedEffect on safetyState.snackbar, calls safety.consumeSnackbar() (which sets snackbar = null and so changes the key) and then suspends in snackbarHostState.showSnackbar(message) in the same coroutine. The next recomposition cancels the effect; Material 3 showSnackbar clears currentSnackbarData in a finally, so the snackbar is dismissed within about a frame. The Thread and Conversations screens in this same phase avoid the bug with scope.launch. ProfileSafetyViewModelTest only asserts the state flag, and no screen test asserts the snackbar is visible, so nothing caught it. Matches review CR-01 (confirmed independently from the code). The report and block requests themselves do go out correctly, but the profile block (user stays on the profile) gives no visible confirmation at all."
-    artifacts:
-      - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/clientmode/expertprofile/ExpertProfileScreen.kt"
-        issue: "LaunchedEffect(safetyState.snackbar) consumes its own key before showSnackbar returns"
-    missing:
-      - "Show the snackbar via rememberCoroutineScope().launch { showSnackbar(...) } (or consume after showSnackbar returns), as ChatThreadScreen does"
-      - "A ExpertProfileScreen Robolectric test asserting the \"Thanks, we'll review this.\" and \"You blocked {name}\" text is displayed after the state is set"
-  - truth: "Unblocking a thread this session blocked clears the blocked composer state, including a thread absent from GET /chats (SAFE-03 note, CHAT-UNBLOCK section 6: unblock 200 sets is_blocked=false locally)"
-    status: partial
-    reason: "ReportAndBlockViewModel.unblock() clears the session mark and posts ThreadNotice.Unblocked, but ChatThreadViewModel.takeNoticeIfForThisThread() only stores the notice; block is only changed by refreshBlockState(). For a thread with no messages (absent from GET /chats, which is exactly the case the session-local blocked-by-me set exists for), findThread returns null and BlockState.applyScan(null, sessionBlocked = false) takes the `else -> this` branch, so the stale BlockedByMe state survives. The \"Unblocked\" snackbar shows but the composer banner stays locked and the menu still says Unblock or report until the user leaves and reopens the thread. A failed rescan has the same effect. Matches review WR-01 (confirmed from BlockState.kt:57-58 and ChatThreadViewModel.kt:441-473). Thread with messages is not affected (the scan finds it)."
-    artifacts:
-      - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/chat/chatting/ChatThreadViewModel.kt"
-        issue: "Unblocked notice does not apply BlockState.onUnblockSucceeded() to the live thread state"
-      - path: "app/src/main/java/com/uptrendinvestments/clickmeapp/screens/chat/BlockState.kt"
-        issue: "applyScan(null, false) leaves a stale block in place"
-    missing:
-      - "When the thread VM takes a ThreadNotice.Unblocked for its thread, set block = block.onUnblockSucceeded() immediately"
-      - "A ChatThreadViewModel test: empty-thread (findThread null) blocked-by-me, then Unblocked notice -> composerMode Normal"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 4/6
+  gaps_closed:
+    - "Expert Profile report/block success shows the confirmation snackbars \"Thanks, we'll review this.\" and \"You blocked {name}\" (CR-01) - closed by 12-17 Task 1 (commit 236a45a)"
+    - "Unblocking a thread this session blocked clears the blocked composer state, including a thread absent from GET /chats (WR-01) - closed by 12-16 Task 1 (commit 2de260c)"
+  gaps_remaining: []
+  regressions: []
+gaps: []
 deferred: []
 behavior_unverified_items: []
 human_verification:
   - test: "SC-1 on the Samsung SM-A075F (devDebug, production backend), iOS app as the other side: Conversations in both modes; Message from Expert Profile, client Upcoming Details, client Booking Summary, a My Bookings card, expert Request Decision (pending and expired), expert Booking Summary, an expert Upcoming card and the in-call Chat control"
     expected: "Every entry lands on the thread in the Chats tab and Back goes to the list; the in-call control keeps the call running in the pill"
     why_human: "Device plus live backend; navigation hand-off is unit-tested with fakes only (STATE [Phase 12] DEFERRED (a))"
-  - test: "SC-2 with the iOS client: live messages both ways, Android send appears at once and reconciles without a duplicate, typing both ways, Read on Android bubbles, Load earlier pulls 30 more, booking events inline and live after iOS accepts or declines, airplane-mode failed bubble retries without a duplicate, background then foreground catches up"
+  - test: "SC-2 with the iOS client: live messages both ways, Android send appears at once and reconciles without a duplicate, typing both ways, Read on Android bubbles, Load earlier pulls 30 more, booking events inline and live after iOS accepts or declines, airplane-mode failed bubble retries without a duplicate, background then foreground catches up. Also: Send then Back at once, then reopen (WR-03 fix: the message must not vanish; a quick reopen while the POST is in flight is the open GR-WR-02 case)"
     expected: "All behaviors hold across a real two-client socket"
     why_human: "Two-client realtime cannot be exercised by JVM tests (STATE DEFERRED (b))"
   - test: "SC-3 report from chat and from the profile (backend row stores the enum value), block from chat (returns to the list with \"Blocked {name}\") and from the profile (stays, \"You blocked {name}\"), the 10/hour report limit message"
-    expected: "Confirmation snackbars are visible. Re-run the profile cases after the CR-01 fix: today the profile snackbars are expected to flash and vanish"
+    expected: "Profile report and block confirmation snackbars are visible for about 4 s (CR-01 fix) and not shown twice"
     why_human: "Live backend and visual behavior (STATE DEFERRED (c))"
-  - test: "SC-4 the blocker sees \"You blocked this conversation\" and Unblock in Report & Block, the blocked side sees \"You can't reply to this conversation\" and no Unblock, an iOS send into the blocked thread fails, RECIPIENT_UNAVAILABLE with a suspended account, the session-local block after a profile block on a thread with no messages (then unblock it: see gap 2)"
-    expected: "Matches CHAT-UNBLOCK section 5"
+  - test: "SC-4 the blocker sees \"You blocked this conversation\" and Unblock in Report & Block, the blocked side sees \"You can't reply to this conversation\" and no Unblock, an iOS send into the blocked thread fails, RECIPIENT_UNAVAILABLE with a suspended account. Also block from the profile on a thread with no messages, open the thread, Report & Block, Unblock, return"
+    expected: "Matches CHAT-UNBLOCK section 5; after Unblock the composer is back even for the empty thread (WR-01 fix)"
     why_human: "Two accounts and backend state (STATE DEFERRED (d))"
   - test: "Visual and system: 200% font scale on Conversations, a failed bubble, the blocked banner, Report & Block, the Report sheet and the Request Decision footer; TalkBack on bubble actions and the reason group; jump-to-latest; list move-to-top animation; composer IME behavior; signed prodRelease R8 smoke (needs the deferred Phase 2 keystore)"
     expected: "Nothing clips; accessibility labels read correctly"
@@ -97,10 +89,21 @@ human_verification:
 
 **Phase Goal:** Clients and experts can message each other in real time, and either side can report, block or unblock safely.
 **Verified:** 2026-10-27
-**Status:** gaps_found
-**Re-verification:** No, initial verification
+**Status:** human_needed
+**Re-verification:** Yes, after gap closure (plans 12-16 and 12-17). Previous: gaps_found, 4/6.
 
-Device-only and two-client checks are deferred under project policy (STATE "[Phase 12] DEFERRED (human)") and are listed as human verification items, not gaps. The two gaps below are defects found in the code itself and are independent of device testing.
+Both previous gaps are closed in code and tests. The only items left are the device and two-client checks that the user's project policy defers (STATE "[Phase 12] DEFERRED (human)"). They are listed as human verification, not gaps. Open code-review warnings are listed below as warnings; none contradicts a must-have.
+
+## Gap Closure Check
+
+| Previous gap | Resolution | Evidence |
+|--------------|-----------|----------|
+| 1. Expert Profile report/block snackbars self-cancel (CR-01) | CLOSED | `ExpertProfileScreen.kt:107-128`: `val scope = rememberCoroutineScope()`; inside `LaunchedEffect(safetyState.snackbar)` the message is shown with `scope.launch { snackbarHostState.showSnackbar(message) }` and then `safety.consumeSnackbar()`. Consuming the key now only ends the effect, not the coroutine that hosts the snackbar. Same shape as `ChatThreadScreen`. Three Robolectric tests on the real screen (`reportSuccessShowsThanksSnackbar`, `blockSuccessShowsYouBlockedName`, `blockSuccessWithoutNameShowsFallback`) assert the text is displayed and the state consumed; the SUMMARY records they failed at HEAD before the fix. I re-ran `ExpertProfileScreenTest`: 32 tests, 0 failures. `ProfileSafetyViewModel.kt` is unchanged (diff since 15655fd is empty for it). |
+| 2. Unblock leaves an empty session-blocked thread's composer locked (WR-01) | CLOSED | `ChatThreadViewModel.takeNoticeIfForThisThread()` (lines ~484-499) sets `block = it.block.onUnblockSucceeded()` in the same update that stores the `ThreadNotice.Unblocked`, with an exhaustive `when` over the sealed notice, ignores a notice for another thread, and restarts an in-flight scan (`if (blockJob?.isActive == true) refreshBlockState()`). `ReportAndBlockViewModel.unblock()` clears the session mark before posting the notice, so the restarted scan with `applyScan(null, false)` keeps the unblocked state. Tests: `unblockFromReportAndBlockUnlocksAnEmptySessionBlockedThread`, `unblockedNoticeUnlocksWhenTheRescanFails`, `unblockedNoticeForAnotherThreadKeepsTheBlock`, `staleScanInFlightCannotRelockAfterUnblock`. `BlockState.kt` is unchanged since the previous report (plan prohibition holds). I re-ran `ChatThreadViewModelTest`: 27 tests, 0 failures. |
+| Also fixed by the gap plans: IN-02 (duplicate LazyColumn key crash) | CLOSED | `ThreadItem.Message.key` is `c:<client_msg_id>` only when `mine && clientMsgId != null`, otherwise `s:<server id>`; `SystemEvent` keys are `s:` plus server id. Tests `peerRowSharingMyClientMsgIdKeepsADistinctKey`, `peerSocketRowKeepsItsKeyWhenAReloadAddsClientMsgId`, `keysAreUniqueInAMixedThread`, `peerAndOwnRowsSharingAClientMsgIdBothRender` (`ThreadReducerTest` 18, `ChatThreadScreenTest` 38, 0 failures). |
+| Also fixed: WR-03 (Send then Back loses the message) | CLOSED, with caveats GR-WR-01..03 | `ChatThreadViewModel.deliver()` runs the POST in `sendScope.async` (`@ApplicationScope`) and awaits it in `viewModelScope`; if the await is cancelled and the request fails, `ChatSessionState.keepUnsentText(threadId, ownerId, text)` stores it in memory (owner-keyed, take-once, cleared by `clearSessionData`), and a later `ChatThreadViewModel` restores it via `takeUnsentText`. Live outcomes (Failed bubble on network/5xx, bubble removed and text restored on 4xx) unchanged. Tests in `ChatThreadViewModelSendTest` (29, 0 failures) and `ChatSessionStateTest` (7, 0 failures). |
+
+Wire-contract prohibitions of 12-16 hold: `git diff 15655fd HEAD` shows no change to `BlockState.kt`, `ChatsRepository.kt`, `ChatRequests.kt`, `ClickMeApi.kt` or `ApiRequestUrls.kt`. 12-17 changes only `ExpertProfileScreen.kt` on the main side.
 
 ## Goal Achievement
 
@@ -108,82 +111,81 @@ Device-only and two-client checks are deferred under project policy (STATE "[Pha
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | SC-1: A user can open their conversations list and start a chat from Expert Profile, a booking or a request | VERIFIED (device pass deferred) | `ConversationsRoute` is mounted as the Chats root in both `HomeClientScreen.kt:111` and `HomeExpertScreen.kt:105`; `chatEntries()` registers `ChatThreadKey` and `ChatReportBlockKey` in both shells. `ChatLauncher.open` calls `ChatsRepository.initiate` (body `{peer_id}` only) and posts a `ChatThreadKey` to `ChatLaunchRequest.thread`; both shells consume it via `Navigator.openChatThread`. `MessageButton` is used on Expert Profile, client Upcoming Details, client Booking Summary, My Bookings card, Request Decision (screen and footer), expert Booking Summary, expert Upcoming card; the in-call Chat control is wired in `CallOverlayHost` (`PHASE-12` marker gone). Self-chat hidden via `ChatEntryViewModel.isSelf`. |
-| 2 | SC-2: Messages in real time; optimistic send reconciles without duplicates; typing and read live; 30-per-page earlier loading; booking events inline | VERIFIED (code and unit tests; live Android/iOS exchange deferred) | `ThreadReducer` merges by server id then `client_msg_id`, ack collapses a reload-added row into the bubble, Read never regresses. `ChatThreadViewModel`: optimistic `send()` with `ClientMsgIdGenerator`, `deliver()` with ack/fail/retry (same id), `MessageNew`/`MessageRead`/`TypingStart`/`TypingStop`/`BookingUpdate` collectors, `emitMessageRead` only when screen shown and socket Connected, reconnect catch-up reload, `loadEarlier` page size 30 (`ChatsRepository.PAGE_SIZE`), `toThreadItem` maps `type=event` rows to `SystemEvent`. Conversations list moves threads to top on `message.new` and reloads on reconnect. Scoped run `:app:testDevDebugUnitTest --tests '*screens.chat.*' --tests '*ProfileSafetyViewModelTest'`: 267 tests, 0 failures, 0 errors (including `ThreadReducerTest`, `ChatThreadViewModelSendTest`, `ChatThreadViewModelRealtimeTest`). Caveats: WR-03 and IN-02 (see Warnings). |
-| 3 | SC-3: A user can report (enum value accepted) and block, from chat and from Expert Profile | VERIFIED for the requests; confirmation feedback is truth 5 | `UserReportReason` has exactly the six backend wire values (`harassment, spam, inappropriate_content, scam_or_fraud, impersonation, other`), matching `USER-REPORTING.md`; `ChatsRepository.reportInChat` and `reportUser` send `reason.wire`, never a label; DTOs carry only schema keys, null-omitting, redacted `toString`. Chat path: `ReportAndBlockViewModel.submitReport/confirmBlock` (single-flight, inputs kept on failure). Profile path: `ProfileSafetyViewModel` (initiate-then-block, session mark). Block from chat returns to the Conversations root with a "Blocked {name}" notice; block from the profile stays. |
-| 4 | SC-4: Blocked thread disables composer and shows banner; only the blocker sees Unblock; blocked side sees "You can't reply to this conversation"; THREAD_BLOCKED and RECIPIENT_UNAVAILABLE give clear messages | VERIFIED for the main path (device pass deferred); exit edge is truth 6 | `BlockState` implements CHAT-UNBLOCK sections 5-7: `showsUnblock = isBlocked && blockedByMe && !unblockDenied`; legacy block (`is_blocked` without `blocked_by_me`) is treated as peer-blocked; `NOT_BLOCKER` latches Unblock off and keeps blocked-by-peer. `composerMode()` gives BlockedByMe / BlockedByPeer / Unavailable banners (`chat_banner_blocked_by_peer` = "You can't reply to this conversation"). `handleSendFailure` maps `THREAD_BLOCKED` (state to blocked, rescan) and `RECIPIENT_UNAVAILABLE` (unavailable banner) and restores the refused text to the composer. `SafetyErrors.kt` maps `NOT_BLOCKER`, 404, 429 and network to fixed copy. `BlockStateTest` (14) and the VM tests pass. |
-| 5 | 12-10 plan truth: Expert Profile report success shows "Thanks, we'll review this." and block success shows "You blocked {name}" (SAFE-01, SAFE-02) | FAILED | See gap 1: `ExpertProfileScreen.kt:113-124` consumes the snackbar key before `showSnackbar` returns, so the effect is cancelled and the snackbar dismissed almost at once. Review CR-01 (critical) confirmed. |
-| 6 | SAFE-03 / CHAT-UNBLOCK section 6: after a successful unblock the composer unlocks, including for a session-blocked empty thread | PARTIAL (FAILED for the empty-thread case) | See gap 2: review WR-01 confirmed in `BlockState.applyScan` and `ChatThreadViewModel`. Threads that have messages recover through the rescan. |
+| 1 | SC-1: A user can open their conversations list and start a chat from Expert Profile, a booking or a request | VERIFIED (device pass deferred) | Unchanged since the previous report: `ConversationsRoute` is the Chats root in both shells; `ChatLauncher.open` calls `ChatsRepository.initiate` and posts a `ChatThreadKey`; both shells consume it via `Navigator.openChatThread`; `MessageButton` on all entry points plus the in-call control. The only changed files in this area (`ExpertProfileScreen.kt`) still wire `chatEntry`. |
+| 2 | SC-2: Messages in real time; optimistic send reconciles without duplicates; typing and read live; 30-per-page earlier loading; booking events inline | VERIFIED (code and unit tests; live exchange deferred) | `ThreadReducer`, `ChatThreadViewModel` collectors and `PAGE_SIZE = 30` unchanged in substance. The gap pass hardened it: peer rows can no longer collide with own keys (IN-02), and a send now survives leaving the screen (WR-03). Orchestrator full run: 3330 tests, 0 failures; my re-run of the six directly affected classes: 151 tests, 0 failures. Caveats GR-WR-01/02 (below) are edge cases of the post-close send path, not of the live path. |
+| 3 | SC-3: A user can report (enum value accepted) and block, from chat and from Expert Profile | VERIFIED | `UserReportReason` wire values and DTOs unchanged and untouched by the gap pass. The profile confirmation feedback that was missing is now present (truth 5). |
+| 4 | SC-4: Blocked thread disables composer and shows banner; only the blocker sees Unblock; blocked side sees "You can't reply to this conversation"; THREAD_BLOCKED and RECIPIENT_UNAVAILABLE give clear messages | VERIFIED (device pass deferred) | `BlockState` unchanged (matrix of CHAT-UNBLOCK section 5 intact); the exit edge is now truth 6. |
+| 5 | 12-10 plan truth: Expert Profile report success shows "Thanks, we'll review this." and block success shows "You blocked {name}" (SAFE-01, SAFE-02) | VERIFIED | Gap 1 closed above; displayed-text assertions in `ExpertProfileScreenTest`, ViewModel untouched. |
+| 6 | SAFE-03 / CHAT-UNBLOCK section 6: after a successful unblock the composer unlocks, including a session-blocked empty thread | VERIFIED | Gap 2 closed above; regression tests cover empty thread, failed rescan, other-thread notice and a stale in-flight scan. |
 
-**Score:** 4/6 truths verified (0 present-but-behavior-unverified). Truths 1-4 are the roadmap Success Criteria; 5 and 6 are plan/requirement-level truths that the code contradicts.
-
-### Requirements Coverage
-
-All nine IDs are claimed by plan frontmatter (12-01..12-15) and appear in REQUIREMENTS.md with a "Phase 12 / Pending" traceability row. No orphaned requirements.
-
-| Requirement | Source Plans | Status | Evidence |
-|-------------|--------------|--------|----------|
-| CHAT-01 conversations list | 12-01, 12-03, 12-05, 12-15 | SATISFIED | `ConversationsViewModel` (GET /chats page 1, limit 50, realtime move-to-top, session-local unread per the documented backend gap) mounted as Chats root in both shells |
-| CHAT-02 30-per-page, newest first, inline booking events, text only | 12-01, 12-02, 12-06, 12-09, 12-15 | SATISFIED (live pass deferred) | `PAGE_SIZE = 30`, `loadEarlier`, `mergePage`, `SystemEvent` mapping; no attachments key in `SendMessageRequest`; no attachment code (sweep clean) |
-| CHAT-03 optimistic send reconciled by `client_msg_id` | 12-01, 12-02, 12-08, 12-14, 12-15 | SATISFIED with warning | Reducer and VM verified and tested; WR-03 can silently lose a send when the user leaves the screen mid-flight |
-| CHAT-04 read status and typing from realtime | 12-02, 12-05, 12-06, 12-09, 12-15 | SATISFIED (live pass deferred) | `MessageRead`/`Typing*` collectors, `emitMessageRead`, `emitTypingStart/Stop`, Read label on bubbles |
-| CHAT-05 `initiateChat` from profile, booking and request | 12-01, 12-03, 12-04, 12-11, 12-12, 12-13, 12-15 | SATISFIED with warning | `ChatLauncher` plus ten `MessageButton` sites and the in-call control; WR-06 recreates an already-open thread from the in-call control |
-| SAFE-01 report from chat and profile with enum value | 12-01, 12-07, 12-10, 12-15 | SATISFIED for the request; confirmation defective | Enum wire verified; profile "Thanks" snackbar defeated (gap 1) |
-| SAFE-02 block from chat and profile | 12-01, 12-07, 12-10, 12-15 | SATISFIED for the request; confirmation defective | Block calls verified; profile "You blocked {name}" defeated (gap 1); WR-02 can record a false "blocked by me" |
-| SAFE-03 blocked thread composer, banner, Unblock only for the blocker | 12-02, 12-06, 12-07, 12-08, 12-09, 12-14, 12-15 | PARTIAL | Main matrix verified; the empty-thread unblock exit leaves the composer locked (gap 2) |
-| SAFE-04 THREAD_BLOCKED, RECIPIENT_UNAVAILABLE, NOT_BLOCKER clear messages | 12-01, 12-02, 12-07, 12-08, 12-10, 12-14, 12-15 | SATISFIED with warning | `SafetyErrors.kt`, banners; WR-05 double dialog for a suspended account on the send path |
+**Score:** 6/6 truths verified (0 present-but-behavior-unverified).
 
 ### Required Artifacts and Key Links
 
 | Artifact / Link | Status | Details |
 |-----------------|--------|---------|
-| `ClickMeApi` chat endpoints (initiate, list, messages, send, actions, user report) and `ApiRequestUrls` | VERIFIED | 6 endpoints present, strict-schema DTOs, repository wired in `ChatModule`/Hilt |
-| `ChatsRepository`, `ThreadReducer`, `BlockState`, `ChatSessionState` | VERIFIED | Substantive and wired; `ChatSessionState` bound as a `SessionDataCleaner` (cleared on logout) |
-| `ChatThreadViewModel`/`ChatThreadScreen`/`ChatComposer`/`MessageBubble`/`SystemEventRow` | VERIFIED | Substantive, `items(key = row.key)`, composer disabled by `canSend`/mode |
-| `ConversationsViewModel`/`ConversationsScreen` | VERIFIED | Mounted in both shells |
-| `ReportAndBlockViewModel`/`ReportAndBlockScreen`/`ChatReportBlockKey` | VERIFIED | Registered in `chatEntries`; overflow menu leads to it |
-| `ProfileSafetyViewModel` to `ExpertProfileScreen` snackbar | NOT_WIRED correctly | State is set, display path defeated (gap 1) |
-| `ThreadNotice.Unblocked` to `ChatThreadViewModel.block` | PARTIAL | Notice reaches the VM; block flags are not updated from it (gap 2) |
-| Shell hand-off (`ChatLaunchRequest.thread` to `Navigator.openChatThread`) | WIRED | Both shells consume it |
+| `ChatThreadViewModel.kt` (`onUnblockSucceeded` on notice, `sendScope.async`, `keepUnsentText`/`takeUnsentText` restore) | VERIFIED | Substantive, wired. `sendScope` is an `@ApplicationScope` constructor parameter; orchestrator `assembleDevDebug` proves the Hilt graph. |
+| `ThreadItem.kt` sender-aware key | VERIFIED | Used by `ThreadRow.Entry.key` and `items(key = ...)` in `ChatThreadScreen`. |
+| `ChatSessionState.kt` unsent-text store | VERIFIED | `keepUnsentText`, `takeUnsentText` (atomic take-once), keys-only `unsentKeys` flow, cleared in `clearSessionData()`. Memory only. |
+| `ExpertProfileScreen.kt` snackbar effect | VERIFIED | `scope.launch` before `consumeSnackbar()`; `SnackbarHost(snackbarHostState)` rendered in `ExpertProfileContent`. |
+| Link `ReportAndBlockViewModel.unblock` to `ChatThreadViewModel.takeNoticeIfForThisThread` to `BlockState.onUnblockSucceeded` | WIRED | Notice collected in thread VM `init` and in `onScreenShown()`; block applied in the same update. |
+| Link `deliver` to `sendScope.async` and to `keepUnsentText` on await cancellation | WIRED | `request.invokeOnCompletion { if (cause != null) keepUnsentText(...) }` inside the `CancellationException` branch. |
+| All earlier-phase artifacts (API endpoints, `ChatsRepository`, `ThreadReducer`, `BlockState`, conversations, report and block screens, `ProfileSafetyViewModel`) | VERIFIED, unchanged | `git diff 15655fd HEAD --stat -- app` lists only the 11 gap-plan files (4 main: `ThreadItem`, `ChatSessionState`, `ChatThreadViewModel`, `ExpertProfileScreen`; 7 test files); nothing else moved, so no regression surface outside them. |
 
 ### Data-Flow Trace (Level 4)
 
-Conversations rows come from `repository.threads()` (GET /chats); thread rows from `repository.messages()` and the socket; block flags from `findThread`. No static or hardcoded-empty sources found. No `Log.`, `println`, persistence, attachment, clear-history or `PHASE-12`/TODO/FIXME markers in `screens/chat`, `components/chat`, `components/safety` or `ProfileSafetyViewModel.kt` (the 12-15 prohibitions hold).
+No new rendered-data source. The profile snackbar message comes from `ProfileSafetyViewModel.state.snackbar`, set by real `submitReport`/`confirmBlock` success paths. Kept unsent text comes from the failed request's own text and returns only to the composer for the same owner and thread.
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Chat, block, reducer, report and profile-safety logic | `./gradlew :app:testDevDebugUnitTest --tests '*screens.chat.*' --tests '*ProfileSafetyViewModelTest'` | 267 tests, 0 failures, 0 skipped | PASS |
-| Profile snackbar actually visible | none exists | No test covers it; defect found by reading the code | gap 1 |
+| Gap-fix tests on the touched classes | `./gradlew :app:testDevDebugUnitTest --tests '*ExpertProfileScreenTest' '*ChatThreadViewModelTest' '*ThreadReducerTest' '*ChatThreadViewModelSendTest' '*ChatSessionStateTest' '*ChatThreadScreenTest'` | 32 + 27 + 18 + 29 + 7 + 38 tests, 0 failures, 0 errors | PASS |
+| Full gate (orchestrator-run, on main after merge) | `./gradlew :app:testDevDebugUnitTest ktlintCheck :app:assembleDevDebug` | BUILD SUCCESSFUL, 3330 tests, 0 failures, 0 errors | PASS (reported) |
 
 Probe execution: no probes declared by this phase (Step 7c not applicable).
 
+### Requirements Coverage
+
+All nine IDs are claimed in plan frontmatter (12-01..12-17) and appear in REQUIREMENTS.md; no orphans. REQUIREMENTS.md traceability rows still say "Pending" (status bookkeeping, not an implementation gap; the orchestrator updates it on phase completion).
+
+| Requirement | Source Plans | Status | Evidence |
+|-------------|--------------|--------|----------|
+| CHAT-01 conversations list | 12-01, 12-03, 12-05, 12-15 | SATISFIED | Unchanged; mounted in both shells |
+| CHAT-02 30 per page, newest first, inline booking events, text only | 12-01, 12-02, 12-06, 12-09, 12-15, 12-16 | SATISFIED (live pass deferred) | Plus IN-02: thread cannot crash on a peer-reused client_msg_id |
+| CHAT-03 optimistic send reconciled by `client_msg_id` | 12-01, 12-02, 12-08, 12-14, 12-15, 12-16 | SATISFIED with warnings | WR-03 data-loss path closed; GR-WR-01/02 are residual edge cases of the post-close path |
+| CHAT-04 read status and typing from realtime | 12-02, 12-05, 12-06, 12-09, 12-15 | SATISFIED (live pass deferred) | Unchanged |
+| CHAT-05 `initiateChat` from profile, booking and request | 12-01, 12-03, 12-04, 12-11, 12-12, 12-13, 12-15 | SATISFIED with warning | WR-06 still open |
+| SAFE-01 report from chat and profile with enum value | 12-01, 12-07, 12-10, 12-15, 12-17 | SATISFIED | Confirmation now visible (CR-01 closed) |
+| SAFE-02 block from chat and profile | 12-01, 12-07, 12-10, 12-15, 12-17 | SATISFIED with warning | Confirmation now visible; WR-02 still open |
+| SAFE-03 blocked composer, banner, Unblock only for the blocker | 12-02, 12-06, 12-07, 12-08, 12-09, 12-14, 12-15, 12-16 | SATISFIED | Empty-thread unblock exit closed (WR-01); phase-12 note on session-blocked absent threads holds |
+| SAFE-04 THREAD_BLOCKED, RECIPIENT_UNAVAILABLE, NOT_BLOCKER clear messages | 12-01, 12-02, 12-07, 12-08, 12-10, 12-14, 12-15 | SATISFIED with warning | WR-05 still open |
+
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-|------|------|---------|----------|--------|
-| `ExpertProfileScreen.kt` | 113-124 | Effect key consumed inside its own `showSnackbar` coroutine | Blocker (gap 1) | Required confirmations invisible |
-| `ChatThreadViewModel.kt` / `BlockState.kt` | 441-473 / 57-58 | Stale block survives unblock for empty threads | Blocker (gap 2) | Composer stays locked after Unblock |
+Scan of the 11 files changed by the gap pass: no `TODO`, `FIXME`, `XXX`, `TBD`, `Log.` or `println` in the changed main files (the plan's prohibition gates also report none), no persistence in `ChatSessionState` (memory-only `MutableStateFlow`). No blockers.
 
-### Warnings (not gaps; review findings bearing on must-haves)
+### Warnings (not gaps; open in 12-REVIEW-DISPOSITION.md)
 
-- WR-03 (CHAT-03): `deliver()` runs in `viewModelScope`; Send then Back before the response cancels the POST and the bubble vanishes with no signal. Violates the spirit of "sent messages appear immediately and reconcile" on a data-loss path. Recommend an application-scoped send or restoring the draft.
-- WR-02 (SAFE-02/SAFE-03): Report & Block does not seed from the thread's known block state and has no loading state. For a peer-blocked thread, Block stays actionable until the scan returns (indefinitely if it fails); confirming a no-op block 200 records a false session "blocked by me" that overrides server truth for empty threads.
-- WR-05 (SAFE-04): the send path shows its own dialog in addition to the global ACCOUNT_SUSPENDED dialog; 408/429 are treated as refused (bubble removed, text restored) rather than a retryable Failed bubble. Not data-losing.
-- WR-06 (CHAT-05): `Navigator.openChatThread` compares full `ChatThreadKey` (including display seeds), so the in-call Chat control with `isExpert = null` recreates an already-open thread, dropping the draft and cancelling an in-flight send (compounds WR-03).
-- IN-02 raised to Warning (not Info): `ThreadItem.Message.key` is `c:<client_msg_id>` regardless of sender, and the backend returns `client_msg_id` on peer messages in `GET /chats/{id}/messages` (verified in `chats.controller.js:292`) with uniqueness only per (thread, sender, client_msg_id). A peer who reuses one of my client_msg_ids produces two LazyColumn rows with the same key, which throws on composition and crashes the thread screen on every open. Fix by keying on `mine` plus id.
-- WR-04, IN-01, IN-03, IN-04, IN-05: robustness and polish, no must-have impact (WR-04 is a privacy-hygiene deviation from the phase's redaction invariant; no logging exists today).
-- 12-REVIEW-DISPOSITION.md lists all 12 findings as `open`; none has been fixed.
+None contradicts a must-have; each is an edge case or hygiene item.
+
+New from the gap-pass re-review, all in the application-scoped send path added for WR-03:
+- GR-WR-01 (CHAT-03): a send that fails after the thread closed is restored as plain composer text and loses its `client_msg_id`; for an ambiguous failure (IOException or 5xx where the server may have stored it) a user re-send can duplicate. The live path still keeps the id on a Failed bubble.
+- GR-WR-02 (CHAT-03): a thread reopened while the old send is still in flight is not told when it succeeds; the message appears only on the next quiet reload and the user may re-type it.
+- GR-WR-03 (SAFE-04 / hygiene): post-close failures such as THREAD_BLOCKED or ACCOUNT_SUSPENDED are parked as unexplained composer text; a failure landing after logout can re-populate the cleared in-memory store (owner-keyed, so another account never sees it).
+- GR-IN-01..03: a Failed bubble on screen at Back is still lost; joined kept texts are cut by the composer cap; missing tests for logout mid-send, success while reopened, null owner.
+
+Carried from the first pass (unchanged, not in scope of the gap pass): WR-02 (Report & Block actionable before the scan finishes; can record a false session "blocked by me"), WR-04 (default `toString` on UI state with user text; no logging exists today), WR-05 (send path double dialog for ACCOUNT_SUSPENDED; 408/429 treated as refused), WR-06 (`openChatThread` compares display seeds and recreates an open thread), IN-01, IN-03, IN-04, IN-05. All are carried in STATE as a pending todo.
+
+Recommended before the Phase 12 device pass or in a small follow-up: GR-WR-01 and GR-WR-02 (duplicate or invisible message) and WR-02.
+
+### Human Verification Required
+
+See the `human_verification` list in the frontmatter. Five device and two-client checks, deferred by the user's project policy; SC-2, SC-3 and SC-4 items now include the re-checks for the gap fixes (Send then Back, profile confirmation snackbars, empty-thread Unblock).
 
 ### Gaps Summary
 
-The chat data layer, reducer, realtime wiring, entry points, block state machine and error mapping are real, wired and green (267 scoped tests pass; the 12-15 close-out gate of 3310 tests per flavor was not re-run). Two defects keep the phase from being clean:
-
-1. The Expert Profile report/block confirmation snackbars are defeated by a self-cancelling effect (CR-01). Report and block do execute, but the user sees no confirmation, and on the profile block nothing else changes on screen. This directly contradicts the 12-10 must-have text and weakens SAFE-01/SAFE-02 on a store-required feature.
-2. Unblocking a session-blocked thread that has no messages leaves the composer locked (WR-01), the exact case SAFE-03's Phase 12 note introduces.
-
-Both are small, localized fixes with known remedies in 12-REVIEW.md (`/gsd-code-review 12 --fix` or `/gsd-plan-phase 12 --gaps`). After they are fixed, the remaining status would be `human_needed` for the deferred device and two-client checks. The IN-02 duplicate-key crash and WR-03 silent send loss should be fixed in the same pass.
+No gaps. Both previous gaps (profile confirmation snackbars; empty-thread unblock composer lock) are closed in code, covered by tests that exercise the real screen and ViewModel, and passed in the orchestrator's full run (3330 tests, 0 failures) and in my re-run of the directly affected test classes. The gap plans also closed IN-02 and WR-03 and respected their prohibitions (no wire-contract or `BlockState` change). Status is `human_needed` solely because the device and live two-client checks are outstanding by project policy.
 
 ---
 
