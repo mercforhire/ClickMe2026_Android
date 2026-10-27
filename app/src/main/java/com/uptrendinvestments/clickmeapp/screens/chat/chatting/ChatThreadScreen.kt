@@ -1,15 +1,22 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,14 +24,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -40,14 +55,21 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatEmptyThread
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadError
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadSkeleton
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.DateSeparator
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.JumpToLatestButton
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.LoadEarlierButton
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.MessageBubble
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.SystemEventRow
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ThreadOverflowMenu
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.TypingStrip
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSlotTime
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.LocalDate
 import java.time.ZoneId
@@ -108,9 +130,10 @@ fun ChatThreadScreen(
 }
 
 /**
- * Stateless thread: top bar with the peer and the message list, oldest to newest with the list starting at the
- * newest message (`reverseLayout`, so opening needs no scroll). [zone], [locale] and [timeFormat] are parameters so
- * tests pass fixed values.
+ * Stateless thread: top bar with the peer and the overflow menu, the message list (oldest to newest, starting at the
+ * newest message via `reverseLayout`), the typing strip and the [bottomBar] slot for the composer. The first load shows
+ * a skeleton, a failed load an error with Retry, and a loaded empty thread the empty state. [zone], [locale] and
+ * [timeFormat] are parameters so tests pass fixed values.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,21 +153,80 @@ fun ChatThreadContent(
     onOpenReportBlock: () -> Unit,
     onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    bottomBar: @Composable () -> Unit = {},
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val refreshFailedMessage = stringResource(R.string.chat_thread_refresh_failed)
+    val peerLabel = state.peerName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.chat_thread_title_fallback)
+    LaunchedEffect(state.refreshFailed) {
+        if (state.refreshFailed) {
+            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
+            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
+            onRefreshFailureConsumed()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { ChatThreadTopBar(state = state, onBack = onBack) },
+        topBar = {
+            ChatThreadTopBar(state = state, onBack = onBack) {
+                ThreadOverflowMenu(
+                    entry = state.menuEntry,
+                    showViewProfile = mode == AppMode.Client && state.peerIsExpert == true,
+                    viewProfileEnabled = state.peerId != null,
+                    showSafetyItem = !state.isSelfThread,
+                    onViewProfile = onViewProfile,
+                    onReportBlock = onOpenReportBlock,
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        ThreadList(
-            state = state,
-            zone = zone,
-            locale = locale,
-            timeFormat = timeFormat,
-            onLoadEarlier = onLoadEarlier,
-            onOpenBooking = onOpenBooking,
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-        )
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            ) {
+                when (val load = state.load) {
+                    ThreadLoad.Loading -> ChatThreadSkeleton()
+                    is ThreadLoad.Failed -> ScrollableCentered { ChatThreadError(load.message, onRetry) }
+                    ThreadLoad.Loaded ->
+                        if (state.items.isEmpty()) {
+                            ScrollableCentered { ChatEmptyThread() }
+                        } else {
+                            ThreadList(
+                                state = state,
+                                zone = zone,
+                                locale = locale,
+                                timeFormat = timeFormat,
+                                onLoadEarlier = onLoadEarlier,
+                                onOpenBooking = onOpenBooking,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                }
+            }
+            TypingStrip(
+                visible = state.peerTyping,
+                name = peerLabel,
+            )
+            bottomBar()
+        }
+    }
+}
+
+/** Vertically scrollable, centered column so pull-to-refresh works from the empty and error states. */
+@Composable
+private fun ScrollableCentered(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        content()
     }
 }
 
@@ -163,29 +245,66 @@ private fun ThreadList(
     val today = LocalDate.now(zone)
     val todayLabel = stringResource(R.string.chat_thread_today)
     val yesterdayLabel = stringResource(R.string.chat_thread_yesterday)
-    LazyColumn(
-        modifier = modifier.testTag(CHAT_THREAD_LIST_TAG),
-        reverseLayout = true,
-        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.md),
-    ) {
-        items(items = rows, key = { it.key }) { row ->
-            when (row) {
-                is ThreadRow.DateHeader ->
-                    DateSeparator(
-                        label = dateLabel(row.date, today, locale, todayLabel, yesterdayLabel),
-                        modifier = Modifier.animateItem(),
-                    )
-                is ThreadRow.Entry ->
-                    Box(Modifier.padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm).animateItem()) {
-                        EntryContent(row, state, zone, locale, timeFormat, onOpenBooking)
-                    }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val awayFromNewest by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > listState.layoutInfo.visibleItemsInfo.size }
+    }
+    AutoScrollToNewest(state = state, listState = listState)
+
+    Box(modifier = modifier) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().testTag(CHAT_THREAD_LIST_TAG),
+            state = listState,
+            reverseLayout = true,
+            contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.md),
+        ) {
+            items(items = rows, key = { it.key }) { row ->
+                when (row) {
+                    is ThreadRow.DateHeader ->
+                        DateSeparator(
+                            label = dateLabel(row.date, today, locale, todayLabel, yesterdayLabel),
+                            modifier = Modifier.animateItem(),
+                        )
+                    is ThreadRow.Entry ->
+                        Box(Modifier.padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm).animateItem()) {
+                            EntryContent(row, state, zone, locale, timeFormat, onOpenBooking)
+                        }
+                }
+            }
+            if (state.hasMoreEarlier) {
+                item(key = LOAD_EARLIER_KEY) {
+                    LoadEarlierButton(loading = state.isLoadingEarlier, onClick = onLoadEarlier)
+                }
             }
         }
-        if (state.hasMoreEarlier) {
-            item(key = LOAD_EARLIER_KEY) {
-                LoadEarlierButton(loading = state.isLoadingEarlier, onClick = onLoadEarlier)
-            }
-        }
+        JumpToLatestButton(
+            visible = awayFromNewest,
+            onClick = { scope.launch { listState.animateScrollToItem(0) } },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.md),
+        )
+    }
+}
+
+/**
+ * Scrolls to the newest message when a new one arrives and the reader is within one viewport of it, or the message is
+ * mine. A reader scrolled up through history is never moved (the Jump to latest button shows instead). Prepending
+ * older pages leaves the newest key unchanged, so it never triggers a scroll.
+ */
+@Composable
+private fun AutoScrollToNewest(
+    state: ChatThreadUiState,
+    listState: LazyListState,
+) {
+    val newest = state.items.lastOrNull()
+    var lastNewestKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(newest?.key) {
+        val previous = lastNewestKey
+        lastNewestKey = newest?.key
+        if (previous == null || newest == null || previous == newest.key) return@LaunchedEffect
+        val nearNewest = listState.firstVisibleItemIndex <= listState.layoutInfo.visibleItemsInfo.size
+        val mine = newest is ThreadItem.Message && newest.mine
+        if (nearNewest || mine) listState.animateScrollToItem(0)
     }
 }
 
