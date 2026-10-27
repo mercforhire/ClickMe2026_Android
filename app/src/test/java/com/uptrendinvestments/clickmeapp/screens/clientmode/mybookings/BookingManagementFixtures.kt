@@ -16,13 +16,14 @@ fun bookingItem(
     start: Instant = Instant.parse("2026-10-24T18:00:00Z"),
     end: Instant = start.plusSeconds(3600),
     expertName: String? = "Ada Lovelace",
+    expertId: String = "e1",
     topic: String? = "Algorithms",
     meetingType: String? = "in_app_voice",
     reschedule: RescheduleDto? = null,
 ): ClientBookingItem =
     ClientBookingItem(
         bookingId = id,
-        expert = BookingExpertDto(id = "e1", fullName = expertName),
+        expert = BookingExpertDto(id = expertId, fullName = expertName),
         topic = topic,
         startTime = start,
         endTime = end,

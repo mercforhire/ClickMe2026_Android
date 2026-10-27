@@ -43,8 +43,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsEmptyState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsError
@@ -78,9 +81,12 @@ fun MyBookingsScreen(
     onExploreExperts: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MyBookingsViewModel = hiltViewModel(),
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
     DisposableEffect(viewModel) { onDispose { viewModel.onScreenHidden() } }
@@ -100,6 +106,10 @@ fun MyBookingsScreen(
         joinNow = joinNow,
         onJoin = viewModel::join,
         modifier = modifier,
+        messageBusyPeerId = entryState.busyPeerId,
+        onMessage = { item ->
+            chatEntry.open(ChatPeer(item.expert.id, item.expert.fullName, item.expert.avatarUrl, isExpert = true))
+        },
     )
 }
 
@@ -109,7 +119,8 @@ fun MyBookingsScreen(
  *
  * Both tabs load together (RESEARCH Finding 1), so the skeleton shows on the first load only and not per tab (this
  * replaces the UI-SPEC per-tab lazy load). States follow D-11: skeleton, error with Retry, per-tab empty copy. Cards
- * offer the D-12 actions only: tapping opens details or summary, and Join Call is live within the join window (D-01). Pull-to-refresh also works from
+ * offer the D-12 actions only: tapping opens details or summary, Join Call is live within the join window (D-01) and
+ * Upcoming cards carry Message (D-14, [messageBusyPeerId] is the peer being opened). Pull-to-refresh also works from
  * the empty and error states because they scroll. A failed pull and the post-cancel notice (D-07) show as snackbars.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,6 +138,8 @@ fun MyBookingsContent(
     joinNow: Instant,
     onJoin: (ClientBookingItem) -> Unit,
     modifier: Modifier = Modifier,
+    messageBusyPeerId: String? = null,
+    onMessage: (ClientBookingItem) -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -233,6 +246,8 @@ fun MyBookingsContent(
                         onExploreExperts = onExploreExperts,
                         joinNow = joinNow,
                         onJoin = onJoin,
+                        messageBusyPeerId = messageBusyPeerId,
+                        onMessage = onMessage,
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -255,6 +270,8 @@ private fun TabBody(
     onExploreExperts: () -> Unit,
     joinNow: Instant,
     onJoin: (ClientBookingItem) -> Unit,
+    messageBusyPeerId: String?,
+    onMessage: (ClientBookingItem) -> Unit,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
@@ -294,6 +311,8 @@ private fun TabBody(
                                         ),
                                     onJoin = { onJoin(item) },
                                     modifier = Modifier.animateItem(),
+                                    messageBusy = messageBusyPeerId.equals(item.expert.id, ignoreCase = true),
+                                    onMessage = { onMessage(item) },
                                     zone = zone,
                                     timeFormat = timeFormat,
                                     locale = locale,

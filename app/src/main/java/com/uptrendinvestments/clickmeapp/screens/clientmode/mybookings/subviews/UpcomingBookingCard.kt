@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
 import com.uptrendinvestments.clickmeapp.model.responses.BookingExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.RESCHEDULE_INITIATED_BY_EXPERT
@@ -55,7 +57,11 @@ const val UPCOMING_BOOKING_CARD_TAG = "my_bookings_upcoming_card"
 /** Test tag on the Join Call button of an Upcoming card: live, enabled by the join window (D-01..D-03). */
 const val MY_BOOKINGS_JOIN_TAG = "my_bookings_join"
 
+/** Test tag on the Message control of an Upcoming card, in both its icon and its text form (D-14). */
+const val BOOKING_CARD_MESSAGE_TAG = "booking_card_message"
+
 private val IconSize = 20.dp
+private val MessageIconTarget = 56.dp
 private val SmallIconSize = 16.dp
 private val AvatarSize = 56.dp
 private const val BADGE_FILL_ALPHA = 0.10f
@@ -63,12 +69,15 @@ private const val BADGE_BORDER_ALPHA = 0.45f
 private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
 
 /**
- * An Upcoming booking card (iOS `UpcomingBookingCard`). The whole card opens Upcoming Booking Details (D-12). The only
- * action is Join Call, live within the join window; Android goes beyond iOS here, whose card passes an empty
- * `onJoinCall` (D-01). Reschedule, Message and Private Note are not on the card (D-12, D-16).
+ * An Upcoming booking card (iOS `UpcomingBookingCard`). The whole card opens Upcoming Booking Details (D-12). The
+ * actions are Join Call, live within the join window (Android goes beyond iOS here, whose card passes an empty
+ * `onJoinCall`, D-01), and Message (D-14): a 56 dp icon button beside Join, or the full-width text form on a
+ * pending-approval card, which has no Join. Reschedule and Private Note are not on the card (D-12, D-16).
  *
  * @param joinEnabled whether the booking is inside the join window (`isWithinJoinWindow`).
  * @param onJoin starts the call; tapping Join does not open the details.
+ * @param messageBusy true while the chat with this card's expert is being opened.
+ * @param onMessage opens the chat with the expert; tapping Message does not open the details.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
  */
@@ -80,10 +89,14 @@ fun UpcomingBookingCard(
     joinEnabled: Boolean,
     onJoin: () -> Unit,
     modifier: Modifier = Modifier,
+    messageBusy: Boolean = false,
+    onMessage: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
 ) {
+    val expertName = item.expert.fullName ?: stringResource(R.string.explore_expert_name_fallback)
+    val messageEnabled = item.expert.id.isNotBlank()
     Surface(
         modifier =
             modifier
@@ -154,8 +167,27 @@ fun UpcomingBookingCard(
                     icon = Icons.Outlined.HourglassEmpty,
                     text = stringResource(R.string.my_bookings_pending_banner),
                 )
+                MessageButton(
+                    label = stringResource(R.string.chat_entry_message),
+                    onClick = onMessage,
+                    busy = messageBusy,
+                    enabled = messageEnabled,
+                    modifier = Modifier.fillMaxWidth().testTag(BOOKING_CARD_MESSAGE_TAG),
+                )
             } else {
-                JoinCallButton(joinEnabled, onJoin, Modifier.testTag(MY_BOOKINGS_JOIN_TAG))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.Top) {
+                    JoinCallButton(joinEnabled, onJoin, Modifier.weight(1f).testTag(MY_BOOKINGS_JOIN_TAG))
+                    MessageButton(
+                        label = stringResource(R.string.chat_entry_message),
+                        onClick = onMessage,
+                        busy = messageBusy,
+                        enabled = messageEnabled,
+                        variant = MessageButtonVariant.Icon,
+                        contentDescription = stringResource(R.string.chat_entry_message_name, expertName),
+                        iconTarget = MessageIconTarget,
+                        modifier = Modifier.testTag(BOOKING_CARD_MESSAGE_TAG),
+                    )
+                }
             }
         }
     }

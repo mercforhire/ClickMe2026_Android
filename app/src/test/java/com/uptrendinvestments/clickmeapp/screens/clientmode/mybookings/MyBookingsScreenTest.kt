@@ -17,7 +17,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MY_BOOKINGS_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsEmptyState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsError
@@ -76,11 +79,15 @@ class MyBookingsScreenTest {
         onClick: () -> Unit = {},
         joinEnabled: Boolean = false,
         onJoin: () -> Unit = {},
+        messageBusy: Boolean = false,
+        onMessage: () -> Unit = {},
     ) = UpcomingBookingCard(
         item,
         onClick,
         joinEnabled,
         onJoin,
+        messageBusy = messageBusy,
+        onMessage = onMessage,
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -256,6 +263,7 @@ class MyBookingsScreenTest {
         var noticeConsumed = 0
         var refreshFailureConsumed = 0
         val joined = mutableListOf<String>()
+        val messaged = mutableListOf<String>()
     }
 
     @Composable
@@ -263,6 +271,7 @@ class MyBookingsScreenTest {
         state: MyBookingsUiState,
         calls: Callbacks = Callbacks(),
         joinNow: Instant = defaultStart.minusSeconds(600),
+        messageBusyPeerId: String? = null,
     ) = MyBookingsContent(
         state = state,
         onSelectTab = { calls.selectedTab = it },
@@ -275,6 +284,8 @@ class MyBookingsScreenTest {
         onRefreshFailureConsumed = { calls.refreshFailureConsumed++ },
         joinNow = joinNow,
         onJoin = { calls.joined += it.bookingId },
+        messageBusyPeerId = messageBusyPeerId,
+        onMessage = { calls.messaged += it.bookingId },
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -397,11 +408,12 @@ class MyBookingsScreenTest {
         val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
         var tab by mutableStateOf(BookingsTab.Upcoming)
         show { Content(state.copy(selectedTab = tab)) }
-        val forbidden = listOf("Reschedule", "Message", "Private Note", "Leave a Review")
+        val forbidden = listOf("Reschedule", "Message Expert", "Private Note", "Leave a Review")
         forbidden.forEach { assertTrue("$it on Upcoming", !exists(it)) }
         rule.runOnIdle { tab = BookingsTab.Past }
         rule.waitForIdle()
-        forbidden.forEach { assertTrue("$it on Past", !exists(it)) }
+        (forbidden + "Message").forEach { assertTrue("$it on Past", !exists(it)) }
+        assertTrue(!existsTag(BOOKING_CARD_MESSAGE_TAG))
     }
 
     // Join in the list (D-01 .. D-03)
@@ -444,5 +456,63 @@ class MyBookingsScreenTest {
         show { Content(loaded(upcoming = listOf(bookingItem("b1", status = STATUS_PENDING_APPROVAL)))) }
         rule.onNodeWithText("Waiting for expert to accept").assertExists()
         assertTrue(!existsTag(MY_BOOKINGS_JOIN_TAG))
+    }
+
+    // Message (D-14)
+
+    @Test
+    fun upcomingCardShowsMessageIconBesideJoin() {
+        var messages = 0
+        var clicks = 0
+        show { UpcomingCard(bookingItem(), onClick = { clicks++ }, onMessage = { messages++ }) }
+        rule.onNodeWithContentDescription("Message Ada Lovelace").assertExists()
+        rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertExists()
+        rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).assertIsEnabled().performClick()
+        assertEquals(1, messages)
+        assertEquals(0, clicks)
+    }
+
+    @Test
+    fun upcomingCardMessageIsAFixedSizeIconBesideAWeightedJoin() {
+        show { UpcomingCard(bookingItem()) }
+        val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
+        val join = rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNode()
+        assertEquals(message.size.width, message.size.height)
+        assertTrue(join.size.width > message.size.width)
+        assertTrue(join.boundsInRoot.right <= message.boundsInRoot.left)
+    }
+
+    @Test
+    fun pendingCardShowsTextMessage() {
+        var messages = 0
+        show { UpcomingCard(bookingItem(status = STATUS_PENDING_APPROVAL), onMessage = { messages++ }) }
+        assertTrue(!existsTag(MY_BOOKINGS_JOIN_TAG))
+        rule.onNodeWithText("Message").assertExists()
+        rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).performClick()
+        assertEquals(1, messages)
+    }
+
+    @Test
+    fun busyCardShowsSpinnerOnThatCardOnly() {
+        val upcoming = listOf(bookingItem("b1"), bookingItem("b3", expertId = "e2"))
+        show { Content(loaded(upcoming = upcoming), messageBusyPeerId = "e2") }
+        val spinners = rule.onAllNodesWithTag(MESSAGE_BUTTON_SPINNER_TAG, useUnmergedTree = true)
+        assertEquals(1, spinners.fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun contentMessageReportsTheTappedBooking() {
+        val calls = Callbacks()
+        show { Content(loaded(upcoming = listOf(bookingItem("b1"), bookingItem("b3"))), calls) }
+        rule.onAllNodesWithTag(BOOKING_CARD_MESSAGE_TAG)[1].performScrollTo().performClick()
+        assertEquals(listOf("b3"), calls.messaged)
+        assertEquals(null, calls.openedUpcoming)
+    }
+
+    @Test
+    fun pastCardsHaveNoMessage() {
+        show { Content(loaded(tab = BookingsTab.Past, past = listOf(pastRow("b2")))) }
+        assertTrue(!existsTag(BOOKING_CARD_MESSAGE_TAG))
+        assertTrue(!exists("Message"))
     }
 }
