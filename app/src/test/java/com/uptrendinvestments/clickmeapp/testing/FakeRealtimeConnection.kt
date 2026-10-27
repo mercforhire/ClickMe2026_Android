@@ -57,18 +57,39 @@ class FakeRealtimeConnection : RealtimeConnection {
         _state.value = state
     }
 
+    private val _typingStarts = mutableListOf<Pair<String, String>>()
+    private val _typingStops = mutableListOf<Pair<String, String>>()
+    private val _messageReads = mutableListOf<Pair<String, List<String>>>()
+
+    /** Every `typing.start` emit as (threadId, recipientId), in call order. */
+    val typingStarts: List<Pair<String, String>> get() = synchronized(_typingStarts) { _typingStarts.toList() }
+
+    /** Every `typing.stop` emit as (threadId, recipientId), in call order. */
+    val typingStops: List<Pair<String, String>> get() = synchronized(_typingStops) { _typingStops.toList() }
+
+    /** Every `message.read` emit as (threadId, messageIds), in call order. */
+    val messageReads: List<Pair<String, List<String>>> get() = synchronized(_messageReads) { _messageReads.toList() }
+
+    // The emit overrides below record every call regardless of state. The real connection drops emits unless it is
+    // Connected, so ViewModels that care check `state.value` themselves (RESEARCH Pitfall 5).
     override fun emitTypingStart(
         threadId: String,
         recipientId: String,
-    ) = Unit
+    ) {
+        synchronized(_typingStarts) { _typingStarts += threadId to recipientId }
+    }
 
     override fun emitTypingStop(
         threadId: String,
         recipientId: String,
-    ) = Unit
+    ) {
+        synchronized(_typingStops) { _typingStops += threadId to recipientId }
+    }
 
     override fun emitMessageRead(
         threadId: String,
         messageIds: List<String>,
-    ) = Unit
+    ) {
+        synchronized(_messageReads) { _messageReads += threadId to messageIds }
+    }
 }
