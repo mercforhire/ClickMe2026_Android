@@ -611,7 +611,7 @@ Plans:
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
 **Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
-**Plans:** 15/15 plans executed
+**Plans:** 15/17 plans executed (2 gap-closure plans pending)
 
 Plans:
 
@@ -644,6 +644,16 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 12-15-PLAN.md — Phase gate (both flavors, lint, R8), scope and privacy sweeps, VALIDATION sign-off, deferred device checks, backend notes, iOS follow-ups and hand-offs (all)
+
+**Gap closure** *(from 12-VERIFICATION.md gaps 1-2 / 12-REVIEW.md CR-01 and WR-01, plus WR-03 and IN-02; WR-02, WR-04..06, IN-01, IN-03..05 stay open)*
+
+**Wave 1**
+
+- [ ] 12-16-PLAN.md — WR-01: the Unblocked notice applies CHAT-UNBLOCK §6 at once (empty session-blocked thread, failed or stale rescan); IN-02: sender-aware message keys (no duplicate-key crash, no s:→c: flip); WR-03: send POST in the application scope, failed or refused text back in that thread's composer for the same user (CHAT-02, CHAT-03, SAFE-03)
+
+**Wave 2** *(blocked on gap Wave 1 completion)*
+
+- [ ] 12-17-PLAN.md — CR-01: Expert Profile report/block snackbars shown on the composition scope, Robolectric tests on the real screen; gap-pass gate (scoped tests, ktlint, assembleDevDebug, lint, design rules), review disposition, VALIDATION rows, STATE carry-forward (SAFE-01, SAFE-02)
 
 **UI hint**: yes
 
