@@ -12,6 +12,8 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.ClientMsgIdGenerator
+import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -131,12 +133,14 @@ class ChatThreadViewModel
          * The composer text changed. The first non-blank edit after a quiet period emits `typing.start` once; every
          * edit restarts a [TYPING_IDLE_MS] timer that emits `typing.stop`; an emptied composer stops at once.
          * Nothing is emitted without a known peer id. Typing is best-effort: it rides the socket only and is dropped
-         * while the socket is down.
+         * while the socket is down. The text is capped at [COMPOSER_MAX] UTF-16 code units (the backend limit)
+         * before anything else, without splitting a surrogate pair.
          */
         fun onComposerChanged(text: String) {
-            _uiState.update { it.copy(composerText = text) }
-            savedStateHandle[KEY_COMPOSER] = text
-            if (text.isBlank()) {
+            val capped = capText(text, COMPOSER_MAX)
+            _uiState.update { it.copy(composerText = capped) }
+            savedStateHandle[KEY_COMPOSER] = capped
+            if (capped.isBlank()) {
                 stopTypingNow()
                 return
             }
@@ -199,11 +203,31 @@ class ChatThreadViewModel
                         it.copy(items = ThreadReducer.ack(it.items, clientMsgId, ack.messageId, ack.timestamp))
                     }
                 } catch (e: ApiException) {
+                    // A network error, a 5xx or an unreadable response keeps the bubble as Failed (D-01, no dialog).
                     _uiState.update { it.copy(items = ThreadReducer.fail(it.items, clientMsgId)) }
                 } finally {
                     inFlight -= clientMsgId
                 }
             }
+        }
+
+        /**
+         * Resends a Failed bubble with the same client_msg_id (the server dedupes, so a double delivery is harmless).
+         * Ignored while that id is already in flight, when the bubble is not Failed, or when the composer is not in
+         * the Normal mode.
+         */
+        fun retry(clientMsgId: String) {
+            val bubble = ThreadReducer.findMine(_uiState.value.items, clientMsgId) ?: return
+            if (bubble.delivery != Delivery.Failed || bubble.serverId != null) return
+            if (inFlight.any { it.equals(clientMsgId, ignoreCase = true) }) return
+            if (_uiState.value.composerMode != ComposerMode.Normal) return
+            _uiState.update { it.copy(items = ThreadReducer.retry(it.items, clientMsgId)) }
+            deliver(bubble.clientMsgId ?: clientMsgId, bubble.text)
+        }
+
+        /** Deletes an unsent bubble locally. Nothing is sent and there is no confirmation (UI-SPEC A10). */
+        fun delete(clientMsgId: String) {
+            _uiState.update { it.copy(items = ThreadReducer.remove(it.items, clientMsgId)) }
         }
 
         /** Ends an active typing session now (send, emptied composer, hidden screen). The send flow calls it too. */
@@ -447,6 +471,9 @@ class ChatThreadViewModel
 
             /** SavedStateHandle key of the unsent composer text (survives rotation and process death). */
             const val KEY_COMPOSER = "chat_thread_composer"
+
+            /** Composer limit in UTF-16 code units: the backend `content` max (D-04). */
+            const val COMPOSER_MAX = CHAT_COMPOSER_MAX
 
             /** Quiet time after the last edit before `typing.stop` is emitted. */
             const val TYPING_IDLE_MS = 3_000L
