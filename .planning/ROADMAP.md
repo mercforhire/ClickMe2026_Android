@@ -611,15 +611,15 @@ Plans:
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
 **Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
-**Plans:** 15 plans
+**Plans:** 3/15 plans executed
 
 Plans:
 
 **Wave 1**
 
-- [ ] 12-01-PLAN.md — Network contract: 6 chat/report endpoints, DTOs (redacting toString), six-value `UserReportReason`, `CANNOT_CHAT_WITH_SELF`, stateless `ChatsRepository`, wire tests, Wave 0 fakes and fixtures (CHAT-01..03, CHAT-05, SAFE-01, SAFE-02, SAFE-04)
-- [ ] 12-02-PLAN.md — Pure logic and session seams: `ThreadReducer` (merge by server id / client_msg_id, ack, fail, retry, read), `BlockState` (CHAT-UNBLOCK §5-§7), `ChatSessionState` (cleared on logout), current-user and client_msg_id seams (CHAT-02..04, SAFE-03, SAFE-04)
-- [ ] 12-03-PLAN.md — Navigation skeleton: `ChatThreadKey` / `ChatReportBlockKey`, `ChatLaunchRequest` hand-off slot, `Navigator.openChatThread`, shells consume the slot, Chats root slot, route registration, Chats origins on pushed keys (CHAT-01, CHAT-05)
+- [x] 12-01-PLAN.md — Network contract: 6 chat/report endpoints, DTOs (redacting toString), six-value `UserReportReason`, `CANNOT_CHAT_WITH_SELF`, stateless `ChatsRepository`, wire tests, Wave 0 fakes and fixtures (CHAT-01..03, CHAT-05, SAFE-01, SAFE-02, SAFE-04)
+- [x] 12-02-PLAN.md — Pure logic and session seams: `ThreadReducer` (merge by server id / client_msg_id, ack, fail, retry, read), `BlockState` (CHAT-UNBLOCK §5-§7), `ChatSessionState` (cleared on logout), current-user and client_msg_id seams (CHAT-02..04, SAFE-03, SAFE-04)
+- [x] 12-03-PLAN.md — Navigation skeleton: `ChatThreadKey` / `ChatReportBlockKey`, `ChatLaunchRequest` hand-off slot, `Navigator.openChatThread`, shells consume the slot, Chats root slot, route registration, Chats origins on pushed keys (CHAT-01, CHAT-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -744,7 +744,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
-| 12. Chat, Report & Block | 0/TBD | Not started | - |
+| 12. Chat, Report & Block | 3/15 | In Progress | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
