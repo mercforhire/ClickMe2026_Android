@@ -18,6 +18,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +38,7 @@ import kotlinx.coroutines.launch
 class ChatThreadViewModel
     @AssistedInject
     constructor(
-        @Assisted private val key: ChatThreadKey,
+        @Assisted key: ChatThreadKey,
         private val savedStateHandle: SavedStateHandle,
         private val repository: ChatsRepository,
         private val realtime: RealtimeConnection,
@@ -73,6 +74,7 @@ class ChatThreadViewModel
                     peerAvatarUrl = key.peerAvatarUrl,
                     peerIsExpert = key.peerIsExpert,
                     isSelfThread = key.peerId != null && key.peerId.equals(currentUser.currentUserId(), true),
+                    composerText = savedStateHandle.get<String>(KEY_COMPOSER).orEmpty(),
                 ),
             )
         val uiState: StateFlow<ChatThreadUiState> = _uiState.asStateFlow()
@@ -80,8 +82,19 @@ class ChatThreadViewModel
         private var loadJob: Job? = null
         private var earlierJob: Job? = null
         private var blockJob: Job? = null
+        private var typingStopJob: Job? = null
+        private var peerTypingJob: Job? = null
         private var oldestLoadedPage = FIRST_PAGE
         private var totalPages = FIRST_PAGE
+
+        private var typingActive = false
+        private var typingRecipientId: String? = null
+
+        /** True between [onScreenShown] and [onScreenHidden]; read receipts are only sent while it is true. */
+        private var screenShown = false
+
+        /** Lower-cased ids a `message.read` was actually emitted for. */
+        private val emittedReadIds = mutableSetOf<String>()
 
         init {
             observeRealtime()
@@ -111,6 +124,45 @@ class ChatThreadViewModel
         }
 
         /**
+         * The composer text changed. The first non-blank edit after a quiet period emits `typing.start` once; every
+         * edit restarts a [TYPING_IDLE_MS] timer that emits `typing.stop`; an emptied composer stops at once.
+         * Nothing is emitted without a known peer id. Typing is best-effort: it rides the socket only and is dropped
+         * while the socket is down.
+         */
+        fun onComposerChanged(text: String) {
+            _uiState.update { it.copy(composerText = text) }
+            savedStateHandle[KEY_COMPOSER] = text
+            if (text.isBlank()) {
+                stopTypingNow()
+                return
+            }
+            val state = _uiState.value
+            val peerId = state.peerId
+            if (!typingActive && peerId != null && !state.isSelfThread) {
+                realtime.emitTypingStart(threadId, peerId)
+                typingActive = true
+                typingRecipientId = peerId
+            }
+            typingStopJob?.cancel()
+            if (typingActive) {
+                typingStopJob =
+                    viewModelScope.launch {
+                        delay(TYPING_IDLE_MS)
+                        stopTypingNow()
+                    }
+            }
+        }
+
+        /** Ends an active typing session now (send, emptied composer, hidden screen). The send flow calls it too. */
+        internal fun stopTypingNow() {
+            typingStopJob?.cancel()
+            typingStopJob = null
+            if (!typingActive) return
+            typingActive = false
+            typingRecipientId?.let { realtime.emitTypingStop(threadId, it) }
+        }
+
+        /**
          * Requests the next older page and merges it by server id. A failure is silent and leaves the button
          * retryable (iOS parity); the end of the history is `oldestLoadedPage >= totalPages`.
          */
@@ -127,6 +179,7 @@ class ChatThreadViewModel
                         oldestLoadedPage = page
                         totalPages = if (rows.isEmpty()) page else payload.pagination?.totalPages ?: totalPages
                         _uiState.update { it.withMergedPage(rows).copy(isLoadingEarlier = false) }
+                        emitPendingReads()
                     } catch (e: ApiException) {
                         _uiState.update { it.copy(isLoadingEarlier = false) }
                     }
@@ -139,21 +192,57 @@ class ChatThreadViewModel
          * the block state again, since it may have changed while the screen was away.
          */
         fun onScreenShown() {
+            screenShown = true
             sessionState.onThreadShown(threadId)
             takeNoticeIfForThisThread()
             if (loadJob?.isActive != true) {
                 startLoad(if (_uiState.value.load is ThreadLoad.Loaded) LoadMode.Quiet else LoadMode.Loud)
             }
             refreshBlockState()
+            emitPendingReads()
         }
 
-        /** The thread left the screen (`ON_PAUSE`, disposal). */
+        /** The thread left the screen (`ON_PAUSE`, disposal): no more read receipts, typing stops. */
         fun onScreenHidden() {
+            screenShown = false
+            stopTypingNow()
             sessionState.onThreadHidden(threadId)
         }
 
         override fun onCleared() {
+            screenShown = false
+            stopTypingNow()
             sessionState.onThreadHidden(threadId)
+        }
+
+        /**
+         * Emits `message.read` for unread peer messages with a server id, while the screen is shown and the socket is
+         * Connected. The connection drops emits in any other state, so an id is recorded in [emittedReadIds] only when
+         * it was actually sent; pending ids go out after a reconnect (RESEARCH Pitfall 5). Never emits for a message
+         * twice, and never from a hidden thread.
+         */
+        private fun emitPendingReads() {
+            if (!screenShown || realtime.state.value != ConnectionState.Connected) return
+            val ids = ThreadReducer.unreadPeerIds(_uiState.value.items, emittedReadIds)
+            if (ids.isEmpty()) return
+            realtime.emitMessageRead(threadId, ids)
+            ids.mapTo(emittedReadIds) { it.lowercase() }
+        }
+
+        private fun onPeerTypingStart() {
+            _uiState.update { it.copy(peerTyping = true) }
+            peerTypingJob?.cancel()
+            peerTypingJob =
+                viewModelScope.launch {
+                    delay(PEER_TYPING_TIMEOUT_MS)
+                    _uiState.update { it.copy(peerTyping = false) }
+                }
+        }
+
+        private fun clearPeerTyping() {
+            peerTypingJob?.cancel()
+            peerTypingJob = null
+            _uiState.update { it.copy(peerTyping = false) }
         }
 
         private fun observeRealtime() {
@@ -173,25 +262,44 @@ class ChatThreadViewModel
             viewModelScope.launch {
                 realtime.events.filterIsInstance<RealtimeEvent.BookingUpdate>().collect { reloadQuietly() }
             }
-            // Catch-up after a reconnect: events missed while the socket was down are not replayed (Pitfall 5).
+            viewModelScope.launch {
+                realtime.events.filterIsInstance<RealtimeEvent.TypingStart>().collect { event ->
+                    if (isPeerTypingEvent(event.threadId, event.senderId)) onPeerTypingStart()
+                }
+            }
+            viewModelScope.launch {
+                realtime.events.filterIsInstance<RealtimeEvent.TypingStop>().collect { event ->
+                    if (isPeerTypingEvent(event.threadId, event.senderId)) clearPeerTyping()
+                }
+            }
+            // Catch-up after a reconnect: events missed while the socket was down are not replayed (Pitfall 5), so
+            // reload page 1 and send the read receipts that were held back while the socket was down.
             viewModelScope.launch {
                 var seenConnected = false
                 realtime.state.collect { state ->
                     if (state == ConnectionState.Connected) {
                         if (seenConnected) reloadQuietly()
                         seenConnected = true
+                        emitPendingReads()
                     }
                 }
             }
         }
 
+        private fun isPeerTypingEvent(
+            eventThreadId: String,
+            senderId: String,
+        ): Boolean =
+            eventThreadId.equals(threadId, ignoreCase = true) &&
+                !senderId.equals(currentUser.currentUserId(), ignoreCase = true)
+
         private fun onMessageNew(event: RealtimeEvent.MessageNew) {
             val myId = currentUser.currentUserId()
             if (event.senderId.equals(myId, ignoreCase = true)) return
             val message = event.toThreadItem(myId)
-            _uiState.update {
-                it.copy(items = ThreadReducer.onIncoming(it.items, message, myId), peerTyping = false)
-            }
+            _uiState.update { it.copy(items = ThreadReducer.onIncoming(it.items, message, myId)) }
+            clearPeerTyping()
+            emitPendingReads()
         }
 
         /** Loud while the first load has not finished (so a failure stays visible), quiet otherwise. */
@@ -253,6 +361,7 @@ class ChatThreadViewModel
                         val rows = payload.messages.map { it.toThreadItem(currentUser.currentUserId()) }
                         totalPages = payload.pagination?.totalPages ?: FIRST_PAGE
                         _uiState.update { it.withMergedPage(rows).copy(load = ThreadLoad.Loaded, isRefreshing = false) }
+                        emitPendingReads()
                     } catch (e: ApiException) {
                         _uiState.update { loadFailed(it, mode, e) }
                     }
@@ -282,6 +391,15 @@ class ChatThreadViewModel
 
         companion object {
             const val FIRST_PAGE = 1
+
+            /** SavedStateHandle key of the unsent composer text (survives rotation and process death). */
+            const val KEY_COMPOSER = "chat_thread_composer"
+
+            /** Quiet time after the last edit before `typing.stop` is emitted. */
+            const val TYPING_IDLE_MS = 3_000L
+
+            /** Safety net that clears the peer typing indicator when no `typing.stop` or message arrives. */
+            const val PEER_TYPING_TIMEOUT_MS = 6_000L
             private const val ROLE_EXPERT = "expert"
         }
     }
