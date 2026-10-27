@@ -27,21 +27,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.AcceptRequestSheet
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DeclineRequestSheet
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestActionFooter
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestClientHeader
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.RequestDetailsCard
@@ -66,7 +74,9 @@ private val EarningsSkeletonHeight = 128.dp
 
 /**
  * Request Decision (EXP-06): the client, schedule, message and earnings of one pending request, with a pinned
- * Decline / Accept footer and the two decision sheets. [onAccepted] replaces this screen with Booking Confirmed (D-04).
+ * Message / Decline / Accept footer and the two decision sheets. [onAccepted] replaces this screen with Booking
+ * Confirmed (D-04). Message opens the chat with the requesting client (D-14); an expired request, which has no footer,
+ * shows it at the bottom of the content. There is no Report or Block here (D-11).
  */
 @Composable
 fun RequestDecisionScreen(
@@ -76,8 +86,10 @@ fun RequestDecisionScreen(
     onDeclined: () -> Unit,
     onExitAfterProcessed: () -> Unit,
     modifier: Modifier = Modifier,
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.event) {
         when (val event = state.event) {
             is RequestDecisionEvent.Accepted -> onAccepted(event.confirmed)
@@ -95,7 +107,12 @@ fun RequestDecisionScreen(
         onDecline = viewModel::decline,
         onDismissDialog = viewModel::dismissDialog,
         modifier = modifier,
+        messageBusy = entryState.busyPeerId != null,
+        onMessage = { details ->
+            chatEntry.open(ChatPeer(details.clientId, details.clientName, details.clientAvatarUrl, isExpert = false))
+        },
     )
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 }
 
 /**
@@ -103,6 +120,7 @@ fun RequestDecisionScreen(
  * open flags and typed text are kept here with `rememberSaveable`, so a failed call or a rotation keeps the input.
  */
 @Composable
+@Suppress("LongParameterList", "LongMethod")
 fun RequestDecisionContent(
     state: RequestDecisionUiState,
     onBack: () -> Unit,
@@ -114,6 +132,8 @@ fun RequestDecisionContent(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
+    messageBusy: Boolean = false,
+    onMessage: (RequestDecisionDetails) -> Unit = {},
 ) {
     var acceptOpen by rememberSaveable { mutableStateOf(false) }
     var acceptText by rememberSaveable { mutableStateOf("") }
@@ -144,11 +164,15 @@ fun RequestDecisionContent(
             )
         },
         bottomBar = {
-            if (canDecide) {
+            val loadedDetails = (state.load as? RequestDecisionLoad.Loaded)?.details
+            if (canDecide && loadedDetails != null) {
                 RequestActionFooter(
                     enabled = !submitting,
                     onDecline = { declineOpen = true },
                     onAccept = { acceptOpen = true },
+                    clientName = loadedDetails.clientName,
+                    messageBusy = messageBusy,
+                    onMessage = { onMessage(loadedDetails) },
                 )
             }
         },
@@ -164,6 +188,8 @@ fun RequestDecisionContent(
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
+                        messageBusy = messageBusy,
+                        onMessage = { onMessage(load.details) },
                     )
             }
         }
@@ -213,6 +239,8 @@ private fun LoadedBody(
     zone: ZoneId,
     timeFormat: java.text.DateFormat,
     locale: Locale,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
 ) {
     Column(
         modifier =
@@ -235,6 +263,15 @@ private fun LoadedBody(
         )
         details.clientMessage?.let { RequestMessageCard(message = it) }
         RequestEarningsSection(earnings = details.earnings)
+        // An expired request has no footer, so Message sits at the end of the content instead.
+        if (isExpired) {
+            MessageButton(
+                label = stringResource(R.string.chat_entry_message_name, clientDisplayName(details.clientName)),
+                onClick = onMessage,
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.lg).testTag(REQUEST_MESSAGE_TAG),
+                busy = messageBusy,
+            )
+        }
     }
 }
 

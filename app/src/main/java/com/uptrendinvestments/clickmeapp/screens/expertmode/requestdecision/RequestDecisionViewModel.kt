@@ -169,6 +169,7 @@ class RequestDecisionViewModel
         private fun BookingRequestDetail.toDetails(): RequestDecisionDetails =
             RequestDecisionDetails(
                 requestId = requestId,
+                clientId = client.id,
                 clientName = client.name,
                 clientAvatarUrl = client.avatarUrl,
                 start = session.startTime,

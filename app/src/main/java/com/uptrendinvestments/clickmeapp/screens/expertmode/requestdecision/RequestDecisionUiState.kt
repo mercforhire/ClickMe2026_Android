@@ -23,6 +23,7 @@ sealed interface RequestDecisionLoad {
  */
 data class RequestDecisionDetails(
     val requestId: String,
+    val clientId: String,
     val clientName: String?,
     val clientAvatarUrl: String?,
     val start: Instant,

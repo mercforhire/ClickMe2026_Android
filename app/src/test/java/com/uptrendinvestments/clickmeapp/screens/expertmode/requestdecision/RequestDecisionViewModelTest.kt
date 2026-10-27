@@ -62,6 +62,7 @@ class RequestDecisionViewModelTest {
 
             val details = vm.loaded()
             assertEquals("r1", details.requestId)
+            assertEquals("c1", details.clientId)
             assertEquals("Ada Lovelace", details.clientName)
             assertEquals("Algorithms", details.topic)
             assertEquals("Hello", details.clientMessage)

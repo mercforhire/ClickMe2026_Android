@@ -22,6 +22,9 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButtonDefaults
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Test tag on the footer's Accept button. */
@@ -30,22 +33,31 @@ const val REQUEST_ACCEPT_TAG = "request_accept"
 /** Test tag on the footer's Decline button. */
 const val REQUEST_DECLINE_TAG = "request_decline"
 
+/** Test tag on the Message control, in the footer and in the expired state. */
+const val REQUEST_MESSAGE_TAG = "request_message"
+
 private val FooterButtonMinHeight = 56.dp
 private const val STACK_BELOW_WIDTH_DP = 320
 private const val STACK_AT_FONT_SCALE = 1.5f
 
 /**
- * Pinned Decline / Accept bar of a pending request (surface 3 block 6). Two equal buttons side by side; below 320dp
- * width or at font scale 1.5 and above they stack with Accept first. Both are disabled while a decision is in
- * flight ([enabled] false). Tapping either only opens its sheet; nothing is sent from here.
+ * Pinned Message / Decline / Accept bar of a pending request (surface 3 block 6, UI-SPEC surface 5). A 56 dp Message
+ * icon button leads two equal buttons; below 320dp width or at font scale 1.5 and above they stack as Accept,
+ * Decline, then the text-form Message for [clientName]. All are disabled while a decision is in flight ([enabled]
+ * false). Decline and Accept only open their sheet; Message calls [onMessage] and shows a spinner while [messageBusy].
  */
 @Composable
+@Suppress("LongParameterList")
 fun RequestActionFooter(
     enabled: Boolean,
     onDecline: () -> Unit,
     onAccept: () -> Unit,
+    clientName: String?,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val messageLabel = stringResource(R.string.chat_entry_message_name, clientDisplayName(clientName))
     val stacked =
         LocalConfiguration.current.screenWidthDp < STACK_BELOW_WIDTH_DP ||
             LocalDensity.current.fontScale >= STACK_AT_FONT_SCALE
@@ -59,12 +71,29 @@ fun RequestActionFooter(
                 ) {
                     AcceptButton(enabled, onAccept, Modifier.fillMaxWidth())
                     DeclineButton(enabled, onDecline, Modifier.fillMaxWidth())
+                    MessageButton(
+                        label = messageLabel,
+                        onClick = onMessage,
+                        modifier = Modifier.fillMaxWidth().testTag(REQUEST_MESSAGE_TAG),
+                        busy = messageBusy,
+                        enabled = enabled,
+                    )
                 }
             } else {
                 Row(
                     modifier = Modifier.padding(Spacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
+                    MessageButton(
+                        label = messageLabel,
+                        onClick = onMessage,
+                        modifier = Modifier.testTag(REQUEST_MESSAGE_TAG),
+                        busy = messageBusy,
+                        enabled = enabled,
+                        variant = MessageButtonVariant.Icon,
+                        contentDescription = messageLabel,
+                        iconTarget = FooterButtonMinHeight,
+                    )
                     DeclineButton(enabled, onDecline, Modifier.weight(1f))
                     AcceptButton(enabled, onAccept, Modifier.weight(1f))
                 }
