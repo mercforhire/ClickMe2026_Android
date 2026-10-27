@@ -3,12 +3,16 @@ package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.BlockState
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_INPUT_TAG
@@ -90,6 +95,8 @@ class ChatThreadScreenTest {
     private var refreshFailureConsumed = 0
     private val composerEdits = mutableListOf<String>()
     private var sendCalls = 0
+    private val retried = mutableListOf<String>()
+    private val deleted = mutableListOf<String>()
     private var shown by mutableStateOf(ChatThreadUiState(threadId = "t1"))
 
     private fun show(
@@ -115,6 +122,8 @@ class ChatThreadScreenTest {
                     onRefreshFailureConsumed = { refreshFailureConsumed++ },
                     onComposerChanged = { composerEdits += it },
                     onSend = { sendCalls++ },
+                    onRetryMessage = { retried += it },
+                    onDeleteMessage = { deleted += it },
                 )
             }
         }
@@ -436,5 +445,48 @@ class ChatThreadScreenTest {
 
         rule.onNodeWithText("Just sent").assertIsDisplayed()
         rule.onNodeWithText("Sending…").assertIsDisplayed()
+    }
+
+    private fun failed(id: String = "c1") =
+        own("", "Not delivered", Delivery.Failed).copy(serverId = null, clientMsgId = id)
+
+    @Test
+    fun failedBubbleShowsRetryLineAndRetriesOnTap() {
+        show(loaded(listOf(failed("c1"))))
+
+        rule.onNodeWithText("Not sent. Tap to retry").assertIsDisplayed()
+        rule.onNodeWithText("Not sent. Tap to retry").performClick()
+        assertEquals(listOf("c1"), retried)
+    }
+
+    @Test
+    fun longPressOffersDelete() {
+        show(loaded(listOf(failed("c1"))))
+
+        rule.onNodeWithText("Not delivered").performTouchInput { longClick() }
+        rule.onNodeWithText("Delete").assertIsDisplayed()
+        rule.onNodeWithText("Delete").performClick()
+        assertEquals(listOf("c1"), deleted)
+        assertTrue(retried.isEmpty())
+    }
+
+    @Test
+    fun failedBubbleCustomActions() {
+        show(loaded(listOf(failed("c1"))))
+
+        val node = rule.onNodeWithText("Not sent. Tap to retry").fetchSemanticsNode()
+        val labels = node.config.getOrNull(SemanticsActions.CustomActions)?.map { it.label }
+        assertEquals(listOf("Retry sending", "Delete message"), labels)
+        val delete = node.config.getOrNull(SemanticsActions.CustomActions)!!.last()
+        rule.runOnUiThread { delete.action() }
+        assertEquals(listOf("c1"), deleted)
+    }
+
+    @Test
+    fun sentBubbleIsNotClickable() {
+        show(loaded(listOf(own("m1", "All good"))))
+
+        rule.onNodeWithText("All good").assertHasNoClickAction()
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).assertDoesNotExist()
     }
 }

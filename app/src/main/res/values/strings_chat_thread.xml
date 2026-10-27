@@ -32,4 +32,8 @@
     <string name="chat_thread_menu_report">Report</string>
     <string name="chat_composer_placeholder">Message</string>
     <string name="chat_composer_send">Send message</string>
+    <string name="chat_failed_status">Not sent. Tap to retry</string>
+    <string name="chat_failed_retry">Retry sending</string>
+    <string name="chat_failed_delete">Delete</string>
+    <string name="chat_failed_delete_a11y">Delete message</string>
 </resources>

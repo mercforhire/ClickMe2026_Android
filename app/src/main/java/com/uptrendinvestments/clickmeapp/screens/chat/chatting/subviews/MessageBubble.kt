@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -12,17 +14,28 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,7 +50,10 @@ private val BubbleMaxWidth = 320.dp
 private val OppositeGap = 56.dp
 private val BubbleAvatarSize = 32.dp
 private const val BUBBLE_MAX_FRACTION = 0.75f
+private val FailedIconSize = 16.dp
 private const val READ_FADE_MS = 150
+private const val FAILED_FILL_ALPHA = 0.4f
+private const val FAILED_BORDER_ALPHA = 0.5f
 
 /**
  * One chat message bubble (UI-SPEC surface 2): own messages on the end in `primary`, incoming on the start in
@@ -52,7 +68,13 @@ fun MessageBubble(
     showAvatar: Boolean,
     timeText: String,
     modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
+    val failed = message.mine && message.delivery == Delivery.Failed
+    var menuOpen by remember { mutableStateOf(false) }
+    val retryLabel = stringResource(R.string.chat_failed_retry)
+    val deleteLabel = stringResource(R.string.chat_failed_delete_a11y)
     val speaker =
         if (message.mine) {
             stringResource(R.string.chat_thread_you)
@@ -78,12 +100,48 @@ fun MessageBubble(
                 modifier =
                     Modifier
                         .widthIn(max = bubbleMax)
-                        .semantics(mergeDescendants = true) { contentDescription = speaker },
+                        .then(
+                            if (failed) {
+                                Modifier.combinedClickable(
+                                    onClickLabel = retryLabel,
+                                    role = Role.Button,
+                                    onClick = onRetry,
+                                    onLongClick = { menuOpen = true },
+                                )
+                            } else {
+                                Modifier
+                            },
+                        ).semantics(mergeDescendants = true) {
+                            contentDescription = speaker
+                            if (failed) {
+                                customActions =
+                                    listOf(
+                                        CustomAccessibilityAction(retryLabel) {
+                                            onRetry()
+                                            true
+                                        },
+                                        CustomAccessibilityAction(deleteLabel) {
+                                            onDelete()
+                                            true
+                                        },
+                                    )
+                            }
+                        },
                 horizontalAlignment = if (message.mine) Alignment.End else Alignment.Start,
             ) {
                 BubbleBody(message)
                 Spacer(Modifier.height(Spacing.xs))
                 MessageStatusLine(message = message, timeText = timeText)
+                if (failed) {
+                    FailedMessageMenu(
+                        expanded = menuOpen,
+                        onDelete = {
+                            menuOpen = false
+                            onDelete()
+                        },
+                        onDismiss = { menuOpen = false },
+                    )
+                }
             }
         }
     }
@@ -101,6 +159,8 @@ private fun bubbleMaxWidth(
 @Composable
 private fun BubbleBody(message: ThreadItem.Message) {
     val mine = message.mine
+    val failed = mine && message.delivery == Delivery.Failed
+    val scheme = MaterialTheme.colorScheme
     val medium = MaterialTheme.shapes.medium
     val shape =
         if (mine) {
@@ -108,18 +168,27 @@ private fun BubbleBody(message: ThreadItem.Message) {
         } else {
             medium.copy(bottomStart = MaterialTheme.shapes.extraSmall.bottomStart)
         }
+    // A failed bubble is tinted (never faded as a whole, so the text keeps its contrast) with an error border.
     Surface(
         shape = shape,
-        color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        color =
+            when {
+                failed -> scheme.primary.copy(alpha = FAILED_FILL_ALPHA)
+                mine -> scheme.primary
+                else -> scheme.surfaceContainerHigh
+            },
+        contentColor = if (mine && !failed) scheme.onPrimary else scheme.onSurface,
+        border = if (failed) BorderStroke(1.dp, scheme.error.copy(alpha = FAILED_BORDER_ALPHA)) else null,
     ) {
-        SelectionContainer {
+        val body: @Composable () -> Unit = {
             Text(
                 text = message.text,
                 modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
+        // Selection would swallow the long-press that opens the failed bubble's Delete menu.
+        if (failed) body() else SelectionContainer(content = body)
     }
 }
 
@@ -136,7 +205,20 @@ fun MessageStatusLine(
     val muted = MaterialTheme.extras.onSurfaceMuted
     val style = MaterialTheme.typography.bodySmall
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        if (message.delivery == Delivery.Sending) {
+        if (message.mine && message.delivery == Delivery.Failed) {
+            Icon(
+                imageVector = Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                modifier = Modifier.size(FailedIconSize),
+                tint = MaterialTheme.colorScheme.error,
+            )
+            Spacer(Modifier.width(Spacing.xs))
+            Text(
+                text = stringResource(R.string.chat_failed_status),
+                style = style,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else if (message.delivery == Delivery.Sending) {
             Text(text = stringResource(R.string.chat_thread_sending), style = style, color = muted)
         } else {
             Text(text = timeText, style = style, color = muted)

@@ -122,6 +122,8 @@ fun ChatThreadScreen(
         timeFormat = rememberDeviceTimeFormat(),
         onBack = onBack,
         onRetry = viewModel::retry,
+        onRetryMessage = viewModel::retry,
+        onDeleteMessage = viewModel::delete,
         onRefresh = viewModel::refresh,
         onLoadEarlier = viewModel::loadEarlier,
         onOpenBooking = onOpenBooking,
@@ -159,6 +161,8 @@ fun ChatThreadContent(
     onRefreshFailureConsumed: () -> Unit,
     onComposerChanged: (String) -> Unit,
     onSend: () -> Unit,
+    onRetryMessage: (clientMsgId: String) -> Unit,
+    onDeleteMessage: (clientMsgId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -212,6 +216,8 @@ fun ChatThreadContent(
                                 timeFormat = timeFormat,
                                 onLoadEarlier = onLoadEarlier,
                                 onOpenBooking = onOpenBooking,
+                                onRetryMessage = onRetryMessage,
+                                onDeleteMessage = onDeleteMessage,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -255,6 +261,8 @@ private fun ThreadList(
     timeFormat: DateFormat,
     onLoadEarlier: () -> Unit,
     onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
+    onRetryMessage: (clientMsgId: String) -> Unit,
+    onDeleteMessage: (clientMsgId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = remember(state.items, zone) { buildThreadRows(state.items, zone).asReversed() }
@@ -284,7 +292,16 @@ private fun ThreadList(
                         )
                     is ThreadRow.Entry ->
                         Box(Modifier.padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm).animateItem()) {
-                            EntryContent(row, state, zone, locale, timeFormat, onOpenBooking)
+                            EntryContent(
+                                row = row,
+                                state = state,
+                                zone = zone,
+                                locale = locale,
+                                timeFormat = timeFormat,
+                                onOpenBooking = onOpenBooking,
+                                onRetryMessage = onRetryMessage,
+                                onDeleteMessage = onDeleteMessage,
+                            )
                         }
                 }
             }
@@ -333,6 +350,8 @@ private fun EntryContent(
     locale: Locale,
     timeFormat: DateFormat,
     onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
+    onRetryMessage: (clientMsgId: String) -> Unit,
+    onDeleteMessage: (clientMsgId: String) -> Unit,
 ) {
     when (val item = row.item) {
         is ThreadItem.Message ->
@@ -342,6 +361,8 @@ private fun EntryContent(
                 peerAvatarUrl = state.peerAvatarUrl,
                 showAvatar = row.showAvatar,
                 timeText = formatSlotTime(item.createdAt, zone, timeFormat),
+                onRetry = { item.clientMsgId?.let(onRetryMessage) },
+                onDelete = { item.clientMsgId?.let(onDeleteMessage) },
             )
         is ThreadItem.SystemEvent ->
             SystemEventRow(
