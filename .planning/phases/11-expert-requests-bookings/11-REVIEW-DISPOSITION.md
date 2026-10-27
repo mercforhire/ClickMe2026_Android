@@ -31,8 +31,8 @@ Initial review of all Phase 11 changes (131 files, base 4b48018). Advisory: no b
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | 11-REVIEW.md (incremental): createEngine setup-failure destroy branch untested |
-| WR-02 | warning | open | 11-REVIEW.md (incremental): destroy() leaves engine set if RtcEngine.destroy throws |
+| WR-01 | warning | fixed (ff49ad4) | 11-REVIEW.md (incremental): createEngine setup-failure destroy branch untested |
+| WR-02 | warning | fixed (754b8f5) | 11-REVIEW.md (incremental): destroy() leaves engine set if RtcEngine.destroy throws |
 | IN-01 | info | open | 11-REVIEW.md (incremental) |
 | IN-02 | info | open | 11-REVIEW.md (incremental) |
 | IN-03 | info | open | 11-REVIEW.md (incremental) |
