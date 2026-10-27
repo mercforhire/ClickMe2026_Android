@@ -1,18 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.conversations
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
-import com.uptrendinvestments.clickmeapp.R
-import com.uptrendinvestments.clickmeapp.components.PlaceholderTabContent
-import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 
 /**
- * The Chats tab root for either shell. The body is a placeholder until the Conversations screen replaces it; the
- * signature stays, so neither shell is edited again.
+ * The Chats tab root for either shell: the Conversations list. A row opens its thread on the Chats stack, so Back
+ * lands here (D-13).
  */
 @Composable
 fun ConversationsRoute(
@@ -21,9 +15,10 @@ fun ConversationsRoute(
     avatarUrl: String?,
     onOpenModeSwitch: () -> Unit,
 ) {
-    PlaceholderTabContent(
-        title = stringResource(R.string.tab_chats),
-        icon = Icons.Outlined.ChatBubbleOutline,
-        actions = { TopBarAvatarButton(avatarUrl, onClick = onOpenModeSwitch) },
+    ConversationsScreen(
+        mode = mode,
+        avatarUrl = avatarUrl,
+        onAvatarClick = onOpenModeSwitch,
+        onOpenThread = { navigator.navigate(it) },
     )
 }

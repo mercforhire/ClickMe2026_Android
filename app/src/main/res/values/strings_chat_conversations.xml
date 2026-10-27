@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Chat Conversations list (Phase 12, CHAT-01). Also uses: content_loading, section_retry. -->
+    <string name="chat_conversations_title">Messages</string>
+    <string name="chat_conversations_open">Open conversation</string>
+    <string name="chat_conversations_yesterday">Yesterday</string>
+    <string name="chat_conversations_name_fallback">Chat</string>
+    <string name="chat_conversations_loading">Loading</string>
+    <string name="chat_conversations_error_heading">Couldn\'t load conversations</string>
+    <string name="chat_conversations_retry">Retry</string>
+    <string name="chat_conversations_online">online</string>
+    <string name="chat_conversations_badge_overflow">99+</string>
+    <plurals name="chat_conversations_unread">
+        <item quantity="one">%d unread</item>
+        <item quantity="other">%d unread</item>
+    </plurals>
+</resources>
