@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.reportandblock
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -24,7 +25,9 @@ import com.uptrendinvestments.clickmeapp.components.safety.BlockUserDialog
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.BlockCard
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.ReportCard
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /**
@@ -61,6 +64,7 @@ fun ReportAndBlockScreen(
         onDismissBlockConfirm = viewModel::dismissBlockConfirm,
         onConfirmBlock = viewModel::confirmBlock,
         onUnblock = viewModel::unblock,
+        onDismissDialog = viewModel::dismissDialog,
         modifier = modifier,
     )
 }
@@ -77,8 +81,11 @@ fun ReportAndBlockContent(
     onDismissBlockConfirm: () -> Unit,
     onConfirmBlock: () -> Unit,
     onUnblock: () -> Unit,
+    onDismissDialog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Back is locked while Block, Unblock or Submit runs (predictive back included), so a request is never abandoned.
+    BackHandler(enabled = state.inFlight) {}
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -86,6 +93,7 @@ fun ReportAndBlockContent(
             AuthTopAppBar(
                 title = stringResource(R.string.report_block_title),
                 onBack = onBack,
+                backEnabled = !state.inFlight,
             )
         },
     ) { innerPadding ->
@@ -124,6 +132,13 @@ fun ReportAndBlockContent(
                 onSubmit = onSubmitReport,
             )
         }
+    }
+    state.dialog?.let { dialog ->
+        AuthErrorDialog(
+            message = dialog.message.asString(),
+            title = stringResource(dialog.titleRes),
+            onDismiss = onDismissDialog,
+        )
     }
     if (state.showBlockConfirm) {
         BlockUserDialog(

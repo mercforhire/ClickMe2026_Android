@@ -19,4 +19,9 @@
     <string name="block_dialog_confirm">Block</string>
     <string name="block_in_flight">Blocking</string>
     <string name="unblock_in_flight">Unblocking</string>
+
+    <string name="block_error_title">Couldn\'t block user</string>
+    <string name="unblock_error_title">Couldn\'t unblock user</string>
+    <string name="block_error_conversation_unavailable">This conversation is unavailable.</string>
+    <string name="unblock_error_not_blocker">Only the person who blocked this conversation can unblock it.</string>
 </resources>

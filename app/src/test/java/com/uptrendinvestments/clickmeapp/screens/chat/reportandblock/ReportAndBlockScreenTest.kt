@@ -1,17 +1,22 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.reportandblock
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.safety.REPORT_DETAILS_FIELD_TAG
 import com.uptrendinvestments.clickmeapp.components.safety.REPORT_REASON_ROW_TAG_PREFIX
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
@@ -20,11 +25,13 @@ import com.uptrendinvestments.clickmeapp.screens.chat.BlockState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
+import com.uptrendinvestments.clickmeapp.screens.chat.SafetyDialog
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.BLOCK_BUTTON_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.REPORT_SUBMIT_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.REPORT_THANKS_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.UNBLOCK_BUTTON_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.chatThreadItem
@@ -130,6 +137,7 @@ class ReportAndBlockScreenTest {
                     onDismissBlockConfirm = {},
                     onConfirmBlock = {},
                     onUnblock = {},
+                    onDismissDialog = {},
                 )
             }
         }
@@ -174,5 +182,65 @@ class ReportAndBlockScreenTest {
         assertEquals(999, capped.length)
         assertEquals("a".repeat(999), capped)
         assertEquals("abc", capText("abc", 1000))
+    }
+
+    @Test
+    fun selfThreadRendersNoActionButtons() {
+        showContent(ReportAndBlockUiState(peerName = "Me", isSelfThread = true))
+
+        rule.onNodeWithTag(BLOCK_BUTTON_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(UNBLOCK_BUTTON_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(REPORT_SUBMIT_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun errorDialogShowsTitleAndMessage() {
+        showContent(
+            ReportAndBlockUiState(
+                dialog = SafetyDialog(R.string.report_error_title, FieldError.Res(R.string.report_error_rate_limited)),
+            ),
+        )
+
+        rule.onNodeWithText("Couldn't send report").assertExists()
+        rule.onNodeWithText("Please try again later.").assertExists()
+    }
+
+    /** Renders the body under an outer Back handler, like NavDisplay's, and returns how often it fired. */
+    private fun systemBacks(state: ReportAndBlockUiState): Int {
+        var navBacks = 0
+        var dispatcher: OnBackPressedDispatcher? = null
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                BackHandler { navBacks++ }
+                ReportAndBlockContent(
+                    state = state,
+                    onBack = {},
+                    onSelectReason = {},
+                    onDetailsChange = {},
+                    onSubmitReport = {},
+                    onRequestBlock = {},
+                    onDismissBlockConfirm = {},
+                    onConfirmBlock = {},
+                    onUnblock = {},
+                    onDismissDialog = {},
+                )
+            }
+        }
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        rule.waitForIdle()
+        return navBacks
+    }
+
+    @Test
+    fun backDisabledWhileInFlight() {
+        assertEquals(0, systemBacks(ReportAndBlockUiState(blockInFlight = true)))
+        rule.onNodeWithContentDescription("Back").assertIsNotEnabled()
+    }
+
+    @Test
+    fun backWorksWhileIdle() {
+        assertEquals(1, systemBacks(ReportAndBlockUiState()))
+        rule.onNodeWithContentDescription("Back").assertIsEnabled()
     }
 }

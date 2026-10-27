@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.reportandblock
 
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
@@ -9,7 +10,9 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.ConversationsNotice
+import com.uptrendinvestments.clickmeapp.screens.chat.SafetyDialog
 import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.chatThreadItem
@@ -257,5 +260,156 @@ class ReportAndBlockViewModelTest {
 
             assertEquals(UserReportReason.Impersonation, second.uiState.value.reason)
             assertEquals("details", second.uiState.value.details)
+        }
+
+    @Test
+    fun reportErrorKeepsInputs() =
+        runTest(main.testDispatcher) {
+            scan()
+            api.chatActionHandler = { _, _ -> throw apiError(429, "TOO_MANY_REQUESTS", "Too many reports.") }
+            val vm = vm()
+            runCurrent()
+
+            vm.selectReason(UserReportReason.Harassment)
+            vm.onDetailsChange("details")
+            vm.submitReport()
+            runCurrent()
+
+            val state = vm.uiState.value
+            val expected =
+                SafetyDialog(R.string.report_error_title, FieldError.Res(R.string.report_error_rate_limited))
+            assertEquals(expected, state.dialog)
+            assertEquals(UserReportReason.Harassment, state.reason)
+            assertEquals("details", state.details)
+            assertFalse(state.reportSubmitted)
+            assertFalse(state.reportSubmitting)
+
+            vm.dismissDialog()
+            assertNull(vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun submitWhileSubmittingIsIgnored() =
+        runTest(main.testDispatcher) {
+            scan()
+            val gate = CompletableDeferred<Unit>()
+            api.chatActionHandler = { _, _ ->
+                gate.await()
+                StatusOnlyResponse("success")
+            }
+            val vm = vm()
+            runCurrent()
+
+            vm.selectReason(UserReportReason.Spam)
+            vm.submitReport()
+            vm.submitReport()
+            runCurrent()
+            assertEquals(1, api.chatActions.size)
+            assertTrue(vm.uiState.value.inFlight)
+            vm.selectReason(UserReportReason.Other)
+            assertEquals(UserReportReason.Spam, vm.uiState.value.reason)
+
+            gate.complete(Unit)
+            runCurrent()
+            vm.submitReport()
+            runCurrent()
+
+            assertEquals(1, api.chatActions.size)
+            assertTrue(vm.uiState.value.reportSubmitted)
+        }
+
+    @Test
+    fun submitWithoutAReasonDoesNothing() =
+        runTest(main.testDispatcher) {
+            scan()
+            val vm = vm()
+            runCurrent()
+
+            vm.submitReport()
+            runCurrent()
+
+            assertTrue(api.chatActions.isEmpty())
+        }
+
+    @Test
+    fun blankDetailsAreOmitted() =
+        runTest(main.testDispatcher) {
+            scan()
+            val vm = vm()
+            runCurrent()
+
+            vm.selectReason(UserReportReason.Other)
+            vm.onDetailsChange("   ")
+            vm.submitReport()
+            runCurrent()
+
+            assertEquals(listOf("t1" to ChatActionRequest("report", "other", null)), api.chatActions)
+        }
+
+    @Test
+    fun notBlockerShowsServerMessage() =
+        runTest(main.testDispatcher) {
+            scan(blocked = true, byMe = true)
+            val message = "Only the person who blocked this conversation can unblock it."
+            api.chatActionHandler = { _, _ -> throw apiError(403, "NOT_BLOCKER", message) }
+            val vm = vm()
+            runCurrent()
+
+            vm.unblock()
+            runCurrent()
+
+            val expected = SafetyDialog(R.string.unblock_error_title, FieldError.Text(message))
+            assertEquals(expected, vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun blockNotFoundShowsConversationUnavailable() =
+        runTest(main.testDispatcher) {
+            scan()
+            api.chatActionHandler = { _, _ -> throw apiError(404) }
+            val vm = vm()
+            runCurrent()
+
+            vm.requestBlock()
+            vm.confirmBlock()
+            runCurrent()
+
+            val expected =
+                SafetyDialog(R.string.block_error_title, FieldError.Res(R.string.block_error_conversation_unavailable))
+            assertEquals(expected, vm.uiState.value.dialog)
+            assertFalse(vm.uiState.value.showBlockConfirm)
+        }
+
+    @Test
+    fun accountSuspendedShowsNoDialogHere() =
+        runTest(main.testDispatcher) {
+            scan()
+            api.chatActionHandler = { _, _ -> throw apiError(403, "ACCOUNT_SUSPENDED") }
+            val vm = vm()
+            runCurrent()
+
+            vm.selectReason(UserReportReason.Spam)
+            vm.submitReport()
+            runCurrent()
+
+            assertNull(vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun selfThreadHidesActionsAndIgnoresThem() =
+        runTest(main.testDispatcher) {
+            scan()
+            val vm = vm(peerId = "ME", me = "me")
+            runCurrent()
+
+            assertTrue(vm.uiState.value.isSelfThread)
+            vm.selectReason(UserReportReason.Spam)
+            vm.submitReport()
+            vm.requestBlock()
+            vm.confirmBlock()
+            runCurrent()
+
+            assertTrue(api.chatActions.isEmpty())
+            assertFalse(vm.uiState.value.showBlockConfirm)
         }
 }

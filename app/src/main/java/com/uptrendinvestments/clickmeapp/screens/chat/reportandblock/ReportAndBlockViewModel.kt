@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.chat.reportandblock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.safety.REPORT_DETAILS_MAX
 import com.uptrendinvestments.clickmeapp.managers.CurrentUserIdProvider
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
@@ -13,9 +14,15 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.ConversationsNotice
+import com.uptrendinvestments.clickmeapp.screens.chat.SafetyDialog
 import com.uptrendinvestments.clickmeapp.screens.chat.ScannedBlock
 import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
+import com.uptrendinvestments.clickmeapp.screens.chat.isAccountSuspended
+import com.uptrendinvestments.clickmeapp.screens.chat.toBlockFailure
+import com.uptrendinvestments.clickmeapp.screens.chat.toReportFailure
+import com.uptrendinvestments.clickmeapp.screens.chat.toUnblockFailure
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -44,6 +51,7 @@ data class ReportAndBlockUiState(
     val blockInFlight: Boolean = false,
     val unblockInFlight: Boolean = false,
     val showBlockConfirm: Boolean = false,
+    val dialog: SafetyDialog? = null,
 ) {
     val inFlight: Boolean get() = reportSubmitting || blockInFlight || unblockInFlight
 }
@@ -155,7 +163,13 @@ class ReportAndBlockViewModel
                     repository.reportInChat(threadId, reason, snapshot.details)
                     _uiState.update { it.copy(reportSubmitting = false, reportSubmitted = true) }
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(reportSubmitting = false) }
+                    // The inputs stay as they are so the user can retry.
+                    _uiState.update {
+                        it.copy(
+                            reportSubmitting = false,
+                            dialog = failureDialog(R.string.report_error_title, e, ApiException::toReportFailure),
+                        )
+                    }
                 }
             }
         }
@@ -189,7 +203,13 @@ class ReportAndBlockViewModel
                     }
                     _events.send(ReportAndBlockEvent.Blocked)
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(blockInFlight = false, showBlockConfirm = false) }
+                    _uiState.update {
+                        it.copy(
+                            blockInFlight = false,
+                            showBlockConfirm = false,
+                            dialog = failureDialog(R.string.block_error_title, e, ApiException::toBlockFailure),
+                        )
+                    }
                 }
             }
         }
@@ -217,11 +237,23 @@ class ReportAndBlockViewModel
                         it.copy(
                             block = if (notBlocker) it.block.onNotBlocker() else it.block,
                             unblockInFlight = false,
+                            dialog = failureDialog(R.string.unblock_error_title, e, ApiException::toUnblockFailure),
                         )
                     }
                 }
             }
         }
+
+        fun dismissDialog() {
+            _uiState.update { it.copy(dialog = null) }
+        }
+
+        /** The error dialog for [e], or null when the global suspended-account dialog owns the failure. */
+        private fun failureDialog(
+            titleRes: Int,
+            e: ApiException,
+            message: (ApiException) -> FieldError,
+        ): SafetyDialog? = if (e.isAccountSuspended()) null else SafetyDialog(titleRes, message(e))
 
         private companion object {
             const val KEY_REASON = "reason"
