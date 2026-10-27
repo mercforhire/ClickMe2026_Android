@@ -2,9 +2,16 @@ package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CurrentUserIdProvider
+import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ChatMessageItem
+import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ThreadMenuEntry
 import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.ChatReportBlockKey
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.ReportAndBlockViewModel
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.chatEvent
@@ -13,6 +20,7 @@ import com.uptrendinvestments.clickmeapp.testing.chatPartner
 import com.uptrendinvestments.clickmeapp.testing.chatThreadItem
 import com.uptrendinvestments.clickmeapp.testing.chatsPayload
 import com.uptrendinvestments.clickmeapp.testing.messagesPayload
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -390,6 +398,101 @@ class ChatThreadViewModelTest {
             assertNull(h.launch.threadNotice.pending.value)
             vm.consumeNotice()
             assertNull(vm.uiState.value.notice)
+        }
+
+    @Test
+    fun unblockFromReportAndBlockUnlocksAnEmptySessionBlockedThread() =
+        runTest(main.testDispatcher) {
+            h.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
+            h.session.markBlockedByMe("t1")
+            val vm = h.viewModel()
+            runCurrent()
+            assertEquals(ComposerMode.BlockedByMe, vm.uiState.value.composerMode)
+            assertEquals(ThreadMenuEntry.UnblockOrReport, vm.uiState.value.menuEntry)
+            h.api.chatActionHandler = { _, _ -> StatusOnlyResponse("success") }
+            val reportAndBlock =
+                ReportAndBlockViewModel(
+                    ChatReportBlockKey("t1", "p1", "Ada"),
+                    SavedStateHandle(),
+                    ChatsRepository(h.api),
+                    h.session,
+                    CurrentUserIdProvider { h.myId },
+                    h.launch,
+                )
+            runCurrent()
+            reportAndBlock.unblock()
+            runCurrent()
+            val state = vm.uiState.value
+            assertEquals(ComposerMode.Normal, state.composerMode)
+            assertEquals(ThreadMenuEntry.BlockOrReport, state.menuEntry)
+            assertEquals(ThreadNotice.Unblocked("t1", "Ada"), state.notice)
+            assertEquals(listOf("t1" to ChatActionRequest("unblock")), h.api.chatActions)
+            vm.onScreenShown()
+            runCurrent()
+            assertEquals(ComposerMode.Normal, vm.uiState.value.composerMode)
+            assertEquals(ThreadMenuEntry.BlockOrReport, vm.uiState.value.menuEntry)
+        }
+
+    @Test
+    fun unblockedNoticeUnlocksWhenTheRescanFails() =
+        runTest(main.testDispatcher) {
+            h.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
+            h.api.chatsHandler = { _, _ -> chatsPayload(chatThreadItem(isBlocked = true, blockedByMe = true)) }
+            val vm = h.viewModel()
+            runCurrent()
+            assertEquals(ComposerMode.BlockedByMe, vm.uiState.value.composerMode)
+            h.api.chatsHandler = { _, _ -> throw IOException("offline") }
+            h.launch.threadNotice.post(ThreadNotice.Unblocked("t1", "Ada"))
+            runCurrent()
+            vm.onScreenShown()
+            runCurrent()
+            assertEquals(ComposerMode.Normal, vm.uiState.value.composerMode)
+            assertEquals(ThreadMenuEntry.BlockOrReport, vm.uiState.value.menuEntry)
+        }
+
+    @Test
+    fun unblockedNoticeForAnotherThreadKeepsTheBlock() =
+        runTest(main.testDispatcher) {
+            h.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
+            h.session.markBlockedByMe("t1")
+            val vm = h.viewModel()
+            runCurrent()
+            h.launch.threadNotice.post(ThreadNotice.Unblocked("t2", "Ada"))
+            runCurrent()
+            vm.onScreenShown()
+            runCurrent()
+            assertEquals(ComposerMode.BlockedByMe, vm.uiState.value.composerMode)
+            assertNull(vm.uiState.value.notice)
+            assertEquals(ThreadNotice.Unblocked("t2", "Ada"), h.launch.threadNotice.pending.value)
+        }
+
+    @Test
+    fun staleScanInFlightCannotRelockAfterUnblock() =
+        runTest(main.testDispatcher) {
+            h.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
+            val gate = CompletableDeferred<Unit>()
+            var calls = 0
+            h.api.chatsHandler = { _, _ ->
+                when (++calls) {
+                    1 -> chatsPayload(chatThreadItem(isBlocked = true, blockedByMe = true))
+                    2 -> {
+                        gate.await()
+                        chatsPayload(chatThreadItem(isBlocked = true, blockedByMe = true))
+                    }
+                    else -> chatsPayload(chatThreadItem(isBlocked = false))
+                }
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            assertEquals(ComposerMode.BlockedByMe, vm.uiState.value.composerMode)
+            vm.onScreenShown()
+            runCurrent()
+            h.launch.threadNotice.post(ThreadNotice.Unblocked("t1", "Ada"))
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(ComposerMode.Normal, vm.uiState.value.composerMode)
+            assertEquals(3, h.api.chatsQueries.size)
         }
 
     @Test

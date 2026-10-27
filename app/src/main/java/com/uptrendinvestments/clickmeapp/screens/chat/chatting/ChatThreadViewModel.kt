@@ -15,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.ClientMsgIdGenerator
 import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -438,12 +439,28 @@ class ChatThreadViewModel
             startLoad(if (_uiState.value.load is ThreadLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
         }
 
+        /**
+         * Takes a one-time notice that belongs to this thread. A [ThreadNotice.Unblocked] notice also carries the
+         * CHAT-UNBLOCK section 6 transition ("unblock 200 sets is_blocked = false locally", D-09), so the block state
+         * becomes [BlockState.onUnblockSucceeded] at once instead of waiting for a `GET /chats` scan: an empty thread is
+         * absent from that list (A4) and a scan may fail, and either case would leave the composer locked. A scan
+         * already running was started before the unblock and could still answer "blocked", so it is restarted.
+         */
         private fun takeNoticeIfForThisThread() {
             val pending = launchRequest.threadNotice.pending.value ?: return
             if (!pending.threadId.equals(threadId, ignoreCase = true)) return
-            launchRequest.threadNotice.consume()?.let { notice ->
-                if (notice.threadId.equals(threadId, ignoreCase = true)) _uiState.update { it.copy(notice = notice) }
+            val notice = launchRequest.threadNotice.consume() ?: return
+            if (!notice.threadId.equals(threadId, ignoreCase = true)) return
+            _uiState.update {
+                it.copy(
+                    notice = notice,
+                    block =
+                        when (notice) {
+                            is ThreadNotice.Unblocked -> it.block.onUnblockSucceeded()
+                        },
+                )
             }
+            if (blockJob?.isActive == true) refreshBlockState()
         }
 
         private fun refreshBlockState() {
