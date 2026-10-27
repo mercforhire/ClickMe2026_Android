@@ -5,7 +5,6 @@ import android.util.Log
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.agora.rtc2.ChannelMediaOptions
 import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
@@ -121,13 +120,7 @@ class AgoraManager
                 mutex.withLock {
                     val rtc = engine ?: createEngine() ?: return@withLock false
                     isLeaving = false
-                    val options =
-                        ChannelMediaOptions().apply {
-                            channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
-                            clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
-                            publishMicrophoneTrack = true
-                            autoSubscribeAudio = true
-                        }
+                    val options = buildChannelMediaOptions()
                     val code = rtc.joinChannel(token, channelName, uid, options)
                     if (code != 0) Log.w(TAG, "joinChannel failed code=$code")
                     code == 0
