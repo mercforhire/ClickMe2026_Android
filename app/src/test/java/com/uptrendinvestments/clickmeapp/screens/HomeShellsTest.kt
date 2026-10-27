@@ -7,6 +7,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -23,6 +25,8 @@ import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
@@ -38,6 +42,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,9 +62,12 @@ class HomeShellsTest {
         showDebug: Boolean,
         refreshStatus: String? = null,
         paymentMethods: Boolean = false,
+        chatLaunch: ChatLaunchRequest? = null,
     ) {
         composeRule.setContent {
             ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                val pendingThread = pendingThreadOf(chatLaunch)
                 HomeClientShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
@@ -67,7 +75,12 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
-                    detailEntries = { navigator -> if (paymentMethods) fakePaymentMethodsEntry(navigator) },
+                    detailEntries = { navigator ->
+                        if (paymentMethods) fakePaymentMethodsEntry(navigator)
+                        fakeChatThreadEntry()
+                    },
+                    pendingChatThread = pendingThread,
+                    onConsumeChatThread = { chatLaunch?.thread?.consume() },
                 )
             }
         }
@@ -76,9 +89,12 @@ class HomeShellsTest {
     private fun setExpert(
         showDebug: Boolean,
         refreshStatus: String? = null,
+        chatLaunch: ChatLaunchRequest? = null,
     ) {
         composeRule.setContent {
             ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                val pendingThread = pendingThreadOf(chatLaunch)
                 HomeExpertShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
@@ -86,6 +102,9 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
+                    detailEntries = { fakeChatThreadEntry() },
+                    pendingChatThread = pendingThread,
+                    onConsumeChatThread = { chatLaunch?.thread?.consume() },
                 )
             }
         }
@@ -817,5 +836,106 @@ class HomeShellsTest {
         composeRule.onNodeWithText("editor-stub").assertDoesNotExist()
         composeRule.onNodeWithText("fake topics").assertExists()
         composeRule.onNode(tab("Topics")).assertIsSelected()
+    }
+
+    /**
+     * Stand-in for the thread route, registered with the real hidden-bar metadata. The real `chatEntries` is not
+     * used: the thread route gets a Hilt ViewModel that Robolectric cannot build.
+     */
+    private fun EntryProviderScope<NavKey>.fakeChatThreadEntry() {
+        entry<ChatThreadKey>(metadata = BottomBar.hidden()) { key ->
+            Text(key.peerName?.takeIf { it.isNotBlank() } ?: "Chat")
+        }
+    }
+
+    @Composable
+    private fun pendingThreadOf(launch: ChatLaunchRequest?): ChatThreadKey? {
+        if (launch == null) return null
+        val pending by launch.thread.pending.collectAsState()
+        return pending
+    }
+
+    private fun thread(
+        id: String,
+        name: String,
+    ) = ChatThreadKey(id, "p-$id", name, null, true)
+
+    @Test
+    fun clientMessageHandOffOpensThreadOnChatsTab() {
+        val launch = ChatLaunchRequest()
+        setClient(showDebug = false, chatLaunch = launch)
+        launch.thread.post(thread("t1", "Ada Lovelace"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Ada Lovelace").assertExists()
+        composeRule.onNode(tab("Chats")).assertDoesNotExist()
+        assertNull(launch.thread.pending.value)
+    }
+
+    @Test
+    fun backFromThreadLandsOnChatsRoot() {
+        val launch = ChatLaunchRequest()
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                val pendingThread = pendingThreadOf(launch)
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Button(onClick = { navigator.navigate(ExpertProfileKey("e7", "Ada", "Engineer", null)) }) {
+                            Text("explore open profile")
+                        }
+                    },
+                    detailEntries = {
+                        entry<ExpertProfileKey> { Text("profile ${it.expertId}") }
+                        fakeChatThreadEntry()
+                    },
+                    pendingChatThread = pendingThread,
+                    onConsumeChatThread = launch.thread::consume,
+                )
+            }
+        }
+        composeRule.onNodeWithText("explore open profile").performClick()
+        composeRule.onNodeWithText("profile e7").assertExists()
+        launch.thread.post(thread("t1", "Ada Lovelace"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Ada Lovelace").assertExists()
+        pressSystemBack()
+        composeRule.onNodeWithText("Ada Lovelace").assertDoesNotExist()
+        composeRule.onNode(tab("Chats")).assertIsSelected()
+        tapTab("Explore")
+        composeRule.onNodeWithText("profile e7").assertExists()
+    }
+
+    @Test
+    fun expertMessageHandOffOpensThreadOnChatsTab() {
+        val launch = ChatLaunchRequest()
+        setExpert(showDebug = false, chatLaunch = launch)
+        launch.thread.post(thread("t1", "Ada Lovelace"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Ada Lovelace").assertExists()
+        composeRule.onNode(tab("Chats")).assertDoesNotExist()
+        assertNull(launch.thread.pending.value)
+        pressSystemBack()
+        composeRule.onNode(tab("Chats")).assertIsSelected()
+    }
+
+    @Test
+    fun secondHandOffReplacesThread() {
+        val launch = ChatLaunchRequest()
+        setClient(showDebug = false, chatLaunch = launch)
+        launch.thread.post(thread("t1", "Ada Lovelace"))
+        composeRule.waitForIdle()
+        launch.thread.post(thread("t2", "Grace Hopper"))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Grace Hopper").assertExists()
+        pressSystemBack()
+        composeRule.onNodeWithText("Ada Lovelace").assertDoesNotExist()
+        composeRule.onNodeWithText("Grace Hopper").assertDoesNotExist()
+        composeRule.onNode(tab("Chats")).assertIsSelected()
     }
 }
