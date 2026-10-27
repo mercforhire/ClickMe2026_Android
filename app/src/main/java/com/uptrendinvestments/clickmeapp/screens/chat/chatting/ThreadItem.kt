@@ -44,14 +44,24 @@ enum class SystemEventKind(
 
 /** One row of a thread: a chat message or a system event. */
 sealed interface ThreadItem {
-    /** Stable LazyColumn key; an own message keeps its client_msg_id key across ack and reload. */
+    /**
+     * Stable, unique LazyColumn key. An own message keeps its client_msg_id key across ack and reload; every other row
+     * is keyed by its server id (IN-02).
+     */
     val key: String
 
     /** The server's id; null while a local bubble is unsent. */
     val serverId: String?
     val createdAt: Instant
 
-    /** A chat message. [mine] is the sender's own message, [clientMsgId] is set on messages this device sent. */
+    /**
+     * A chat message. [mine] is the sender's own message, [clientMsgId] is set on messages this device sent.
+     *
+     * The key uses the client_msg_id only for [mine] rows. The backend guarantees client_msg_id uniqueness only per
+     * (thread, sender), and a peer can read my ids from the message list and reuse one, so a peer row keyed by it
+     * would duplicate my key and crash the LazyColumn (IN-02). Peer rows use the server id, which is also stable
+     * when a reload adds a client_msg_id to a row that arrived over the socket without one.
+     */
     data class Message(
         override val serverId: String?,
         val clientMsgId: String?,
@@ -62,7 +72,12 @@ sealed interface ThreadItem {
         val delivery: Delivery,
     ) : ThreadItem {
         override val key: String
-            get() = clientMsgId?.let { "c:" + it.lowercase() } ?: ("s:" + serverId.orEmpty().lowercase())
+            get() =
+                if (mine && clientMsgId != null) {
+                    "c:" + clientMsgId.lowercase()
+                } else {
+                    "s:" + serverId.orEmpty().lowercase()
+                }
 
         override fun toString(): String =
             "Message(serverId=$serverId, clientMsgId=$clientMsgId, senderId=$senderId, createdAt=$createdAt, " +

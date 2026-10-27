@@ -167,6 +167,21 @@ class ChatThreadScreenTest {
     }
 
     @Test
+    fun peerAndOwnRowsSharingAClientMsgIdBothRender() {
+        show(
+            loaded(
+                listOf(
+                    own("m1", "Mine").copy(clientMsgId = "dup"),
+                    incoming("m2", "Theirs").copy(clientMsgId = "dup"),
+                ),
+            ),
+        )
+
+        rule.onNodeWithText("Mine").assertIsDisplayed()
+        rule.onNodeWithText("Theirs").assertIsDisplayed()
+    }
+
+    @Test
     fun sendingBubbleShowsSendingInsteadOfTime() {
         show(loaded(listOf(own("m1", "On my way", Delivery.Sending))))
 

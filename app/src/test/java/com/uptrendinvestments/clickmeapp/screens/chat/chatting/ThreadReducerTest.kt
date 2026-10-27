@@ -226,6 +226,46 @@ class ThreadReducerTest {
     }
 
     @Test
+    fun peerRowSharingMyClientMsgIdKeepsADistinctKey() {
+        val own = mine(clientMsgId = "dup", serverId = "m1", delivery = Delivery.Sent, at = 100)
+        var items = ThreadReducer.mergePage(emptyList(), listOf(own))
+        val peerRow = peer("m2", 200, clientMsgId = "DUP")
+        items = ThreadReducer.mergePage(items, listOf(own, peerRow))
+        assertEquals(2, items.size)
+        assertEquals(listOf("c:dup", "s:m2"), items.map { it.key })
+    }
+
+    @Test
+    fun peerSocketRowKeepsItsKeyWhenAReloadAddsClientMsgId() {
+        val socketRow = peer("m5", 50)
+        var items = ThreadReducer.mergePage(emptyList(), listOf(socketRow))
+        assertEquals("s:m5", items.single().key)
+        items = ThreadReducer.mergePage(items, listOf(peer("m5", 50, clientMsgId = "x9")))
+        assertEquals(1, items.size)
+        assertEquals("s:m5", items.single().key)
+    }
+
+    @Test
+    fun keysAreUniqueInAMixedThread() {
+        val event =
+            ThreadItem.SystemEvent(
+                serverId = "e1",
+                kind = SystemEventKind.BookingCancelled,
+                bookingId = null,
+                topic = null,
+                startTime = null,
+                content = null,
+                createdAt = t(10),
+            )
+        var items = ThreadReducer.mergePage(emptyList(), listOf(mine("c1", "m1", Delivery.Sent, 20), event))
+        items = ThreadReducer.appendLocal(items, mine(clientMsgId = "c2"))
+        items = ThreadReducer.mergePage(items, listOf(peer("m3", 30, clientMsgId = "c1")))
+        val keys = items.map { it.key }
+        assertEquals(keys.size, keys.toSet().size)
+        assertTrue(keys.containsAll(listOf("c:c1", "c:c2")))
+    }
+
+    @Test
     fun deliveryFromServerStatus() {
         assertEquals(Delivery.Read, Delivery.fromServerStatus("READ"))
         assertEquals(Delivery.Sent, Delivery.fromServerStatus("sent"))
