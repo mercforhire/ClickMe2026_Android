@@ -13,12 +13,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.safety.BlockUserDialog
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.BlockCard
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.ReportCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -37,12 +41,26 @@ fun ReportAndBlockScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentOnBlocked by rememberUpdatedState(onBlocked)
+    val currentOnUnblocked by rememberUpdatedState(onUnblocked)
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                ReportAndBlockEvent.Blocked -> currentOnBlocked()
+                ReportAndBlockEvent.Unblocked -> currentOnUnblocked()
+            }
+        }
+    }
     ReportAndBlockContent(
         state = state,
         onBack = onBack,
         onSelectReason = viewModel::selectReason,
         onDetailsChange = viewModel::onDetailsChange,
         onSubmitReport = viewModel::submitReport,
+        onRequestBlock = viewModel::requestBlock,
+        onDismissBlockConfirm = viewModel::dismissBlockConfirm,
+        onConfirmBlock = viewModel::confirmBlock,
+        onUnblock = viewModel::unblock,
         modifier = modifier,
     )
 }
@@ -55,6 +73,10 @@ fun ReportAndBlockContent(
     onSelectReason: (UserReportReason) -> Unit,
     onDetailsChange: (String) -> Unit,
     onSubmitReport: () -> Unit,
+    onRequestBlock: () -> Unit,
+    onDismissBlockConfirm: () -> Unit,
+    onConfirmBlock: () -> Unit,
+    onUnblock: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -82,6 +104,15 @@ fun ReportAndBlockContent(
                     ),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            BlockCard(
+                block = state.block,
+                peerName = state.peerName,
+                blockInFlight = state.blockInFlight,
+                unblockInFlight = state.unblockInFlight,
+                showActions = !state.isSelfThread,
+                onBlock = onRequestBlock,
+                onUnblock = onUnblock,
+            )
             ReportCard(
                 reason = state.reason,
                 details = state.details,
@@ -93,5 +124,13 @@ fun ReportAndBlockContent(
                 onSubmit = onSubmitReport,
             )
         }
+    }
+    if (state.showBlockConfirm) {
+        BlockUserDialog(
+            name = state.peerName.orEmpty(),
+            inFlight = state.blockInFlight,
+            onConfirm = onConfirmBlock,
+            onDismiss = onDismissBlockConfirm,
+        )
     }
 }

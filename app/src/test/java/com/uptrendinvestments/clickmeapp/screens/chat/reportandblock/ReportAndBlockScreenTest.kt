@@ -16,12 +16,15 @@ import com.uptrendinvestments.clickmeapp.components.safety.REPORT_DETAILS_FIELD_
 import com.uptrendinvestments.clickmeapp.components.safety.REPORT_REASON_ROW_TAG_PREFIX
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
+import com.uptrendinvestments.clickmeapp.screens.chat.BlockState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.BLOCK_BUTTON_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.REPORT_SUBMIT_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.REPORT_THANKS_TAG
+import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.subviews.UNBLOCK_BUTTON_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.chatThreadItem
@@ -112,6 +115,54 @@ class ReportAndBlockScreenTest {
         rule.onNodeWithText("800/1000").assertExists()
         field.performTextInput("b".repeat(400))
         rule.onNodeWithText("1000/1000").assertExists()
+    }
+
+    private fun showContent(state: ReportAndBlockUiState) {
+        rule.setContent {
+            ClickMeTheme {
+                ReportAndBlockContent(
+                    state = state,
+                    onBack = {},
+                    onSelectReason = {},
+                    onDetailsChange = {},
+                    onSubmitReport = {},
+                    onRequestBlock = {},
+                    onDismissBlockConfirm = {},
+                    onConfirmBlock = {},
+                    onUnblock = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun blockedByThePeerShowsTheBannerAndNoButton() {
+        showContent(
+            ReportAndBlockUiState(peerName = "Ada", block = BlockState(isBlocked = true, blockedByMe = false)),
+        )
+
+        rule.onNodeWithText("You can't reply to this conversation").assertExists()
+        rule.onNodeWithText("Only the person who blocked", substring = true).assertExists()
+        rule.onNodeWithTag(BLOCK_BUTTON_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(UNBLOCK_BUTTON_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun blockedByMeOffersUnblockWithTheName() {
+        showContent(ReportAndBlockUiState(peerName = "Ada", block = BlockState(isBlocked = true, blockedByMe = true)))
+
+        rule.onNodeWithText("You blocked this conversation").assertExists()
+        rule.onNodeWithText("Unblocking lets you and Ada send messages in this conversation again.").assertExists()
+        rule.onNodeWithTag(UNBLOCK_BUTTON_TAG).assertExists()
+        rule.onNodeWithTag(BLOCK_BUTTON_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun notBlockedOffersBlock() {
+        showContent(ReportAndBlockUiState(peerName = "Ada"))
+
+        rule.onNodeWithTag(BLOCK_BUTTON_TAG).assertExists()
+        rule.onNodeWithTag(UNBLOCK_BUTTON_TAG).assertDoesNotExist()
     }
 
     @Test

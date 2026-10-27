@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="report_block_title">Report &amp; block</string>
+
+    <string name="block_card_title">Block user</string>
+    <string name="block_card_body">Blocking stops both of you from sending new messages in this conversation. You can still see earlier messages. They won\'t be notified.</string>
+    <string name="block_button">Block user</string>
+    <string name="blocked_by_me_title">You blocked this conversation</string>
+    <string name="unblock_body">Unblocking lets you and %1$s send messages in this conversation again.</string>
+    <string name="unblock_body_fallback">Unblocking lets you both send messages in this conversation again.</string>
+    <string name="unblock_button">Unblock user</string>
+    <string name="blocked_by_peer_title">You can\'t reply to this conversation</string>
+    <string name="blocked_by_peer_body">You can still see earlier messages, but neither of you can send new ones. Only the person who blocked this conversation can lift it.</string>
+
+    <string name="block_dialog_title">Block %1$s?</string>
+    <string name="block_dialog_title_fallback">Block this user?</string>
+    <string name="block_dialog_message">They won\'t be able to message you.</string>
+    <string name="block_dialog_cancel">Cancel</string>
+    <string name="block_dialog_confirm">Block</string>
+    <string name="block_in_flight">Blocking</string>
+    <string name="unblock_in_flight">Unblocking</string>
 </resources>
