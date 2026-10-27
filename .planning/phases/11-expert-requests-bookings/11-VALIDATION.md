@@ -75,6 +75,9 @@ Plan and task IDs filled at planning (2026-10-26). Requirement-to-test targets c
 | EXP-08 (G-11-1) | Engine config carries the application context, the app id and the handler; failure text is class plus top frame with no message | Robolectric unit | `*AgoraEngineConfigTest` | 11-16 T1-T2 | ✅ (gap) | ✅ green |
 | EXP-08 (G-11-1) | join() reaches the SDK factory with a non-null context; null create and thrown failures return false with redacted logs | Robolectric unit | `*AgoraManagerCreateEngineTest` | 11-16 T1-T2 | ✅ (gap) | ✅ green |
 | All | Gap-pass full gate | build | see the 11-16 T3 verify chain | 11-16 T3 | ✅ (gap) | ✅ green |
+| EXP-08 (G-11-5) | Engine config and per-join options both use the COMMUNICATION profile (iOS parity); options built without a receiver scope | Robolectric unit | `*AgoraEngineConfigTest` | 11-17 T1 | ✅ (gap) | ✅ green |
+| EXP-08 (G-11-5) | join() hands the factory a COMMUNICATION config; remote-presence callbacks log codes only (no uid, token or channel) and still emit their events | Robolectric unit | `*AgoraManagerCreateEngineTest` | 11-17 T1-T2 | ✅ (gap) | ✅ green |
+| All | Gap-pass full gate | build | see the 11-17 T3 verify chain | 11-17 T3 | ✅ (gap) | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -117,3 +120,5 @@ These are deferred. Per the project preference, they are logged as open items an
 **Approval:** approved 2026-10-26 (plan 11-15 gate green on both flavors, lint and R8 `assembleProdRelease` in separate invocations)
 
 Gap closure 11-16 (G-11-1, Agora engine config context) verified 2026-10-26; device re-check deferred, see STATE
+
+Gap closure 11-17 (G-11-5, Agora channel profile parity and remote-presence logging) verified 2026-10-26; two-sided device re-test deferred, see STATE

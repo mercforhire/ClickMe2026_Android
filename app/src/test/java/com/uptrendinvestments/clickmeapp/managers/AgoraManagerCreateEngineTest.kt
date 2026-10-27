@@ -4,9 +4,13 @@ import android.content.Context
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
+import io.agora.rtc2.Constants
 import io.agora.rtc2.RtcEngineConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,6 +67,73 @@ class AgoraManagerCreateEngineTest {
             val warnings = logs().filter { it.type == Log.WARN }
             assertEquals(listOf("engine create returned null"), warnings.map { it.msg })
             assertTrue(logs().none { it.msg.contains("NullPointerException") })
+            assertNoSentinelsLogged()
+        }
+
+    @Test
+    fun joinHandsFactoryACommunicationProfileConfig() =
+        runTest {
+            var calls = 0
+            var captured: RtcEngineConfig? = null
+            val manager =
+                AgoraManager(app, UnconfinedTestDispatcher(testScheduler)) { config ->
+                    calls++
+                    captured = config
+                    null
+                }
+
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+
+            assertEquals(1, calls)
+            assertEquals(Constants.CHANNEL_PROFILE_COMMUNICATION, captured!!.mChannelProfile)
+        }
+
+    @Test
+    fun remotePresenceCallbacksLogCodesOnlyAndKeepEvents() =
+        runTest {
+            var captured: RtcEngineConfig? = null
+            val manager =
+                AgoraManager(app, UnconfinedTestDispatcher(testScheduler)) { config ->
+                    captured = config
+                    null
+                }
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+            val handler = captured!!.mEventHandler
+            val events = mutableListOf<EngineEvent>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { manager.events.toList(events) }
+            runCurrent()
+
+            handler.onUserJoined(UID, 1500)
+            runCurrent()
+            assertEquals(listOf<EngineEvent>(EngineEvent.RemoteJoined(UID)), events.toList())
+
+            handler.onUserOffline(UID, Constants.USER_OFFLINE_DROPPED)
+            runCurrent()
+            assertEquals(
+                listOf(EngineEvent.RemoteJoined(UID), EngineEvent.RemoteOffline(UID, 1)),
+                events.toList(),
+            )
+
+            handler.onRemoteAudioStateChanged(
+                UID,
+                Constants.REMOTE_AUDIO_STATE_DECODING,
+                Constants.REMOTE_AUDIO_REASON_REMOTE_UNMUTED,
+                2500,
+            )
+            handler.onClientRoleChanged(Constants.CLIENT_ROLE_AUDIENCE, Constants.CLIENT_ROLE_BROADCASTER, null)
+            runCurrent()
+            assertEquals(2, events.size)
+
+            assertEquals(
+                listOf(
+                    "remote joined elapsed=1500",
+                    "remote offline reason=1",
+                    "remote audio state=2 reason=6",
+                    "client role old=2 new=1",
+                ),
+                logs().filter { it.type == Log.INFO }.map { it.msg },
+            )
+            assertEquals(listOf("engine create returned null"), logs().filter { it.type == Log.WARN }.map { it.msg })
             assertNoSentinelsLogged()
         }
 
