@@ -1,7 +1,8 @@
 ---
 phase: 12
 slug: chat-report-block
-status: draft
+status: approved
+reviewed_at: 2026-10-27
 shadcn_initialized: false
 preset: none
 created: 2026-10-27
@@ -486,7 +487,7 @@ All new strings go into new `res/values/strings_chat_conversations.xml`, `string
 
 ## UI Considerations
 
-Applicable state considerations resolved: 24 covered, 5 backstop, 0 unresolved. Empty and error copy lives in the Copywriting Contract and is referenced here, not repeated.
+Applicable state considerations resolved: 24 covered, 5 backstop, 0 unresolved. Probe run 2026-10-27 (6 elements, 41 element×category pairs, 0 unclassified); every category maps onto the rows below, accepted by the user. Empty and error copy lives in the Copywriting Contract and is referenced here, not repeated.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
