@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.managers
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,6 +25,15 @@ class AgoraEngineConfigTest {
         assertSame(app, config.mContext)
         assertEquals("app-id-sentinel", config.mAppId)
         assertSame(handler, config.mEventHandler)
+    }
+
+    @Test
+    fun builderUsesCommunicationChannelProfile() {
+        val handler = object : IRtcEngineEventHandler() {}
+
+        val config = buildRtcEngineConfig(app, "app-id-sentinel", handler)
+
+        assertEquals(Constants.CHANNEL_PROFILE_COMMUNICATION, config.mChannelProfile)
     }
 
     private fun frame() = StackTraceElement("com.example.Foo", "bar", "Foo.kt", 42)

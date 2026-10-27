@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
+import io.agora.rtc2.Constants
 import io.agora.rtc2.RtcEngineConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -64,6 +65,24 @@ class AgoraManagerCreateEngineTest {
             assertEquals(listOf("engine create returned null"), warnings.map { it.msg })
             assertTrue(logs().none { it.msg.contains("NullPointerException") })
             assertNoSentinelsLogged()
+        }
+
+    @Test
+    fun joinHandsFactoryACommunicationProfileConfig() =
+        runTest {
+            var calls = 0
+            var captured: RtcEngineConfig? = null
+            val manager =
+                AgoraManager(app, UnconfinedTestDispatcher(testScheduler)) { config ->
+                    calls++
+                    captured = config
+                    null
+                }
+
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+
+            assertEquals(1, calls)
+            assertEquals(Constants.CHANNEL_PROFILE_COMMUNICATION, captured!!.mChannelProfile)
         }
 
     @Test
