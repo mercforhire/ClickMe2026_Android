@@ -611,7 +611,40 @@ Plans:
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
 **Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
-**Plans:** TBD
+**Plans:** 15 plans
+
+Plans:
+
+**Wave 1**
+
+- [ ] 12-01-PLAN.md — Network contract: 6 chat/report endpoints, DTOs (redacting toString), six-value `UserReportReason`, `CANNOT_CHAT_WITH_SELF`, stateless `ChatsRepository`, wire tests, Wave 0 fakes and fixtures (CHAT-01..03, CHAT-05, SAFE-01, SAFE-02, SAFE-04)
+- [ ] 12-02-PLAN.md — Pure logic and session seams: `ThreadReducer` (merge by server id / client_msg_id, ack, fail, retry, read), `BlockState` (CHAT-UNBLOCK §5-§7), `ChatSessionState` (cleared on logout), current-user and client_msg_id seams (CHAT-02..04, SAFE-03, SAFE-04)
+- [ ] 12-03-PLAN.md — Navigation skeleton: `ChatThreadKey` / `ChatReportBlockKey`, `ChatLaunchRequest` hand-off slot, `Navigator.openChatThread`, shells consume the slot, Chats root slot, route registration, Chats origins on pushed keys (CHAT-01, CHAT-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 12-04-PLAN.md — Chat entry path: `ChatLauncher` (single flight), `ChatEntryViewModel`, `MessageButton` (text and icon), entry strings, Expert Profile Message button (CHAT-05)
+- [ ] 12-05-PLAN.md — Conversations list: load, realtime move-to-top and presence, session-local unread (`displayUnread`), quiet reloads, search, all states (CHAT-01, CHAT-04)
+- [ ] 12-06-PLAN.md — Thread ViewModel read side: page 1 of 30 with system events, loadEarlier, quiet reloads (shown, booking.update, reconnect), typing both ways, read receipts, block-state read (CHAT-02, CHAT-04, SAFE-03)
+- [ ] 12-07-PLAN.md — Report & Block screen: enum-reason Report card, §5 Block card, shared confirm dialog, unblock with NOT_BLOCKER latch, D-09 exits, error copy, shared safety components (SAFE-01..04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 12-08-PLAN.md — Thread send: optimistic bubble, ack reconcile, failed/retry/delete, 10000 cap, THREAD_BLOCKED / RECIPIENT_UNAVAILABLE / other 4xx (CHAT-03, SAFE-03, SAFE-04)
+- [ ] 12-09-PLAN.md — Thread screen read side: bubbles, status lines, date separators, system-event rows, Load earlier, typing strip, jump to latest, states, overflow menu and navigation (CHAT-02, CHAT-04, SAFE-03)
+- [ ] 12-10-PLAN.md — Expert Profile Report sheet and Block dialog (initiate then block), snackbars, errors, in-flight locks (SAFE-01, SAFE-02, SAFE-04)
+- [ ] 12-11-PLAN.md — Client Message entry points: Upcoming Booking Details, Booking Summary, My Bookings cards (CHAT-05)
+- [ ] 12-12-PLAN.md — Expert Message entry points: Booking Summary, Request Decision footer and expired state, Upcoming cards (CHAT-05)
+- [ ] 12-13-PLAN.md — In-call Chat control: initiate, minimize to the pill, busy and error states (CHAT-05)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 12-14-PLAN.md — Thread send UI: composer and counter, failed bubble retry/delete, blocked and unavailable banners, send error dialog, unblock snackbar, empty-thread action (CHAT-03, SAFE-03, SAFE-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 12-15-PLAN.md — Phase gate (both flavors, lint, R8), scope and privacy sweeps, VALIDATION sign-off, deferred device checks, backend notes, iOS follow-ups and hand-offs (all)
+
 **UI hint**: yes
 
 ### Phase 13: Push, Notifications & Internal Testing
