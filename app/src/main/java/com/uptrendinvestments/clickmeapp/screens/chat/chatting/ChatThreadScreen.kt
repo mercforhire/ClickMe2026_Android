@@ -1,6 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -39,11 +40,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.DateSeparator
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.LoadEarlierButton
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.MessageBubble
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.SystemEventRow
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSlotTime
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import java.text.DateFormat
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 
@@ -51,6 +57,7 @@ import java.util.Locale
 const val CHAT_THREAD_LIST_TAG = "chat_thread_list"
 
 private val TopBarAvatarSize = 32.dp
+private const val LOAD_EARLIER_KEY = "load_earlier"
 
 /** The key this thread was opened with, rebuilt from the live state so View profile and Report use the filled-in peer. */
 fun ChatThreadUiState.toThreadKey(): ChatThreadKey =
@@ -107,7 +114,7 @@ fun ChatThreadScreen(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@Suppress("LongParameterList", "UNUSED_PARAMETER")
+@Suppress("LongParameterList")
 fun ChatThreadContent(
     state: ChatThreadUiState,
     mode: AppMode,
@@ -129,27 +136,101 @@ fun ChatThreadContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { ChatThreadTopBar(state = state, onBack = onBack) },
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).testTag(CHAT_THREAD_LIST_TAG),
-            reverseLayout = true,
-            contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.md),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            items(items = state.items.asReversed(), key = { it.key }) { item ->
-                if (item is ThreadItem.Message) {
-                    MessageBubble(
-                        message = item,
-                        peerName = state.peerName,
-                        peerAvatarUrl = state.peerAvatarUrl,
-                        showAvatar = true,
-                        timeText = formatSlotTime(item.createdAt, zone, timeFormat),
+        ThreadList(
+            state = state,
+            zone = zone,
+            locale = locale,
+            timeFormat = timeFormat,
+            onLoadEarlier = onLoadEarlier,
+            onOpenBooking = onOpenBooking,
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+        )
+    }
+}
+
+@Composable
+@Suppress("LongParameterList")
+private fun ThreadList(
+    state: ChatThreadUiState,
+    zone: ZoneId,
+    locale: Locale,
+    timeFormat: DateFormat,
+    onLoadEarlier: () -> Unit,
+    onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rows = remember(state.items, zone) { buildThreadRows(state.items, zone).asReversed() }
+    val today = LocalDate.now(zone)
+    val todayLabel = stringResource(R.string.chat_thread_today)
+    val yesterdayLabel = stringResource(R.string.chat_thread_yesterday)
+    LazyColumn(
+        modifier = modifier.testTag(CHAT_THREAD_LIST_TAG),
+        reverseLayout = true,
+        contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.md),
+    ) {
+        items(items = rows, key = { it.key }) { row ->
+            when (row) {
+                is ThreadRow.DateHeader ->
+                    DateSeparator(
+                        label = dateLabel(row.date, today, locale, todayLabel, yesterdayLabel),
                         modifier = Modifier.animateItem(),
                     )
-                }
+                is ThreadRow.Entry ->
+                    Box(Modifier.padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm).animateItem()) {
+                        EntryContent(row, state, zone, locale, timeFormat, onOpenBooking)
+                    }
+            }
+        }
+        if (state.hasMoreEarlier) {
+            item(key = LOAD_EARLIER_KEY) {
+                LoadEarlierButton(loading = state.isLoadingEarlier, onClick = onLoadEarlier)
             }
         }
     }
 }
+
+@Composable
+@Suppress("LongParameterList")
+private fun EntryContent(
+    row: ThreadRow.Entry,
+    state: ChatThreadUiState,
+    zone: ZoneId,
+    locale: Locale,
+    timeFormat: DateFormat,
+    onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
+) {
+    when (val item = row.item) {
+        is ThreadItem.Message ->
+            MessageBubble(
+                message = item,
+                peerName = state.peerName,
+                peerAvatarUrl = state.peerAvatarUrl,
+                showAvatar = row.showAvatar,
+                timeText = formatSlotTime(item.createdAt, zone, timeFormat),
+            )
+        is ThreadItem.SystemEvent ->
+            SystemEventRow(
+                event = item,
+                zone = zone,
+                locale = locale,
+                timeFormat = timeFormat,
+                onOpenBooking = onOpenBooking,
+            )
+    }
+}
+
+private fun dateLabel(
+    date: LocalDate,
+    today: LocalDate,
+    locale: Locale,
+    todayLabel: String,
+    yesterdayLabel: String,
+): String =
+    when (date) {
+        today -> todayLabel
+        today.minusDays(1) -> yesterdayLabel
+        else -> formatShortDate(date, locale)
+    }
 
 /** Back arrow, a 32 dp avatar and the peer name (fallback "Chat"), truncated to one line at large font scales. */
 @OptIn(ExperimentalMaterial3Api::class)

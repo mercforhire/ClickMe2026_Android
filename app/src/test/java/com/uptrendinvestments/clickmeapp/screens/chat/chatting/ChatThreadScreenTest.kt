@@ -1,10 +1,14 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,6 +67,9 @@ class ChatThreadScreenTest {
         items = items,
     )
 
+    private var lastBooking: Pair<String, Boolean>? = null
+    private var loadEarlierCalls = 0
+
     private fun show(state: ChatThreadUiState) {
         rule.setContent {
             ClickMeTheme {
@@ -75,8 +82,8 @@ class ChatThreadScreenTest {
                     onBack = {},
                     onRetry = {},
                     onRefresh = {},
-                    onLoadEarlier = {},
-                    onOpenBooking = { _, _ -> },
+                    onLoadEarlier = { loadEarlierCalls++ },
+                    onOpenBooking = { id, terminal -> lastBooking = id to terminal },
                     onViewProfile = {},
                     onOpenReportBlock = {},
                     onRefreshFailureConsumed = {},
@@ -84,6 +91,24 @@ class ChatThreadScreenTest {
             }
         }
     }
+
+    private fun event(
+        id: String = "e1",
+        kind: SystemEventKind = SystemEventKind.BookingCancelled,
+        bookingId: String? = "b1",
+        topic: String? = "Algorithms",
+        startTime: Instant? = Instant.parse("2026-10-28T14:00:00Z"),
+        content: String? = null,
+        at: String = "2026-10-27T09:02:00Z",
+    ) = ThreadItem.SystemEvent(
+        serverId = id,
+        kind = kind,
+        bookingId = bookingId,
+        topic = topic,
+        startTime = startTime,
+        content = content,
+        createdAt = Instant.parse(at),
+    )
 
     @Test
     fun messagesRenderWithPeerInTopBar() {
@@ -119,5 +144,76 @@ class ChatThreadScreenTest {
         show(loaded(listOf(incoming("m1", "Hello")), peerName = null))
 
         rule.onNodeWithText("Chat").assertIsDisplayed()
+    }
+
+    @Test
+    fun systemEventWithBookingIsTappable() {
+        show(
+            loaded(
+                listOf(
+                    event(id = "e1", kind = SystemEventKind.BookingCancelled),
+                    event(id = "e2", kind = SystemEventKind.BookingConfirmed, bookingId = "b2", topic = "Calculus"),
+                ),
+            ),
+        )
+
+        rule.onNodeWithText("Booking Cancelled").assertIsDisplayed()
+        rule.onNodeWithText("Algorithms · ", substring = true).assertExists()
+        rule.onNodeWithText("Booking Cancelled").performClick()
+        assertEquals("b1" to true, lastBooking)
+        rule.onNodeWithText("Booking Confirmed").performClick()
+        assertEquals("b2" to false, lastBooking)
+    }
+
+    @Test
+    fun legacyEventWithoutBookingIsNotTappable() {
+        show(
+            loaded(
+                listOf(
+                    event(
+                        bookingId = null,
+                        topic = null,
+                        startTime = null,
+                        content = "Tomorrow, 2:00 PM",
+                        kind = SystemEventKind.BookingRequest,
+                    ),
+                ),
+            ),
+        )
+
+        rule.onNodeWithText("Tomorrow, 2:00 PM").assertIsDisplayed()
+        rule.onNodeWithText("Booking Request").assertHasNoClickAction()
+    }
+
+    @Test
+    fun loadEarlierShownWhenMorePages() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(hasMoreEarlier = true))
+
+        rule.onNodeWithText("Load earlier").performClick()
+        assertEquals(1, loadEarlierCalls)
+    }
+
+    @Test
+    fun loadingEarlierShowsLoadingAndIsDisabled() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(hasMoreEarlier = true, isLoadingEarlier = true))
+
+        rule.onNodeWithText("Loading…").assertIsNotEnabled()
+    }
+
+    @Test
+    fun dateSeparatorsShowTodayAndYesterday() {
+        val now = Instant.now()
+        show(
+            loaded(
+                listOf(
+                    incoming("m0", "Old news", at = "2020-01-02T10:00:00Z"),
+                    incoming("m1", "Yesterday text", at = now.minusSeconds(86_400).toString()),
+                    incoming("m2", "Today text", at = now.toString()),
+                ),
+            ),
+        )
+
+        rule.onNodeWithText("Today").assertExists()
+        rule.onNodeWithText("Yesterday").assertExists()
     }
 }
