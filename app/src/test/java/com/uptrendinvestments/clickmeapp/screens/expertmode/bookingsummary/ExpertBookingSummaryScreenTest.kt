@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -26,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConsultationFeeDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
@@ -33,6 +35,8 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
+import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +58,7 @@ class ExpertBookingSummaryScreenTest {
     private val start = Instant.parse("2026-10-24T18:00:00Z")
 
     private val api = FakeClickMeApi()
+    private val launch = ChatLaunchRequest()
     private val callStarter = FakeCallStarter()
     private val callGuard = FakeCallGuard()
     private val ids = mutableListOf<String>()
@@ -90,12 +95,14 @@ class ExpertBookingSummaryScreenTest {
                 callGuard,
                 JoinClock(clock, CoroutineScope(Job())),
             )
+        val chatEntry = testChatEntryViewModel(api, launch)
         rule.setContent {
             ClickMeTheme {
                 ExpertBookingSummaryScreen(
                     viewModel = viewModel,
                     onBack = { backs++ },
                     onCancel = { cancels += bookingId },
+                    chatEntry = chatEntry,
                 )
             }
         }
@@ -270,11 +277,54 @@ class ExpertBookingSummaryScreenTest {
     }
 
     @Test
-    fun noMessageRescheduleOrNoteControls() {
+    fun noRescheduleNoteReportOrBlockControls() {
         showScreen(expertBookingDetail(start = start, notes = "Hello"))
-        listOf("Message", "Reschedule", "Private Note", "My Note", "Meeting link").forEach {
+        listOf("Reschedule", "Private Note", "My Note", "Meeting link", "Report", "Block").forEach {
             rule.onAllNodesWithText(it, substring = true).assertCountEquals(0)
         }
+    }
+
+    @Test
+    fun messageClientOpensChat() {
+        api.initiateChatHandler = { initiateData("t1") }
+        showScreen(expertBookingDetail(start = start, statusCode = "confirmed", canCancel = true))
+        rule.onNodeWithText("Message Client").assertExists()
+
+        // Message Client sits after Join Call and before Cancel Booking.
+        val top = { tag: String ->
+            val node = rule.onNodeWithTag(tag).fetchSemanticsNode()
+            node.positionInRoot.y
+        }
+        assertTrue(top(EXPERT_SUMMARY_JOIN_TAG) < top(MESSAGE_CLIENT_TAG))
+        assertTrue(top(MESSAGE_CLIENT_TAG) < top(EXPERT_SUMMARY_CANCEL_TAG))
+
+        rule.onNodeWithTag(MESSAGE_CLIENT_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("c1"), api.initiateChatRequests.map { it.peerId })
+        val key = launch.thread.consume()
+        assertEquals("t1", key?.threadId)
+        assertEquals("c1", key?.peerId)
+        assertEquals(false, key?.peerIsExpert)
+    }
+
+    @Test
+    fun messageClientShowsWithoutJoinOrCancel() {
+        showScreen(expertBookingDetail(start = start, statusCode = "cancelled", canCancel = false))
+        rule.onNodeWithTag(MESSAGE_CLIENT_TAG).assertExists()
+    }
+
+    @Test
+    fun messageClientFailureShowsTheErrorDialog() {
+        api.initiateChatHandler = {
+            throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+        }
+        showScreen(expertBookingDetail(start = start))
+        rule.onNodeWithTag(MESSAGE_CLIENT_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't open chat").assertExists()
+        assertEquals(null, launch.thread.consume())
     }
 
     @Test

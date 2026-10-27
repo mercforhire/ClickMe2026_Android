@@ -1,12 +1,14 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,11 +22,13 @@ import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
@@ -32,6 +36,8 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
+import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -58,6 +64,7 @@ class ExpertBookingsScreenTest {
     private val clock = MutableClock(now)
     private val api = FakeClickMeApi()
     private val callStarter = FakeCallStarter()
+    private val chatLaunch = ChatLaunchRequest()
 
     private fun serve(
         upcoming: List<ExpertBookingItem> = listOf(expertBookingItem(start = now.plusSeconds(1800))),
@@ -81,9 +88,15 @@ class ExpertBookingsScreenTest {
 
     private fun show(onOpenBooking: (String) -> Unit = {}) {
         val vm = viewModel()
+        val chatEntry = testChatEntryViewModel(api, chatLaunch)
         rule.setContent {
             ClickMeTheme {
-                ExpertBookingsScreen(onOpenBooking = onOpenBooking, onUpdateAvailability = {}, viewModel = vm)
+                ExpertBookingsScreen(
+                    onOpenBooking = onOpenBooking,
+                    onUpdateAvailability = {},
+                    viewModel = vm,
+                    chatEntry = chatEntry,
+                )
             }
         }
         rule.waitForIdle()
@@ -98,6 +111,39 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Earnings").assertExists()
         rule.onNodeWithText("\$63.75").assertExists()
         rule.onNodeWithTag(EXPERT_BOOKINGS_JOIN_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun upcomingCardShowsMessageIcon() {
+        serve()
+        api.initiateChatHandler = { initiateData("t1") }
+        var opened = 0
+        show(onOpenBooking = { opened++ })
+
+        rule.onNodeWithContentDescription("Message Ada Lovelace").assertExists()
+        rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("c1"), api.initiateChatRequests.map { it.peerId })
+        val key = chatLaunch.thread.consume()
+        assertEquals("c1", key?.peerId)
+        assertEquals(false, key?.peerIsExpert)
+        assertEquals(0, opened)
+    }
+
+    @Test
+    fun messageFailureShowsTheErrorDialog() {
+        serve()
+        api.initiateChatHandler = {
+            throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+        }
+        show()
+
+        rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't open chat").assertExists()
+        assertEquals(null, chatLaunch.thread.consume())
     }
 
     @Test
@@ -234,12 +280,14 @@ class ExpertBookingsScreenTest {
         serve(upcoming = emptyList())
         var availability = 0
         val vm = viewModel()
+        val chatEntry = testChatEntryViewModel(api, chatLaunch)
         rule.setContent {
             ClickMeTheme {
                 ExpertBookingsScreen(
                     onOpenBooking = {},
                     onUpdateAvailability = { availability++ },
                     viewModel = vm,
+                    chatEntry = chatEntry,
                 )
             }
         }
@@ -255,6 +303,14 @@ class ExpertBookingsScreenTest {
         rule.waitForIdle()
         rule.onNodeWithText("Past").assertIsSelected()
         rule.onNodeWithText("No past sessions yet").assertExists()
+    }
+
+    @Test
+    fun pastCardsHaveNoMessage() {
+        showPast(listOf(pastItem("p1", "completed", hoursAgo = 24)))
+        assertEquals(1, rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().size)
+        rule.onAllNodesWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Message Ada Lovelace").assertCountEquals(0)
     }
 
     @Test

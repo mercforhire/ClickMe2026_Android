@@ -49,7 +49,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
@@ -87,8 +90,10 @@ fun ExpertBookingsScreen(
     onUpdateAvailability: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertBookingsViewModel = hiltViewModel(),
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
@@ -108,13 +113,19 @@ fun ExpertBookingsScreen(
         onNoticeConsumed = viewModel::consumeNotice,
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
         modifier = modifier,
+        messageBusyPeerId = entryState.busyPeerId,
+        onMessage = { item ->
+            chatEntry.open(ChatPeer(item.client.id, item.client.name, item.client.avatarUrl, isExpert = false))
+        },
     )
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 }
 
 /**
  * Stateless expert Bookings tab: app bar, full-width Upcoming / Past tabs, pull-to-refresh and the list of the
- * selected tab (UI-SPEC surface 5). Cards offer the D-14 and D-15 actions only: tapping opens the summary and Join is
- * live within the join window.
+ * selected tab (UI-SPEC surface 5). Cards offer the D-14 and D-15 actions only: tapping opens the summary, Join is
+ * live within the join window and Upcoming cards carry the Message icon. [messageBusyPeerId] is the client whose chat
+ * is being opened; [onMessage] opens it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Suppress("LongParameterList")
@@ -134,6 +145,8 @@ fun ExpertBookingsContent(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
+    messageBusyPeerId: String? = null,
+    onMessage: (ExpertBookingItem) -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -225,6 +238,8 @@ fun ExpertBookingsContent(
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
+                        messageBusyPeerId = messageBusyPeerId,
+                        onMessage = onMessage,
                     )
                 }
             }
@@ -246,6 +261,8 @@ private fun ExpertBookingsTabBody(
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
+    messageBusyPeerId: String?,
+    onMessage: (ExpertBookingItem) -> Unit,
 ) {
     when (val load = state.load) {
         ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = tab == BookingsTab.Past)
@@ -270,6 +287,8 @@ private fun ExpertBookingsTabBody(
                     zone = zone,
                     timeFormat = timeFormat,
                     locale = locale,
+                    messageBusyPeerId = messageBusyPeerId,
+                    onMessage = onMessage,
                 )
             }
         }
@@ -287,6 +306,8 @@ private fun ExpertBookingsList(
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
+    messageBusyPeerId: String?,
+    onMessage: (ExpertBookingItem) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
@@ -302,6 +323,8 @@ private fun ExpertBookingsList(
                         now = joinNow,
                         onOpen = { onOpenBooking(item.bookingId) },
                         onJoin = { onJoin(item) },
+                        messageBusy = messageBusyPeerId != null && messageBusyPeerId == item.client.id,
+                        onMessage = { onMessage(item) },
                         modifier = Modifier.animateItem(),
                         zone = zone,
                         timeFormat = timeFormat,

@@ -3,25 +3,32 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.Density
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsLaunch
 import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsNotice
@@ -36,14 +43,18 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subv
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DECLINE_SHEET_KEEP_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_DECLINE_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.bookingRequestDetail
+import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,30 +73,54 @@ class RequestDecisionScreenTest {
 
     private val api = FakeClickMeApi()
     private val launch = ExpertLaunchRequest()
+    private val chatLaunch = ChatLaunchRequest()
     private val accepted = mutableListOf<BookingConfirmedKey>()
     private var backCount = 0
     private var declinedCount = 0
     private var exitCount = 0
 
-    private fun show(key: RequestDecisionKey) {
+    private fun show(
+        key: RequestDecisionKey,
+        fontScale: Float? = null,
+    ) {
         val viewModel = RequestDecisionViewModel(key, BookingRequestsRepository(api), launch)
+        val chatEntry = testChatEntryViewModel(api, chatLaunch)
         rule.setContent {
-            ClickMeTheme {
-                RequestDecisionScreen(
-                    viewModel = viewModel,
-                    onBack = { backCount++ },
-                    onAccepted = { accepted += it },
-                    onDeclined = { declinedCount++ },
-                    onExitAfterProcessed = { exitCount++ },
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides if (fontScale == null) density else Density(density.density, fontScale),
+            ) {
+                ClickMeTheme {
+                    RequestDecisionScreen(
+                        viewModel = viewModel,
+                        onBack = { backCount++ },
+                        onAccepted = { accepted += it },
+                        onDeclined = { declinedCount++ },
+                        onExitAfterProcessed = { exitCount++ },
+                        chatEntry = chatEntry,
+                    )
+                }
             }
         }
         rule.waitForIdle()
     }
 
+    private fun x(tag: String) =
+        rule
+            .onNodeWithTag(tag)
+            .fetchSemanticsNode()
+            .positionInRoot.x
+
+    private fun y(tag: String) =
+        rule
+            .onNodeWithTag(tag)
+            .fetchSemanticsNode()
+            .positionInRoot.y
+
     private val details =
         RequestDecisionDetails(
             requestId = "r1",
+            clientId = "c1",
             clientName = "Ada Lovelace",
             clientAvatarUrl = null,
             start = Instant.parse("2026-10-24T18:00:00Z"),
@@ -488,5 +523,90 @@ class RequestDecisionScreenTest {
         rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).assertIsNotEnabled()
         rule.onNodeWithTag(ACCEPT_SHEET_CANCEL_TAG).assertIsNotEnabled()
         assertEquals(1, api.acceptBookingRequestCalls)
+    }
+
+    @Test
+    fun footerLeadsWithMessageIcon() {
+        pendingRequest()
+        api.initiateChatHandler = { initiateData("t1") }
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithContentDescription("Message Ada Lovelace").assertExists()
+        rule.onNodeWithTag(REQUEST_MESSAGE_TAG).assertExists()
+        assertTrue(x(REQUEST_MESSAGE_TAG) < x(REQUEST_DECLINE_TAG))
+        assertTrue(x(REQUEST_DECLINE_TAG) < x(REQUEST_ACCEPT_TAG))
+        rule.onAllNodesWithText("Message Ada Lovelace").assertCountEquals(0)
+
+        rule.onNodeWithTag(REQUEST_MESSAGE_TAG).performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("c1"), api.initiateChatRequests.map { it.peerId })
+        val key = chatLaunch.thread.consume()
+        assertEquals("c1", key?.peerId)
+        assertEquals(false, key?.peerIsExpert)
+        // Message opens neither decision sheet.
+        rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(DECLINE_SHEET_CONFIRM_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun stackedFooterAddsTextForm() {
+        pendingRequest()
+        show(RequestDecisionKey("r1"), fontScale = 1.5f)
+
+        rule.onNodeWithText("Message Ada Lovelace").assertExists()
+        assertTrue(y(REQUEST_ACCEPT_TAG) < y(REQUEST_DECLINE_TAG))
+        assertTrue(y(REQUEST_DECLINE_TAG) < y(REQUEST_MESSAGE_TAG))
+    }
+
+    @Test
+    fun expiredRequestShowsTextForm() {
+        pendingRequest()
+        api.initiateChatHandler = { initiateData("t1") }
+        show(RequestDecisionKey("r1", isExpired = true))
+
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).assertDoesNotExist()
+        rule.onNodeWithText("Message Ada Lovelace").assertExists()
+
+        rule.onNodeWithTag(REQUEST_MESSAGE_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals("c1", chatLaunch.thread.consume()?.peerId)
+    }
+
+    @Test
+    fun footerMessageIsDisabledWhileADecisionIsInFlight() {
+        pendingRequest()
+        val gate = CompletableDeferred<AcceptBookingRequestData>()
+        api.acceptBookingRequestHandler = { _, _ -> gate.await() }
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).performClick()
+        rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(REQUEST_MESSAGE_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun messageFailureShowsTheErrorDialog() {
+        pendingRequest()
+        api.initiateChatHandler = {
+            throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+        }
+        show(RequestDecisionKey("r1"))
+
+        rule.onNodeWithTag(REQUEST_MESSAGE_TAG).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't open chat").assertExists()
+    }
+
+    @Test
+    fun noReportOrBlockOnRequestDecision() {
+        pendingRequest()
+        show(RequestDecisionKey("r1"))
+        rule.onAllNodesWithText("Report", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("Block", substring = true).assertCountEquals(0)
     }
 }
