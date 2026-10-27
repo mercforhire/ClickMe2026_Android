@@ -422,6 +422,55 @@ class ExpertProfileScreenTest {
             .assertHeightIsAtLeast(ButtonBarHeight * 2 + Spacing.md)
     }
 
+    private var reportCount = 0
+    private var blockCount = 0
+
+    private fun setSafetyContent(showSafetyMenu: Boolean) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileContent(
+                    state = loadedState(),
+                    onBack = {},
+                    onBookSession = {},
+                    onRetry = {},
+                    showSafetyMenu = showSafetyMenu,
+                    onReport = { reportCount++ },
+                    onBlock = { blockCount++ },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun menuOpensReportSheet() {
+        setSafetyContent(showSafetyMenu = true)
+
+        rule.onNodeWithContentDescription("More options").performClick()
+        rule.onNodeWithText("Block Ada Lovelace").assertExists()
+        rule.onNodeWithText("Report this profile").performClick()
+
+        assertEquals(1, reportCount)
+        assertEquals(0, blockCount)
+    }
+
+    @Test
+    fun menuBlockItemCallsOnBlock() {
+        setSafetyContent(showSafetyMenu = true)
+
+        rule.onNodeWithContentDescription("More options").performClick()
+        rule.onNodeWithText("Block Ada Lovelace").performClick()
+
+        assertEquals(1, blockCount)
+        assertEquals(0, reportCount)
+    }
+
+    @Test
+    fun hiddenMenuHasNoMoreOptions() {
+        setSafetyContent(showSafetyMenu = false)
+
+        rule.onAllNodesWithContentDescription("More options").assertCountEquals(0)
+    }
+
     @Test
     fun deferredControlsNeverAppear() {
         setContent(loadedState())

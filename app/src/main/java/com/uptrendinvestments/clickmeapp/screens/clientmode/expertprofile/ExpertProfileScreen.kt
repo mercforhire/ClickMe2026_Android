@@ -9,25 +9,41 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -42,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
+import com.uptrendinvestments.clickmeapp.components.safety.ReportUserSheet
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
@@ -62,6 +79,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 
 private const val SKELETON_FADE_MS = 150
+private val MenuTarget = 48.dp
 
 private enum class DetailsKind { Loading, Loaded, Error }
 
@@ -78,10 +96,33 @@ fun ExpertProfileScreen(
     onBook: (BookingKey) -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
+    safety: ProfileSafetyViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
+    val safetyState by safety.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val thanks = stringResource(R.string.report_thanks)
+    LaunchedEffect(safetyState.snackbar) {
+        val message = safetyState.snackbar
+        if (message != null) {
+            snackbarHostState.showSnackbar(thanks)
+            safety.consumeSnackbar()
+        }
+    }
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
+    if (safetyState.sheetOpen) {
+        ReportUserSheet(
+            name = state.name,
+            reason = safetyState.reason,
+            details = safetyState.details,
+            submitting = safetyState.reportSubmitting,
+            onSelectReason = safety::selectReason,
+            onDetailsChange = safety::onDetailsChange,
+            onSubmit = { safety.submitReport(state.expertId) },
+            onDismiss = safety::dismissReport,
+        )
+    }
     ExpertProfileContent(
         state = state,
         onBack = onBack,
@@ -91,6 +132,10 @@ fun ExpertProfileScreen(
         showMessage = !chatEntry.isSelf(state.expertId),
         messageBusy = entryState.busyPeerId != null,
         onMessage = { chatEntry.open(ChatPeer(state.expertId, state.name, state.imageUrl, isExpert = true)) },
+        showSafetyMenu = !chatEntry.isSelf(state.expertId) && state.details is DetailsState.Loaded,
+        onReport = safety::openReport,
+        onBlock = {},
+        snackbarHostState = snackbarHostState,
     )
 }
 
@@ -109,12 +154,26 @@ fun ExpertProfileContent(
     showMessage: Boolean = false,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
+    showSafetyMenu: Boolean = false,
+    onReport: () -> Unit = {},
+    onBlock: () -> Unit = {},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { ProfileTopBar(onBack = onBack, scrollBehavior = scrollBehavior) },
+        topBar = {
+            ProfileTopBar(
+                name = state.name,
+                onBack = onBack,
+                scrollBehavior = scrollBehavior,
+                showSafetyMenu = showSafetyMenu,
+                onReport = onReport,
+                onBlock = onBlock,
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         if (state.details is DetailsState.Unavailable) {
             UnavailableBody(onBack = onBack, modifier = Modifier.padding(innerPadding))
@@ -159,8 +218,12 @@ fun ExpertProfileContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileTopBar(
+    name: String,
     onBack: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
+    showSafetyMenu: Boolean,
+    onReport: () -> Unit,
+    onBlock: () -> Unit,
 ) {
     TopAppBar(
         title = {},
@@ -172,13 +235,72 @@ private fun ProfileTopBar(
                 )
             }
         },
+        actions = {
+            if (showSafetyMenu) SafetyMenu(name = name, onReport = onReport, onBlock = onBlock)
+        },
         colors =
             TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
                 scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                actionIconContentColor = MaterialTheme.colorScheme.onSurface,
             ),
         scrollBehavior = scrollBehavior,
+    )
+}
+
+/** The More options menu: Report this profile and Block {name} (D-07). Re-blocking is allowed, so no block state. */
+@Composable
+private fun SafetyMenu(
+    name: String,
+    onReport: () -> Unit,
+    onBlock: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.size(MenuTarget)) {
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.profile_menu_more),
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SafetyMenuItem(
+                text = stringResource(R.string.profile_menu_report),
+                icon = Icons.Outlined.Flag,
+                onClick = {
+                    expanded = false
+                    onReport()
+                },
+            )
+            SafetyMenuItem(
+                text = stringResource(R.string.profile_menu_block, name),
+                icon = Icons.Outlined.Block,
+                onClick = {
+                    expanded = false
+                    onBlock()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SafetyMenuItem(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(text = text, style = MaterialTheme.typography.bodyLarge) },
+        onClick = onClick,
+        modifier = Modifier.heightIn(min = MenuTarget),
+        leadingIcon = { Icon(imageVector = icon, contentDescription = null) },
+        colors =
+            MenuDefaults.itemColors(
+                textColor = MaterialTheme.colorScheme.onSurface,
+                leadingIconColor = MaterialTheme.colorScheme.onSurface,
+            ),
     )
 }
 
