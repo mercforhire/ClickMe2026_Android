@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import io.agora.rtc2.Constants
+import io.agora.rtc2.RtcEngine
 import io.agora.rtc2.RtcEngineConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -19,6 +20,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mockito
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowLog
 
@@ -169,6 +171,59 @@ class AgoraManagerCreateEngineTest {
             val message = warnings.single().msg
             assertTrue(message, message.startsWith("engine create failed UnsatisfiedLinkError at "))
             assertNoSentinelsLogged()
+        }
+
+    @Test
+    fun setupFailureAfterCreationDestroysEngineAndAllowsRetry() =
+        runTest {
+            var destroyed = 0
+            var created = 0
+            val failing = Mockito.mock(RtcEngine::class.java)
+            Mockito
+                .`when`(
+                    failing.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD),
+                ).thenThrow(IllegalStateException(MESSAGE))
+            val manager =
+                AgoraManager(app, UnconfinedTestDispatcher(testScheduler), { destroyed++ }) { _ ->
+                    created++
+                    failing
+                }
+
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+
+            assertEquals(1, destroyed)
+            assertEquals(1, created)
+            Mockito.verify(failing, Mockito.never()).joinChannel(
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.anyInt(),
+                Mockito.any(),
+            )
+            val warnings = logs().filter { it.type == Log.WARN }
+            assertEquals(1, warnings.size)
+            assertTrue(
+                warnings.single().msg,
+                warnings.single().msg.startsWith("engine create failed IllegalStateException at "),
+            )
+            assertNoSentinelsLogged()
+
+            // The failed engine was never cached, so the next join builds a fresh one.
+            assertFalse(manager.join(TOKEN, CHANNEL, UID))
+            assertEquals(2, created)
+            assertEquals(2, destroyed)
+        }
+
+    @Test
+    fun successfulSetupDoesNotDestroyEngine() =
+        runTest {
+            var destroyed = 0
+            val healthy = Mockito.mock(RtcEngine::class.java)
+            val manager = AgoraManager(app, UnconfinedTestDispatcher(testScheduler), { destroyed++ }) { _ -> healthy }
+
+            // The mock reports joinChannel code 0, so setup succeeded and join returns true.
+            assertTrue(manager.join(TOKEN, CHANNEL, UID))
+
+            assertEquals(0, destroyed)
         }
 
     private companion object {

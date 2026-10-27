@@ -26,8 +26,8 @@ import javax.inject.Singleton
  *
  * Lives in an app singleton rather than the foreground service so the UI and the service share it without
  * binding. The constructors touch no native code. The internal primary constructor takes the SDK engine
- * factory so a JVM test can stop at the SDK boundary; Hilt injects through the public secondary constructor,
- * which passes the real `RtcEngine.create`. The engine is created lazily by [join], which
+ * factory and the static engine release so a JVM test can stop at the SDK boundary; Hilt injects through the
+ * public secondary constructor, which passes the real `RtcEngine.create` and `RtcEngine.destroy`. The engine is created lazily by [join], which
  * `CallCenter` calls only after `CallForegroundController.startAndAwait` returned true (spike finding), and
  * is released by [destroy] off the main thread, never from a callback (RESEARCH Pitfall 10).
  *
@@ -41,13 +41,14 @@ class AgoraManager
     internal constructor(
         private val context: Context,
         private val io: CoroutineDispatcher,
+        private val destroyRtcEngine: () -> Unit = { RtcEngine.destroy() },
         private val createRtcEngine: (RtcEngineConfig) -> RtcEngine?,
     ) : CallEngine {
         @Inject
         constructor(
             @ApplicationContext context: Context,
             @IoDispatcher io: CoroutineDispatcher,
-        ) : this(context, io, { config -> RtcEngine.create(config) })
+        ) : this(context, io, { RtcEngine.destroy() }, { config -> RtcEngine.create(config) })
 
         /** Guards every engine lifecycle step (join, leave, destroy) and the controls (WR-04). */
         private val mutex = Mutex()
@@ -177,7 +178,7 @@ class AgoraManager
             // join holds the mutex on io, so this static destroy cannot interleave with destroy(). The engine field
             // was never assigned, so destroy() would otherwise skip the native engine and leave it alive for the
             // next join (11-16-REVIEW WR-01).
-            if (created != null) runCatching { RtcEngine.destroy() }
+            if (created != null) runCatching { destroyRtcEngine() }
             return null
         }
 
