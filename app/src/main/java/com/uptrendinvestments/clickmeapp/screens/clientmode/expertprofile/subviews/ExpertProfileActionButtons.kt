@@ -86,11 +86,18 @@ fun ExpertProfileActionButtons(
     }
 }
 
-/** A 56 dp pill shown while the details load, so the button never flashes enabled and then disabled (D-15). */
+/**
+ * Two 56 dp pills shown while the details load, so the buttons never flash enabled and then disabled (D-15). The
+ * second bar stands for Message (D-14).
+ */
 @Composable
 fun ExpertProfileActionButtonsSkeleton(modifier: Modifier = Modifier) {
     SkeletonGroup(modifier = modifier.fillMaxWidth()) {
-        SkeletonBlock(Modifier.fillMaxWidth().height(ButtonMinHeight), CircleShape)
+        Column(Modifier.fillMaxWidth()) {
+            SkeletonBlock(Modifier.fillMaxWidth().height(ButtonMinHeight), CircleShape)
+            Spacer(Modifier.height(Spacing.md))
+            SkeletonBlock(Modifier.fillMaxWidth().height(ButtonMinHeight), CircleShape)
+        }
     }
 }
 

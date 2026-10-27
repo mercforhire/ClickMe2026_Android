@@ -1,16 +1,20 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -18,16 +22,19 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.BOOK_SESSION_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.EXPERT_PROFILE_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileActionButtons
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileActionButtonsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileExpertiseSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileHero
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileReviewsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileStatsBar
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileTopicsCard
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -35,6 +42,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+
+private val ButtonBarHeight = 56.dp
 
 @RunWith(RobolectricTestRunner::class)
 class ExpertProfileScreenTest {
@@ -390,6 +399,27 @@ class ExpertProfileScreenTest {
 
         rule.onNodeWithText("Not accepting bookings").assertIsNotEnabled()
         rule.onNodeWithTag(EXPERT_PROFILE_MESSAGE_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun ownProfileHidesMessage() {
+        setMessageContent(loadedState(), showMessage = false)
+
+        rule.onNodeWithText("Book Session").assertExists()
+        rule.onAllNodesWithTag(EXPERT_PROFILE_MESSAGE_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun skeletonShowsTwoBars() {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileActionButtonsSkeleton(Modifier.testTag("skeleton"))
+            }
+        }
+
+        rule
+            .onNodeWithTag("skeleton")
+            .assertHeightIsAtLeast(ButtonBarHeight * 2 + Spacing.md)
     }
 
     @Test

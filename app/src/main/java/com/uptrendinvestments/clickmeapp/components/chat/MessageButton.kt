@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.components.chat
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
@@ -12,13 +13,16 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
@@ -32,11 +36,26 @@ const val MESSAGE_BUTTON_SPINNER_TAG = "message_button_spinner"
 
 private val TextButtonMinHeight = 56.dp
 private val TextGlyphSize = 20.dp
+private val IconGlyphSize = 24.dp
 private val SpinnerStroke = 2.dp
+private val OutlineWidth = 1.dp
+
+/** The two shapes of the Message control. */
+enum class MessageButtonVariant {
+    /** Outlined pill with the chat glyph and a label. */
+    Text,
+
+    /** Outlined round icon button, for cards and rows where a label does not fit. */
+    Icon,
+}
 
 /**
- * The Message control for every chat entry point (D-14): an outlined, neutral 56 dp button with a chat glyph and
- * [label]. While [busy] it shows a spinner, exposes "Opening chat" to accessibility and ignores taps.
+ * The Message control for every chat entry point (D-14). The [MessageButtonVariant.Text] form is an outlined, neutral
+ * 56 dp pill with a chat glyph and [label]; the [MessageButtonVariant.Icon] form is an [iconTarget] (56 dp in cards,
+ * 48 dp elsewhere) outlined icon button described by [contentDescription] (the label when null).
+ *
+ * While [busy] both forms show a spinner in place of the glyph, expose "Opening chat" to accessibility and ignore
+ * taps. [enabled] false disables the control.
  */
 @Composable
 fun MessageButton(
@@ -45,33 +64,60 @@ fun MessageButton(
     modifier: Modifier = Modifier,
     busy: Boolean = false,
     enabled: Boolean = true,
+    variant: MessageButtonVariant = MessageButtonVariant.Text,
+    contentDescription: String? = null,
+    iconTarget: Dp = TextButtonMinHeight,
 ) {
     val openingState = stringResource(R.string.chat_entry_opening)
-    PressScaleButton(
-        onClick = { if (!busy) onClick() },
-        enabled = enabled,
-        modifier =
-            modifier
-                .heightIn(min = TextButtonMinHeight)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                .then(if (busy) Modifier.semantics { stateDescription = openingState } else Modifier),
-        colors =
-            ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
-    ) {
-        if (busy) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(TextGlyphSize).testTag(MESSAGE_BUTTON_SPINNER_TAG),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = SpinnerStroke,
-            )
-        } else {
-            Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, modifier = Modifier.size(TextGlyphSize))
+    val guardedClick = { if (!busy) onClick() }
+    when (variant) {
+        MessageButtonVariant.Text ->
+            PressScaleButton(
+                onClick = guardedClick,
+                enabled = enabled,
+                modifier =
+                    modifier
+                        .heightIn(min = TextButtonMinHeight)
+                        .border(OutlineWidth, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .then(if (busy) Modifier.semantics { stateDescription = openingState } else Modifier),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+            ) {
+                if (busy) Spinner(TextGlyphSize) else Glyph(TextGlyphSize)
+                Spacer(Modifier.width(Spacing.sm))
+                Text(label)
+            }
+        MessageButtonVariant.Icon -> {
+            val description = contentDescription ?: label
+            OutlinedIconButton(
+                onClick = guardedClick,
+                modifier =
+                    modifier
+                        .size(iconTarget)
+                        .semantics {
+                            this.contentDescription = description
+                            if (busy) stateDescription = openingState
+                        },
+                enabled = enabled,
+                border = BorderStroke(OutlineWidth, MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                if (busy) Spinner(IconGlyphSize) else Glyph(IconGlyphSize)
+            }
         }
-        Spacer(Modifier.width(Spacing.sm))
-        Text(label)
     }
+}
+
+@Composable
+private fun Glyph(size: Dp) {
+    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, modifier = Modifier.size(size))
+}
+
+@Composable
+private fun Spinner(size: Dp) {
+    CircularProgressIndicator(
+        modifier = Modifier.size(size).testTag(MESSAGE_BUTTON_SPINNER_TAG),
+        color = MaterialTheme.colorScheme.primary,
+        strokeWidth = SpinnerStroke,
+    )
 }
 
 /** The "Couldn't open chat" dialog every Message control shows for a failed initiate (D-15). */
