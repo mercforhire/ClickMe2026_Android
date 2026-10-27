@@ -151,6 +151,7 @@ class AgoraManager
 
         /** Creates the engine with the iOS / spike audio defaults, or null if the SDK cannot start. */
         private fun createEngine(): RtcEngine? {
+            var created: RtcEngine? = null
             try {
                 // Read before any config scope: inside RtcEngineConfig a bare `context` is the SDK getter (G-11-1).
                 val appContext = context.applicationContext
@@ -160,6 +161,7 @@ class AgoraManager
                     Log.w(TAG, "engine create returned null")
                     return null
                 }
+                created = rtc
                 rtc.setAudioProfile(Constants.AUDIO_PROFILE_SPEECH_STANDARD)
                 rtc.setAudioScenario(Constants.AUDIO_SCENARIO_DEFAULT)
                 rtc.setDefaultAudioRoutetoSpeakerphone(true)
@@ -168,12 +170,15 @@ class AgoraManager
                 return rtc
             } catch (e: Exception) {
                 Log.w(TAG, "engine create failed ${describeEngineFailure(e)}")
-                return null
             } catch (e: LinkageError) {
                 // A native library that fails to load (UnsatisfiedLinkError) is an Error, not an Exception (WR-10).
                 Log.w(TAG, "engine create failed ${describeEngineFailure(e)}")
-                return null
             }
+            // join holds the mutex on io, so this static destroy cannot interleave with destroy(). The engine field
+            // was never assigned, so destroy() would otherwise skip the native engine and leave it alive for the
+            // next join (11-16-REVIEW WR-01).
+            if (created != null) runCatching { RtcEngine.destroy() }
+            return null
         }
 
         /** Holds the lock so a leave never interleaves with [destroy] or [join] (WR-04). */
