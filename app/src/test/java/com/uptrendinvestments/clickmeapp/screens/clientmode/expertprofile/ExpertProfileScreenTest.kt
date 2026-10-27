@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.BOOK_SESSION_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.EXPERT_PROFILE_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileActionButtons
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileExpertiseSection
@@ -352,6 +353,43 @@ class ExpertProfileScreenTest {
 
         rule.onNodeWithContentDescription("Back").performClick()
         assertEquals(1, backCount)
+    }
+
+    private var messageCount = 0
+
+    private fun setMessageContent(
+        state: ExpertProfileUiState,
+        showMessage: Boolean,
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileContent(
+                    state = state,
+                    onBack = {},
+                    onBookSession = {},
+                    onRetry = {},
+                    showMessage = showMessage,
+                    onMessage = { messageCount++ },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun messageButtonCallsOnMessage() {
+        setMessageContent(loadedState(), showMessage = true)
+
+        rule.onNodeWithTag(EXPERT_PROFILE_MESSAGE_TAG).performScrollTo().assertIsEnabled()
+        rule.onNodeWithText("Message").performClick()
+        assertEquals(1, messageCount)
+    }
+
+    @Test
+    fun messageStaysEnabledWhenNotBookable() {
+        setMessageContent(loadedState(isBookable = false), showMessage = true)
+
+        rule.onNodeWithText("Not accepting bookings").assertIsNotEnabled()
+        rule.onNodeWithTag(EXPERT_PROFILE_MESSAGE_TAG).assertIsEnabled()
     }
 
     @Test

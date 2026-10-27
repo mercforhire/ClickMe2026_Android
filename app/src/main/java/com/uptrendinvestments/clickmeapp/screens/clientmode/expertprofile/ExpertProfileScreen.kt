@@ -34,12 +34,15 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCardSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileActionButtons
@@ -73,14 +76,19 @@ fun ExpertProfileScreen(
     onBack: () -> Unit,
     onBook: (BookingKey) -> Unit,
     modifier: Modifier = Modifier,
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
     ExpertProfileContent(
         state = state,
         onBack = onBack,
         onBookSession = { onBook(viewModel.bookingKey()) },
         onRetry = viewModel::retry,
         modifier = modifier,
+        showMessage = !chatEntry.isSelf(state.expertId),
+        messageBusy = entryState.busyPeerId != null,
+        onMessage = { chatEntry.open(ChatPeer(state.expertId, state.name, state.imageUrl, isExpert = true)) },
     )
 }
 
@@ -96,6 +104,9 @@ fun ExpertProfileContent(
     onBookSession: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    showMessage: Boolean = false,
+    messageBusy: Boolean = false,
+    onMessage: () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
@@ -126,7 +137,14 @@ fun ExpertProfileContent(
                     )
                 }
                 item(key = "details") {
-                    DetailsSection(state = state, onBookSession = onBookSession, onRetry = onRetry)
+                    DetailsSection(
+                        state = state,
+                        onBookSession = onBookSession,
+                        onRetry = onRetry,
+                        showMessage = showMessage,
+                        messageBusy = messageBusy,
+                        onMessage = onMessage,
+                    )
                 }
                 if (state.details !is DetailsState.Error) {
                     item(key = "reviews") { ReviewsSection(state.reviews) }
@@ -184,6 +202,9 @@ private fun DetailsSection(
     state: ExpertProfileUiState,
     onBookSession: () -> Unit,
     onRetry: () -> Unit,
+    showMessage: Boolean,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
 ) {
     val kind =
         when (state.details) {
@@ -208,6 +229,9 @@ private fun DetailsSection(
                         details = loaded.details,
                         tags = state.tags,
                         onBookSession = onBookSession,
+                        showMessage = showMessage,
+                        messageBusy = messageBusy,
+                        onMessage = onMessage,
                     )
                 }
         }
@@ -234,12 +258,21 @@ private fun LoadedDetails(
     details: ProfileDetailsUi,
     tags: List<String>,
     onBookSession: () -> Unit,
+    showMessage: Boolean,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
         Spacer(Modifier.height(Spacing.md))
         ExpertProfileStatsBar(details.experienceYears, details.totalBookings)
         Spacer(Modifier.height(Spacing.md))
-        ExpertProfileActionButtons(isBookable = details.isBookable, onBookSession = onBookSession)
+        ExpertProfileActionButtons(
+            isBookable = details.isBookable,
+            onBookSession = onBookSession,
+            showMessage = showMessage,
+            messageBusy = messageBusy,
+            onMessage = onMessage,
+        )
         val bio = details.bio
         if (!bio.isNullOrBlank()) {
             Spacer(Modifier.height(Spacing.lg))

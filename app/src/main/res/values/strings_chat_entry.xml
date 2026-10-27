@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chat_entry_message">Message</string>
+    <string name="chat_entry_message_expert">Message Expert</string>
+    <string name="chat_entry_message_client">Message Client</string>
+    <string name="chat_entry_message_name">Message %1$s</string>
+    <string name="chat_entry_opening">Opening chat</string>
+    <string name="chat_entry_error_title">Couldn\'t open chat</string>
+    <string name="chat_entry_error_unavailable">This user is unavailable.</string>
+</resources>
