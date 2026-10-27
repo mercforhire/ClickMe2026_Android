@@ -611,7 +611,7 @@ Plans:
   4. In a blocked thread the composer is disabled and a banner shows. Only the blocker sees Unblock. The blocked side sees "You can't reply to this conversation". `THREAD_BLOCKED` and `RECIPIENT_UNAVAILABLE` show clear messages.
 
 **Planning notes:** Where iOS differs, follow CHAT-UNBLOCK.md and USER-REPORTING.md (iOS sends display labels and has no blocked state). Report/block is store-required and never cut. Phase 9 hand-off (D-11): enable the disabled in-call Chat control (`// PHASE-12` in `MeetingCallControls.kt`): `initiateChat`, minimize the call, switch to Chats, push the thread. Phase 11 hand-off: Message buttons on Request Decision and the expert Booking Summary call `initiateChat`.
-**Plans:** 13/15 plans executed
+**Plans:** 14/15 plans executed
 
 Plans:
 
@@ -639,7 +639,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 12-14-PLAN.md — Thread send UI: composer and counter, failed bubble retry/delete, blocked and unavailable banners, send error dialog, unblock snackbar, empty-thread action (CHAT-03, SAFE-03, SAFE-04)
+- [x] 12-14-PLAN.md — Thread send UI: composer and counter, failed bubble retry/delete, blocked and unavailable banners, send error dialog, unblock snackbar, empty-thread action (CHAT-03, SAFE-03, SAFE-04)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -744,7 +744,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 9. Voice Call | 17/17 | Complete    | 2026-10-24 |
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
-| 12. Chat, Report & Block | 13/15 | In Progress | - |
+| 12. Chat, Report & Block | 14/15 | In Progress | - |
 | 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
