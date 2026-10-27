@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_INPUT_TAG
@@ -74,5 +75,23 @@ class ChatComposerTest {
 
         rule.onNodeWithTag(CHAT_INPUT_TAG).performTextInput("hello")
         assertEquals("hello", edits.last())
+    }
+
+    @Test
+    fun counterFromNineThousand() {
+        show("a".repeat(8_999))
+        rule.onNodeWithText("8999/10000").assertDoesNotExist()
+    }
+
+    @Test
+    fun counterShowsAtNineThousand() {
+        show("a".repeat(9_000))
+        rule.onNodeWithText("9000/10000").assertExists()
+    }
+
+    @Test
+    fun counterShowsFullCountAtCap() {
+        show("a".repeat(10_000), atCap = true)
+        rule.onNodeWithText("10000/10000").assertExists()
     }
 }

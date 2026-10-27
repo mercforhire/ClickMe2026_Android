@@ -1,5 +1,10 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -55,12 +61,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ComposerMode
+import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatComposer
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatEmptyThread
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadError
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ChatThreadSkeleton
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.ComposerBlockedBanner
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.DateSeparator
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.JumpToLatestButton
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.LoadEarlierButton
@@ -71,6 +81,8 @@ import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.TypingSt
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSlotTime
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -83,6 +95,7 @@ const val CHAT_THREAD_LIST_TAG = "chat_thread_list"
 
 private val TopBarAvatarSize = 32.dp
 private const val LOAD_EARLIER_KEY = "load_earlier"
+private const val COMPOSER_SWAP_MS = 200
 
 /** The key this thread was opened with, rebuilt from the live state so View profile and Report use the filled-in peer. */
 fun ChatThreadUiState.toThreadKey(): ChatThreadKey =
@@ -132,6 +145,8 @@ fun ChatThreadScreen(
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
         onComposerChanged = viewModel::onComposerChanged,
         onSend = viewModel::send,
+        onDismissSendError = viewModel::dismissSendError,
+        onNoticeConsumed = viewModel::consumeNotice,
         modifier = modifier,
     )
 }
@@ -161,11 +176,14 @@ fun ChatThreadContent(
     onRefreshFailureConsumed: () -> Unit,
     onComposerChanged: (String) -> Unit,
     onSend: () -> Unit,
+    onDismissSendError: () -> Unit,
+    onNoticeConsumed: () -> Unit,
     onRetryMessage: (clientMsgId: String) -> Unit,
     onDeleteMessage: (clientMsgId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.chat_thread_refresh_failed)
@@ -177,6 +195,30 @@ fun ChatThreadContent(
             onRefreshFailureConsumed()
         }
     }
+
+    val unblockedNotice = state.notice as? ThreadNotice.Unblocked
+    val unblockedName =
+        unblockedNotice?.peerName?.takeIf { it.isNotBlank() } ?: state.peerName?.takeIf { it.isNotBlank() }
+    val unblockedMessage =
+        if (unblockedName != null) {
+            stringResource(R.string.chat_thread_unblocked_snackbar, unblockedName)
+        } else {
+            stringResource(R.string.chat_thread_unblocked_snackbar_nameless)
+        }
+    LaunchedEffect(state.notice) {
+        if (state.notice is ThreadNotice.Unblocked) {
+            scope.launch { snackbarHostState.showSnackbar(unblockedMessage, duration = SnackbarDuration.Long) }
+            onNoticeConsumed()
+        }
+    }
+    state.sendError?.let { error ->
+        AuthErrorDialog(
+            message = error.asString(),
+            title = stringResource(R.string.chat_send_error_title),
+            onDismiss = onDismissSendError,
+        )
+    }
+    val sendMessageLabel = stringResource(R.string.chat_thread_empty_action)
 
     Scaffold(
         modifier = modifier,
@@ -207,7 +249,15 @@ fun ChatThreadContent(
                     is ThreadLoad.Failed -> ScrollableCentered { ChatThreadError(load.message, onRetry) }
                     ThreadLoad.Loaded ->
                         if (state.items.isEmpty()) {
-                            ScrollableCentered { ChatEmptyThread() }
+                            ScrollableCentered {
+                                ChatEmptyThread(
+                                    action =
+                                        EmptyStateAction(sendMessageLabel) {
+                                            focusRequester.requestFocus()
+                                            keyboardController?.show()
+                                        },
+                                )
+                            }
                         } else {
                             ThreadList(
                                 state = state,
@@ -227,15 +277,25 @@ fun ChatThreadContent(
                 visible = state.peerTyping,
                 name = peerLabel,
             )
-            ChatComposer(
-                text = state.composerText,
-                enabled = state.load is ThreadLoad.Loaded,
-                canSend = state.canSend,
-                atCap = state.isComposerAtCap,
-                onTextChange = onComposerChanged,
-                onSend = onSend,
-                focusRequester = focusRequester,
-            )
+            AnimatedContent(
+                targetState = state.composerMode,
+                transitionSpec = { fadeIn(tween(COMPOSER_SWAP_MS)) togetherWith fadeOut(tween(COMPOSER_SWAP_MS)) },
+                label = "composerSwap",
+            ) { composerMode ->
+                if (composerMode == ComposerMode.Normal) {
+                    ChatComposer(
+                        text = state.composerText,
+                        enabled = state.load is ThreadLoad.Loaded,
+                        canSend = state.canSend,
+                        atCap = state.isComposerAtCap,
+                        onTextChange = onComposerChanged,
+                        onSend = onSend,
+                        focusRequester = focusRequester,
+                    )
+                } else {
+                    ComposerBlockedBanner(mode = composerMode)
+                }
+            }
         }
     }
 }

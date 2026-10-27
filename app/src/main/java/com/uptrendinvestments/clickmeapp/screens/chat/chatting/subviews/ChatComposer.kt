@@ -34,9 +34,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
@@ -53,6 +58,7 @@ const val CHAT_SEND_TAG = "chat_send"
 private val SendButtonSize = 48.dp
 private val SendIconSize = 24.dp
 private const val COMPOSER_MAX_LINES = 5
+private const val COUNTER_FROM = 9_000
 private const val DISABLED_ALPHA = 0.38f
 
 /**
@@ -87,6 +93,7 @@ fun ChatComposer(
                 .background(MaterialTheme.colorScheme.surface),
     ) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        if (text.length >= COUNTER_FROM) CharacterCounter(length = text.length, atCap = atCap)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -107,6 +114,29 @@ fun ChatComposer(
             SendButton(canSend = canSend, onSend = onSend)
         }
     }
+}
+
+/** "{n}/10000" from [COUNTER_FROM] characters, `tertiary` at the cap, announced once politely when the cap is hit. */
+@Composable
+private fun CharacterCounter(
+    length: Int,
+    atCap: Boolean,
+) {
+    val limitReached = stringResource(R.string.chat_composer_limit_reached)
+    Text(
+        text = stringResource(R.string.chat_composer_counter, length),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = Spacing.md, end = Spacing.md, top = Spacing.xs)
+                .semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    if (atCap) contentDescription = limitReached
+                },
+        style = MaterialTheme.typography.bodySmall,
+        color = if (atCap) MaterialTheme.colorScheme.tertiary else MaterialTheme.extras.onSurfaceMuted,
+        textAlign = TextAlign.End,
+    )
 }
 
 @Composable

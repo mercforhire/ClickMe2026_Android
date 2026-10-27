@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -23,6 +24,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.BlockState
+import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_INPUT_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_SEND_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -95,6 +97,8 @@ class ChatThreadScreenTest {
     private var refreshFailureConsumed = 0
     private val composerEdits = mutableListOf<String>()
     private var sendCalls = 0
+    private var dismissCalls = 0
+    private var noticeConsumed = 0
     private val retried = mutableListOf<String>()
     private val deleted = mutableListOf<String>()
     private var shown by mutableStateOf(ChatThreadUiState(threadId = "t1"))
@@ -122,6 +126,11 @@ class ChatThreadScreenTest {
                     onRefreshFailureConsumed = { refreshFailureConsumed++ },
                     onComposerChanged = { composerEdits += it },
                     onSend = { sendCalls++ },
+                    onDismissSendError = { dismissCalls++ },
+                    onNoticeConsumed = {
+                        noticeConsumed++
+                        shown = shown.copy(notice = null)
+                    },
                     onRetryMessage = { retried += it },
                     onDeleteMessage = { deleted += it },
                 )
@@ -488,5 +497,83 @@ class ChatThreadScreenTest {
 
         rule.onNodeWithText("All good").assertHasNoClickAction()
         rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).assertDoesNotExist()
+    }
+
+    @Test
+    fun bannerForBlockedByMeReplacesComposer() {
+        show(
+            loaded(listOf(incoming("m1", "Earlier words")))
+                .copy(block = BlockState(isBlocked = true, blockedByMe = true)),
+        )
+
+        rule.onNodeWithText("You blocked this conversation").assertIsDisplayed()
+        rule.onNodeWithText("Open the menu to unblock.").assertIsDisplayed()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(CHAT_SEND_TAG).assertDoesNotExist()
+        rule.onNodeWithText("Earlier words").assertIsDisplayed()
+    }
+
+    @Test
+    fun bannerForBlockedByPeerHasNoHint() {
+        show(
+            loaded(listOf(incoming("m1", "Earlier words")))
+                .copy(block = BlockState(isBlocked = true, blockedByMe = false)),
+        )
+
+        rule.onNodeWithText("You can't reply to this conversation").assertIsDisplayed()
+        rule.onNodeWithText("Open the menu to unblock.").assertDoesNotExist()
+        rule.onNodeWithText("Unblock", substring = true).assertDoesNotExist()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun bannerForUnavailableRecipient() {
+        show(loaded(listOf(incoming("m1", "Earlier words"))).copy(recipientUnavailable = true))
+
+        rule.onNodeWithText("This user is unavailable.").assertIsDisplayed()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertDoesNotExist()
+        rule.onNodeWithText("Earlier words").assertIsDisplayed()
+    }
+
+    @Test
+    fun composerReturnsWhenUnblocked() {
+        val base = loaded(listOf(incoming("m1", "Hello")))
+        show(base.copy(block = BlockState(isBlocked = true, blockedByMe = true)))
+        rule.onNodeWithText("You blocked this conversation").assertIsDisplayed()
+
+        shown = base
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsDisplayed()
+        rule.onNodeWithText("You blocked this conversation").assertDoesNotExist()
+    }
+
+    @Test
+    fun sendErrorShowsDialog() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(sendError = FieldError.Text("Validation failed")))
+
+        rule.onNodeWithText("Couldn't send message").assertIsDisplayed()
+        rule.onNodeWithText("Validation failed").assertIsDisplayed()
+        rule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissCalls)
+    }
+
+    @Test
+    fun unblockedNoticeShowsSnackbarOnce() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(notice = ThreadNotice.Unblocked("t1", "Ada")))
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Unblocked Ada").assertIsDisplayed()
+        assertEquals(1, noticeConsumed)
+    }
+
+    @Test
+    fun emptyThreadSendMessageFocusesComposer() {
+        show(loaded(emptyList()))
+
+        rule.onNodeWithText("Send a message").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsFocused()
     }
 }
