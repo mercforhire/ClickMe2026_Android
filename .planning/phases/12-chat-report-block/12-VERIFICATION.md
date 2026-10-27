@@ -1,7 +1,7 @@
 ---
 phase: 12-chat-report-block
 verified: 2026-10-27T00:00:00Z
-status: human_needed
+status: passed
 score: 6/6 must-haves verified
 covered_files:
   - ".planning/phases/12-chat-report-block/12-01-PLAN.md"
