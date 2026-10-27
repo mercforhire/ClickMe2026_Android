@@ -41,6 +41,7 @@ import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileAboutCard
@@ -80,6 +81,7 @@ fun ExpertProfileScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
     ExpertProfileContent(
         state = state,
         onBack = onBack,

@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.chat
 
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import javax.inject.Inject
@@ -29,6 +31,8 @@ sealed interface ChatOpenResult {
     ) : ChatOpenResult
 }
 
+private const val STATUS_NOT_FOUND = 404
+
 /**
  * The single "open chat thread" path for every Message control and the in-call control (D-13, D-14): initiate the
  * thread with the peer, then post a [ChatThreadKey] to [ChatLaunchRequest.thread], which switches to the Chats tab and
@@ -41,11 +45,41 @@ class ChatLauncher
         private val repository: ChatsRepository,
         private val launchRequest: ChatLaunchRequest,
     ) {
-        /** Initiates the thread with [peer] and hands it to the Chats tab. */
+        private val inFlight = mutableSetOf<String>()
+
+        /**
+         * Initiates the thread with [peer] and hands it to the Chats tab. At most one initiate per peer id (ignoring
+         * case) runs at a time; a second call returns [ChatOpenResult.AlreadyOpening] without a request. Cancelling
+         * the caller releases the peer and posts nothing.
+         */
         suspend fun open(peer: ChatPeer): ChatOpenResult {
-            val data = repository.initiate(peer.id)
-            val key = ChatThreadKey(data.threadId, peer.id, peer.name, peer.avatarUrl, peer.isExpert)
-            launchRequest.thread.post(key)
-            return ChatOpenResult.Opened(key)
+            val id = peer.id.lowercase()
+            if (!synchronized(inFlight) { inFlight.add(id) }) return ChatOpenResult.AlreadyOpening
+            try {
+                val data = repository.initiate(peer.id)
+                val key = ChatThreadKey(data.threadId, peer.id, peer.name, peer.avatarUrl, peer.isExpert)
+                launchRequest.thread.post(key)
+                return ChatOpenResult.Opened(key)
+            } catch (e: ApiException) {
+                return ChatOpenResult.Failed(e.toChatEntryError())
+            } finally {
+                synchronized(inFlight) { inFlight.remove(id) }
+            }
         }
+    }
+
+/**
+ * The message the entry error dialog shows for a failed initiate (D-15): a 404 is "This user is unavailable.", other
+ * server failures show the server message (this also covers 422 CANNOT_CHAT_WITH_SELF, which the hidden self controls
+ * make unreachable), and connectivity and decoding failures show the shared copy. Never exception text (T-12-12).
+ */
+fun ApiException.toChatEntryError(): FieldError =
+    when (this) {
+        is ApiException.Http ->
+            when {
+                status == STATUS_NOT_FOUND -> FieldError.Res(R.string.chat_entry_error_unavailable)
+                else -> userMessage?.let { FieldError.Text(it) } ?: FieldError.Res(R.string.login_error_unknown)
+            }
+        is ApiException.Network -> FieldError.Res(R.string.login_error_network)
+        is ApiException.Decoding -> FieldError.Res(R.string.login_error_unknown)
     }

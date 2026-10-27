@@ -38,15 +38,26 @@ class ChatEntryViewModel
             return peerId != null && me != null && peerId.equals(me, ignoreCase = true)
         }
 
-        /** Opens the chat with [peer]; [onOpened] runs once the thread was handed to the Chats tab. */
+        /**
+         * Opens the chat with [peer]; [onOpened] runs once the thread was handed to the Chats tab. Ignored while any
+         * open is in flight and for the signed-in user. The request runs in `viewModelScope`, so closing the screen
+         * cancels it and no thread is pushed.
+         */
         fun open(
             peer: ChatPeer,
             onOpened: () -> Unit = {},
         ) {
+            if (_state.value.busyPeerId != null || isSelf(peer.id)) return
+            _state.update { it.copy(busyPeerId = peer.id) }
             viewModelScope.launch {
-                when (val result = launcher.open(peer)) {
-                    is ChatOpenResult.Opened -> onOpened()
-                    else -> Unit
+                try {
+                    when (val result = launcher.open(peer)) {
+                        is ChatOpenResult.Opened -> onOpened()
+                        is ChatOpenResult.Failed -> _state.update { it.copy(error = result.error) }
+                        ChatOpenResult.AlreadyOpening -> Unit
+                    }
+                } finally {
+                    _state.update { it.copy(busyPeerId = null) }
                 }
             }
         }

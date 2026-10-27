@@ -22,6 +22,9 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Test tag on the spinner a busy [MessageButton] shows in place of its glyph. */
@@ -68,5 +71,20 @@ fun MessageButton(
         }
         Spacer(Modifier.width(Spacing.sm))
         Text(label)
+    }
+}
+
+/** The "Couldn't open chat" dialog every Message control shows for a failed initiate (D-15). */
+@Composable
+fun ChatEntryErrorDialog(
+    error: FieldError?,
+    onDismiss: () -> Unit,
+) {
+    if (error != null) {
+        AuthErrorDialog(
+            message = error.asString(),
+            onDismiss = onDismiss,
+            title = stringResource(R.string.chat_entry_error_title),
+        )
     }
 }
