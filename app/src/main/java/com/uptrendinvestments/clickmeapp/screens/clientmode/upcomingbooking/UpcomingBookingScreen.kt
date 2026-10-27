@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,7 +54,11 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
@@ -80,6 +85,9 @@ import java.util.Locale
 /** Test tag on the Cancel Booking button. */
 const val UPCOMING_BOOKING_CANCEL_TAG = "upcoming_booking_cancel"
 
+/** Test tag on the Message Expert button. */
+const val MESSAGE_EXPERT_TAG = "message_expert"
+
 private val CancelMinHeight = 56.dp
 private val CancelIconSize = 24.dp
 private val StatusSkeletonSize = 96.dp
@@ -92,7 +100,8 @@ private val DateSkeletonHeight = 128.dp
 
 /**
  * Upcoming Booking Details (BOOK-06), opened from a Today's Sessions or Upcoming card. Port of iOS
- * `UpcomingBookingView` without Reschedule, Message Expert and the private note (DEF-1, Phases 12-13).
+ * `UpcomingBookingView` without Reschedule and the private note (DEF-1, Phase 13). Message Expert is present (D-14): it
+ * opens the chat with the booking's expert through [ChatEntryViewModel].
  *
  * D-01: a pending reschedule proposal shows the shared reschedule card first, which fixes the iOS dead end where the
  * client could not respond. D-14: the status, price and payment pill are real. D-15: Cancel is limited to confirmed,
@@ -109,10 +118,13 @@ fun UpcomingBookingScreen(
     onCancel: () -> Unit,
     onOpenPaymentMethods: () -> Unit,
     modifier: Modifier = Modifier,
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
@@ -134,6 +146,13 @@ fun UpcomingBookingScreen(
         onOpenPaymentMethods = onOpenPaymentMethods,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
         modifier = modifier,
+        messageBusy = entryState.busyPeerId != null,
+        onMessage = {
+            val details = (state as? UpcomingBookingUiState.Loaded)?.details
+            details?.expertId?.let {
+                chatEntry.open(ChatPeer(it, details.expertName, details.expertAvatarUrl, isExpert = true))
+            }
+        },
     )
 }
 
@@ -154,6 +173,8 @@ fun UpcomingBookingContent(
     onOpenPaymentMethods: () -> Unit,
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    messageBusy: Boolean = false,
+    onMessage: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -211,6 +232,8 @@ fun UpcomingBookingContent(
                     onCancel = onCancel,
                     onAccept = onAccept,
                     onDecline = onDecline,
+                    messageBusy = messageBusy,
+                    onMessage = onMessage,
                     modifier = bodyModifier,
                     zone = zone,
                     timeFormat = timeFormat,
@@ -272,6 +295,8 @@ private fun LoadedBody(
     onCancel: () -> Unit,
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
     modifier: Modifier,
     zone: ZoneId,
     timeFormat: java.text.DateFormat,
@@ -338,6 +363,14 @@ private fun LoadedBody(
             Spacer(Modifier.height(Spacing.md))
             UpcomingBookingMessageCard(it)
         }
+        Spacer(Modifier.height(Spacing.md))
+        MessageButton(
+            label = stringResource(R.string.chat_entry_message_expert),
+            onClick = onMessage,
+            busy = messageBusy,
+            enabled = details.expertId != null,
+            modifier = Modifier.fillMaxWidth().testTag(MESSAGE_EXPERT_TAG),
+        )
         if (details.canCancel) {
             Spacer(Modifier.height(Spacing.lg))
             DestructiveOutlinedButton(

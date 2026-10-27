@@ -25,8 +25,10 @@ import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
+import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusLabel
@@ -60,6 +62,8 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
+import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.CoroutineScope
@@ -285,6 +289,7 @@ class UpcomingBookingScreenTest {
         reschedule: RescheduleProposalUi? = null,
         start: Instant = detailsStart,
         end: Instant = detailsStart.plusSeconds(3600),
+        expertId: String? = "e1",
     ) = UpcomingBookingDetails(
         bookingId = "b1",
         shortId = "#B1",
@@ -292,6 +297,7 @@ class UpcomingBookingScreenTest {
         expertName = "Ada Lovelace",
         expertTitle = "Engineer",
         expertAvatarUrl = null,
+        expertId = expertId,
         topicTitle = "Algorithms",
         price = price,
         start = start,
@@ -315,6 +321,7 @@ class UpcomingBookingScreenTest {
         rescheduleState: RescheduleUiState = RescheduleUiState(),
         calls: Calls = Calls(),
         joinNow: Instant = detailsStart.minusSeconds(600),
+        messageBusy: Boolean = false,
     ): Calls {
         rule.setContent {
             ClickMeTheme {
@@ -331,6 +338,8 @@ class UpcomingBookingScreenTest {
                     onDismissRescheduleDialog = { calls.events += "dismiss" },
                     onOpenPaymentMethods = { calls.events += "paymentMethods" },
                     onRescheduleNoticeConsumed = { calls.events += "consumed" },
+                    messageBusy = messageBusy,
+                    onMessage = { calls.events += "message" },
                     zone = zone,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     locale = Locale.US,
@@ -510,31 +519,38 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
-    fun noRescheduleMessageOrPrivateNoteActionsExist() {
+    fun noRescheduleOrPrivateNoteActionsExist() {
         setScreen(loaded())
-        listOf("Reschedule", "Message Expert", "Private Note").forEach {
+        listOf("Reschedule", "Private Note").forEach {
             rule.onAllNodesWithText(it).assertCountEquals(0)
         }
     }
 
     // ---- Cancel guard (D-13), through the real ViewModel ----
 
+    private fun screenViewModel(
+        api: FakeClickMeApi,
+        guard: FakeCallGuard = FakeCallGuard(),
+    ): UpcomingBookingViewModel {
+        val bookings = ClientBookingsRepository(api)
+        return UpcomingBookingViewModel(
+            UpcomingBookingKey("b1"),
+            bookings,
+            RescheduleResponder(bookings, PaymentMethodsRepository(api)),
+            FakeRealtimeConnection(),
+            MutableClock(detailsStart.minusSeconds(600)),
+            FakeCallStarter(),
+            guard,
+            JoinClock(MutableClock(detailsStart.minusSeconds(600)), CoroutineScope(Job())),
+        )
+    }
+
     private fun cancelWithGuard(blocked: Boolean): Pair<Calls, FakeCallGuard> {
         val api = FakeClickMeApi()
         api.clientBookingDetailHandler = { bookingDetail() }
         val guard = FakeCallGuard().also { it.blocked = blocked }
-        val bookings = ClientBookingsRepository(api)
-        val vm =
-            UpcomingBookingViewModel(
-                UpcomingBookingKey("b1"),
-                bookings,
-                RescheduleResponder(bookings, PaymentMethodsRepository(api)),
-                FakeRealtimeConnection(),
-                MutableClock(detailsStart.minusSeconds(600)),
-                FakeCallStarter(),
-                guard,
-                JoinClock(MutableClock(detailsStart.minusSeconds(600)), CoroutineScope(Job())),
-            )
+        val vm = screenViewModel(api, guard)
+        val chatEntry = testChatEntryViewModel(api)
         val calls = Calls()
         rule.setContent {
             ClickMeTheme {
@@ -543,6 +559,7 @@ class UpcomingBookingScreenTest {
                     onBack = {},
                     onCancel = { calls.events += "cancel" },
                     onOpenPaymentMethods = {},
+                    chatEntry = chatEntry,
                 )
             }
         }
@@ -563,5 +580,92 @@ class UpcomingBookingScreenTest {
         val (calls, guard) = cancelWithGuard(blocked = true)
         assertTrue(calls.events.isEmpty())
         assertEquals(listOf("b1" to RestrictedAction.CancelBooking), guard.modifyAttempts)
+    }
+
+    // ---- Message Expert (D-14) ----
+
+    @Test
+    fun messageExpertSitsBetweenTheJoinCardAndCancel() {
+        setScreen(loaded())
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo().assertIsEnabled()
+        rule.onNodeWithText("Message Expert").assertExists()
+        val joinY = rule.topOf(UPCOMING_BOOKING_JOIN_TAG)
+        val messageY = rule.topOf(MESSAGE_EXPERT_TAG)
+        val cancelY = rule.topOf(UPCOMING_BOOKING_CANCEL_TAG)
+        assertTrue(joinY < messageY)
+        assertTrue(messageY < cancelY)
+    }
+
+    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.topOf(tag: String): Float {
+        // The column is not lazy, so off-screen children are laid out and keep a stable position in the scroll content.
+        return onNodeWithTag(tag).fetchSemanticsNode().positionInRoot.y
+    }
+
+    @Test
+    fun messageExpertClickCallsOnMessage() {
+        val calls = setScreen(loaded())
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo().performClick()
+        assertEquals(listOf("message"), calls.events)
+    }
+
+    @Test
+    fun messageExpertShowsTheSpinnerWhileBusy() {
+        setScreen(loaded(), messageBusy = true)
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo()
+        rule.onNodeWithTag(MESSAGE_BUTTON_SPINNER_TAG, useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun messageExpertDisabledWithoutExpertId() {
+        setScreen(loaded(details(expertId = null)))
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo().assertIsNotEnabled()
+    }
+
+    private fun messageThroughScreen(
+        api: FakeClickMeApi,
+        launch: ChatLaunchRequest,
+    ) {
+        api.clientBookingDetailHandler = { bookingDetail() }
+        val vm = screenViewModel(api)
+        val chatEntry = testChatEntryViewModel(api, launch)
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingScreen(
+                    viewModel = vm,
+                    onBack = {},
+                    onCancel = {},
+                    onOpenPaymentMethods = {},
+                    chatEntry = chatEntry,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun messageExpertOpensChat() {
+        val api = FakeClickMeApi()
+        api.initiateChatHandler = { initiateData("t9") }
+        val launch = ChatLaunchRequest()
+        messageThroughScreen(api, launch)
+        assertEquals(listOf("e1"), api.initiateChatRequests.map { it.peerId })
+        val thread = launch.thread.consume()
+        assertEquals("t9", thread?.threadId)
+        assertEquals("e1", thread?.peerId)
+        assertEquals(true, thread?.peerIsExpert)
+    }
+
+    @Test
+    fun messageExpertFailureShowsTheErrorDialog() {
+        val api = FakeClickMeApi()
+        api.initiateChatHandler = {
+            throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+        }
+        val launch = ChatLaunchRequest()
+        messageThroughScreen(api, launch)
+        rule.onNodeWithText("Couldn't open chat").assertExists()
+        assertEquals(null, launch.thread.consume())
     }
 }

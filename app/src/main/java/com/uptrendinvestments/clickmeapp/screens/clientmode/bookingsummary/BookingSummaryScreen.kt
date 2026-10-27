@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +53,10 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
+import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
@@ -68,13 +73,16 @@ import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.util.Locale
 
+/** Test tag on the Message Expert button. */
+const val BOOKING_SUMMARY_MESSAGE_TAG = "message_expert"
+
 private val SkeletonCardHeight = 192.dp
 private val BookAgainMinHeight = 56.dp
 private val BookAgainIconSize = 24.dp
 
 /**
- * Booking Summary (BOOK-08, D-13), opened from a Past card. Port of iOS `BookingSummaryView` without Message Expert,
- * Leave a Review and Feedback (Phases 12-13). A pending reschedule shows the shared reschedule card first (D-01).
+ * Booking Summary (BOOK-08, D-13), opened from a Past card. Port of iOS `BookingSummaryView` without Leave a Review
+ * and Feedback (Phase 13). Message Expert opens the chat with the booking's expert (D-14). A pending reschedule shows the shared reschedule card first (D-01).
  * The summary reloads quietly on resume, so returning from Payment Methods shows fresh data (D-02).
  */
 @Composable
@@ -84,9 +92,12 @@ fun BookingSummaryScreen(
     onBookAgain: (BookingKey) -> Unit,
     onOpenPaymentMethods: () -> Unit,
     modifier: Modifier = Modifier,
+    chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
+    val entryState by chatEntry.state.collectAsStateWithLifecycle()
+    ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
@@ -106,6 +117,13 @@ fun BookingSummaryScreen(
         onOpenPaymentMethods = onOpenPaymentMethods,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
         modifier = modifier,
+        messageBusy = entryState.busyPeerId != null,
+        onMessage = {
+            val details = (state as? BookingSummaryUiState.Loaded)?.details
+            details?.expertId?.let {
+                chatEntry.open(ChatPeer(it, details.expertName, details.expertAvatarUrl, isExpert = true))
+            }
+        },
     )
 }
 
@@ -124,6 +142,8 @@ fun BookingSummaryContent(
     onOpenPaymentMethods: () -> Unit,
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    messageBusy: Boolean = false,
+    onMessage: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -179,6 +199,8 @@ fun BookingSummaryContent(
                     onBookAgain = onBookAgain,
                     onAccept = onAccept,
                     onDecline = onDecline,
+                    messageBusy = messageBusy,
+                    onMessage = onMessage,
                     modifier = bodyModifier,
                     zone = zone,
                     timeFormat = timeFormat,
@@ -224,6 +246,8 @@ private fun LoadedBody(
     onBookAgain: (BookingKey) -> Unit,
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
+    messageBusy: Boolean,
+    onMessage: () -> Unit,
     modifier: Modifier,
     zone: ZoneId,
     timeFormat: java.text.DateFormat,
@@ -278,5 +302,16 @@ private fun LoadedBody(
                 Text(stringResource(R.string.booking_summary_book_again))
             }
         }
+        MessageButton(
+            label = stringResource(R.string.chat_entry_message_expert),
+            onClick = onMessage,
+            busy = messageBusy,
+            enabled = details.expertId != null,
+            modifier =
+                Modifier
+                    .padding(top = Spacing.md)
+                    .fillMaxWidth()
+                    .testTag(BOOKING_SUMMARY_MESSAGE_TAG),
+        )
     }
 }

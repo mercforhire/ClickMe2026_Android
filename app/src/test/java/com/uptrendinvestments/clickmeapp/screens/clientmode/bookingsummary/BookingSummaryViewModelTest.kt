@@ -104,6 +104,13 @@ class BookingSummaryViewModelTest {
     }
 
     @Test
+    fun detailsCarryExpertId() {
+        assertEquals("e1", bookingDetail(status = "completed").toSummaryDetails(now).expertId)
+        assertNull(bookingDetail(status = "completed", expertId = null).toSummaryDetails(now).expertId)
+        assertNull(bookingDetail(status = "completed", expertId = " ").toSummaryDetails(now).expertId)
+    }
+
+    @Test
     fun blankStringsBecomeNullAndTheEndFallsBackToStartPlusDuration() {
         val details =
             bookingDetail(status = "completed", expertName = "  ", expertTitle = "", end = null).toSummaryDetails(now)
