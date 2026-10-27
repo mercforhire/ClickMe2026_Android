@@ -28,3 +28,29 @@ data class SendMessageRequest(
 ) {
     override fun toString(): String = "SendMessageRequest(type=$type, clientMsgId=$clientMsgId)"
 }
+
+/**
+ * `POST /chats/{id}/actions` body. [action] is `block`, `unblock` or `report`; [reason] (a
+ * [com.uptrendinvestments.clickmeapp.model.enums.UserReportReason] wire value) and [details] are only sent for
+ * `report`. [details] is user text, so [toString] prints the action and reason only.
+ */
+@JsonClass(generateAdapter = true)
+data class ChatActionRequest(
+    val action: String,
+    val reason: String? = null,
+    val details: String? = null,
+) {
+    override fun toString(): String = "ChatActionRequest(action=$action, reason=$reason)"
+}
+
+/**
+ * `POST /users/{id}/report` body: [reason] is a `UserReportReason` wire value, [details] optional (at most 1000
+ * characters server side). [details] is user text, so [toString] prints the reason only.
+ */
+@JsonClass(generateAdapter = true)
+data class ReportUserRequest(
+    val reason: String,
+    val details: String? = null,
+) {
+    override fun toString(): String = "ReportUserRequest(reason=$reason)"
+}

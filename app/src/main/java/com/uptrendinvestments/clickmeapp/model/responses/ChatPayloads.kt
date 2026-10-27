@@ -98,3 +98,17 @@ data class InitiateChatData(
     @Json(name = "thread_id") val threadId: String,
     @Json(name = "created_at") val createdAt: Instant? = null,
 )
+
+/** `data` of `POST /users/{id}/report` (201). */
+@JsonClass(generateAdapter = true)
+data class ReportUserData(
+    @Json(name = "report_id") val reportId: String,
+    val status: String? = null,
+    @Json(name = "created_at") val createdAt: Instant? = null,
+)
+
+/** `POST /chats/{id}/actions` answers `{status: "success"}` with no `data` (CONTEXT carried decision). */
+@JsonClass(generateAdapter = true)
+data class StatusOnlyResponse(
+    val status: String? = null,
+)

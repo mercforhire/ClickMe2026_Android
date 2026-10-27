@@ -2,8 +2,8 @@ package com.uptrendinvestments.clickmeapp.model.enums
 
 /**
  * Canonical enumeration of SCREAMING_SNAKE_CASE error codes the ClickMe API can return.
- * Ported verbatim (same 65 cases, same order) from the iOS `ErrorCode.swift`; keep in sync when the
- * backend adds codes. Parsing is lenient: an unknown wire value maps to null via [fromWire] so
+ * Ported verbatim (the 65 iOS cases in iOS order, then Android-only additions) from the iOS
+ * `ErrorCode.swift`; keep in sync when the backend adds codes. Parsing is lenient: an unknown wire value maps to null via [fromWire] so
  * server drift never blanks out the user-visible message.
  *
  * Notes:
@@ -133,6 +133,9 @@ enum class ErrorCode(
 
     // Catch-all
     InternalError("INTERNAL_ERROR"),
+
+    // Android-only additions (not in iOS ErrorCode.swift). Keep after the 65 iOS cases.
+    CannotChatWithSelf("CANNOT_CHAT_WITH_SELF"), // 422 on POST /chats/initiate (USER-REPORTING section 3)
     ;
 
     /**

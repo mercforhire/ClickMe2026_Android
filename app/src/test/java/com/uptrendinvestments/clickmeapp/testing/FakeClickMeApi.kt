@@ -4,6 +4,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
@@ -14,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
@@ -62,9 +64,11 @@ import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
+import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
+import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
@@ -156,6 +160,10 @@ class FakeClickMeApi : ClickMeApi {
     var chatMessagesHandler: suspend (threadId: String, page: Int, limit: Int) -> ChatMessagesPayload =
         { _, _, _ -> notStubbed() }
     var sendChatMessageHandler: suspend (threadId: String, body: SendMessageRequest) -> ChatSendAckData =
+        { _, _ -> notStubbed() }
+    var chatActionHandler: suspend (threadId: String, body: ChatActionRequest) -> StatusOnlyResponse =
+        { _, _ -> StatusOnlyResponse("success") }
+    var reportUserHandler: suspend (userId: String, body: ReportUserRequest) -> ReportUserData =
         { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
@@ -486,6 +494,18 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /chats/{id}/send call (threadId, body), in call order. */
     val sentChatMessages: List<Pair<String, SendMessageRequest>>
         get() = synchronized(_sentChatMessages) { _sentChatMessages.toList() }
+
+    private val _chatActions = mutableListOf<Pair<String, ChatActionRequest>>()
+
+    /** Every POST /chats/{id}/actions call (threadId, body), in call order. */
+    val chatActions: List<Pair<String, ChatActionRequest>>
+        get() = synchronized(_chatActions) { _chatActions.toList() }
+
+    private val _reportUserRequests = mutableListOf<Pair<String, ReportUserRequest>>()
+
+    /** Every POST /users/{id}/report call (userId, body), in call order. */
+    val reportUserRequests: List<Pair<String, ReportUserRequest>>
+        get() = synchronized(_reportUserRequests) { _reportUserRequests.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -895,6 +915,22 @@ class FakeClickMeApi : ClickMeApi {
     ): SuccessDataResponse<ChatSendAckData> {
         synchronized(_sentChatMessages) { _sentChatMessages += threadId to body }
         return ok(sendChatMessageHandler(threadId, body))
+    }
+
+    override suspend fun chatAction(
+        threadId: String,
+        body: ChatActionRequest,
+    ): StatusOnlyResponse {
+        synchronized(_chatActions) { _chatActions += threadId to body }
+        return chatActionHandler(threadId, body)
+    }
+
+    override suspend fun reportUser(
+        userId: String,
+        body: ReportUserRequest,
+    ): SuccessDataResponse<ReportUserData> {
+        synchronized(_reportUserRequests) { _reportUserRequests += userId to body }
+        return ok(reportUserHandler(userId, body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

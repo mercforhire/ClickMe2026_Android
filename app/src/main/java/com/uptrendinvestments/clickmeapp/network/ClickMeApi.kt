@@ -4,6 +4,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
@@ -14,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
@@ -61,9 +63,11 @@ import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
+import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
+import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
@@ -499,4 +503,22 @@ interface ClickMeApi {
         @Path("id") threadId: String,
         @Body body: SendMessageRequest,
     ): SuccessDataResponse<ChatSendAckData>
+
+    /**
+     * Ports iOS ClickMeAPI+Chats block, unblock and report. The body is `{action}` for block and unblock and
+     * `{action, reason, details?}` for report. Answers `{status: "success"}` with no `data`. 403 `NOT_BLOCKER` when
+     * the caller did not block the thread.
+     */
+    @POST(ApiRequestUrls.CHAT_ACTIONS)
+    suspend fun chatAction(
+        @Path("id") threadId: String,
+        @Body body: ChatActionRequest,
+    ): StatusOnlyResponse
+
+    /** Ports iOS ClickMeAPI+Chats reportUser. 201; 429 `TOO_MANY_REQUESTS` past the report limiter. */
+    @POST(ApiRequestUrls.USER_REPORT)
+    suspend fun reportUser(
+        @Path("id") userId: String,
+        @Body body: ReportUserRequest,
+    ): SuccessDataResponse<ReportUserData>
 }

@@ -1,6 +1,14 @@
 package com.uptrendinvestments.clickmeapp.network
 
 import com.squareup.moshi.Types
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
+import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
+import com.uptrendinvestments.clickmeapp.model.responses.ChatMessageItem
+import com.uptrendinvestments.clickmeapp.model.responses.ChatPartnerDto
+import com.uptrendinvestments.clickmeapp.model.responses.ChatThreadItem
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
@@ -195,4 +203,120 @@ class ChatsApiTest {
             assertEquals(Instant.parse("2026-11-20T10:02:00Z"), ack.timestamp)
             assertNotNull(ack.timestamp)
         }
+
+    @Test
+    fun blockAndUnblockSendOnlyAction() =
+        runTest {
+            enqueue(200, """{"status":"success"}""")
+            enqueue(200, """{"status":"success"}""")
+
+            repository.block("t1")
+            repository.unblock("t1")
+
+            val block = server.takeRequest()
+            val unblock = server.takeRequest()
+            assertEquals("POST", block.method)
+            assertEquals("/api/v1/chats/t1/actions", block.url.encodedPath)
+            assertEquals("""{"action":"block"}""", block.body?.utf8())
+            assertEquals("""{"action":"unblock"}""", unblock.body?.utf8())
+        }
+
+    @Test
+    fun reportInChatSendsWireValueAndTrimmedDetails() =
+        runTest {
+            enqueue(200, """{"status":"success"}""")
+            enqueue(200, """{"status":"success"}""")
+
+            repository.reportInChat("t1", UserReportReason.Harassment, "  rude  ")
+            repository.reportInChat("t1", UserReportReason.Harassment, "   ")
+
+            val withDetails = server.takeRequest()
+            val blank = server.takeRequest()
+            assertEquals("/api/v1/chats/t1/actions", withDetails.url.encodedPath)
+            assertEquals(
+                """{"action":"report","reason":"harassment","details":"rude"}""",
+                withDetails.body?.utf8(),
+            )
+            assertEquals("""{"action":"report","reason":"harassment"}""", blank.body?.utf8())
+        }
+
+    @Test
+    fun reportUserPostsReasonAndDecodes201() =
+        runTest {
+            enqueue(
+                201,
+                """{"status":"success","data":{"report_id":"r1","status":"open",""" +
+                    """"created_at":"2026-11-20T10:03:00Z"}}""",
+            )
+
+            val data = repository.reportUser("u1", UserReportReason.ScamOrFraud, null)
+
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/users/u1/report", request.url.encodedPath)
+            assertEquals("""{"reason":"scam_or_fraud"}""", request.body?.utf8())
+            assertEquals("r1", data.reportId)
+            assertEquals("open", data.status)
+        }
+
+    private suspend fun codeOf(block: suspend () -> Unit): ApiException.Http {
+        try {
+            block()
+        } catch (e: ApiException.Http) {
+            return e
+        }
+        throw AssertionError("Expected ApiException.Http")
+    }
+
+    @Test
+    fun errorCodesMapOnHttpErrors() =
+        runTest {
+            fun error(code: String) = """{"status":"error","code":"$code","message":"m"}"""
+            enqueue(403, error("THREAD_BLOCKED"))
+            enqueue(403, error("RECIPIENT_UNAVAILABLE"))
+            enqueue(403, error("NOT_BLOCKER"))
+            enqueue(429, error("TOO_MANY_REQUESTS"))
+            enqueue(422, error("CANNOT_CHAT_WITH_SELF"))
+            enqueue(404, error("NOT_FOUND"))
+
+            val blocked = codeOf { repository.send("t1", "hi", "c1") }
+            val unavailable = codeOf { repository.send("t1", "hi", "c2") }
+            val notBlocker = codeOf { repository.unblock("t1") }
+            val limited = codeOf { repository.reportUser("u1", UserReportReason.Spam, null) }
+            val self = codeOf { repository.initiate("me") }
+            val missing = codeOf { repository.initiate("ghost") }
+
+            assertEquals(ErrorCode.ThreadBlocked, blocked.code)
+            assertEquals(ErrorCode.RecipientUnavailable, unavailable.code)
+            assertEquals(ErrorCode.NotBlocker, notBlocker.code)
+            assertEquals(ErrorCode.TooManyRequests, limited.code)
+            assertEquals(ErrorCode.CannotChatWithSelf, self.code)
+            assertEquals(422, self.status)
+            assertEquals(404, missing.status)
+        }
+
+    @Test
+    fun toStringNeverPrintsUserText() {
+        val message =
+            ChatMessageItem(
+                id = "m1",
+                threadId = "t1",
+                type = "text",
+                content = "secret-body",
+                createdAt = Instant.parse("2026-11-20T10:00:00Z"),
+            )
+        val thread = ChatThreadItem(threadId = "t1", partner = ChatPartnerDto(id = "p1"), lastMessage = "secret-body")
+        val printed =
+            listOf(
+                SendMessageRequest("text", "secret-body", "id").toString(),
+                ChatActionRequest("report", "spam", "secret-details").toString(),
+                ReportUserRequest("spam", "secret-details").toString(),
+                message.toString(),
+                thread.toString(),
+            )
+        printed.forEach {
+            assertFalse(it, it.contains("secret-body"))
+            assertFalse(it, it.contains("secret-details"))
+        }
+    }
 }
