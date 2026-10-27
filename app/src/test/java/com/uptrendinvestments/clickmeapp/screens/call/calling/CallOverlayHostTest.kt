@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CallDialog
 import com.uptrendinvestments.clickmeapp.managers.CallStatus
 import com.uptrendinvestments.clickmeapp.managers.GuardMessage
@@ -29,6 +30,7 @@ import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.CALL_CONT
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.CALL_END_BUTTON_TAG
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.EXTERNAL_OPEN_TAG
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MEETING_CALL_PILL_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -91,6 +93,8 @@ class CallOverlayHostTest {
         var permissionResults = mutableListOf<Pair<Long, MicPermissionResult>>()
         var pending by mutableStateOf<PendingMicPermission?>(null)
         var chatCalls = 0
+        var chatError by mutableStateOf<FieldError?>(null)
+        var chatErrorDismissals = 0
     }
 
     private fun show(probe: Probe) {
@@ -119,6 +123,11 @@ class CallOverlayHostTest {
                     },
                     onPermissionResult = { id, result -> probe.permissionResults += id to result },
                     onChat = { probe.chatCalls++ },
+                    chatError = probe.chatError,
+                    onDismissChatError = {
+                        probe.chatErrorDismissals++
+                        probe.chatError = null
+                    },
                 ) {
                     BackHandler { probe.innerBack++ }
                     Box(Modifier.fillMaxSize().clickable { probe.contentClicks++ }) {
@@ -291,5 +300,25 @@ class CallOverlayHostTest {
         rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).performClick()
 
         assertEquals(1, probe.chatCalls)
+    }
+
+    @Test
+    fun chatErrorShowsDialogOverCall() {
+        val probe = Probe()
+        show(probe)
+        probe.state = inApp()
+        rule.waitForIdle()
+
+        probe.chatError = FieldError.Res(R.string.chat_entry_error_unavailable)
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't open chat").assertExists()
+        rule.onNodeWithText("This user is unavailable.").assertExists()
+        rule.onNodeWithTag(MEETING_CALL_SCREEN_TAG).assertExists()
+        rule.onNodeWithText("OK").performClick()
+        rule.waitForIdle()
+
+        assertEquals(1, probe.chatErrorDismissals)
+        rule.onNodeWithText("Couldn't open chat").assertDoesNotExist()
     }
 }

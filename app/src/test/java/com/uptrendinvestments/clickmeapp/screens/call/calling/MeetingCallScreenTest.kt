@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.managers.CallStatus
 import com.uptrendinvestments.clickmeapp.managers.callTimerState
 import com.uptrendinvestments.clickmeapp.model.enums.ConnectionType
@@ -92,6 +94,8 @@ class MeetingCallScreenTest {
         onToggleSpeaker: () -> Unit = {},
         onEndCall: () -> Unit = {},
         onOpenExternal: () -> Unit = {},
+        onChat: () -> Unit = {},
+        chatBusy: Boolean = false,
     ) {
         rule.setContent {
             ClickMeTheme {
@@ -102,6 +106,8 @@ class MeetingCallScreenTest {
                     onToggleSpeaker = onToggleSpeaker,
                     onEndCall = onEndCall,
                     onOpenExternal = onOpenExternal,
+                    chatBusy = chatBusy,
+                    onChat = onChat,
                     zone = ZoneOffset.UTC,
                     timeFormat = timeFormat,
                 )
@@ -193,6 +199,29 @@ class MeetingCallScreenTest {
         rule.onNodeWithTag(CALL_CONTROL_MINIMIZE_TAG).performClick()
         rule.onNodeWithTag(CALL_END_BUTTON_TAG).performScrollTo().performClick()
         assertEquals(listOf(1, 1, 1), listOf(open, minimize, endCall))
+    }
+
+    @Test
+    fun externalLayoutChatEnabledWithAPeerAndCallsOnChat() {
+        var chats = 0
+        show(external().copy(peerId = "p1"), onChat = { chats++ })
+        rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).assertIsEnabled().performClick()
+        assertEquals(1, chats)
+    }
+
+    @Test
+    fun externalLayoutChatIsNotEnabledWithoutAPeer() {
+        show(external().copy(peerId = null))
+        rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun inAppLayoutChatBusyShowsTheSpinnerAndIgnoresTaps() {
+        var chats = 0
+        show(inApp().copy(peerId = "p1"), onChat = { chats++ }, chatBusy = true)
+        rule.onNodeWithTag(MESSAGE_BUTTON_SPINNER_TAG).assertExists()
+        rule.onNodeWithTag(CALL_CONTROL_CHAT_TAG).assertIsEnabled().performClick()
+        assertEquals(0, chats)
     }
 
     @Test

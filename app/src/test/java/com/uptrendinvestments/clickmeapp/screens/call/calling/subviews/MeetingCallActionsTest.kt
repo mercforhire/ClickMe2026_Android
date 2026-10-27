@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.managers.CallTimerState
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -123,6 +124,24 @@ class MeetingCallActionsTest {
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
             .performClick()
         assertEquals(1, chats)
+    }
+
+    @Test
+    fun chatBusyShowsSpinnerAndIgnoresTaps() {
+        var chats = 0
+        controls(chatBusy = true, onChat = { chats++ })
+        rule.onNodeWithTag(MESSAGE_BUTTON_SPINNER_TAG).assertExists()
+        rule
+            .onNodeWithTag(CALL_CONTROL_CHAT_TAG)
+            .assert(hasStateDescription("Opening chat"))
+            .performClick()
+        assertEquals(0, chats)
+    }
+
+    @Test
+    fun chatIdleShowsNoSpinner() {
+        controls(chatBusy = false)
+        rule.onNodeWithTag(MESSAGE_BUTTON_SPINNER_TAG).assertDoesNotExist()
     }
 
     @Test
