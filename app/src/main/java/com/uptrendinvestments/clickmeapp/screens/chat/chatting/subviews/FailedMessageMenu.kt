@@ -2,7 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews
 
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -36,7 +36,7 @@ fun FailedMessageMenu(
             text = { Text(text = stringResource(R.string.chat_failed_delete), color = error) },
             onClick = onDelete,
             modifier = Modifier.heightIn(min = 48.dp),
-            leadingIcon = { Icon(imageVector = Icons.Filled.Delete, contentDescription = null, tint = error) },
+            leadingIcon = { Icon(imageVector = Icons.Outlined.Delete, contentDescription = null, tint = error) },
         )
     }
 }

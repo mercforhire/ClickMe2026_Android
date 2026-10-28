@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,20 +50,20 @@ fun ComposerBlockedBanner(
     val hint: String?
     when (mode) {
         ComposerMode.BlockedByPeer -> {
-            icon = Icons.Filled.Block
+            icon = Icons.Outlined.Block
             iconTint = scheme.onSurfaceVariant
             title = stringResource(R.string.chat_banner_blocked_by_peer)
             hint = null
         }
         ComposerMode.Unavailable -> {
-            icon = Icons.Filled.PersonOff
+            icon = Icons.Outlined.PersonOff
             iconTint = scheme.tertiary
             title = stringResource(R.string.chat_banner_unavailable)
             hint = null
         }
         // Normal never reaches the banner; the blocked-by-me copy is the safe fallback.
         ComposerMode.BlockedByMe, ComposerMode.Normal -> {
-            icon = Icons.Filled.Block
+            icon = Icons.Outlined.Block
             iconTint = scheme.onSurfaceVariant
             title = stringResource(R.string.chat_banner_blocked_by_me)
             hint = stringResource(R.string.chat_banner_blocked_by_me_hint)

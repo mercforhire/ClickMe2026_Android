@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -86,7 +86,7 @@ fun LoadEarlierButton(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.ArrowUpward,
+                        imageVector = Icons.Outlined.ArrowUpward,
                         contentDescription = null,
                         modifier = Modifier.size(LoadEarlierGlyph),
                     )
@@ -144,7 +144,7 @@ fun JumpToLatestButton(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
             Icon(
-                imageVector = Icons.Filled.ArrowDownward,
+                imageVector = Icons.Outlined.ArrowDownward,
                 contentDescription = stringResource(R.string.chat_thread_jump_latest),
             )
         }
