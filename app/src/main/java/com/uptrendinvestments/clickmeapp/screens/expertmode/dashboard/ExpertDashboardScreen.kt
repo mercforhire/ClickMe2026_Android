@@ -29,6 +29,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -40,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.NotificationBellButton
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
@@ -76,6 +78,7 @@ fun ExpertDashboardScreen(
     onOpenBooking: (String) -> Unit,
     onOpenAvailability: () -> Unit,
     onOpenTopics: () -> Unit,
+    onOpenNotifications: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertDashboardViewModel = hiltViewModel(),
 ) {
@@ -100,6 +103,7 @@ fun ExpertDashboardScreen(
         onOpenBooking = onOpenBooking,
         onOpenAvailability = onOpenAvailability,
         onOpenTopics = onOpenTopics,
+        onOpenNotifications = onOpenNotifications,
         onJoin = viewModel::join,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
@@ -135,6 +139,7 @@ fun ExpertDashboardContent(
     onOnboardingUrl: () -> Unit,
     onDismissOnboardingError: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenNotifications: () -> Unit = {},
 ) {
     val zone = ZoneId.systemDefault()
     val timeFormat = DateFormat.getTimeFormat(LocalContext.current)
@@ -188,7 +193,13 @@ fun ExpertDashboardContent(
             AuthTopAppBar(
                 title = stringResource(R.string.tab_dashboard),
                 onBack = null,
-                actions = { TopBarAvatarButton(avatarUrl, onClick = onOpenModeSwitch) },
+                actions = {
+                    NotificationBellButton(
+                        onClick = onOpenNotifications,
+                        modifier = Modifier.testTag("dashboard_notifications_bell"),
+                    )
+                    TopBarAvatarButton(avatarUrl, onClick = onOpenModeSwitch)
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

@@ -8,11 +8,15 @@ import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material3.Icon
@@ -33,6 +37,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
+import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationDay
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -151,6 +157,48 @@ fun openNotificationSettings(context: Context) {
         context.startActivity(fallback)
     } catch (_: ActivityNotFoundException) {
         // Nothing can show settings on this device: leave the row as it is.
+    }
+}
+
+/**
+ * The first-load placeholder: a section-header bar, three row blocks that copy the real row, then a second header bar
+ * and two more rows. One "Loading" node for TalkBack. The permission-off row is not part of it.
+ */
+@Composable
+fun NotificationsSkeleton(modifier: Modifier = Modifier) {
+    SkeletonGroup(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            SkeletonBlock(Modifier.width(80.dp).height(20.dp))
+            repeat(3) { NotificationSkeletonRow() }
+            SkeletonBlock(Modifier.padding(top = Spacing.md).width(80.dp).height(20.dp))
+            repeat(2) { NotificationSkeletonRow() }
+        }
+    }
+}
+
+@Composable
+private fun NotificationSkeletonRow() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier.padding(Spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalAlignment = Alignment.Top,
+        ) {
+            SkeletonBlock(Modifier.size(48.dp), shape = CircleShape)
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                SkeletonBlock(Modifier.width(200.dp).height(16.dp))
+                SkeletonBlock(Modifier.width(240.dp).height(16.dp))
+                SkeletonBlock(Modifier.padding(top = Spacing.xs).width(96.dp).height(12.dp))
+            }
+        }
     }
 }
 

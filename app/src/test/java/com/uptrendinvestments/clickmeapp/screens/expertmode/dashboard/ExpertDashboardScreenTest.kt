@@ -6,8 +6,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -132,6 +134,7 @@ class ExpertDashboardScreenTest {
                     onOpenBooking = { calls += "booking:$it" },
                     onOpenAvailability = { calls += "availability" },
                     onOpenTopics = { calls += "topics" },
+                    onOpenNotifications = { calls += "notifications" },
                     viewModel = f.vm,
                 )
             }
@@ -150,6 +153,21 @@ class ExpertDashboardScreenTest {
             rule.onNodeWithTag(DASHBOARD_PENDING_BANNER_TAG).performClick()
 
             assertEquals(listOf("requests"), calls)
+        }
+
+    @Test
+    fun bellOpensNotifications() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+
+            val bell = rule.onNodeWithTag("dashboard_notifications_bell")
+            bell.assertContentDescriptionEquals("Notifications")
+            val avatar = rule.onNodeWithContentDescription("Your profile")
+            assertTrue(bell.getUnclippedBoundsInRoot().left.value < avatar.getUnclippedBoundsInRoot().left.value)
+            bell.performClick()
+
+            assertEquals(listOf("notifications"), calls)
         }
 
     @Test

@@ -8,6 +8,8 @@ import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -25,6 +27,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.NOTIFICATIONS_END_NOTE_TAG
 import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.NOTIFICATIONS_OFF_ROW_TAG
 import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.NOTIFICATION_BODY_TAG
@@ -56,6 +62,8 @@ class NotificationsScreenTest {
 
     private var backCount = 0
     private var settingsCount = 0
+    private var retryCount = 0
+    private var refreshFailureShownCount = 0
     private var tapped: NotificationRowModel? = null
 
     private fun row(
@@ -75,16 +83,23 @@ class NotificationsScreenTest {
     private fun show(
         state: NotificationsUiState,
         notificationsEnabled: Boolean = true,
+        fontScale: Float = 1f,
     ) {
         rule.setContent {
-            ClickMeTheme {
-                NotificationsContent(
-                    state = state,
-                    notificationsEnabled = notificationsEnabled,
-                    onBack = { backCount++ },
-                    onRowTap = { tapped = it },
-                    onOpenSettings = { settingsCount++ },
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                ClickMeTheme {
+                    NotificationsContent(
+                        state = state,
+                        notificationsEnabled = notificationsEnabled,
+                        onBack = { backCount++ },
+                        onRetry = { retryCount++ },
+                        onRefresh = {},
+                        onRowTap = { tapped = it },
+                        onOpenSettings = { settingsCount++ },
+                        onRefreshFailureShown = { refreshFailureShownCount++ },
+                    )
+                }
             }
         }
     }
@@ -219,5 +234,92 @@ class NotificationsScreenTest {
     fun offRowIsAlsoShownForAnEmptyLoadedList() {
         show(loaded(), notificationsEnabled = false)
         rule.onNodeWithTag(NOTIFICATIONS_OFF_ROW_TAG).assertExists()
+    }
+
+    @Test
+    fun loadingShowsSkeletonWithoutOffRow() {
+        show(NotificationsUiState(load = NotificationsLoad.Loading), notificationsEnabled = false)
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onNodeWithTag(NOTIFICATIONS_OFF_ROW_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(NOTIFICATIONS_LIST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun failedShowsErrorWithRetry() {
+        show(
+            NotificationsUiState(load = NotificationsLoad.Failed(FieldError.Text("Boom"))),
+            notificationsEnabled = false,
+        )
+        rule.onNodeWithText("Couldn't load notifications").assertExists()
+        rule.onNodeWithText("Boom").assertExists()
+        rule.onNodeWithTag(NOTIFICATIONS_RETRY_TAG).assertExists()
+        rule.onNodeWithTag(NOTIFICATIONS_OFF_ROW_TAG).assertDoesNotExist()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryCount)
+    }
+
+    @Test
+    fun failedWithNetworkLine() {
+        show(NotificationsUiState(load = NotificationsLoad.Failed(FieldError.Res(R.string.login_error_network))))
+        rule.onNodeWithText("Check your connection and try again.").assertExists()
+    }
+
+    @Test
+    fun emptyStateWithOffRow() {
+        show(loaded(), notificationsEnabled = false)
+        rule.onNodeWithText("You're all caught up").assertExists()
+        rule.onNodeWithText("No new notifications right now.").assertExists()
+        val off = rule.onNodeWithTag(NOTIFICATIONS_OFF_ROW_TAG)
+        assertTrue(
+            off.getUnclippedBoundsInRoot().top <
+                rule.onNodeWithText("You're all caught up").getUnclippedBoundsInRoot().top,
+        )
+    }
+
+    @Test
+    fun emptyStateWithoutOffRowWhenEnabled() {
+        show(loaded(), notificationsEnabled = true)
+        rule.onNodeWithText("You're all caught up").assertExists()
+        rule.onNodeWithTag(NOTIFICATIONS_OFF_ROW_TAG).assertDoesNotExist()
+        assertFalse(exists("End of recent updates"))
+    }
+
+    @Test
+    fun oneRowOneSection() {
+        show(loaded(today(row("1", "Only one"))))
+        assertEquals(1, rule.onAllNodesWithTag(NOTIFICATION_ROW_TAG).fetchSemanticsNodes().size)
+        rule.onNodeWithText("Today").assertExists()
+        assertFalse(exists("Earlier"))
+    }
+
+    @Test
+    fun refreshFailureShowsSnackbarAndIsConsumedOnce() {
+        show(loaded(today(row("1", "A"))).copy(refreshFailed = true))
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        assertEquals(1, refreshFailureShownCount)
+    }
+
+    @Test
+    fun largeFontWraps() {
+        val long = "A very long notification title that needs several lines at the largest font size"
+        val longBody = "A body that is also long enough to wrap across many lines when the font is doubled in size."
+        show(loaded(today(row("1", long, body = longBody))), notificationsEnabled = false, fontScale = 2f)
+        rule.onNodeWithText(long).assertExists()
+        rule.onNodeWithText(longBody).assertExists()
+        rule.onNodeWithText("Turn on").assertExists()
+        listOf(long, longBody).forEach { text ->
+            val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            rule
+                .onNodeWithText(text, useUnmergedTree = true)
+                .fetchSemanticsNode()
+                .config[SemanticsActions.GetTextLayoutResult]
+                .action
+                ?.invoke(layouts)
+            assertEquals(1, layouts.size)
+            // Robolectric's text metrics are not real, so check the configuration: no line limit, no ellipsis.
+            val input = layouts.single().layoutInput
+            assertEquals(Int.MAX_VALUE, input.maxLines)
+            assertEquals(TextOverflow.Clip, input.overflow)
+        }
     }
 }
