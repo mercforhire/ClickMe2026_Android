@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phase 13 UI-SPEC Copywriting Contract: Write Review. -->
+    <string name="write_review_title">Leave a Review</string>
+</resources>
