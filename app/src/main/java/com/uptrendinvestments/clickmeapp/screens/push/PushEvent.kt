@@ -35,6 +35,29 @@ data class PushEvent(
                 BOOKING_ID_KEYS +
                 THREAD_ID_KEYS
 
+        /** Uppercased `event_type` to category and sub_category, for payloads with no `category` (RESEARCH F-1). */
+        private val EVENT_TYPE_FALLBACK: Map<String, Pair<String, String>> =
+            mapOf(
+                "NEW_MESSAGE" to ("message" to "new_message"),
+                "NEW_BOOKING_REQUEST" to ("booking" to "requests"),
+                "BOOKING_REQUEST" to ("booking" to "requests"),
+                "REQUEST_CREATED" to ("booking" to "requests"),
+                "BOOKING_CONFIRMED" to ("booking" to "confirmations"),
+                "BOOKING_DECLINED" to ("booking" to "declines"),
+                "BOOKING_CANCELLED" to ("booking" to "cancellations"),
+                "BOOKING_RESCHEDULED" to ("booking" to "reschedules"),
+                "BOOKING_EXPIRED" to ("booking" to "expirations"),
+                "BOOKING_COMPLETED" to ("session" to "ended"),
+                "REVIEW_SUBMITTED" to ("review" to "received"),
+                "REFUND_ISSUED" to ("booking" to "refunds"),
+                "PAYOUT_PAID" to ("payout" to "paid"),
+                "PAYOUT_FAILED" to ("payout" to "failed"),
+                "KYC_ACTION_REQUIRED" to ("payout" to "kyc_action"),
+                "DISPUTE_CREATED" to ("payout" to "dispute"),
+                "PASSWORD_CHANGED" to ("account" to "password_changed"),
+                "DELETION_REQUESTED" to ("account" to "deletion_requested"),
+            )
+
         private val UUID_REGEX =
             Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -44,17 +67,46 @@ data class PushEvent(
          */
         fun from(data: Map<String, String?>): PushEvent? {
             if (PUSH_KEYS.none { !data[it].isNullOrBlank() }) return null
-            val category = clean(data[KEY_CATEGORY])?.lowercase(Locale.ROOT)
-            val subCategory = clean(data[KEY_SUB_CATEGORY])
+            val eventType = clean(data[KEY_EVENT_TYPE])
+            val bookingId = firstId(data, BOOKING_ID_KEYS)
+            var category = clean(data[KEY_CATEGORY])?.lowercase(Locale.ROOT)
+            var subCategory = clean(data[KEY_SUB_CATEGORY])
+            if (category == null) {
+                val fallback = eventType?.let { EVENT_TYPE_FALLBACK[it.uppercase(Locale.ROOT)] }
+                if (fallback != null) {
+                    category = fallback.first
+                    subCategory = fallback.second
+                } else if (bookingId != null) {
+                    // The cron reminder, no-show and nudge pushes carry only booking_id (RESEARCH F-1).
+                    category = "booking"
+                }
+            }
             return PushEvent(
                 category = category,
                 subCategory = subCategory,
-                bookingId = firstId(data, BOOKING_ID_KEYS),
+                bookingId = bookingId,
                 threadId = firstId(data, THREAD_ID_KEYS),
                 reviewId = canonicalUuid(data[KEY_REVIEW_ID]),
                 payoutId = canonicalUuid(data[KEY_PAYOUT_ID]),
-                eventType = clean(data[KEY_EVENT_TYPE]),
+                eventType = eventType,
             )
+        }
+
+        /**
+         * Parses a `GET /notifications` row: the push `data` map comes back as `meta_data` (RESEARCH F-8), and the row
+         * columns [category] and [subCategory] override it when non-blank. Only string values of [metaData] are read.
+         * The server never returns `message` rows, so the thread aliases exist for parity only.
+         */
+        fun fromRow(
+            category: String?,
+            subCategory: String?,
+            metaData: Map<String, Any?>?,
+        ): PushEvent? {
+            val data = LinkedHashMap<String, String?>()
+            metaData?.forEach { (key, value) -> if (value is String) data[key] = value }
+            if (!category.isNullOrBlank()) data[KEY_CATEGORY] = category
+            if (!subCategory.isNullOrBlank()) data[KEY_SUB_CATEGORY] = subCategory
+            return from(data)
         }
 
         private fun clean(raw: String?): String? = raw?.trim()?.takeIf { it.isNotEmpty() }
