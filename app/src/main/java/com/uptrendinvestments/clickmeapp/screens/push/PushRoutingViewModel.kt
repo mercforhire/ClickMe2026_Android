@@ -9,8 +9,12 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /** Whether the signed-in user holds the expert role; a seam so tests need no `UserManager`. */
@@ -41,6 +45,11 @@ class PushRoutingViewModel
         private val route = MutableStateFlow(AppRoute.Splash)
         private var routingJob: Job? = null
 
+        private val _switchRequest = MutableStateFlow<AppMode?>(null)
+
+        /** The mode the host must switch to so the tapped destination can open, or null. */
+        val switchRequest: StateFlow<AppMode?> = _switchRequest.asStateFlow()
+
         init {
             viewModelScope.launch {
                 combine(route, launchRequest.destination.pending) { current, pending -> current to pending }
@@ -55,19 +64,44 @@ class PushRoutingViewModel
             }
         }
 
+        /** The host calls this once it has started the requested switch. */
+        fun onSwitchRequestHandled() {
+            _switchRequest.value = null
+        }
+
         /** Reports the current root route; call it whenever the route changes. */
         fun onRouteChanged(route: AppRoute) {
             this.route.value = route
         }
 
-        /** Resolves [destination] for [currentMode] and posts the resulting route (same-mode only). */
+        /**
+         * Resolves [destination] for [currentMode] and posts the resulting route. When the route belongs to the other
+         * mode, asks the host for a switch ([switchRequest]) and waits up to [SWITCH_TIMEOUT_MS] for the matching home
+         * route; a timeout, Login or SignupSetup drops the tap.
+         */
         private suspend fun deliver(
             destination: PushDestination,
             currentMode: AppMode,
         ) {
             val context = PushRoutingContext(currentMode, roles.hasExpertRole(), callGuard.isCallActive.value)
             val resolved = resolver.resolve(destination, context)
+            if (resolved.targetMode != currentMode && !switchTo(resolved.targetMode)) return
             post(resolved.route)
+        }
+
+        /** Requests a switch to [target] and returns true when its home route appears in time. */
+        private suspend fun switchTo(target: AppMode): Boolean {
+            val targetHome = target.homeRoute()
+            _switchRequest.value = target
+            val landed =
+                try {
+                    withTimeoutOrNull(SWITCH_TIMEOUT_MS) {
+                        route.first { it == targetHome || it == AppRoute.Login || it == AppRoute.SignupSetup }
+                    }
+                } finally {
+                    _switchRequest.value = null
+                }
+            return landed == targetHome
         }
 
         private fun post(route: PushRoute) {
@@ -83,4 +117,15 @@ class PushRoutingViewModel
                 AppRoute.ExpertHome -> AppMode.Expert
                 else -> null
             }
+
+        private fun AppMode.homeRoute(): AppRoute =
+            when (this) {
+                AppMode.Client -> AppRoute.ClientHome
+                AppMode.Expert -> AppRoute.ExpertHome
+            }
+
+        companion object {
+            /** How long a mode switch for a tapped push may take before the tap is dropped (RESEARCH Pattern 2). */
+            const val SWITCH_TIMEOUT_MS = 5_000L
+        }
     }

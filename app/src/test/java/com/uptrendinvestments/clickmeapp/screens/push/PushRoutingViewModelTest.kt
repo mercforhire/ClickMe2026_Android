@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.push
 import com.uptrendinvestments.clickmeapp.AppRoute
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
@@ -13,7 +14,9 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClientBookingProbe
 import com.uptrendinvestments.clickmeapp.testing.FakePendingRequestLookup
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -81,5 +84,67 @@ class PushRoutingViewModelTest {
             advanceUntilIdle()
 
             assertEquals(expertSummary(), shellRoutes.pending.value)
+            assertNull(vm.switchRequest.value)
+        }
+
+    @Test
+    fun switchesModeThenDelivers() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.ClientHome)
+            launchRequest.destination.post(PushDestination.BookingDetail("B1", PushAudience.Expert))
+            runCurrent()
+            assertEquals(AppMode.Expert, vm.switchRequest.value)
+            assertNull(shellRoutes.pending.value)
+
+            vm.onRouteChanged(AppRoute.ExpertHome)
+            runCurrent()
+
+            assertEquals(expertSummary(), shellRoutes.pending.value)
+            assertNull(vm.switchRequest.value)
+        }
+
+    @Test
+    fun switchTimeoutDrops() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.ClientHome)
+            launchRequest.destination.post(PushDestination.BookingDetail("B1", PushAudience.Expert))
+            runCurrent()
+            assertEquals(AppMode.Expert, vm.switchRequest.value)
+
+            advanceTimeBy(PushRoutingViewModel.SWITCH_TIMEOUT_MS + 1)
+            runCurrent()
+
+            assertNull(shellRoutes.pending.value)
+            assertNull(vm.switchRequest.value)
+        }
+
+    @Test
+    fun switchLandingOnSignupSetupDrops() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.ClientHome)
+            launchRequest.destination.post(PushDestination.BookingDetail("B1", PushAudience.Expert))
+            runCurrent()
+
+            vm.onRouteChanged(AppRoute.SignupSetup)
+            runCurrent()
+
+            assertNull(shellRoutes.pending.value)
+            assertNull(vm.switchRequest.value)
+        }
+
+    @Test
+    fun chatRoutesThroughChatLaunch() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.ClientHome)
+            launchRequest.destination.post(PushDestination.ChatThread("T1"))
+            advanceUntilIdle()
+
+            assertEquals(ChatThreadKey("T1"), chatLaunch.thread.pending.value)
+            assertNull(shellRoutes.pending.value)
+            assertNull(vm.switchRequest.value)
         }
 }
