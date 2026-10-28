@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
@@ -521,4 +522,14 @@ interface ClickMeApi {
         @Path("id") userId: String,
         @Body body: ReportUserRequest,
     ): SuccessDataResponse<ReportUserData>
+
+    /**
+     * Ports iOS NotificationsListViewModel load; first page only (D-16). The server excludes `message` rows and
+     * answers newest first.
+     */
+    @GET(ApiRequestUrls.NOTIFICATIONS)
+    suspend fun getNotifications(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<NotificationsPayload>
 }

@@ -59,6 +59,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
@@ -165,6 +166,7 @@ class FakeClickMeApi : ClickMeApi {
         { _, _ -> StatusOnlyResponse("success") }
     var reportUserHandler: suspend (userId: String, body: ReportUserRequest) -> ReportUserData =
         { _, _ -> notStubbed() }
+    var notificationsHandler: suspend (page: Int, limit: Int) -> NotificationsPayload = { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
         private set
@@ -506,6 +508,12 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /users/{id}/report call (userId, body), in call order. */
     val reportUserRequests: List<Pair<String, ReportUserRequest>>
         get() = synchronized(_reportUserRequests) { _reportUserRequests.toList() }
+
+    private val _notificationsQueries = mutableListOf<Pair<Int, Int>>()
+
+    /** The (page, limit) of every getNotifications call, in call order. */
+    val notificationsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_notificationsQueries) { _notificationsQueries.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -931,6 +939,14 @@ class FakeClickMeApi : ClickMeApi {
     ): SuccessDataResponse<ReportUserData> {
         synchronized(_reportUserRequests) { _reportUserRequests += userId to body }
         return ok(reportUserHandler(userId, body))
+    }
+
+    override suspend fun getNotifications(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<NotificationsPayload> {
+        synchronized(_notificationsQueries) { _notificationsQueries += page to limit }
+        return ok(notificationsHandler(page, limit))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

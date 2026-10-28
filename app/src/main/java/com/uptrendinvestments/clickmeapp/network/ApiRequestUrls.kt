@@ -100,6 +100,13 @@ object ApiRequestUrls {
     const val CHAT_ACTIONS = "chats/{id}/actions"
     const val USER_REPORT = "users/{id}/report"
 
+    // Phase 13: push device tokens, the notifications list and post-session reviews.
+    const val NOTIFICATION_TOKENS = "notifications/tokens"
+    const val NOTIFICATION_TOKEN = "notifications/tokens/{device_id}"
+    const val NOTIFICATIONS = "notifications"
+    const val BOOKING_REVIEW_CONTEXT = "bookings/{id}/reviews/context"
+    const val BOOKING_REVIEWS = "bookings/{id}/reviews"
+
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
      * what stops the refresh from recursing into the authenticator. Everything else, including the email
