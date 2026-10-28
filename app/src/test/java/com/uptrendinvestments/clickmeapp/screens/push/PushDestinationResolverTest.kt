@@ -11,6 +11,8 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.Exper
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsOrigin
 import com.uptrendinvestments.clickmeapp.testing.FakeClientBookingProbe
@@ -254,5 +256,62 @@ class PushDestinationResolverTest {
                     context(AppMode.Client, hasExpertRole = false),
                 )
             assertEquals(clientList(), resolved)
+        }
+
+    @Test
+    fun requestInListOpensDecision() =
+        runTest {
+            val expiresAt = 1_800_000_000_000L
+            val key = RequestDecisionKey("r1", isExpired = false, expiresAtMillis = expiresAt)
+            requests.keys = mapOf("r1" to key)
+            val resolved =
+                resolver.resolve(PushDestination.IncomingRequests("r1"), context(AppMode.Expert))
+            assertEquals(
+                ResolvedPush(
+                    AppMode.Expert,
+                    PushRoute.Shell(ShellRoute(AppMode.Expert, DashboardRoot, listOf(IncomingRequestsKey, key))),
+                ),
+                resolved,
+            )
+        }
+
+    @Test
+    fun requestMissingOpensList() =
+        runTest {
+            val onlyList =
+                ResolvedPush(
+                    AppMode.Expert,
+                    PushRoute.Shell(ShellRoute(AppMode.Expert, DashboardRoot, listOf(IncomingRequestsKey))),
+                )
+            assertEquals(onlyList, resolver.resolve(PushDestination.IncomingRequests("r1"), context(AppMode.Expert)))
+
+            requests.keys = mapOf("r1" to RequestDecisionKey("r1"))
+            requests.fail = true
+            assertEquals(onlyList, resolver.resolve(PushDestination.IncomingRequests("r1"), context(AppMode.Expert)))
+
+            requests.fail = false
+            val noId = resolver.resolve(PushDestination.IncomingRequests(null), context(AppMode.Expert))
+            assertEquals(onlyList, noId)
+            assertEquals(listOf("r1", "r1"), requests.lookedUp)
+        }
+
+    @Test
+    fun requestFromClientModeSwitchesWhenAllowed() =
+        runTest {
+            val key = RequestDecisionKey("r1", isExpired = false, expiresAtMillis = 42L)
+            requests.keys = mapOf("r1" to key)
+            val destination = PushDestination.IncomingRequests("r1")
+
+            val switched = resolver.resolve(destination, context(AppMode.Client, hasExpertRole = true))
+            assertEquals(
+                ResolvedPush(
+                    AppMode.Expert,
+                    PushRoute.Shell(ShellRoute(AppMode.Expert, DashboardRoot, listOf(IncomingRequestsKey, key))),
+                ),
+                switched,
+            )
+
+            val noRole = resolver.resolve(destination, context(AppMode.Client, hasExpertRole = false))
+            assertEquals(clientList(), noRole)
         }
 }
