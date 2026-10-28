@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository.Companion.RATING_MAX
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository.Companion.RATING_MIN
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -48,9 +50,26 @@ class WriteReviewViewModel
         private fun load() {
             viewModelScope.launch {
                 val context = repository.context(key.bookingId)
+                val readOnly = context.hasSubmitted
+                val rating =
+                    if (readOnly) {
+                        context.prefill?.rating?.coerceIn(RATING_MIN, RATING_MAX) ?: DEFAULT_RATING
+                    } else {
+                        savedStateHandle.get<Int>(KEY_RATING)?.takeIf { it in RATING_MIN..RATING_MAX }
+                            ?: DEFAULT_RATING
+                    }
+                val comment =
+                    if (readOnly) {
+                        context.prefill?.comment.orEmpty()
+                    } else {
+                        savedStateHandle.get<String>(KEY_COMMENT).orEmpty().take(ReviewsRepository.COMMENT_MAX)
+                    }
                 _uiState.update {
                     it.copy(
                         load = WriteReviewLoad.Ready,
+                        readOnly = readOnly,
+                        rating = rating,
+                        comment = comment,
                         header =
                             ReviewHeader(
                                 expertName = context.reviewTarget?.name?.takeIf(String::isNotBlank) ?: key.expertName,
@@ -64,9 +83,29 @@ class WriteReviewViewModel
             }
         }
 
-        /** Posts the review. Nothing else in this class calls the repository's `submit`. */
+        /** Selects [stars] (1..5). Ignored until the form is ready, once it is read-only and while a submit runs. */
+        fun onRatingSelected(stars: Int) {
+            if (!isEditable() || stars !in RATING_MIN..RATING_MAX) return
+            savedStateHandle[KEY_RATING] = stars
+            _uiState.update { it.copy(rating = stars) }
+        }
+
+        /** Sets the comment, truncated to the backend limit. Same guards as [onRatingSelected]. */
+        fun onCommentChanged(text: String) {
+            if (!isEditable()) return
+            val capped = text.take(ReviewsRepository.COMMENT_MAX)
+            savedStateHandle[KEY_COMMENT] = capped
+            _uiState.update { it.copy(comment = capped) }
+        }
+
+        /**
+         * Posts the review. Nothing else in this class calls the repository's `submit`, and only an editable, idle
+         * form reaches it (T-13-23).
+         */
         fun submit() {
+            if (!isEditable()) return
             val state = _uiState.value
+            _uiState.update { it.copy(submitting = true) }
             viewModelScope.launch {
                 repository.submit(key.bookingId, state.rating, state.comment)
                 launchRequest.onSubmitted(key.bookingId, key.opener)
@@ -74,8 +113,18 @@ class WriteReviewViewModel
             }
         }
 
+        private fun isEditable(): Boolean {
+            val state = _uiState.value
+            return state.load is WriteReviewLoad.Ready && !state.readOnly && !state.submitting
+        }
+
         /** The screen has popped for [WriteReviewUiState.submitted]. */
         fun onSubmittedHandled() {
             _uiState.update { it.copy(submitted = false) }
+        }
+
+        private companion object {
+            const val KEY_RATING = "rating"
+            const val KEY_COMMENT = "comment"
         }
     }

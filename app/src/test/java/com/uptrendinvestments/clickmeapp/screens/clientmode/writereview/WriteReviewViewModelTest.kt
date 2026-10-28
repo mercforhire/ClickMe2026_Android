@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.reviewContext
 import com.uptrendinvestments.clickmeapp.testing.submitReviewData
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -70,4 +71,177 @@ class WriteReviewViewModelTest {
             vm.onSubmittedHandled()
             assertFalse(vm.uiState.value.submitted)
         }
+
+    @Test
+    fun ratingChangesWithinRange() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            vm.onRatingSelected(3)
+            assertEquals(3, vm.uiState.value.rating)
+            vm.onRatingSelected(0)
+            vm.onRatingSelected(6)
+            assertEquals(3, vm.uiState.value.rating)
+        }
+
+    @Test
+    fun commentIsCappedAt1000() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            vm.onCommentChanged("a".repeat(1200))
+            assertEquals(1000, vm.uiState.value.comment.length)
+            assertTrue(vm.uiState.value.atCap)
+            vm.onCommentChanged("a".repeat(799))
+            assertFalse(vm.uiState.value.showCounter)
+            assertFalse(vm.uiState.value.atCap)
+            vm.onCommentChanged("a".repeat(800))
+            assertTrue(vm.uiState.value.showCounter)
+        }
+
+    @Test
+    fun submitSendsTrimmedComment() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            vm.onCommentChanged("  Great session  ")
+            vm.submit()
+            runCurrent()
+            assertEquals(listOf("B1" to SubmitReviewRequest(5, "Great session")), api.submittedReviews)
+        }
+
+    @Test
+    fun blankCommentIsOmitted() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            vm.onCommentChanged("   ")
+            vm.submit()
+            runCurrent()
+            assertEquals(listOf("B1" to SubmitReviewRequest(5, null)), api.submittedReviews)
+        }
+
+    @Test
+    fun alreadySubmittedIsReadOnly() =
+        runTest(main.testDispatcher) {
+            api.reviewContextHandler =
+                { reviewContext(hasSubmitted = true, prefillRating = 4, prefillComment = "Helpful") }
+            val vm = vm()
+            runCurrent()
+            val state = vm.uiState.value
+            assertTrue(state.readOnly)
+            assertEquals(4, state.rating)
+            assertEquals("Helpful", state.comment)
+            vm.onRatingSelected(2)
+            vm.onCommentChanged("x")
+            vm.submit()
+            runCurrent()
+            assertEquals(4, vm.uiState.value.rating)
+            assertEquals("Helpful", vm.uiState.value.comment)
+            assertTrue(api.submittedReviews.isEmpty())
+            assertFalse(vm.uiState.value.submitted)
+        }
+
+    @Test
+    fun prefillWithoutCommentGivesEmptyComment() =
+        runTest(main.testDispatcher) {
+            api.reviewContextHandler = { reviewContext(hasSubmitted = true, prefillRating = 3) }
+            val vm = vm()
+            runCurrent()
+            assertEquals("", vm.uiState.value.comment)
+            assertEquals(3, vm.uiState.value.rating)
+        }
+
+    @Test
+    fun readOnlyIgnoresSavedState() =
+        runTest(main.testDispatcher) {
+            api.reviewContextHandler =
+                { reviewContext(hasSubmitted = true, prefillRating = 4, prefillComment = "Done") }
+            val vm = vm(handle = SavedStateHandle(mapOf("rating" to 1, "comment" to "stale")))
+            runCurrent()
+            assertEquals(4, vm.uiState.value.rating)
+            assertEquals("Done", vm.uiState.value.comment)
+        }
+
+    @Test
+    fun inFlightIgnoresInput() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.submitReviewHandler = { _, _ ->
+                gate.await()
+                submitReviewData()
+            }
+            val vm = vm()
+            runCurrent()
+            vm.submit()
+            runCurrent()
+            assertTrue(vm.uiState.value.submitting)
+            vm.submit()
+            vm.onRatingSelected(1)
+            vm.onCommentChanged("x")
+            runCurrent()
+            assertEquals(5, vm.uiState.value.rating)
+            assertEquals("", vm.uiState.value.comment)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(1, api.submittedReviews.size)
+            assertTrue(vm.uiState.value.submitted)
+        }
+
+    @Test
+    fun savedStateRestoresForm() =
+        runTest(main.testDispatcher) {
+            val vm = vm(handle = SavedStateHandle(mapOf("rating" to 2, "comment" to "Later")))
+            runCurrent()
+            assertEquals(WriteReviewLoad.Ready, vm.uiState.value.load)
+            assertEquals(2, vm.uiState.value.rating)
+            assertEquals("Later", vm.uiState.value.comment)
+        }
+
+    @Test
+    fun editsAreMirroredToSavedState() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = vm(handle = handle)
+            runCurrent()
+            vm.onRatingSelected(4)
+            vm.onCommentChanged("Nice")
+            assertEquals(4, handle.get<Int>("rating"))
+            assertEquals("Nice", handle.get<String>("comment"))
+        }
+
+    @Test
+    fun headerFallsBackToSeed() =
+        runTest(main.testDispatcher) {
+            api.reviewContextHandler = { reviewContext(name = null, avatarUrl = null) }
+            val seeded =
+                vm(WriteReviewKey(bookingId = "B1", expertName = "Seed Name", expertAvatarUrl = "https://img/s"))
+            runCurrent()
+            assertEquals("Seed Name", seeded.uiState.value.header.expertName)
+            assertEquals("https://img/s", seeded.uiState.value.header.expertAvatarUrl)
+            val bare = vm()
+            runCurrent()
+            assertNull(bare.uiState.value.header.expertName)
+            assertNull(bare.uiState.value.header.expertAvatarUrl)
+        }
+
+    @Test
+    fun noRequestWithoutSubmit() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+            runCurrent()
+            vm.onRatingSelected(2)
+            vm.onCommentChanged("draft")
+            runCurrent()
+            assertTrue(api.submittedReviews.isEmpty())
+            assertFalse(vm.uiState.value.submitted)
+            assertTrue(launchRequest.reviewedBookingIds.value.isEmpty())
+        }
+
+    @Test
+    fun uiStateToStringNeverPrintsTheComment() {
+        val text = WriteReviewUiState(comment = "secret words").toString()
+        assertFalse(text.contains("secret"))
+        assertTrue(text.contains("commentLength=12"))
+    }
 }
