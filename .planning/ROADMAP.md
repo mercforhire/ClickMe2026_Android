@@ -672,7 +672,7 @@ Plans:
   5. A build is on the internal testing track with a few real users on a mix of devices. The store listing, data safety form and foreground-service declaration are drafted in Play Console. (PRD Week 6 checkpoint: every MVP flow except payouts and settings works, and a build is with testers)
 
 **Planning notes:** Third-biggest schedule risk: deep links into per-tab back stacks. If the schedule slips, the notifications list is cut #2 and Write Review is cut #3. Phase 11 hand-off: a push that routes to an incoming request must build `RequestDecisionKey` with `isExpired` and the expiry (the request detail endpoint has no status or expiry), and a push to an expert booking builds `ExpertBookingSummaryKey(bookingId, origin)`. Phase 12 hand-off: chat push routing posts a `ChatThreadKey` to `ChatLaunchRequest.thread` (or calls `Navigator.openChatThread`); the thread fills peer seeds from `GET /chats`.
-**Plans:** 5/18 plans executed
+**Plans:** 9/18 plans executed
 Plans:
 **Wave 1**
 
@@ -684,10 +684,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 13-06-PLAN.md — FCM token registration on login x foreground and onNewToken, logout unregister with timeout and deleteToken, stable device id (Wave 2)
-- [ ] 13-07-PLAN.md — Push destination resolver: audience and client-booking probe, D-06 status landing, D-08 request expiry, chat, PHASE-14 landings, mode-switch rules (Wave 2)
-- [ ] 13-08-PLAN.md — Notifications list logic: date grouping, time labels, bold parser, row destinations, ViewModel with quiet reloads and push tick (Wave 2)
-- [ ] 13-09-PLAN.md — Write Review logic: context load, form rules, read-only state, submit and the post-submit hand-off (Wave 2)
+- [x] 13-06-PLAN.md — FCM token registration on login x foreground and onNewToken, logout unregister with timeout and deleteToken, stable device id (Wave 2)
+- [x] 13-07-PLAN.md — Push destination resolver: audience and client-booking probe, D-06 status landing, D-08 request expiry, chat, PHASE-14 landings, mode-switch rules (Wave 2)
+- [x] 13-08-PLAN.md — Notifications list logic: date grouping, time labels, bold parser, row destinations, ViewModel with quiet reloads and push tick (Wave 2)
+- [x] 13-09-PLAN.md — Write Review logic: context load, form rules, read-only state, submit and the post-submit hand-off (Wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -792,7 +792,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
-| 13. Push, Notifications & Internal Testing | 5/18 | In Progress | - |
+| 13. Push, Notifications & Internal Testing | 9/18 | In Progress | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
