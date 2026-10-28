@@ -155,12 +155,22 @@ class Navigator(
     }
 
     /**
-     * Inserts a push destination: the key chain [keys] (last key is the screen the user lands on) on [tab]'s stack,
-     * then selects [tab]. The Phase 13 push entry point (PUSH-04).
+     * Inserts a push destination: the key chain [keys] (the last key is the screen the user lands on) on [tab]'s stack,
+     * then selects [tab]. The Phase 13 push entry point (PUSH-04; RESEARCH Pattern 3, Pitfall 2).
      *
-     * When [tab] is not the selected tab its stack is popped to the root first and the chain is added in order
-     * (`TabSwitch`); when it is the selected tab the chain goes on top (`Push`). Both arguments are validated before
-     * anything is mutated. Duplicate-key handling is added on top of this rule.
+     * The stacks in use afterwards are the start stack and [tab]'s stack, and `toDecoratedEntries` flattens both, so
+     * an equal key in two of them would crash. The rules, in order:
+     * 1. **Dedupe the destination.** When the last key is already in one of those stacks, that stack is cut back to it
+     *    and its tab is selected (`Pop` when it is the selected tab, else `TabSwitch`). Nothing is pushed.
+     * 2. **Other tab.** Otherwise, when [tab] is not selected, its stack is popped to the root and the chain is added
+     *    in order (`TabSwitch`). An earlier chain key that is already in the other stack in use is dropped: it was
+     *    only a Back stop.
+     * 3. **Selected tab.** When [tab] is selected, the stack is cut before the first entry equal to any chain key, so a
+     *    repeated request chain is not stacked twice, and the chain goes on top (`Push`), so a row tap from the
+     *    Notifications list keeps Back to the list.
+     *
+     * Back from the destination then follows [goBack]: pop, and from a non-start tab root select the start tab. Both
+     * arguments are validated before anything is mutated.
      *
      * @throws IllegalArgumentException if [tab] is not a tab of this shell or [keys] is empty.
      */
@@ -170,14 +180,36 @@ class Navigator(
     ) {
         require(tab in state.backStacks) { "Unknown tab: $tab" }
         require(keys.isNotEmpty()) { "Empty route chain" }
-        val stack = state.backStacks.getValue(tab)
+        val inUseAfter = listOf(state.startRoute, tab).distinct()
+        val last = keys.last()
+
+        for (stackTab in inUseAfter) {
+            val stack = state.backStacks[stackTab] ?: continue
+            val index = stack.indexOf(last)
+            if (index >= 0) {
+                while (stack.size > index + 1) stack.removeAt(stack.lastIndex)
+                state.lastTransition =
+                    if (stackTab == state.topLevelRoute) NavTransition.Pop else NavTransition.TabSwitch
+                state.topLevelRoute = stackTab
+                return
+            }
+        }
+
+        val target = state.backStacks.getValue(tab)
+        val inOtherStacks = inUseAfter.filter { it != tab }.flatMap { state.backStacks[it].orEmpty() }.toSet()
+        val chain = keys.dropLast(1).filter { it !in inOtherStacks } + last
+
         if (tab != state.topLevelRoute) {
-            while (stack.size > 1) stack.removeAt(stack.lastIndex)
+            while (target.size > 1) target.removeAt(target.lastIndex)
             state.lastTransition = NavTransition.TabSwitch
         } else {
+            val cut = (1 until target.size).firstOrNull { target[it] in chain }
+            if (cut != null) {
+                while (target.size > cut) target.removeAt(target.lastIndex)
+            }
             state.lastTransition = NavTransition.Push
         }
-        stack.addAll(keys)
+        target.addAll(chain)
         state.topLevelRoute = tab
     }
 
