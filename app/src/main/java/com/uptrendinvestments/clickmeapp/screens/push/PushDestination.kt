@@ -48,9 +48,25 @@ sealed interface PushDestination {
 }
 
 /**
+ * True when the tap opens the notifications list: the list itself, plus the destinations whose screens do not exist
+ * yet.
+ */
+val PushDestination.landsOnNotificationsList: Boolean
+    get() =
+        this is PushDestination.NotificationsList ||
+            // PHASE-14: Payouts, KycOnboarding and AccountSecurity open the notifications list until Phase 14 adds
+            // those screens (D-10).
+            this is PushDestination.Payouts ||
+            this is PushDestination.KycOnboarding ||
+            this is PushDestination.AccountSecurity
+
+/**
  * Translates a [PushEvent] into a [PushDestination]. Port of the iOS `PushRouter.destination(for:)`.
  *
- * The audience of each booking and review destination comes from who the backend actually notifies (RESEARCH F-6).
+ * The audience of each booking and review destination comes from who the backend actually notifies (RESEARCH F-6):
+ * booking confirmations, declines, expirations and refunds and review nudges go to the client; booking requests, review
+ * received and payouts go to the expert; everything else, including all session pushes, is [PushAudience.Either] and
+ * the resolver probes the booking (D-05).
  */
 object PushRouter {
     /** The destination for [event], or null when the category is unknown or a required id is missing. */
@@ -64,6 +80,38 @@ object PushRouter {
                 }
             }
 
+            "session" -> {
+                event.bookingId?.let {
+                    if (event.subCategory == "ended") {
+                        PushDestination.LeaveReview(it, PushAudience.Either)
+                    } else {
+                        PushDestination.BookingDetail(it, PushAudience.Either)
+                    }
+                }
+            }
+
+            "message" -> {
+                event.threadId?.let { PushDestination.ChatThread(it) }
+            }
+
+            "review" -> {
+                event.bookingId?.let {
+                    if (event.subCategory == "nudge") {
+                        PushDestination.LeaveReview(it, PushAudience.Client)
+                    } else {
+                        PushDestination.BookingDetail(it, reviewAudience(event.subCategory))
+                    }
+                }
+            }
+
+            "payout" -> {
+                if (event.subCategory == "kyc_action") PushDestination.KycOnboarding else PushDestination.Payouts
+            }
+
+            "account" -> {
+                PushDestination.AccountSecurity
+            }
+
             else -> {
                 null
             }
@@ -72,6 +120,9 @@ object PushRouter {
     /** [destination], or [PushDestination.NotificationsList] when there is no event or no route (D-10). */
     fun destinationOrList(event: PushEvent?): PushDestination =
         event?.let(::destination) ?: PushDestination.NotificationsList
+
+    private fun reviewAudience(subCategory: String?): PushAudience =
+        if (subCategory == "received") PushAudience.Expert else PushAudience.Either
 
     private fun bookingAudience(subCategory: String?): PushAudience =
         when (subCategory) {
