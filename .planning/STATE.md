@@ -5,10 +5,10 @@ current_phase: 13
 current_phase_name: Push, Notifications & Internal Testing
 status: planning
 stopped_at: Phase 12 complete, ready to plan Phase 13
-last_updated: "2026-10-27T22:53:38.297Z"
+last_updated: "2026-10-28T02:46:45.334Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 12 complete (UAT 5/5, security 66/66 closed), transitioned to Phase 13
-state_head: 512e2da78a51d4554aa8e7cfafdb2dd95d8cee71
+state_head: 8b7bf316a5f7c132a45b65de3681913420dacd21
 progress:
   total_phases: 17
   completed_phases: 11
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 Phase: 13 — Push, Notifications & Internal Testing
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-27 — Phase 12 complete (UAT 5/5, security 66/66 closed), transitioned to Phase 13
+Last activity: 2026-10-27 - Completed quick task 261027-v9i: Phase 12 UI review fixes (read-receipt separator, Outlined chat icons)
 
 Progress: [███████░░░] 65%
 
@@ -253,6 +253,12 @@ Recent decisions affecting current work:
   - [ ] (d) SC-4 the blocker sees "You blocked this conversation" and Unblock in Report & Block, the blocked side sees "You can't reply to this conversation" and no Unblock, a send from iOS into the blocked thread fails, RECIPIENT_UNAVAILABLE with a suspended account (backend agent), the session-local block after a profile block on a thread with no messages.
   - [ ] (e) 200% font scale on Conversations (row name and time wrap), a thread with a failed bubble (bubbles grow, composer field grows), the blocked banner, Report & Block, the Report sheet and the Request Decision footer (buttons stack); TalkBack on bubble actions and the reason group; the jump-to-latest feel; the list move-to-top animation; keyboard behavior of the composer (IME push-up, cursor stability, long-press Delete menu); prodRelease R8 smoke (needs the deferred Phase 2 keystore).
   - Reading the result: `remote joined` and Active on both -> G-11-6 fixed (`/gsd-verify-work 11` resolves it, and G-11-5 with it). Backend live, same booking, build current, and still no `remote joined` -> the casing hypothesis alone is not the whole story; capture the iOS Agora info log for the join and `didJoinedOfUid` (iOS DEBUG enables `setLogFilter(.info)`), compare channel strings byte for byte, and reopen the debug session.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261027-v9i | Phase 12 UI review fixes: externalise read-receipt separator, switch chat icons to Outlined | 2026-10-27 | 8b7bf31 | [261027-v9i-phase-12-ui-review-fixes-externalise-rea](./quick/261027-v9i-phase-12-ui-review-fixes-externalise-rea/) |
 
 ## Deferred Items
 
