@@ -45,7 +45,7 @@ result: pass
 ### 7. Lock-screen privacy of system-displayed background pushes (REVIEW WR-02)
 expected: A decision on whether backgrounded pushes may show full title/body on the lock screen. If not, set lockscreenVisibility on the channels (permanent once shipped, so before the first internal upload) and/or in the backend payload.
 result: pass
-decision: "Keep Android default lock-screen visibility for system-displayed background pushes (WR-02 accepted); foreground pushes stay VISIBILITY_PRIVATE. Users can hide content via system lock-screen settings."
+decision: "WR-02 resolved via backend: quick-261028-nb7 (abde83a, live in prod 2a7cf19) sets android.notification.visibility private on Android pushes, so background pushes are private on the lock screen like foreground ones. Channels keep default lockscreenVisibility."
 
 ## Summary
 
