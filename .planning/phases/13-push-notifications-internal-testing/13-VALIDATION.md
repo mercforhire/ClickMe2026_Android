@@ -82,9 +82,9 @@ Seeded from RESEARCH.md § Validation Architecture; task IDs bound at planning (
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Push tap from killed app and from running app opens right tab/back stack on a real device | PUSH-04 | Needs real FCM delivery to a device | Send booking/chat/session pushes to the Samsung test device in both states; confirm screen and back behaviour. Logged non-blocking in STATE "[Phase 13] DEFERRED (human)" item (b) |
-| Android 13+ permission prompt and channels visible in system settings | PUSH-02 | System UI | Fresh install on API 33+; confirm prompt and the defined channels in App info → Notifications. STATE "[Phase 13] DEFERRED (human)" items (a) and (c) |
-| Store listing, data safety, FGS declaration drafted; signed bundle on internal track; testers added on a mix of devices | REL-04, REL-05 | Play Console / Firebase console are not scriptable | Follow `13-RELEASE-CHECKLIST.md` (STATE "[Phase 13] OPEN (human, release)", steps 1-10); confirm `google_app_id` present in the release APK. STATE "[Phase 13] DEFERRED (human)" item (f) for the internal-track install |
+| Push tap from killed app and from running app opens right tab/back stack on a real device | PUSH-04 | Needs real FCM delivery to a device | Send booking/chat/session pushes to the Samsung test device in both states; confirm screen and back behaviour. Logged non-blocking in STATE "[Phase 13] DEFERRED (human)" item (b). **UAT 2026-10-28: pass** (13-UAT.md test 1) |
+| Android 13+ permission prompt and channels visible in system settings | PUSH-02 | System UI | Fresh install on API 33+; confirm prompt and the defined channels in App info → Notifications. STATE "[Phase 13] DEFERRED (human)" items (a) and (c). **UAT 2026-10-28: pass** (13-UAT.md test 5) |
+| Store listing, data safety, FGS declaration drafted; signed bundle on internal track; testers added on a mix of devices | REL-04, REL-05 | Play Console / Firebase console are not scriptable | Follow `13-RELEASE-CHECKLIST.md` (STATE "[Phase 13] OPEN (human, release)", steps 1-10); confirm `google_app_id` present in the release APK. STATE "[Phase 13] DEFERRED (human)" item (f) for the internal-track install. UAT 2026-10-28: skipped (13-UAT.md tests 2, 3), still open |
 
 ---
 
@@ -98,3 +98,11 @@ Seeded from RESEARCH.md § Validation Architecture; task IDs bound at planning (
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** validated 2026-10-28 by the 13-17 gate (3614 tests per flavor, 0 failures; ktlint, lint, R8 `assembleProdRelease`, design rules and the backend suite at baseline). The 13-14 human row is deferred, not blocking.
+
+## Validation Audit 2026-10-28
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
