@@ -19,3 +19,8 @@ annotation class ApplicationScope
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class CategoryCache
+
+/** The `clickme_push` Preferences DataStore (device id, prompt flag); survives logout. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PushPrefs
