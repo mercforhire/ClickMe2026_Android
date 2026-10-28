@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -125,7 +125,7 @@ private fun BlockButton(
         modifier = Modifier.fillMaxWidth().heightIn(min = ButtonMinHeight).testTag(BLOCK_BUTTON_TAG),
         enabled = !locked,
     ) {
-        Icon(imageVector = Icons.Filled.Block, contentDescription = null, modifier = Modifier.size(IconSize))
+        Icon(imageVector = Icons.Outlined.Block, contentDescription = null, modifier = Modifier.size(IconSize))
         Spacer(Modifier.width(Spacing.sm))
         Text(text = stringResource(R.string.block_button), style = MaterialTheme.typography.labelLarge)
     }

@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -80,7 +80,7 @@ fun ConversationsSearchField(
         },
         leadingIcon = {
             Icon(
-                imageVector = Icons.Filled.Search,
+                imageVector = Icons.Outlined.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -89,7 +89,7 @@ fun ConversationsSearchField(
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(ClearButtonSize)) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = Icons.Outlined.Close,
                         contentDescription = clearLabel,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

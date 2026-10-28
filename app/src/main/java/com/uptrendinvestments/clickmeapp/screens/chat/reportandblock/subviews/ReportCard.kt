@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -133,7 +133,7 @@ private fun ThanksRow() {
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         Icon(
-            imageVector = Icons.Filled.Check,
+            imageVector = Icons.Outlined.Check,
             contentDescription = null,
             modifier = Modifier.size(SpinnerSize),
             tint = MaterialTheme.colorScheme.primary,
