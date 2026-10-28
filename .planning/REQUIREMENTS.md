@@ -153,7 +153,7 @@ From the PRD's Push (FCM) and Notifications list (Week 6).
 - [ ] **PUSH-02**: Notifications post to defined notification channels. On Android 13+, users are asked for the `POST_NOTIFICATIONS` permission.
 - [ ] **PUSH-03**: The ported `PushRouter` maps category/sub_category, with the legacy `event_type` fallback, to a `PushDestination`.
 - [ ] **PUSH-04**: Tapping a push opens the right screen inside the right tab's back stack, both from a cold start and while the app is running.
-- [ ] **PUSH-05**: User can view a notifications list grouped by date. Tapping an item routes through the same `PushDestination` map.
+- [ ] **PUSH-05**: User can view a notifications list grouped by date. Tapping an item routes through the same `PushDestination` map. (Phase 13: first 50 only, no read state; the backend has no mark-read endpoint.)
 
 ### Reviews
 
@@ -204,7 +204,7 @@ From the PRD's Play Store account (Week 1), Start internal testing (Week 6), and
 - [x] **REL-02**: A Play Console organization developer account is created under the corporation and submitted for Google's organization verification.
 - [ ] **REL-03**: The package `com.uptrendinvestments.clickmeapp` is registered in Play Console by uploading a first signed internal build as soon as org verification allows.
 - [ ] **REL-04**: The store listing, data safety form and foreground-service (microphone) declaration are drafted in Play Console ahead of release, so policy review isn't on the critical path.
-- [ ] **REL-05**: A build is on the internal testing track with a few real users on a mix of devices.
+- [ ] **REL-05**: A build is on the internal testing track with a few real users on a mix of devices. (Phase 13: one internal tester until Phase 16, D-22; a wider group by then.)
 - [ ] **REL-06**: The Play Console release requirements are complete: data safety form, foreground-service (microphone) declaration and video, account-deletion URL, and content rating.
 - [ ] **REL-07**: The production release is live on Google Play.
 
