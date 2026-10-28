@@ -2,11 +2,13 @@ package com.uptrendinvestments.clickmeapp.managers
 
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
+import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakePushTokenSource
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -121,6 +123,68 @@ class FcmPushTokenRegistrarTest {
             val body = "{}".toResponseBody(json)
             h.api.registerDeviceTokenHandler = { throw HttpException(Response.error<Any>(500, body)) }
 
+            h.registrar.register()
+
+            assertEquals(1, h.api.registeredDeviceTokens.size)
+        }
+
+    @Test
+    fun unregisterDeletesDeviceIdThenTheFcmToken() =
+        runTest {
+            val h = Harness(this, tmp)
+            var deleteCallsWhenApiDeleted = -1
+            h.api.deleteDeviceTokenHandler = {
+                deleteCallsWhenApiDeleted = h.source.deleteCalls
+                SuccessMessageResponse("success")
+            }
+
+            h.registrar.unregister()
+
+            assertEquals(listOf(h.preferences.deviceId()), h.api.deletedDeviceTokens)
+            assertEquals(1, h.source.deleteCalls)
+            assertEquals("the API DELETE runs before the FCM token is deleted", 0, deleteCallsWhenApiDeleted)
+        }
+
+    @Test
+    fun unregisterGivesUpAfterThreeSeconds() =
+        runTest {
+            val h = Harness(this, tmp)
+            h.api.deleteDeviceTokenHandler = {
+                delay(Long.MAX_VALUE)
+                SuccessMessageResponse("success")
+            }
+
+            h.registrar.unregister()
+
+            assertEquals(FcmPushTokenRegistrar.UNREGISTER_TIMEOUT_MS, testScheduler.currentTime)
+            assertEquals(1, h.source.deleteCalls)
+        }
+
+    @Test
+    fun unregisterSwallowsServerErrors() =
+        runTest {
+            val h = Harness(this, tmp)
+            val json = "application/json".toMediaType()
+            val body = "{}".toResponseBody(json)
+            h.api.deleteDeviceTokenHandler = { throw HttpException(Response.error<Any>(500, body)) }
+
+            h.registrar.unregister()
+
+            assertEquals(1, h.api.deletedDeviceTokens.size)
+            assertEquals(1, h.source.deleteCalls)
+        }
+
+    @Test
+    fun registerAfterUnregisterInSameSessionIsSkipped() =
+        runTest {
+            val h = Harness(this, tmp)
+
+            h.registrar.unregister()
+            h.registrar.register()
+            h.registrar.register("rotated")
+            assertTrue(h.api.registeredDeviceTokens.isEmpty())
+
+            h.tokens.save(TokenPair("access-2", "refresh-2", 1_900_000_000L))
             h.registrar.register()
 
             assertEquals(1, h.api.registeredDeviceTokens.size)

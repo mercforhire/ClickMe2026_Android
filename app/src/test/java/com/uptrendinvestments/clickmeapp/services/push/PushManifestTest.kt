@@ -1,12 +1,16 @@
 package com.uptrendinvestments.clickmeapp.services.push
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -50,6 +54,23 @@ class PushManifestTest {
                 .requestedPermissions
                 .orEmpty()
         assertEquals(1, requested.count { it == "android.permission.POST_NOTIFICATIONS" })
+    }
+
+    @Test
+    fun messagingServiceIsPrivateAndHandlesMessagingEvent() {
+        val serviceInfo =
+            context.packageManager.getServiceInfo(
+                ComponentName(context.packageName, ClickMeMessagingService::class.java.name),
+                0,
+            )
+        assertFalse(serviceInfo.exported)
+
+        val resolved =
+            context.packageManager.queryIntentServices(
+                Intent("com.google.firebase.MESSAGING_EVENT").setPackage(context.packageName),
+                0,
+            )
+        assertTrue(resolved.any { it.serviceInfo.name == ClickMeMessagingService::class.java.name })
     }
 
     @Test
