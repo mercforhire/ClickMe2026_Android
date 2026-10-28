@@ -1,22 +1,28 @@
 ---
-status: partial
+status: testing
 phase: 13-push-notifications-internal-testing
 source: [13-VERIFICATION.md]
 started: 2026-10-28T18:30:00Z
-updated: 2026-10-28T21:00:39.786Z
+updated: 2026-10-28T21:11:13Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 1
+name: SC-2 / PUSH-04 tap routing from a killed and a backgrounded app (system-displayed notification)
+expected: |
+  Each tap lands on the routed screen inside the correct tab (booking -> Bookings tab Booking Summary or
+  Upcoming Booking; chat -> Chats tab thread; request -> Request Decision), Back unwinds through the tab root,
+  and a client push in Expert mode switches mode first. On the warm tap the intent extras reach MainActivity
+  (onNewIntent).
+awaiting: user response
 
 ## Tests
 
 ### 1. SC-2 / PUSH-04 tap routing from a killed and a backgrounded app (system-displayed notification)
 expected: On the Samsung SM-A075F with a real google-services.json and the backend D-04 deploy: kill the app, send booking/chat/session pushes, tap each; repeat with the app backgrounded (not killed), and with an open chat thread on screen. Each tap routes to the right screen in the right tab, Back order correct, mode switches first when needed, and warm-tap extras reach MainActivity.onNewIntent.
-result: issue
-reported: "app not receiving push notification"
-severity: major
+result: [pending]
+retest: "First run reported 'app not receiving push notification' (G-13-1). Diagnosis (.planning/debug/push-not-received-on-device.md): no code defect; the build under test had no google-services.json (no FCM token, no device_tokens row). Firebase build installed 16:21, 9 pushes delivered since. Re-test on current build against prod 2a7cf19."
 
 ### 2. REL-05 / SC-5 build with testers (release checklist steps 2-6)
 expected: A signed AAB is on the Play internal testing track, shows "Available to internal testers", and the Play-installed build logs in and reaches Explore. D-22: one internal tester until Phase 16.
@@ -32,9 +38,8 @@ reason: "blocked" (Play Console drafts from release checklist step 7 not yet pas
 
 ### 4. PUSH-01 live token registration
 expected: After the backend deploy and adding google-services.json: one device_tokens row with platform = android after login / foreground return, a re-register after token rotation, the row gone after logout, and no pushes for the previous user on that device.
-result: blocked
-blocked_by: server
-reason: "blocked" (backend D-04 push commits not deployed: prod /health 3274175 vs master 92b4827; device_tokens row, rotation and logout not yet checked. Partial evidence 2026-10-28: on SM-A075F a foreground return sent POST /api/v1/notifications/tokens -> 200; installed build has Firebase project clickme-a006b)
+result: [pending]
+retest: "Unblocked: prod /health is 2a7cf19 (D-04 live), google-services.json present; POST notifications/tokens -> 200 observed 2026-10-28."
 
 ### 5. PUSH-02 permission prompt and channels on Android 13+
 expected: Prompt appears once after login (never again after logout/login); foreground pushes post on the five channels with the ClickMe icon and accent; background pushes land on the category channel after the 13-02 deploy (general before it); App info lists the five channels.
@@ -53,19 +58,11 @@ decision: "Keep Android default lock-screen visibility for system-displayed back
 
 total: 7
 passed: 3
-issues: 1
-pending: 0
+issues: 0
+pending: 2
 skipped: 0
-blocked: 3
+blocked: 2
 
 ## Gaps
 
-- gap_id: G-13-1
-  truth: "On a real device with google-services.json and the backend D-04 deploy, booking/chat/session pushes arrive and each tap (killed and backgrounded app) routes to the right screen in the right tab"
-  status: failed
-  reason: "User reported: app not receiving push notification"
-  evidence: "2026-10-28: token registration works (POST notifications/tokens -> 200 on device, Firebase project clickme-a006b); suspect backend FIREBASE_SERVICE_ACCOUNT_JSON project mismatch or undeployed D-04 commits"
-  severity: major
-  test: 1
-  artifacts: []
-  missing: []
+<!-- G-13-1 withdrawn after diagnosis: environment (no google-services.json in the tested build), not a code defect. Test 1 reopened for re-test; a new gap gets a fresh id if it fails again. Debug session: .planning/debug/push-not-received-on-device.md -->
