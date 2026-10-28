@@ -59,7 +59,7 @@ This table is a **non-exhaustive** list of known-good components, never a closed
 | `Avatar` | `components/avatar/Avatar.kt` | Write Review expert avatar (96dp, new size) |
 | `PressScaleButton`, `PressScaleButtonDefaults` | `components/buttonstyles/PressScale.kt` | Submit review (filled); Leave a review controls (outlined / tonal) |
 | `AsyncSaveButton` | `components/buttons/AsyncSaveButton.kt` | Not used; Submit is a `PressScaleButton` with an inline spinner (Phase 12 pattern) so the footer layout does not shift |
-| `AuthTopAppBar`, `AuthErrorDialog` | `screens/login` | Back-arrow app bar (Notifications, Leave a Review) and the single-button error alert |
+| `AuthTopAppBar`, `AuthErrorDialog` | `screens/login` | Back-arrow app bar (Notifications, Leave a Review) and the single-button error alert. **One small change this phase:** `AuthErrorDialog` gains an optional `confirmLabel: String = stringResource(R.string.auth_dialog_ok)` parameter (backward compatible; every existing caller keeps "OK"). Write Review passes `confirmLabel = "Edit review"` (see Copywriting, Submit error) |
 | `TopBarAvatarButton` | `components/avatar/TopBarAvatarButton.kt` | Neighbour of the new bell action on the Explore and Dashboard bars |
 | `MessageButton` | `components/chat/MessageButton.kt` | Neighbour of Leave a Review on Booking Summary (style reference for the outlined text button) |
 | `BookingStatusBadge` | `components/BookingStatusBadge.kt` | Unchanged |
@@ -275,7 +275,7 @@ Route `WriteReviewKey(bookingId, expertName, expertAvatarUrl)`. Background `surf
 | Outcome | Behavior |
 |---|---|
 | 201 | Pop to the previous entry (Booking Summary or My Bookings). That screen reloads quietly and shows the snackbar "Thanks for your review" (`Short` duration, no action, via the Phase 8 launch-argument pattern so it survives the pop). The "Review Submitted!" in-button state on iOS is not ported (the screen is gone before it could be seen) |
-| 4xx / 5xx / network | `AuthErrorDialog` titled "Couldn't submit review" with the server message, else "Check your connection and try again." for a network failure, else "Something went wrong. Please try again." The form stays editable and intact |
+| 4xx / 5xx / network | `AuthErrorDialog` titled "Couldn't submit review" with the server message, else "Check your connection and try again." for a network failure, else "Something went wrong. Please try again."; the single dismiss button is labelled "Edit review" (`confirmLabel`, not the default "OK"). Dismissing it (button, scrim tap, Back) returns to the form, which stays editable and intact |
 | 404 on context (booking not found or not completed) | The Failed state above with the server message (the iOS "Review not available" lock screen is unreachable because the entry points only appear for completed bookings) |
 
 ### 4. Booking Summary additions (REV-01, D-18)
@@ -348,7 +348,7 @@ All new strings go into new `res/values/strings_notifications.xml`, `strings_wri
 | Element | Copy |
 |---------|------|
 | Primary CTA (Write Review) | "Submit review" |
-| Primary CTA (error states) | "Retry" |
+| Primary CTA (error states) | "Retry" (kept deliberately: it is the project-wide retry label on every prior error state, Phases 4 to 7 and 12, and the action sits under a heading that names the object, "Couldn't load notifications" / "Couldn't load review", so verb plus object reads together; a one-off "Reload notifications" would break consistency) |
 | Leave a review controls | Booking Summary button "Leave a review" (iOS "Leave a Review", sentence-cased per the Phase 12 rule); Past card action "Leave a review" (iOS "Leave Review") |
 | App bar titles | "Notifications" (iOS); "Leave a Review" (Android) |
 | Bell a11y | `contentDescription` "Notifications" (Android) |
@@ -357,7 +357,7 @@ All new strings go into new `res/values/strings_notifications.xml`, `strings_wri
 | List empty state | Heading "You're all caught up"; body "No new notifications right now." (iOS) |
 | List error state | Heading "Couldn't load notifications" (iOS); body = server message, else "Check your connection and try again." (existing `login_error_network`); action "Retry" |
 | List end note | "End of recent updates" (iOS) |
-| Permission-off row | "Notifications are off — Turn on" (CONTEXT-pinned): visible "Notifications are off" plus the underlined "Turn on"; `onClickLabel` "Open notification settings" (Android) |
+| Permission-off row | "Notifications are off — Turn on" (CONTEXT-pinned D-02, kept verbatim): visible "Notifications are off" plus the underlined "Turn on". "Turn on" is not a bare control: it is the tail of one `Role.Button` row whose sentence supplies the noun, and the row's `onClickLabel` "Open notification settings" (Android) names the verb and noun for TalkBack. No deviation from D-02 |
 | Quiet refresh failure | Snackbar "Couldn't refresh. Check your connection and try again." (carried) |
 | Row a11y | `onClickLabel` "Open notification" (Android) |
 | Write Review headline | "How was your experience with {name}?" (iOS, one line break removed); fallback name "your expert" (Android) |
@@ -367,7 +367,7 @@ All new strings go into new `res/values/strings_notifications.xml`, `strings_wri
 | Already submitted banner | Title "You've already reviewed this session"; hint "Your rating and comment are shown below." (Android; replaces the iOS text that said submitting again would update the review) |
 | Read-only empty comment | "No written comment." (Android) |
 | Write Review load error | Heading "Couldn't load review" (iOS); body = server message, else the network line; action "Retry" |
-| Submit error | Dialog title "Couldn't submit review" (iOS); button "OK"; body = server message, else "Check your connection and try again.", else "Something went wrong. Please try again." |
+| Submit error | Dialog title "Couldn't submit review" (iOS); dismiss button "Edit review" (Android; overrides the `AuthErrorDialog` default "OK" through the new `confirmLabel` parameter; it names what the user does next, since the form stays open); body = server message, else "Check your connection and try again.", else "Something went wrong. Please try again." |
 | Submit success | Snackbar "Thanks for your review" (CONTEXT-pinned) |
 | Feedback block | Header "Your feedback" (iOS "YOUR FEEDBACK", sentence-cased); a11y "Rated {n} out of 5" |
 | State descriptions (a11y) | "Submitting", "Loading" |
@@ -520,6 +520,7 @@ Open items:
 - [ ] Permission-off row shown only when notifications are disabled, opens `ACTION_APP_NOTIFICATION_SETTINGS`, clears on resume
 - [ ] Write Review: header (avatar, headline, subtitle, topic), five-star input (default 5), review field (1000 cap, counter from 800), pinned Submit footer, read-only already-submitted state with banner, skeleton / error, `AuthErrorDialog` on failure
 - [ ] Submit success pops, the screen below reloads, and "Thanks for your review" shows
+- [ ] `AuthErrorDialog` gets the optional `confirmLabel` parameter (default "OK", existing callers unchanged); Write Review's submit-error dialog passes "Edit review"
 - [ ] Booking Summary: Feedback block (stars plus comment) and Leave a review button (completed, no known review), review context fetched quietly
 - [ ] Past card: outlined "Leave a review" pill for completed bookings, hidden for reviewed ids, own tap target
 - [ ] `NotificationChannels` with the five ids, names, descriptions and importance, created at app start; the ids match the backend `push.js` mapping exactly
