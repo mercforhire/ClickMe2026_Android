@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.notifications
 
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -41,13 +42,30 @@ sealed interface NotificationTime {
     ) : NotificationTime
 }
 
-/** The relative time of a row created at [createdAt], seen at [now] in [zone]. */
-@Suppress("UNUSED_PARAMETER")
+/**
+ * The relative time of a row created at [createdAt], seen at [now] in [zone]: under 60 s JustNow, under 60 min
+ * minutes, the rest of today hours, the previous calendar day Yesterday, else the date. A future [createdAt] (clock
+ * skew) counts as JustNow.
+ */
 fun notificationTime(
     createdAt: Instant,
     now: Instant,
     zone: ZoneId,
-): NotificationTime = NotificationTime.JustNow
+): NotificationTime {
+    val seconds = maxOf(0L, Duration.between(createdAt, now).seconds)
+    if (seconds < SECONDS_PER_MINUTE) return NotificationTime.JustNow
+    if (seconds < SECONDS_PER_HOUR) return NotificationTime.MinutesAgo((seconds / SECONDS_PER_MINUTE).toInt())
+    val created = createdAt.atZone(zone)
+    val today = now.atZone(zone).toLocalDate()
+    return when (created.toLocalDate()) {
+        today -> NotificationTime.HoursAgo(maxOf(1L, seconds / SECONDS_PER_HOUR).toInt())
+        today.minusDays(1) -> NotificationTime.Yesterday(created.toLocalTime())
+        else -> NotificationTime.Earlier(created.toLocalDate(), created.toLocalTime())
+    }
+}
+
+private const val SECONDS_PER_MINUTE = 60L
+private const val SECONDS_PER_HOUR = 3600L
 
 /**
  * Groups [rows] by the local calendar day of `createdAt` into Today, Yesterday and Earlier, in that order.
