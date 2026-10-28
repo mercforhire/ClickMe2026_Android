@@ -3,6 +3,8 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewPrefillDto
 import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusLabel
@@ -47,6 +49,10 @@ class BookingSummaryViewModelTest {
     private val now = clock.instant()
 
     private val reviewLaunch = ReviewLaunchRequest()
+
+    init {
+        api.reviewContextHandler = { ReviewContextData() }
+    }
 
     private fun vm(key: BookingSummaryKey = BookingSummaryKey("b1")) =
         BookingSummaryViewModel(
@@ -161,7 +167,10 @@ class BookingSummaryViewModelTest {
             runCurrent()
             assertEquals(listOf("b1"), ids)
             assertEquals(
-                BookingSummaryUiState.Loaded(bookingDetail(status = "completed").toSummaryDetails(now)),
+                BookingSummaryUiState.Loaded(
+                    bookingDetail(status = "completed").toSummaryDetails(now),
+                    SummaryReview.NotSubmitted,
+                ),
                 vm.uiState.value,
             )
         }
@@ -247,6 +256,77 @@ class BookingSummaryViewModelTest {
         }
 
     // ---- Leave a review (D-18, D-19) ----
+
+    private fun BookingSummaryViewModel.review() = (uiState.value as BookingSummaryUiState.Loaded).review
+
+    @Test
+    fun completedLoadsReviewContextQuietly() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            api.reviewContextHandler = {
+                ReviewContextData(hasSubmitted = true, prefill = ReviewPrefillDto(4, "Helpful"))
+            }
+            val vm = vm()
+            runCurrent()
+            assertEquals(listOf("b1"), api.reviewContextRequests)
+            assertEquals(SummaryReview.Submitted(4, "Helpful"), vm.review())
+
+            api.reviewContextHandler = { ReviewContextData(hasSubmitted = false) }
+            vm.refreshQuietly()
+            runCurrent()
+            assertEquals(SummaryReview.NotSubmitted, vm.review())
+            assertEquals(2, api.reviewContextRequests.size)
+        }
+
+    @Test
+    fun submittedWithoutPrefillShowsFiveStarsAndBlankCommentIsDropped() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            api.reviewContextHandler = { ReviewContextData(hasSubmitted = true) }
+            val vm = vm()
+            runCurrent()
+            assertEquals(SummaryReview.Submitted(5, null), vm.review())
+
+            api.reviewContextHandler = {
+                ReviewContextData(hasSubmitted = true, prefill = ReviewPrefillDto(3, "  "))
+            }
+            vm.refreshQuietly()
+            runCurrent()
+            assertEquals(SummaryReview.Submitted(3, null), vm.review())
+        }
+
+    @Test
+    fun reviewContextFailureIsSilentAndLeavesUnknown() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            api.reviewContextHandler = { throw IOException("offline") }
+            val vm = vm()
+            runCurrent()
+            val loaded = vm.uiState.value as BookingSummaryUiState.Loaded
+            assertEquals(SummaryReview.Unknown, loaded.review)
+            assertTrue(loaded.showLeaveReview(emptySet()))
+        }
+
+    @Test
+    fun nonCompletedBookingsMakeNoReviewContextCall() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "cancelled") }
+            val vm = vm()
+            runCurrent()
+            assertTrue(api.reviewContextRequests.isEmpty())
+            val loaded = vm.uiState.value as BookingSummaryUiState.Loaded
+            assertEquals(SummaryReview.Unknown, loaded.review)
+            assertEquals(false, loaded.showLeaveReview(emptySet()))
+        }
+
+    @Test
+    fun leaveReviewVisibilityFollowsTheReviewAndTheSessionSet() {
+        val completed = BookingSummaryUiState.Loaded(bookingDetail(status = "completed").toSummaryDetails(now))
+        assertTrue(completed.showLeaveReview(emptySet()))
+        assertEquals(false, completed.showLeaveReview(setOf("b1")))
+        assertEquals(false, completed.copy(review = SummaryReview.Submitted(5, null)).showLeaveReview(emptySet()))
+        assertEquals(false, SummaryReview.Submitted(5, "secret").toString().contains("secret"))
+    }
 
     @Test
     fun leaveReviewKeyCarriesSeedAndOrigin() =

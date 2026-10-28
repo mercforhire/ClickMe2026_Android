@@ -60,6 +60,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryFeedback
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.LeaveReviewButton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
@@ -67,7 +68,6 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
@@ -105,6 +105,7 @@ fun BookingSummaryScreen(
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     val reviewThanks by viewModel.reviewThanks.collectAsStateWithLifecycle()
+    val reviewedIds by viewModel.reviewedBookingIds.collectAsStateWithLifecycle()
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
@@ -125,7 +126,7 @@ fun BookingSummaryScreen(
         onOpenPaymentMethods = onOpenPaymentMethods,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
         modifier = modifier,
-        showLeaveReview = (state as? BookingSummaryUiState.Loaded)?.details?.status?.raw == STATUS_COMPLETED,
+        reviewedIds = reviewedIds,
         reviewThanks = reviewThanks,
         onReviewThanksConsumed = viewModel::consumeReviewThanks,
         onLeaveReview = { viewModel.leaveReviewKey()?.let(onLeaveReview) },
@@ -154,7 +155,7 @@ fun BookingSummaryContent(
     onOpenPaymentMethods: () -> Unit,
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
-    showLeaveReview: Boolean = false,
+    reviewedIds: Set<String> = emptySet(),
     onLeaveReview: () -> Unit = {},
     reviewThanks: Boolean = false,
     onReviewThanksConsumed: () -> Unit = {},
@@ -225,7 +226,8 @@ fun BookingSummaryContent(
                     onBookAgain = onBookAgain,
                     onAccept = onAccept,
                     onDecline = onDecline,
-                    showLeaveReview = showLeaveReview,
+                    review = state.review,
+                    showLeaveReview = state.showLeaveReview(reviewedIds),
                     onLeaveReview = onLeaveReview,
                     messageBusy = messageBusy,
                     onMessage = onMessage,
@@ -274,6 +276,7 @@ private fun LoadedBody(
     onBookAgain: (BookingKey) -> Unit,
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
+    review: SummaryReview,
     showLeaveReview: Boolean,
     onLeaveReview: () -> Unit,
     messageBusy: Boolean,
@@ -317,6 +320,7 @@ private fun LoadedBody(
             }
         }
         BookingSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
+        (review as? SummaryReview.Submitted)?.let { BookingSummaryFeedback(it.rating, it.comment) }
         details.bookAgain?.let { seed ->
             PressScaleButton(
                 onClick = { onBookAgain(seed.toBookingKey(expertFallback)) },
@@ -332,7 +336,13 @@ private fun LoadedBody(
                 Text(stringResource(R.string.booking_summary_book_again))
             }
         }
-        if (showLeaveReview) {
+        // 200 ms fade and shrink once a submitted review hides the button (UI-SPEC Motion).
+        AnimatedVisibility(
+            visible = showLeaveReview,
+            exit =
+                fadeOut(tween(Motion.STRENGTH_METER_VISIBILITY_MS)) +
+                    shrinkVertically(tween(Motion.STRENGTH_METER_VISIBILITY_MS)),
+        ) {
             LeaveReviewButton(onClick = onLeaveReview, modifier = Modifier.padding(top = Spacing.md))
         }
         MessageButton(

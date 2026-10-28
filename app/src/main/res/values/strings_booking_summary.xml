@@ -9,5 +9,6 @@
     <string name="booking_summary_refunded">Refunded</string>
     <string name="booking_summary_book_again">Book Again</string>
     <string name="booking_summary_leave_review">Leave a review</string>
+    <string name="booking_summary_feedback_header">Your feedback</string>
     <string name="booking_summary_date_time">%1$s, %2$s</string>
 </resources>

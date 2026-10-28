@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBoo
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponseController
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
@@ -21,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 
@@ -142,6 +144,32 @@ class BookingSummaryViewModel
 
         fun consumeRescheduleNotice() = rescheduleController.consumeNotice()
 
+        /**
+         * Reads the review context of a completed booking (D-18). A failure is silent: the previous value stays
+         * (Unknown on a first load), so Leave a review is shown and Write Review resolves the true state.
+         */
+        private suspend fun loadReviewContext(details: BookingSummaryDetails) {
+            if (details.status.raw != STATUS_COMPLETED) {
+                _uiState.update { (it as? BookingSummaryUiState.Loaded)?.copy(review = SummaryReview.Unknown) ?: it }
+                return
+            }
+            val review =
+                try {
+                    val context = reviews.context(bookingId)
+                    when {
+                        !context.hasSubmitted -> SummaryReview.NotSubmitted
+                        else ->
+                            SummaryReview.Submitted(
+                                rating = context.prefill?.rating ?: DEFAULT_RATING,
+                                comment = context.prefill?.comment?.takeIf(String::isNotBlank),
+                            )
+                    }
+                } catch (_: ApiException) {
+                    return
+                }
+            _uiState.update { (it as? BookingSummaryUiState.Loaded)?.copy(review = review) ?: it }
+        }
+
         private fun startLoad(quiet: Boolean): Job {
             loadJob?.cancel()
             loadIsCurrent = true
@@ -150,12 +178,20 @@ class BookingSummaryViewModel
                 viewModelScope.launch {
                     try {
                         val detail = repository.detail(bookingId)
-                        _uiState.value = BookingSummaryUiState.Loaded(detail.toSummaryDetails(clock.instant()))
+                        val details = detail.toSummaryDetails(clock.instant())
+                        val previous = (_uiState.value as? BookingSummaryUiState.Loaded)?.review
+                        _uiState.value = BookingSummaryUiState.Loaded(details, previous ?: SummaryReview.Unknown)
+                        loadReviewContext(details)
                     } catch (e: ApiException) {
                         if (!quiet) _uiState.value = BookingSummaryUiState.Failed(e.toSectionMessage())
                     }
                 }
             loadJob = job
             return job
+        }
+
+        private companion object {
+            /** A submitted review whose prefill is missing is shown as five stars, defensively (D-18). */
+            const val DEFAULT_RATING = 5
         }
     }
