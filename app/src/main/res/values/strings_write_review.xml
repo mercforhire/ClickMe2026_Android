@@ -8,6 +8,12 @@
     <string name="write_review_subtitle">Your feedback helps other users and experts.</string>
     <string name="write_review_placeholder">Share your experience…</string>
     <string name="write_review_submit">Submit review</string>
+    <string name="write_review_field_label">Written review, optional</string>
+    <string name="write_review_counter">%1$d/%2$d</string>
+    <string name="write_review_submitted_title">You\'ve already reviewed this session</string>
+    <string name="write_review_submitted_hint">Your rating and comment are shown below.</string>
+    <string name="write_review_no_comment">No written comment.</string>
+    <string name="review_rated_out_of_five">Rated %1$d out of 5</string>
     <plurals name="review_star_label">
         <item quantity="one">%d star</item>
         <item quantity="other">%d stars</item>

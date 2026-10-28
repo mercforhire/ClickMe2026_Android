@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.AlreadySubmittedBanner
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.ReadOnlyReviewComment
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.ReviewStarInput
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.ReviewTextField
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.WriteReviewFooter
@@ -94,16 +95,22 @@ fun WriteReviewContent(
                     verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                 ) {
                     WriteReviewHeader(header = state.header)
+                    if (state.readOnly) AlreadySubmittedBanner()
                     ReviewStarInput(
                         rating = state.rating,
+                        readOnly = state.readOnly,
                         enabled = !state.submitting,
                         onSelect = onRatingSelected,
                     )
-                    Column(Modifier.fillMaxWidth()) {
+                    if (state.readOnly) {
+                        ReadOnlyReviewComment(comment = state.comment)
+                    } else {
                         ReviewTextField(
                             value = state.comment,
                             onValueChange = onCommentChanged,
                             enabled = !state.submitting,
+                            showCounter = state.showCounter,
+                            atCap = state.atCap,
                         )
                     }
                 }
