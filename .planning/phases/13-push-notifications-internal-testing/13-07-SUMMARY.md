@@ -17,6 +17,8 @@ actuals:
   tokens: 8000
   tasks: 3
   commits: 6
+plan_head_before: 6fa01f099efa3257b758f859ff491cd82e307b64
+plan_head_after: e0b1fdf9bc2a3e58c3efe8fcf9688d6f36216a34
 
 tech-stack:
   added: []
