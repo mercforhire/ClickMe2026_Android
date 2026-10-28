@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.screens.push.PushAudience
 import com.uptrendinvestments.clickmeapp.screens.push.PushDestination
@@ -47,6 +48,46 @@ class MainActivityPushIntentTest {
         val call = Intent().putExtra(CallNotificationFactory.EXTRA_EXPAND_CALL, true)
         assertNull(call.consumePushDestination())
         assertTrue(call.getBooleanExtra(CallNotificationFactory.EXTRA_EXPAND_CALL, false))
+    }
+
+    @Test
+    fun restoredActivityDoesNotReread() {
+        val fresh = Intent(Intent.ACTION_MAIN)
+        val fromHistory = Intent(Intent.ACTION_MAIN).addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
+
+        assertFalse(shouldReadLaunchPush(Bundle(), fresh))
+        assertFalse(shouldReadLaunchPush(null, fromHistory))
+        assertFalse(shouldReadLaunchPush(null, null))
+        assertTrue(shouldReadLaunchPush(null, fresh))
+    }
+
+    @Test
+    fun extrasConsumedOnce() {
+        val intent = Intent().putExtra("booking_id", BOOKING).putExtra("category", "booking")
+
+        assertEquals(PushDestination.BookingDetail(BOOKING, PushAudience.Either), intent.consumePushDestination())
+        assertNull(intent.consumePushDestination())
+    }
+
+    @Test
+    fun unknownCategoryOpensList() {
+        val promo = Intent().putExtra("category", "promo")
+        val badId = Intent().putExtra("booking_id", "not-a-uuid")
+
+        assertEquals(PushDestination.NotificationsList, promo.consumePushDestination())
+        assertEquals(PushDestination.NotificationsList, badId.consumePushDestination())
+    }
+
+    @Test
+    fun nonStringExtrasIgnored() {
+        assertNull(Intent().putExtra("booking_id", 42).consumePushDestination())
+    }
+
+    @Test
+    fun nullIntentPostsNothing() {
+        val intent: Intent? = null
+
+        assertNull(intent.consumePushDestination())
     }
 
     private companion object {

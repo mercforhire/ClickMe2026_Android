@@ -38,6 +38,42 @@ class PushMessageHandlerTest {
     }
 
     @Test
+    fun visibleThreadChatPushIsHidden() {
+        chatSession.onThreadShown(THREAD.uppercase())
+        val visible = push("category" to "message", "sub_category" to "new_message", "thread_id" to THREAD)
+        val other = push("category" to "message", "sub_category" to "new_message", "thread_id" to OTHER_THREAD)
+        val booking = push("category" to "booking", "booking_id" to BOOKING)
+
+        handler.onMessage(visible)
+        assertEquals(1L, launchRequest.arrivals.value)
+        assertEquals(emptyList<ForegroundPush>(), poster.posted)
+
+        handler.onMessage(other)
+        handler.onMessage(booking)
+        assertEquals(listOf(other, booking), poster.posted)
+        assertEquals(3L, launchRequest.arrivals.value)
+    }
+
+    @Test
+    fun legacyChatPushIsAlsoHidden() {
+        chatSession.onThreadShown(THREAD)
+
+        handler.onMessage(push("event_type" to "NEW_MESSAGE", "thread_id" to THREAD))
+
+        assertEquals(emptyList<ForegroundPush>(), poster.posted)
+        assertEquals(1L, launchRequest.arrivals.value)
+    }
+
+    @Test
+    fun chatPushWithoutOpenThreadOrThreadIdStillPosts() {
+        val noThreadId = push("category" to "message")
+        handler.onMessage(noThreadId)
+        handler.onMessage(push("category" to "message", "thread_id" to THREAD))
+
+        assertEquals(2, poster.posted.size)
+    }
+
+    @Test
     fun toStringNeverPrintsContent() {
         val secret = push("category" to "message", "booking_id" to BOOKING).copy(title = "Secret", body = "Hidden")
 
@@ -46,5 +82,7 @@ class PushMessageHandlerTest {
 
     private companion object {
         const val BOOKING = "11111111-1111-4111-8111-111111111111"
+        const val THREAD = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        const val OTHER_THREAD = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     }
 }

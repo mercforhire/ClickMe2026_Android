@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.services.push
 
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
+import com.uptrendinvestments.clickmeapp.screens.push.PushEvent
 import com.uptrendinvestments.clickmeapp.screens.push.PushLaunchRequest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,8 +42,22 @@ class PushMessageHandler
         private val chatSession: ChatSessionState,
         private val poster: PushNotificationPoster,
     ) {
+        /**
+         * Every push ticks the list first (D-12). A chat push for the thread on screen is then dropped (D-13): the
+         * realtime message already shows in the open thread. This differs from iOS, which presents it; Android posts
+         * nothing so a visible conversation does not also raise a heads-up for itself.
+         */
         fun onMessage(push: ForegroundPush) {
             launchRequest.onForegroundArrival()
+            val event = PushEvent.from(push.data)
+            val openThread = chatSession.openThreadId.value
+            val threadId = event?.threadId
+            if (event?.category == "message" &&
+                threadId != null &&
+                threadId.equals(openThread, ignoreCase = true)
+            ) {
+                return
+            }
             poster.post(push)
         }
     }
