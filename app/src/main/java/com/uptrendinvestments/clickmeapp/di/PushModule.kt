@@ -14,6 +14,8 @@ import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
 import com.uptrendinvestments.clickmeapp.managers.PushTokenSource
 import com.uptrendinvestments.clickmeapp.managers.SessionDataCleaner
 import com.uptrendinvestments.clickmeapp.screens.push.PushLaunchRequest
+import com.uptrendinvestments.clickmeapp.services.push.PushNotificationPoster
+import com.uptrendinvestments.clickmeapp.services.push.SystemPushNotificationPoster
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -43,6 +45,9 @@ abstract class PushModule {
 
     @Binds
     abstract fun bindPushTokenSource(impl: FirebasePushTokenSource): PushTokenSource
+
+    @Binds
+    abstract fun bindPushNotificationPoster(impl: SystemPushNotificationPoster): PushNotificationPoster
 
     companion object {
         @Provides

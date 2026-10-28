@@ -3,6 +3,10 @@
     <!-- Must equal NotificationChannels.GENERAL. FCM posts system-displayed pushes with no channel id here. -->
     <string name="default_notification_channel_id" translatable="false">general</string>
 
+    <string name="push_fallback_title">ClickMe</string>
+    <string name="push_public_title">ClickMe</string>
+    <string name="push_public_text">You have a new notification</string>
+
     <string name="push_channel_bookings_name">Bookings</string>
     <string name="push_channel_bookings_description">Requests, confirmations, changes and cancellations for your bookings.</string>
     <string name="push_channel_sessions_name">Sessions</string>
