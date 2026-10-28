@@ -14,6 +14,12 @@
     <string name="write_review_submitted_hint">Your rating and comment are shown below.</string>
     <string name="write_review_no_comment">No written comment.</string>
     <string name="review_rated_out_of_five">Rated %1$d out of 5</string>
+    <string name="write_review_load_error_title">Couldn\'t load review</string>
+    <string name="write_review_submit_error_title">Couldn\'t submit review</string>
+    <string name="write_review_edit_review">Edit review</string>
+    <string name="write_review_submitting">Submitting</string>
+    <!-- Snackbar shown by Booking Summary and My Bookings after a successful submit (13-15, 13-18). -->
+    <string name="review_thanks_snackbar">Thanks for your review</string>
     <plurals name="review_star_label">
         <item quantity="one">%d star</item>
         <item quantity="other">%d stars</item>

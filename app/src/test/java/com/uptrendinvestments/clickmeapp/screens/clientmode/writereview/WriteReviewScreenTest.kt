@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.writereview
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -11,6 +13,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
@@ -30,6 +33,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.WRITE_REVIEW_INPUT_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.WRITE_REVIEW_SUBMITTED_BANNER_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.subviews.WRITE_REVIEW_SUBMIT_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.reviewContext
@@ -207,6 +211,67 @@ class WriteReviewScreenTest {
         setContent(ready.copy(header = ReviewHeader(null, null, null)))
         rule.onNodeWithText("How was your experience with your expert?").assertExists()
         rule.onNodeWithText("Algorithms").assertDoesNotExist()
+    }
+
+    @Test
+    fun loadingShowsSkeleton() {
+        setContent(WriteReviewUiState(load = WriteReviewLoad.Loading))
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun failedShowsRetry() {
+        val failed =
+            ready.copy(load = WriteReviewLoad.Failed(FieldError.Text("Booking not found or not completed.")))
+        val calls = setContent(failed)
+        rule.onNodeWithText("Couldn't load review").assertExists()
+        rule.onNodeWithText("Booking not found or not completed.").assertExists()
+        rule.onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG).assertDoesNotExist()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, calls.retries)
+    }
+
+    @Test
+    fun submittingLocksForm() {
+        var dispatcher: OnBackPressedDispatcher? = null
+        val calls = Calls()
+        rule.setContent {
+            ClickMeTheme {
+                dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                Content(ready.copy(submitting = true), calls)
+            }
+        }
+        rule
+            .onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Submitting"))
+        rule.onNodeWithText("Submit review").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Back").assertIsNotEnabled()
+        rule.onNodeWithContentDescription("3 stars").assertIsNotEnabled()
+        rule.onNodeWithTag(WRITE_REVIEW_INPUT_TAG).assertIsNotEnabled()
+        // A repeat tap on the in-flight button does not submit again.
+        rule.onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG).performClick()
+        assertEquals(0, calls.submits)
+        // System Back is swallowed by the in-flight handler.
+        rule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        assertEquals(0, calls.back)
+    }
+
+    @Test
+    fun submitErrorDialog() {
+        val failed =
+            ready.copy(
+                rating = 2,
+                comment = "Needs work",
+                submitError = FieldError.Text("Validation failed"),
+            )
+        val calls = setContent(failed)
+        rule.onNodeWithText("Couldn't submit review").assertExists()
+        rule.onNodeWithText("Validation failed").assertExists()
+        rule.onNodeWithText("OK").assertDoesNotExist()
+        rule.onNodeWithText("Needs work").assertExists()
+        rule.onNodeWithText("Edit review").performClick()
+        assertEquals(1, calls.dismissed)
     }
 
     @Test

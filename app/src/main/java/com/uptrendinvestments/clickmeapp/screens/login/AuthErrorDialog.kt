@@ -14,6 +14,7 @@ import com.uptrendinvestments.clickmeapp.R
  * [title] defaults to "Something went wrong"; callers may pass the UI-SPEC titles such as
  * "Couldn't create account" or "Couldn't save". The scrim tap, Back and OK all call [onDismiss]. [selectable] makes
  * the message copyable (the booking dialog's payment reference, 07-13); the default keeps every caller unchanged.
+ * [confirmLabel] renames the single button (Write Review uses "Edit review"); the default is "OK".
  */
 @Composable
 fun AuthErrorDialog(
@@ -21,6 +22,7 @@ fun AuthErrorDialog(
     onDismiss: () -> Unit,
     title: String = stringResource(R.string.auth_dialog_title),
     selectable: Boolean = false,
+    confirmLabel: String = stringResource(R.string.auth_dialog_ok),
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -45,7 +47,7 @@ fun AuthErrorDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = stringResource(R.string.auth_dialog_ok),
+                    text = confirmLabel,
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
