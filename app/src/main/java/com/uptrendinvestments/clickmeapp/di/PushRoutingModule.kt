@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp.di
 
 import com.uptrendinvestments.clickmeapp.managers.SessionDataCleaner
+import com.uptrendinvestments.clickmeapp.screens.push.ClientBookingProbe
+import com.uptrendinvestments.clickmeapp.screens.push.RepositoryClientBookingProbe
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import dagger.Binds
 import dagger.Module
@@ -18,4 +20,7 @@ abstract class PushRoutingModule {
     @Binds
     @IntoSet
     abstract fun bindShellRouteCleaner(impl: ShellRouteRequest): SessionDataCleaner
+
+    @Binds
+    abstract fun bindClientBookingProbe(impl: RepositoryClientBookingProbe): ClientBookingProbe
 }
