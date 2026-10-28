@@ -23,6 +23,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientScree
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
+import com.uptrendinvestments.clickmeapp.screens.push.PushRoutingHost
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
 /**
@@ -31,7 +32,8 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Motion
  *
  * The route switch is wrapped in [CallOverlayHost], the root call overlay: the expanded call and the pill sit
  * above every route and survive tab changes and the Client/Expert switch because the call lives in `CallCenter`
- * (D-08, CALL-04). The suspended-account dialog stays outside it.
+ * (D-08, CALL-04). The suspended-account dialog stays outside it. The root push router lives here too, because a
+ * tapped notification may need a mode switch before any shell exists (RESEARCH F-7).
  */
 @Composable
 fun ClickMeApp(
@@ -41,6 +43,7 @@ fun ClickMeApp(
     val route by appViewModel.route.collectAsStateWithLifecycle()
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    PushRoutingHost(route = route, onSwitchMode = appViewModel::switchMode)
     // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
     CallOverlayHost {
         AnimatedContent(
