@@ -62,8 +62,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingR
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.writeReviewEntries
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
+import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsEntries
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
@@ -201,6 +203,8 @@ fun HomeClientScreen(
                         PaymentMethodsScreen(viewModel = hiltViewModel(), onBack = onBack)
                     }
                     chatEntries(navigator, AppMode.Client)
+                    notificationsEntries(navigator, AppMode.Client)
+                    writeReviewEntries(navigator)
                 },
                 pendingChatThread = pendingChatThread,
                 onConsumeChatThread = chatLaunch::consumeThread,

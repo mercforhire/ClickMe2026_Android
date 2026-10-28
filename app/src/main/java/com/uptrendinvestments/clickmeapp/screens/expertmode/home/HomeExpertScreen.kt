@@ -59,6 +59,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicE
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorViewModel
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRoute
+import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsEntries
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
@@ -133,6 +134,7 @@ fun HomeExpertScreen(
             expertBookingSummaryEntries(navigator)
             expertCancelEntries(navigator)
             chatEntries(navigator, AppMode.Expert)
+            notificationsEntries(navigator, AppMode.Expert)
         },
         pendingChatThread = pendingChatThread,
         onConsumeChatThread = chatLaunch::consumeThread,

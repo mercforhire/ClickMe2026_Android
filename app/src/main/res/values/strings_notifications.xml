@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phase 13 UI-SPEC Copywriting Contract: Notifications list. -->
+    <string name="notifications_title">Notifications</string>
+</resources>

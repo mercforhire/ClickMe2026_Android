@@ -37,21 +37,29 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
+import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
+import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsKey
+import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsOrigin
+import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsKeyFor
+import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsRootFor
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -978,6 +986,8 @@ class HomeShellsTest {
         entry<ExpertBookingSummaryKey> { Text("expert-summary-stub:${it.bookingId}") }
         entry<IncomingRequestsKey> { Text("incoming-stub") }
         entry<RequestDecisionKey> { Text("decision-stub:${it.requestId}") }
+        entry<NotificationsKey>(metadata = BottomBar.hidden()) { Text("notifications-stub:${it.origin}") }
+        entry<WriteReviewKey>(metadata = BottomBar.hidden()) { Text("write-review-stub:${it.bookingId}") }
     }
 
     @Test
@@ -1026,5 +1036,66 @@ class HomeShellsTest {
         composeRule.onNodeWithText("expert-summary-stub:B1").assertExists()
         composeRule.onNode(tab("Bookings")).assertIsSelected()
         assertNull(routes.pending.value)
+    }
+
+    @Test
+    fun expertRequestChainBacksToListThenDashboard() {
+        val routes = ShellRouteRequest()
+        setExpert(showDebug = false, shellRoutes = routes)
+        routes.post(
+            ShellRoute(AppMode.Expert, DashboardRoot, listOf(IncomingRequestsKey, RequestDecisionKey("r1"))),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("decision-stub:r1").assertExists()
+        pressSystemBack()
+        composeRule.onNodeWithText("decision-stub:r1").assertDoesNotExist()
+        composeRule.onNodeWithText("incoming-stub").assertExists()
+        pressSystemBack()
+        composeRule.onNodeWithText("incoming-stub").assertDoesNotExist()
+        composeRule.onNode(tab("Dashboard")).assertIsSelected()
+        composeRule.onNodeWithText("Nothing here yet.").assertExists()
+    }
+
+    @Test
+    fun notificationsKeysDifferPerStack() {
+        assertNotEquals(
+            NotificationsKey(NotificationsOrigin.ClientExplore),
+            NotificationsKey(NotificationsOrigin.ExpertDashboard),
+        )
+        assertEquals(NotificationsOrigin.ClientExplore, notificationsKeyFor(AppMode.Client).origin)
+        assertEquals(NotificationsOrigin.ExpertDashboard, notificationsKeyFor(AppMode.Expert).origin)
+        assertEquals(ExploreRoot, notificationsRootFor(AppMode.Client))
+        assertEquals(DashboardRoot, notificationsRootFor(AppMode.Expert))
+    }
+
+    @Test
+    fun notificationsRouteOnExploreHidesBottomBar() {
+        val routes = ShellRouteRequest()
+        setClient(showDebug = false, shellRoutes = routes)
+        routes.post(ShellRoute(AppMode.Client, ExploreRoot, listOf(notificationsKeyFor(AppMode.Client))))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("notifications-stub:ClientExplore").assertExists()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+        pressSystemBack()
+        composeRule.onNodeWithText("notifications-stub:ClientExplore").assertDoesNotExist()
+        composeRule.onNode(tab("Explore")).assertIsSelected()
+    }
+
+    @Test
+    fun writeReviewRouteHidesBottomBarOnTheBookingsStack() {
+        val routes = ShellRouteRequest()
+        setClient(showDebug = false, shellRoutes = routes)
+        routes.post(
+            ShellRoute(
+                AppMode.Client,
+                ClientBookingsRoot,
+                listOf(BookingSummaryKey("B1"), WriteReviewKey("B1")),
+            ),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("write-review-stub:B1").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        pressSystemBack()
+        composeRule.onNodeWithText("summary-stub:B1").assertExists()
     }
 }
