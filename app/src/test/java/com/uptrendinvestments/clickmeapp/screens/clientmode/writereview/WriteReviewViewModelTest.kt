@@ -1,10 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.writereview
 
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewSubmitted
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.reviewContext
@@ -19,6 +21,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WriteReviewViewModelTest {
@@ -236,6 +239,117 @@ class WriteReviewViewModelTest {
             assertTrue(api.submittedReviews.isEmpty())
             assertFalse(vm.uiState.value.submitted)
             assertTrue(launchRequest.reviewedBookingIds.value.isEmpty())
+        }
+
+    @Test
+    fun contextFailureThenRetry() =
+        runTest(main.testDispatcher) {
+            api.reviewContextHandler = {
+                throw api.httpError(
+                    404,
+                    """{"status":"error","code":"NOT_FOUND","message":"Booking not found or not completed."}""",
+                )
+            }
+            val vm = vm()
+            runCurrent()
+            assertEquals(
+                WriteReviewLoad.Failed(FieldError.Text("Booking not found or not completed.")),
+                vm.uiState.value.load,
+            )
+            api.reviewContextHandler = { throw IOException("offline") }
+            vm.retry()
+            runCurrent()
+            assertEquals(WriteReviewLoad.Failed(FieldError.Res(R.string.login_error_network)), vm.uiState.value.load)
+            api.reviewContextHandler = { reviewContext() }
+            vm.retry()
+            runCurrent()
+            assertEquals(WriteReviewLoad.Ready, vm.uiState.value.load)
+        }
+
+    @Test
+    fun submitServerErrorKeepsForm() =
+        runTest(main.testDispatcher) {
+            api.submitReviewHandler = { _, _ ->
+                throw api.httpError(
+                    422,
+                    """{"status":"error","code":"VALIDATION_ERROR","message":"Validation failed"}""",
+                )
+            }
+            val vm = vm()
+            runCurrent()
+            vm.onRatingSelected(2)
+            vm.onCommentChanged("Hello")
+            vm.submit()
+            runCurrent()
+            val state = vm.uiState.value
+            assertEquals(FieldError.Text("Validation failed"), state.submitError)
+            assertFalse(state.submitting)
+            assertEquals(2, state.rating)
+            assertEquals("Hello", state.comment)
+            assertFalse(state.submitted)
+            assertNull(launchRequest.summaryReviewed.pending.value)
+            assertTrue(launchRequest.reviewedBookingIds.value.isEmpty())
+        }
+
+    @Test
+    fun submitNetworkError() =
+        runTest(main.testDispatcher) {
+            api.submitReviewHandler = { _, _ -> throw IOException("offline") }
+            val vm = vm()
+            runCurrent()
+            vm.submit()
+            runCurrent()
+            assertEquals(FieldError.Res(R.string.login_error_network), vm.uiState.value.submitError)
+        }
+
+    @Test
+    fun submitErrorWithoutMessageUsesGenericCopy() =
+        runTest(main.testDispatcher) {
+            api.submitReviewHandler = { _, _ -> throw api.httpError(500, "{}") }
+            val vm = vm()
+            runCurrent()
+            vm.submit()
+            runCurrent()
+            assertEquals(FieldError.Res(R.string.write_review_error_generic), vm.uiState.value.submitError)
+            api.submitReviewHandler = { _, _ -> throw IllegalStateException("bad payload") }
+            vm.dismissSubmitError()
+            vm.submit()
+            runCurrent()
+            assertEquals(FieldError.Res(R.string.write_review_error_generic), vm.uiState.value.submitError)
+        }
+
+    @Test
+    fun suspendedShowsNoLocalDialog() =
+        runTest(main.testDispatcher) {
+            api.submitReviewHandler = { _, _ ->
+                throw api.httpError(
+                    403,
+                    """{"status":"error","code":"ACCOUNT_SUSPENDED","message":"Account suspended."}""",
+                )
+            }
+            val vm = vm()
+            runCurrent()
+            vm.submit()
+            runCurrent()
+            assertNull(vm.uiState.value.submitError)
+            assertFalse(vm.uiState.value.submitting)
+            assertFalse(vm.uiState.value.submitted)
+        }
+
+    @Test
+    fun dismissClearsTheErrorAndFormStaysEditable() =
+        runTest(main.testDispatcher) {
+            api.submitReviewHandler = { _, _ -> throw api.httpError(500, "{}") }
+            val vm = vm()
+            runCurrent()
+            vm.submit()
+            runCurrent()
+            vm.dismissSubmitError()
+            assertNull(vm.uiState.value.submitError)
+            vm.onRatingSelected(1)
+            vm.onCommentChanged("again")
+            assertEquals(1, vm.uiState.value.rating)
+            assertEquals("again", vm.uiState.value.comment)
         }
 
     @Test

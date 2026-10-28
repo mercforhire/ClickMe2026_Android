@@ -3,10 +3,15 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.writereview
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository.Companion.RATING_MAX
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository.Companion.RATING_MIN
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -47,9 +52,21 @@ class WriteReviewViewModel
             load()
         }
 
+        /** Loads the review context again after a failure. */
+        fun retry() {
+            load()
+        }
+
         private fun load() {
+            _uiState.update { it.copy(load = WriteReviewLoad.Loading) }
             viewModelScope.launch {
-                val context = repository.context(key.bookingId)
+                val context =
+                    try {
+                        repository.context(key.bookingId)
+                    } catch (e: ApiException) {
+                        _uiState.update { it.copy(load = WriteReviewLoad.Failed(e.toSectionMessage())) }
+                        return@launch
+                    }
                 val readOnly = context.hasSubmitted
                 val rating =
                     if (readOnly) {
@@ -105,13 +122,39 @@ class WriteReviewViewModel
         fun submit() {
             if (!isEditable()) return
             val state = _uiState.value
-            _uiState.update { it.copy(submitting = true) }
+            _uiState.update { it.copy(submitting = true, submitError = null) }
             viewModelScope.launch {
-                repository.submit(key.bookingId, state.rating, state.comment)
+                try {
+                    repository.submit(key.bookingId, state.rating, state.comment)
+                } catch (e: ApiException) {
+                    // The form stays intact and editable; only the dialog message changes.
+                    _uiState.update { it.copy(submitting = false, submitError = e.toSubmitError()) }
+                    return@launch
+                }
                 launchRequest.onSubmitted(key.bookingId, key.opener)
                 _uiState.update { it.copy(submitting = false, submitted = true) }
             }
         }
+
+        /** Closes the submit error dialog. */
+        fun dismissSubmitError() {
+            _uiState.update { it.copy(submitError = null) }
+        }
+
+        /**
+         * The server message, else the connection line for a network failure, else the generic line. Null for
+         * ACCOUNT_SUSPENDED because the global suspended dialog owns it (Phase 2 D-08).
+         */
+        private fun ApiException.toSubmitError(): FieldError? =
+            when (this) {
+                is ApiException.Http ->
+                    when {
+                        code == ErrorCode.AccountSuspended -> null
+                        else -> userMessage?.let { FieldError.Text(it) } ?: genericError
+                    }
+                is ApiException.Network -> FieldError.Res(R.string.login_error_network)
+                is ApiException.Decoding -> genericError
+            }
 
         private fun isEditable(): Boolean {
             val state = _uiState.value
@@ -124,6 +167,7 @@ class WriteReviewViewModel
         }
 
         private companion object {
+            val genericError = FieldError.Res(R.string.write_review_error_generic)
             const val KEY_RATING = "rating"
             const val KEY_COMMENT = "comment"
         }

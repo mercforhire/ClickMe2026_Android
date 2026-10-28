@@ -2,4 +2,5 @@
 <resources>
     <!-- Phase 13 UI-SPEC Copywriting Contract: Write Review. -->
     <string name="write_review_title">Leave a Review</string>
+    <string name="write_review_error_generic">Something went wrong. Please try again.</string>
 </resources>
