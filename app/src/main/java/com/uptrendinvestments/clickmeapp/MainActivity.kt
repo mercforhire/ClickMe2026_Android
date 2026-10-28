@@ -12,6 +12,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.uptrendinvestments.clickmeapp.managers.CallCenter
+import com.uptrendinvestments.clickmeapp.screens.push.PushDestination
+import com.uptrendinvestments.clickmeapp.screens.push.PushEvent
+import com.uptrendinvestments.clickmeapp.screens.push.PushLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.push.PushRouter
 import com.uptrendinvestments.clickmeapp.services.call.CallNotificationFactory
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,7 +24,8 @@ import javax.inject.Inject
 
 /**
  * Single activity: splash hold, edge-to-edge, and the [ClickMeApp] route switch. `singleTop`, so tapping the
- * ongoing-call notification arrives in [onNewIntent] while running and in [onCreate] after a cold start.
+ * ongoing-call notification or a push notification arrives in [onNewIntent] while running and in [onCreate] after a
+ * cold start.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -28,6 +33,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var callCenter: CallCenter
+
+    @Inject
+    lateinit var pushLaunchRequest: PushLaunchRequest
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -49,6 +57,10 @@ class MainActivity : ComponentActivity() {
         }
         // Cold start from the notification (process alive after a task swipe, D-14).
         if (intent.consumeExpandCallExtra()) callCenter.expand()
+        // Cold start from a push tap, system-displayed or ours. Never on restore or a recents launch (Pitfall 1).
+        if (shouldReadLaunchPush(savedInstanceState, intent)) {
+            intent.consumePushDestination()?.let(pushLaunchRequest.destination::post)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -56,6 +68,8 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         // Warm start from the notification (D-10). `expand()` is a no-op without a live call (D-15).
         if (intent.consumeExpandCallExtra()) callCenter.expand()
+        // Warm start from a push tap (D-15): the newest tap wins in the pending slot.
+        intent.consumePushDestination()?.let(pushLaunchRequest.destination::post)
     }
 }
 
@@ -68,3 +82,31 @@ internal fun Intent?.consumeExpandCallExtra(): Boolean {
     removeExtra(CallNotificationFactory.EXTRA_EXPAND_CALL)
     return true
 }
+
+/**
+ * The destination a push-tap intent asks for, or null when this is not a push intent (a plain launcher open, the
+ * ongoing-call tap). The push keys are removed so a recreation of the activity does not route again.
+ *
+ * The activity is exported, so any app can start it with arbitrary extras: only String values of
+ * [PushEvent.PUSH_KEYS] are read (a non-String reads as null) and [PushEvent] validates every id (ASVS V5).
+ */
+internal fun Intent?.consumePushDestination(): PushDestination? {
+    if (this == null) return null
+    val data = PushEvent.PUSH_KEYS.associateWith { key -> extras?.getString(key) }
+    val event = PushEvent.from(data) ?: return null
+    PushEvent.PUSH_KEYS.forEach { removeExtra(it) }
+    return PushRouter.destinationOrList(event)
+}
+
+/**
+ * Whether `onCreate` should read the launch intent for a push. Rotation, process restore (non-null
+ * [savedInstanceState]) and a launch from recents (FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) replay the original intent,
+ * which would route the same tap again (Pitfall 1).
+ */
+internal fun shouldReadLaunchPush(
+    savedInstanceState: Bundle?,
+    intent: Intent?,
+): Boolean =
+    savedInstanceState == null &&
+        intent != null &&
+        intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0
