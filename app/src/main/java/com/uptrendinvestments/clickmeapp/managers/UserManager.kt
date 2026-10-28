@@ -76,6 +76,14 @@ class UserManager
         private val _hasSeenOnboarding = MutableStateFlow(false)
         val hasSeenOnboarding: StateFlow<Boolean> = _hasSeenOnboarding.asStateFlow()
 
+        private val _sessionStarts = MutableStateFlow(0)
+
+        /**
+         * Counts successful logins and signups in this process (not restores); drives the one-time notification
+         * prompt (Phase 13 D-01, iOS requestPushPermissionIfNeeded).
+         */
+        val sessionStarts: StateFlow<Int> = _sessionStarts.asStateFlow()
+
         /** True after a cached-path launch: `/me` and the profile still need a retry (D-01). */
         @Volatile
         private var meStale = false
@@ -177,6 +185,7 @@ class UserManager
                 setupCheckPending = false
                 // appScope, not the caller's scope: leaving the login screen must not cancel the refresh.
                 appScope.launch { bestEffort { refreshProfile() } }
+                _sessionStarts.value++
             }
         }
 

@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.managers
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.uptrendinvestments.clickmeapp.di.PushPrefs
@@ -33,8 +34,20 @@ class PushPreferences
             return result
         }
 
+        /**
+         * Whether the system notification prompt was already launched for this install. Not session data (D-02:
+         * never prompt again), so a logout or an account change leaves it set.
+         */
+        suspend fun notificationPromptAsked(): Boolean = dataStore.data.first()[NOTIFICATION_PROMPT_ASKED] ?: false
+
+        /** Records the prompt as asked; written before the prompt launches so a crash mid-prompt cannot repeat it. */
+        suspend fun markNotificationPromptAsked() {
+            dataStore.edit { it[NOTIFICATION_PROMPT_ASKED] = true }
+        }
+
         companion object {
             const val FILE_NAME = "clickme_push"
             private val DEVICE_ID = stringPreferencesKey("device_id")
+            private val NOTIFICATION_PROMPT_ASKED = booleanPreferencesKey("notification_prompt_asked")
         }
     }
