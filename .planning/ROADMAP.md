@@ -108,7 +108,7 @@ Plans:
 - [x] 02-06-PLAN.md — SecureTokenStore/EncryptedSharedPreferences, SessionEvents, bearer interceptor, ACCOUNT_SUSPENDED trap, single-flight TokenAuthenticator (FND-05, FND-06)
 - [x] 02-07-PLAN.md — Retrofit ClickMeApi (auth, /me, /user/profile, expert lookups), DataStore SessionStore, session Hilt module (FND-03, FND-07)
 - [x] 02-08-PLAN.md — Agora spike: microphone foreground service + join via POST /bookings/:id/join (FND-14 code)
-- [x] 02-09-PLAN.md — Stripe spike device run with the user and Phase 7 findings (FND-13, user checkpoint) (completed 2026-10-23)
+- [ ] 02-09-PLAN.md — Stripe spike device run with the user and Phase 7 findings (FND-13, user checkpoint) (attempted 2026-10-21 in 02-UAT tests 7-8: failed on the Stripe key mismatch; not executed)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

@@ -20,12 +20,12 @@ From the PRD's Week 1 items: project scaffolding, networking core, session/UserM
 
 - [x] **FND-01**: The project builds with Hilt, Retrofit + Moshi, OkHttp, coroutines, Coil and Navigation Compose. The dev and prod flavors both point at the production backend (`https://clickme-backend-production.up.railway.app/api/v1`). The Stripe publishable key and Agora App ID come from build config.
 - [x] **FND-02**: Lint and a baseline CI pipeline run on every push.
-- [ ] **FND-03**: The networking layer decodes snake_case JSON, ISO-8601 dates with microseconds, `{data: …}` response wrappers and page-based `PaginationMeta`.
-- [ ] **FND-04**: API errors in the `{status, code?, message}` envelope, the `errors[]` shape or the status-only shape are parsed into an `ErrorCode` enum of about 65 codes. Unknown codes map to null.
-- [ ] **FND-05**: Only authed paths carry the access token (port of `needAuthToken`). On expiry, a single-flight refresh runs (an OkHttp `Authenticator` guarded by a Mutex, so a refresh token is never reused), the request is retried once, and a failed refresh logs the user out.
-- [ ] **FND-06**: Any `403 ACCOUNT_SUSPENDED` response logs the user out and shows an explanatory message.
-- [ ] **FND-07**: Tokens persist in EncryptedSharedPreferences. The cached profile, `currentMode` and `hasSeenOnboarding` persist in DataStore. A returning user is auto-logged in on launch.
-- [ ] **FND-08**: User can log out. Logout clears the tokens, the cached profile and the onboarding flag.
+- [x] **FND-03**: The networking layer decodes snake_case JSON, ISO-8601 dates with microseconds, `{data: …}` response wrappers and page-based `PaginationMeta`.
+- [x] **FND-04**: API errors in the `{status, code?, message}` envelope, the `errors[]` shape or the status-only shape are parsed into an `ErrorCode` enum of about 65 codes. Unknown codes map to null.
+- [x] **FND-05**: Only authed paths carry the access token (port of `needAuthToken`). On expiry, a single-flight refresh runs (an OkHttp `Authenticator` guarded by a Mutex, so a refresh token is never reused), the request is retried once, and a failed refresh logs the user out.
+- [x] **FND-06**: Any `403 ACCOUNT_SUSPENDED` response logs the user out and shows an explanatory message.
+- [x] **FND-07**: Tokens persist in EncryptedSharedPreferences. The cached profile, `currentMode` and `hasSeenOnboarding` persist in DataStore. A returning user is auto-logged in on launch.
+- [x] **FND-08**: User can log out. Logout clears the tokens, the cached profile and the onboarding flag.
 - [x] **FND-09**: The app uses a dark Material 3 color scheme (surface `#131313`, primary `#44f697`, primary container `#00d97e`, etc.) with a bundled rounded font (e.g. Nunito). The ~40 per-screen iOS `*Brand.swift` color sets are merged into this theme, not copied.
 - [x] **FND-10**: Screens can use these shared components: press-scale button, async save button, validated text field, avatar, glow background, Custom Tab launcher.
 - [x] **FND-11**: The app starts with the Android 12+ SplashScreen API (no fixed 3-second delay) and routes through `AppRoute`: splash → login | signupSetup | clientHome | expertHome.
@@ -256,12 +256,12 @@ Which phase covers each requirement. Filled in during roadmap creation.
 |-------------|-------|--------|
 | FND-01 | Phase 1 | Complete |
 | FND-02 | Phase 1 | Complete |
-| FND-03 | Phase 2 | Pending |
-| FND-04 | Phase 2 | Pending |
-| FND-05 | Phase 2 | Pending |
-| FND-06 | Phase 2 | Pending |
-| FND-07 | Phase 2 | Pending |
-| FND-08 | Phase 2 | Pending |
+| FND-03 | Phase 2 | Complete |
+| FND-04 | Phase 2 | Complete |
+| FND-05 | Phase 2 | Complete |
+| FND-06 | Phase 2 | Complete |
+| FND-07 | Phase 2 | Complete |
+| FND-08 | Phase 2 | Complete |
 | FND-09 | Phase 1 | Complete |
 | FND-10 | Phase 1 | Complete |
 | FND-11 | Phase 1 | Complete |
