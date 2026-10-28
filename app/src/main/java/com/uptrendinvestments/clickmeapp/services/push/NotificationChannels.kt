@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 import com.uptrendinvestments.clickmeapp.R
+import java.util.Locale
 
 /**
  * ClickMe push notification channels.
@@ -21,14 +22,72 @@ object NotificationChannels {
 
     val ALL_IDS = listOf(BOOKINGS, SESSIONS, MESSAGES, ACCOUNT_PAYOUTS, GENERAL)
 
-    /** Idempotent. Runs at app start so the manifest default channel always exists. */
+    /**
+     * Idempotent. Runs at app start so the manifest default channel always exists. The four contract channels are
+     * High so a foreground post shows as a heads-up (UI-SPEC A3); General is Default and has no heads-up.
+     */
     fun ensureCreated(context: Context) {
-        val channel =
-            NotificationChannelCompat
-                .Builder(GENERAL, NotificationManagerCompat.IMPORTANCE_DEFAULT)
-                .setName(context.getString(R.string.push_channel_general_name))
-                .setDescription(context.getString(R.string.push_channel_general_description))
-                .build()
-        NotificationManagerCompat.from(context).createNotificationChannel(channel)
+        val channels =
+            listOf(
+                channel(
+                    context,
+                    BOOKINGS,
+                    NotificationManagerCompat.IMPORTANCE_HIGH,
+                    R.string.push_channel_bookings_name,
+                    R.string.push_channel_bookings_description,
+                ),
+                channel(
+                    context,
+                    SESSIONS,
+                    NotificationManagerCompat.IMPORTANCE_HIGH,
+                    R.string.push_channel_sessions_name,
+                    R.string.push_channel_sessions_description,
+                ),
+                channel(
+                    context,
+                    MESSAGES,
+                    NotificationManagerCompat.IMPORTANCE_HIGH,
+                    R.string.push_channel_messages_name,
+                    R.string.push_channel_messages_description,
+                ),
+                channel(
+                    context,
+                    ACCOUNT_PAYOUTS,
+                    NotificationManagerCompat.IMPORTANCE_HIGH,
+                    R.string.push_channel_account_payouts_name,
+                    R.string.push_channel_account_payouts_description,
+                ),
+                channel(
+                    context,
+                    GENERAL,
+                    NotificationManagerCompat.IMPORTANCE_DEFAULT,
+                    R.string.push_channel_general_name,
+                    R.string.push_channel_general_description,
+                ),
+            )
+        NotificationManagerCompat.from(context).createNotificationChannelsCompat(channels)
     }
+
+    /** The backend's `channelIdFor` mapping (D-04); anything unknown or missing is [GENERAL]. */
+    fun channelIdFor(category: String?): String =
+        when (category?.trim()?.lowercase(Locale.ROOT)) {
+            "booking" -> BOOKINGS
+            "session", "review" -> SESSIONS
+            "message" -> MESSAGES
+            "payout", "account" -> ACCOUNT_PAYOUTS
+            else -> GENERAL
+        }
+
+    private fun channel(
+        context: Context,
+        id: String,
+        importance: Int,
+        nameRes: Int,
+        descriptionRes: Int,
+    ): NotificationChannelCompat =
+        NotificationChannelCompat
+            .Builder(id, importance)
+            .setName(context.getString(nameRes))
+            .setDescription(context.getString(descriptionRes))
+            .build()
 }
