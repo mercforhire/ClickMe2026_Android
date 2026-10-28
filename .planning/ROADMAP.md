@@ -672,7 +672,7 @@ Plans:
   5. A build is on the internal testing track with a few real users on a mix of devices. The store listing, data safety form and foreground-service declaration are drafted in Play Console. (PRD Week 6 checkpoint: every MVP flow except payouts and settings works, and a build is with testers)
 
 **Planning notes:** Third-biggest schedule risk: deep links into per-tab back stacks. If the schedule slips, the notifications list is cut #2 and Write Review is cut #3. Phase 11 hand-off: a push that routes to an incoming request must build `RequestDecisionKey` with `isExpired` and the expiry (the request detail endpoint has no status or expiry), and a push to an expert booking builds `ExpertBookingSummaryKey(bookingId, origin)`. Phase 12 hand-off: chat push routing posts a `ChatThreadKey` to `ChatLaunchRequest.thread` (or calls `Navigator.openChatThread`); the thread fills peer seeds from `GET /chats`.
-**Plans:** 9/18 plans executed
+**Plans:** 14/18 plans executed
 Plans:
 **Wave 1**
 
@@ -691,11 +691,11 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 13-10-PLAN.md — Foreground posts (channels, D-13 suppression, private visibility) and notification-tap intake in MainActivity (Wave 3)
-- [ ] 13-11-PLAN.md — Root push routing host: wait through splash, drop on Login, mode switch then deliver, newest tap wins (Wave 3)
-- [ ] 13-12-PLAN.md — Notifications screen and the Explore / Dashboard bells (Wave 3)
-- [ ] 13-13-PLAN.md — Write Review screen with read-only state, in-flight lock and Edit review error dialog (Wave 3)
-- [ ] 13-14-PLAN.md — Human release checklist (backend deploy, Firebase, keystore, signed upload, testers) and Play Console drafts; STATE open items (Wave 3)
+- [x] 13-10-PLAN.md — Foreground posts (channels, D-13 suppression, private visibility) and notification-tap intake in MainActivity (Wave 3)
+- [x] 13-11-PLAN.md — Root push routing host: wait through splash, drop on Login, mode switch then deliver, newest tap wins (Wave 3)
+- [x] 13-12-PLAN.md — Notifications screen and the Explore / Dashboard bells (Wave 3)
+- [x] 13-13-PLAN.md — Write Review screen with read-only state, in-flight lock and Edit review error dialog (Wave 3)
+- [x] 13-14-PLAN.md — Human release checklist (backend deploy, Firebase, keystore, signed upload, testers) and Play Console drafts; STATE open items (Wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -792,7 +792,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
-| 13. Push, Notifications & Internal Testing | 9/18 | In Progress | - |
+| 13. Push, Notifications & Internal Testing | 14/18 | In Progress | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
