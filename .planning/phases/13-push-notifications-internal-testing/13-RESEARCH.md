@@ -547,20 +547,27 @@ fun isUpcomingStatus(status: String) = status in setOf("confirmed", "pending_app
 | A9 | Whether paying for live 1-on-1 expert calls through Stripe satisfies the Google Play Payments policy | F-9 / Open Question 3 | A policy rejection at review would block release; needs a user/legal decision before Phase 17 |
 | A10 | A booking push for a request that is no longer pending should open the Incoming Requests list rather than a decidable Request Decision | Pitfall 13 | If the user wants Request Decision regardless, expired/processed cases end in the 409 dialog |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Backend scope of D-04.**
+Resolved at planning (2026-10-28). Each question names the plan that carries the answer. Q3 is a policy decision, not a code question. For Phase 13 it is settled as a human checklist step, and the policy answer itself is deferred to Phase 17.
+
+1. **Backend scope of D-04.** RESOLVED (13-02, 13-17): Android tokens only.
    - What we know: `channel_id` alone is not enough; `category`/`sub_category` are missing from the FCM data (F-1). Doing it for Android tokens only keeps iOS identical.
    - What's unclear: whether the user also wants iOS to receive `category` (which would activate iOS routing for pushes it currently drops).
-   - Recommendation: plan the Android-only change; record the iOS gap as a STATE follow-up for the user to decide.
-2. **D-08 fallback when the request is not in the list (Pitfall 13) and D-08/D-05 overlap.**
+   - Resolution: 13-02 adds `channel_id` plus `category`/`sub_category` for Android tokens only, and asserts the iOS message is deep-equal to the pre-change shape (D-04 forbids changing iOS). Adding the keys for iOS is a user decision, logged as an iOS follow-up in STATE by 13-17.
+2. **D-08 fallback when the request is not in the list (Pitfall 13) and D-08/D-05 overlap.** RESOLVED (13-07): use the recommendation below.
    - D-08 says a client shell falls back to the notifications list; D-05 says switch modes. Recommendation: switch to Expert when the role is verified and no call is active, else open the current mode's notifications list; if the request id is missing from the pending list, open `IncomingRequestsKey`.
-3. **Google Play Payments policy for Stripe-paid live calls (STATE "before release (Phase 13)" item).**
+   - Resolution: 13-07 switches to Expert only when `hasExpertRole` and no call is active (`allowSwitch`). Otherwise it opens the current mode's notifications list. A request id missing from `GET /expert/booking-requests`, a failed list call, or no id at all routes `[IncomingRequestsKey]` (A10).
+3. **Google Play Payments policy for Stripe-paid live calls (STATE "before release (Phase 13)" item).** RESOLVED for Phase 13 as a human step; the decision is DEFERRED to Phase 17 (13-14 checklist step 9).
    - What we know: Play requires Play billing for in-app features/services/content except listed exceptions (physical goods/services, peer-to-peer payments, and others) and offers alternative-billing / external-offer programs only in eligible regions [CITED: Play Payments policy, answer/9858738].
    - What's unclear: classification of paid live voice sessions between users. This is a policy interpretation, not a code question.
-   - Recommendation: keep it a human-checklist item with the policy text attached; Phase 17 needs the answer before submission.
-4. **Mode switch during a live call.** Skip the switch and route in the current mode (recommended), or queue the switch until the call ends? The simplest compliant behavior is skip-and-fallback; confirm.
-5. **Re-prompt edge.** Phase 9's call permission flow may already have asked for notifications. Accept a possible second ask here, or have the gate treat "Phase 9 asked" as answered (needs a shared flag)? Recommendation: share the flag via `PushPermissionGate` if it is a one-line change in `MicPermissionRequester`, otherwise accept.
+   - Resolution: 13-14 makes this release-checklist step 9, with the policy page cited (A9). It also moves the STATE "Before release (Phase 13)" todo onto that step as a human or legal decision. Phase 17 needs the answer before store submission. No Phase 13 code depends on it.
+4. **Mode switch during a live call.** RESOLVED (13-07): skip the switch and fall back.
+   - Question: skip the switch and route in the current mode (recommended), or queue the switch until the call ends? The simplest compliant behavior is skip-and-fallback.
+   - Resolution: 13-07's `allowSwitch` refuses any switch while `callActive`, and the current mode's notifications list opens instead (test `switchBlockedDuringCallOpensCurrentList`, T-13-19). 13-11 reads `CallGuard.isCallActive` when it resolves the push. Chat pushes stay in the current mode, so they are unaffected.
+5. **Re-prompt edge.** RESOLVED (13-16): accept the edge.
+   - Question: Phase 9's call permission flow may already have asked for notifications. Accept a possible second ask here, or have the gate treat "Phase 9 asked" as answered (needs a shared flag)? Recommendation: share the flag via `PushPermissionGate` if it is a one-line change in `MicPermissionRequester`, otherwise accept.
+   - Resolution: 13-16 leaves `MicPermissionRequester` unchanged. If Phase 9 already obtained the permission, the gate records `RecordGranted` and never prompts. If the user denied it there, the gate may ask once more after the next login (A4: a second denial is permanent). 13-17 logs this as a Phase 13 open item in STATE.
 
 ## Environment Availability
 

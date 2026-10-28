@@ -38,7 +38,7 @@ created: "2026-10-28"
 
 ## Per-Task Verification Map
 
-Seeded from RESEARCH.md § Validation Architecture; task IDs bound at planning (2026-10-28). Commands are `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:testDevDebugUnitTest <filters> ktlintCheck` unless stated.
+Seeded from RESEARCH.md § Validation Architecture; task IDs bound at planning (2026-10-28). Revised 2026-10-28: 13-15's Task 3 (Past card pill) became 13-18 (Wave 5), and the 13-17 gate moved to Wave 6. Commands are `JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:testDevDebugUnitTest <filters> ktlintCheck` unless stated.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
@@ -56,9 +56,10 @@ Seeded from RESEARCH.md § Validation Architecture; task IDs bound at planning (
 | 13-12 T1-T3 | 13-12 | 3 | PUSH-05 | T-13-32, T-13-33 | Only `**` markup is interpreted; settings intent never crashes | Compose (Robolectric) | `--tests '*NotificationsScreenTest' --tests '*ExploreScreenTest' --tests '*ExpertDashboardScreenTest'` | ❌ W0 / ✅ extend | ⬜ pending |
 | 13-13 T1-T3 | 13-13 | 3 | REV-01 | T-13-34, T-13-35 | In-flight lock; 1000 cap | Compose (Robolectric) | `--tests '*WriteReviewScreenTest' --tests '*AuthErrorDialogTest' --tests '*LoginScreenTest'` | ❌ W0 | ⬜ pending |
 | 13-14 T1-T2 | 13-14 | 3 | REL-04, REL-05 | T-13-36..T-13-38 | No secrets in planning docs | docs + STATE greps | see 13-14 verify commands (grep chains) | n/a | ⬜ pending |
-| 13-15 T1-T3 | 13-15 | 4 | REV-01 | T-13-39, T-13-40 | Hand-off consumed only by its opener and booking | unit + Compose | `--tests '*BookingSummaryViewModelTest' --tests '*BookingSummaryScreenTest' --tests '*MyBookingsViewModelTest' --tests '*MyBookingsScreenTest' --tests '*HomeShellsTest'` | ✅ extend | ⬜ pending |
+| 13-15 T1-T2 | 13-15 | 4 | REV-01 | T-13-39, T-13-40 | Booking Summary hand-off consumed only for its own booking id | unit + Compose | `--tests '*BookingSummaryViewModelTest' --tests '*BookingSummaryScreenTest' --tests '*HomeShellsTest'`, then `bash scripts/check-design-rules.sh` | ✅ extend | ⬜ pending |
 | 13-16 T1-T2 | 13-16 | 4 | PUSH-02 | T-13-41, T-13-42 | Prompt once; never over Login or a call | unit + Compose | `--tests '*PushPermissionGateTest' --tests '*PushPermissionRequesterTest' --tests '*PushPreferencesTest' --tests '*UserManagerTest'` | ❌ W0 / ✅ extend | ⬜ pending |
-| 13-17 T1 | 13-17 | 5 | all | T-13-43, T-13-44 | No Phase 13 logging; R8 keeps keys and adapters | full gate | `testDevDebugUnitTest testProdDebugUnitTest ktlintCheck assembleDevDebug assembleProdDebug :spikes:stripe:assembleDebug`, then `lintDevDebug lintProdDebug`, then `assembleProdRelease` (each with `-Dorg.gradle.jvmargs=-Xmx4g -Pkotlin.daemon.jvmargs=-Xmx3g`), design rules, backend `npm test` | n/a | ⬜ pending |
+| 13-18 T1-T2 | 13-18 | 5 | REV-01 | T-13-45, T-13-46 | My Bookings consumes only its own slot; the pill is a convenience and the backend enforces review eligibility | unit + Compose | `--tests '*MyBookingsViewModelTest' --tests '*MyBookingsScreenTest' --tests '*HomeShellsTest'`, then `bash scripts/check-design-rules.sh` | ✅ extend | ⬜ pending |
+| 13-17 T1 | 13-17 | 6 | all | T-13-43, T-13-44 | No Phase 13 logging; R8 keeps keys and adapters | full gate | `testDevDebugUnitTest testProdDebugUnitTest ktlintCheck assembleDevDebug assembleProdDebug :spikes:stripe:assembleDebug`, then `lintDevDebug lintProdDebug`, then `assembleProdRelease` (each with `-Dorg.gradle.jvmargs=-Xmx4g -Pkotlin.daemon.jvmargs=-Xmx3g`), design rules, backend `npm test` | n/a | ⬜ pending |
 | REL-04 / REL-05 (human) | 13-14 | 3 | REL-04, REL-05 | T-13-38 | Release APK contains google_app_id before upload | manual (Play Console) | `./gradlew :app:bundleProdRelease` (build only); 13-RELEASE-CHECKLIST.md steps 4-7 | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*

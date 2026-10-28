@@ -672,7 +672,7 @@ Plans:
   5. A build is on the internal testing track with a few real users on a mix of devices. The store listing, data safety form and foreground-service declaration are drafted in Play Console. (PRD Week 6 checkpoint: every MVP flow except payouts and settings works, and a build is with testers)
 
 **Planning notes:** Third-biggest schedule risk: deep links into per-tab back stacks. If the schedule slips, the notifications list is cut #2 and Write Review is cut #3. Phase 11 hand-off: a push that routes to an incoming request must build `RequestDecisionKey` with `isExpired` and the expiry (the request detail endpoint has no status or expiry), and a push to an expert booking builds `ExpertBookingSummaryKey(bookingId, origin)`. Phase 12 hand-off: chat push routing posts a `ChatThreadKey` to `ChatLaunchRequest.thread` (or calls `Navigator.openChatThread`); the thread fills peer seeds from `GET /chats`.
-**Plans:** 17 plans
+**Plans:** 18 plans
 Plans:
 **Wave 1**
 
@@ -699,12 +699,16 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 13-15-PLAN.md — Review entry points: Booking Summary Leave a review and Feedback block, Past card pill, reload and thanks (Wave 4)
+- [ ] 13-15-PLAN.md — Booking Summary review entry point: Leave a review button and Feedback block, review-context load, reload and thanks (Wave 4)
 - [ ] 13-16-PLAN.md — POST_NOTIFICATIONS once after login or signup, never again (Wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 13-17-PLAN.md — Phase gate: sweeps, full gate with lint and R8, backend suite, validation sign-off, STATE follow-ups and hand-offs (Wave 5)
+- [ ] 13-18-PLAN.md — Past card review entry point: Leave a review pill on completed cards, My Bookings reload and thanks, session reviewed set (split from 13-15) (Wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 13-17-PLAN.md — Phase gate: sweeps, full gate with lint and R8, backend suite, validation sign-off, STATE follow-ups and hand-offs (Wave 6)
 **UI hint**: yes
 
 ### Phase 14: Payouts & Account Settings
