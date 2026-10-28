@@ -51,7 +51,11 @@ class PushDestinationResolverTest {
         ResolvedPush(
             AppMode.Expert,
             PushRoute.Shell(
-                ShellRoute(AppMode.Expert, DashboardRoot, listOf(NotificationsKey(NotificationsOrigin.ExpertDashboard))),
+                ShellRoute(
+                    AppMode.Expert,
+                    DashboardRoot,
+                    listOf(NotificationsKey(NotificationsOrigin.ExpertDashboard)),
+                ),
             ),
         )
 
