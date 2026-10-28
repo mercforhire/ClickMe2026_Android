@@ -1,11 +1,16 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -18,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_MESSAGE_TAG
@@ -26,9 +32,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsError
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.PAST_BOOKING_CARD_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.PAST_CARD_LEAVE_REVIEW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.PastBookingCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.UPCOMING_BOOKING_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.UpcomingBookingCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -262,6 +271,8 @@ class MyBookingsScreenTest {
         var explored = 0
         var noticeConsumed = 0
         var refreshFailureConsumed = 0
+        var reviewThanksShown = 0
+        val reviewRequests = mutableListOf<WriteReviewKey>()
         val joined = mutableListOf<String>()
         val messaged = mutableListOf<String>()
     }
@@ -272,6 +283,7 @@ class MyBookingsScreenTest {
         calls: Callbacks = Callbacks(),
         joinNow: Instant = defaultStart.minusSeconds(600),
         messageBusyPeerId: String? = null,
+        reviewedBookingIds: Set<String> = emptySet(),
     ) = MyBookingsContent(
         state = state,
         onSelectTab = { calls.selectedTab = it },
@@ -286,6 +298,9 @@ class MyBookingsScreenTest {
         onJoin = { calls.joined += it.bookingId },
         messageBusyPeerId = messageBusyPeerId,
         onMessage = { calls.messaged += it.bookingId },
+        onLeaveReview = { calls.reviewRequests += it },
+        reviewedBookingIds = reviewedBookingIds,
+        onReviewThanksShown = { calls.reviewThanksShown++ },
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -302,12 +317,14 @@ class MyBookingsScreenTest {
         past: List<PastRow> = emptyList(),
         notice: BookingsNotice? = null,
         refreshFailed: Boolean = false,
+        reviewThanks: Boolean = false,
     ) = MyBookingsUiState(
         load = MyBookingsLoad.Loaded,
         lists = BookingLists(upcoming, past),
         selectedTab = tab,
         notice = notice,
         refreshFailed = refreshFailed,
+        reviewThanks = reviewThanks,
     )
 
     @Test
@@ -408,7 +425,7 @@ class MyBookingsScreenTest {
         val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
         var tab by mutableStateOf(BookingsTab.Upcoming)
         show { Content(state.copy(selectedTab = tab)) }
-        val forbidden = listOf("Reschedule", "Message Expert", "Private Note", "Leave a Review")
+        val forbidden = listOf("Reschedule", "Message Expert", "Private Note")
         forbidden.forEach { assertTrue("$it on Upcoming", !exists(it)) }
         rule.runOnIdle { tab = BookingsTab.Past }
         rule.waitForIdle()
@@ -514,5 +531,107 @@ class MyBookingsScreenTest {
         show { Content(loaded(tab = BookingsTab.Past, past = listOf(pastRow("b2")))) }
         assertTrue(!existsTag(BOOKING_CARD_MESSAGE_TAG))
         assertTrue(!exists("Message"))
+    }
+
+    // Past card Leave a review (D-18, D-19)
+
+    private val pastTab = BookingsTab.Past
+
+    @Test
+    fun completedPastCardShowsPill() {
+        val calls = Callbacks()
+        show { Content(loaded(tab = pastTab, past = listOf(pastRow("b2"))), calls) }
+        rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG).assertExists()
+        rule.onNodeWithText("Leave a review").assertExists()
+
+        rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG).performClick()
+
+        assertEquals(
+            listOf(WriteReviewKey("b2", "Ada Lovelace", null, ReviewOpener.MyBookings)),
+            calls.reviewRequests,
+        )
+        assertEquals(null, calls.openedPast)
+
+        rule.onNodeWithText("Ada Lovelace").performClick()
+        assertEquals("b2", calls.openedPast)
+        assertEquals(1, calls.reviewRequests.size)
+    }
+
+    @Test
+    fun reviewThanksShowsSnackbar() {
+        val calls = Callbacks()
+        show { Content(loaded(tab = pastTab, past = listOf(pastRow("b2")), reviewThanks = true), calls) }
+        rule.onNodeWithText("Thanks for your review").assertExists()
+        assertEquals(1, calls.reviewThanksShown)
+    }
+
+    @Test
+    fun noPillForCancelledMissedOrReviewed() {
+        val calls = Callbacks()
+        val past =
+            listOf(
+                pastRow("k1", "completed"),
+                pastRow("r1", "completed"),
+                pastRow("c1", "cancelled"),
+                pastRow("m1", "missed"),
+            )
+        show { Content(loaded(tab = pastTab, past = past), calls, reviewedBookingIds = setOf("r1")) }
+        assertEquals(1, rule.onAllNodesWithTag(PAST_CARD_LEAVE_REVIEW_TAG).fetchSemanticsNodes().size)
+        // The one pill left belongs to k1 (the only completed row not reviewed).
+        rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG).performClick()
+        assertEquals(listOf("k1"), calls.reviewRequests.map { it.bookingId })
+    }
+
+    @Test
+    fun pillAndCardAreSeparateActions() {
+        var reviews = 0
+        var opens = 0
+        val row = pastRow("b2")
+        show {
+            PastBookingCard(
+                row,
+                onClick = { opens++ },
+                onLeaveReview = { reviews++ },
+                zone = zone,
+                timeFormat = timeFormat(),
+                locale = locale,
+            )
+        }
+        val pill = rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG)
+        pill.assertHasClickAction()
+        rule.onNodeWithTag(PAST_BOOKING_CARD_TAG, useUnmergedTree = true).assertHasClickAction()
+        val actions =
+            rule
+                .onNodeWithTag(PAST_BOOKING_CARD_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsActions.CustomActions)
+                .orEmpty()
+        val action = actions.single { it.label == "Leave a review" }
+        rule.runOnUiThread { action.action() }
+        assertEquals(1, reviews)
+        assertEquals(0, opens)
+    }
+
+    @Test
+    fun largeFontPillWraps() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    PastBookingCard(
+                        pastRow("b2"),
+                        onClick = {},
+                        onLeaveReview = {},
+                        zone = zone,
+                        timeFormat = timeFormat(),
+                        locale = locale,
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Leave a review").assertIsDisplayed()
+        assertTrue(anyTextContains(dateText))
+        rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG).assertIsDisplayed()
     }
 }
