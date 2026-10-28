@@ -21,12 +21,12 @@
 | FirebaseMessagingService.onMessageReceived (foreground notification messages) | INTEGRATE | |
 | System-displayed background notification and launcher-intent data extras on tap | INTEGRATE | |
 | FirebaseMessaging.deleteToken on logout | INTEGRATE | |
-| Manifest default_notification_channel_id, default_notification_icon, default_notification_color | INTEGRATE | |
+| Manifest default_notification channel_id / icon / color meta-data | INTEGRATE | |
 | Server-chosen android.notification.channel_id (backend push.js) | INTEGRATE | |
 | Android-only category and sub_category in FCM data (backend push.js) | INTEGRATE | |
 | Topic messaging (subscribeToTopic / unsubscribeFromTopic) | OPT-OUT | not needed: the backend addresses device tokens, never topics |
-| Data-only messages, onDeletedMessages, upstream send (onMessageSent / onSendError) | OPT-OUT | not needed: the backend sends notification messages only and the app sends nothing upstream |
+| Data-only messages, onDeletedMessages, upstream send | OPT-OUT | not needed: the backend sends notification messages only and the app sends nothing upstream |
 | setAutoInitEnabled / delivery metrics export / Analytics integration | OPT-OUT | not needed: registration is gated on a session in app code, and no analytics SDK is in the MVP |
 | FCM AndroidConfigV2 / RemoteNotification callbacks | OPT-OUT | not needed yet: the backend sends v1 AndroidConfig messages (RESEARCH State of the Art) |
-| Backend android collapse_key, ttl, tag, notification count, per-message priority beyond high | OPT-OUT | not needed: the app updates repeats in place itself (stable tag per entity) and the backend already sends priority high |
+| Backend android collapse_key / ttl / tag / count / priority beyond high | OPT-OUT | not needed: the app updates repeats in place itself (stable tag per entity) and the backend already sends priority high |
 | iOS payload changes (category in data for iOS tokens) | OPT-OUT | explicitly out of scope: D-04 forbids changing iOS behaviour; logged as an iOS follow-up for the user (13-17) |
