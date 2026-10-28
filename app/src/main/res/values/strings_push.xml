@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Must equal NotificationChannels.GENERAL. FCM posts system-displayed pushes with no channel id here. -->
+    <string name="default_notification_channel_id" translatable="false">general</string>
+
+    <string name="push_channel_bookings_name">Bookings</string>
+    <string name="push_channel_bookings_description">Requests, confirmations, changes and cancellations for your bookings.</string>
+    <string name="push_channel_sessions_name">Sessions</string>
+    <string name="push_channel_sessions_description">Reminders and updates about your live sessions.</string>
+    <string name="push_channel_messages_name">Messages</string>
+    <string name="push_channel_messages_description">New chat messages from experts and clients.</string>
+    <string name="push_channel_account_payouts_name">Account &amp; payouts</string>
+    <string name="push_channel_account_payouts_description">Payout and account security updates.</string>
+    <string name="push_channel_general_name">General</string>
+    <string name="push_channel_general_description">Other ClickMe updates.</string>
+</resources>

@@ -9,6 +9,14 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+// google-services.json is gitignored (D-20), so CI and worktrees build without it. A release made without it
+// compiles but has no push (Pitfall 10), hence the warning. Never commit a dummy copy.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("google-services.json is missing: this build has no push notifications (see 13-14 release checklist)")
+}
+
 // Release signing is local only (D-15): CI has no keystore.properties and builds unsigned debug variants.
 // The upload key is separate from the Google-generated Play App Signing key (D-16).
 // Read through providers.fileContents so the configuration cache tracks the file appearing or changing.
@@ -136,6 +144,9 @@ dependencies {
     // Android provides org.json; the 2009 jar would duplicate it.
     implementation(libs.socket.io.client) { exclude(group = "org.json", module = "json") }
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.serialization.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
