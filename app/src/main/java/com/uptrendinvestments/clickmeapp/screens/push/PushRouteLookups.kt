@@ -3,6 +3,8 @@ package com.uptrendinvestments.clickmeapp.screens.push
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.BookingRequestsRepository
+import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.buildIncomingRequestRows
+import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.toDecisionKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
 import java.time.Clock
 import javax.inject.Inject
@@ -67,12 +69,25 @@ class RepositoryClientBookingProbe
         }
     }
 
-/** Skeleton, filled in by the GREEN commit. */
+/**
+ * [PendingRequestLookup] over `GET /expert/booking-requests`. The detail endpoint has no status or expiry (Phase 11
+ * C3), so the list supplies both through [toDecisionKey]; the list holds pending rows only, so a request that was
+ * already processed is absent and yields null (Pitfall 13). The request id is the booking id (RESEARCH F-6) and the
+ * match ignores case, as backend ids may differ in case from the push payload. A failed list call yields null;
+ * coroutine cancellation propagates.
+ */
 class RepositoryPendingRequestLookup
     @Inject
     constructor(
-        @Suppress("UnusedPrivateProperty") private val repository: BookingRequestsRepository,
-        @Suppress("UnusedPrivateProperty") private val clock: Clock,
+        private val repository: BookingRequestsRepository,
+        private val clock: Clock,
     ) : PendingRequestLookup {
-        override suspend fun decisionKeyFor(requestId: String): RequestDecisionKey? = null
+        override suspend fun decisionKeyFor(requestId: String): RequestDecisionKey? =
+            try {
+                buildIncomingRequestRows(repository.list(), clock.instant())
+                    .firstOrNull { it.item.requestId.equals(requestId, ignoreCase = true) }
+                    ?.toDecisionKey()
+            } catch (_: ApiException) {
+                null
+            }
     }

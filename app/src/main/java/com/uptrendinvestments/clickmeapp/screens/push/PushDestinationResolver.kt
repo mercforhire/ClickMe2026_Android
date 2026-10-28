@@ -94,7 +94,11 @@ class PushDestinationResolver
                     }
 
                     is PushDestination.IncomingRequests -> {
-                        shell(AppMode.Expert, DashboardRoot, IncomingRequestsKey)
+                        // Skip the list call when the switch to Expert is refused anyway.
+                        if (!allowSwitch(context.currentMode, AppMode.Expert, context)) {
+                            return notificationsList(context)
+                        }
+                        resolveIncomingRequest(destination.requestId)
                     }
 
                     // PHASE-14: Payouts, KycOnboarding and AccountSecurity get real routes in Phase 14 (D-10).
@@ -120,6 +124,20 @@ class PushDestinationResolver
             to: AppMode,
             context: PushRoutingContext,
         ): Boolean = from == to || (!context.callActive && (to == AppMode.Client || context.hasExpertRole))
+
+        /**
+         * Request Decision with the pending row's expiry when [requestId] is still in the list, else Incoming Requests
+         * alone: never a decidable Request Decision for a request that may already be processed (RESEARCH A10).
+         */
+        private suspend fun resolveIncomingRequest(requestId: String?): ResolvedPush {
+            val decisionKey =
+                requestId?.let { withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { pendingRequests.decisionKeyFor(it) } }
+            return if (decisionKey != null) {
+                shell(AppMode.Expert, DashboardRoot, IncomingRequestsKey, decisionKey)
+            } else {
+                shell(AppMode.Expert, DashboardRoot, IncomingRequestsKey)
+            }
+        }
 
         private suspend fun resolveBooking(
             bookingId: String,
