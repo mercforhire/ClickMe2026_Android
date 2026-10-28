@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -119,6 +120,38 @@ class ExploreScreenTest {
         rule.onNodeWithTag(TODAYS_SESSION_JOIN_TAG).performClick()
         assertEquals(session, sessionJoined)
         assertEquals(null, sessionClicked)
+    }
+
+    @Test
+    fun bellOpensNotifications() {
+        var opened = 0
+        rule.setContent {
+            ClickMeTheme {
+                ExploreContent(
+                    state = fullState,
+                    avatarUrl = null,
+                    onAvatarClick = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onChipTap = {},
+                    onViewAll = {},
+                    onClearFilter = {},
+                    onExpertClick = {},
+                    onFeaturedTopicClick = {},
+                    onSessionClick = {},
+                    joinNow = Instant.parse("2026-10-21T18:50:00Z"),
+                    onJoinSession = {},
+                    onRefreshFailureConsumed = {},
+                    onOpenNotifications = { opened++ },
+                )
+            }
+        }
+        val bell = rule.onNodeWithTag("explore_notifications_bell")
+        bell.assertContentDescriptionEquals("Notifications")
+        val avatar = rule.onNodeWithContentDescription("Your profile")
+        assertTrue(bell.getUnclippedBoundsInRoot().left.value < avatar.getUnclippedBoundsInRoot().left.value)
+        bell.performClick()
+        assertEquals(1, opened)
     }
 
     @Test

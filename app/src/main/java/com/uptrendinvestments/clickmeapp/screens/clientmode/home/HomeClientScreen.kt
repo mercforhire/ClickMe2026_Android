@@ -66,6 +66,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.writeRev
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsEntries
+import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsKeyFor
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
@@ -105,6 +106,7 @@ fun HomeClientScreen(
                         onAvatarClick = { navigator.navigate(ModeSwitchKey) },
                         onOpenExpert = { navigator.navigate(it) },
                         onOpenBooking = navigator::openUpcomingBooking,
+                        onOpenNotifications = { navigator.navigate(notificationsKeyFor(AppMode.Client)) },
                     )
                 },
                 bookingsRoot = { navigator ->
