@@ -14,6 +14,7 @@ import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository.Companion.TYPE_PAST
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository.Companion.TYPE_UPCOMING
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -45,6 +46,11 @@ import javax.inject.Inject
  * posted before this ViewModel exists, and on every later emission otherwise; either way it selects its tab, carries
  * the notice for the snackbar, forces a fresh reload and is applied exactly once.
  *
+ * D-19 review hand-off: a review submitted from a Past card posts to the `bookingsReviewed` slot of
+ * [ReviewLaunchRequest]. It is consumed like the D-07 hand-off, starts a quiet reload and raises
+ * `reviewThanks`. Only that slot is read: a review from Booking Summary belongs to the Booking Summary screen.
+ * [reviewedBookingIds] lets the list hide the Past pill for ids reviewed this session.
+ *
  * Switching sub-tabs never fetches, since both buckets are always loaded together.
  *
  * Join Call (CALL-01, D-01): [join] starts the call through the one [CallStarter] and [joinNow] is the shared 30 s
@@ -60,6 +66,7 @@ class MyBookingsViewModel
         private val realtime: RealtimeConnection,
         private val clock: Clock,
         private val launchRequest: BookingsLaunchRequest,
+        private val reviewLaunch: ReviewLaunchRequest,
         private val callStarter: CallStarter,
         joinClock: JoinClock,
     ) : ViewModel() {
@@ -87,6 +94,9 @@ class MyBookingsViewModel
         /** Shared 30 s wall clock that turns a visible Join button on without leaving the screen (D-03). */
         val joinNow: StateFlow<Instant> = joinClock.now
 
+        /** Ids reviewed this session, from either opener; the Past pill is hidden for them (UI-SPEC Open Item 2). */
+        val reviewedBookingIds: StateFlow<Set<String>> = reviewLaunch.reviewedBookingIds
+
         private var loadJob: Job? = null
         private var loadIsCurrent = false
 
@@ -107,6 +117,19 @@ class MyBookingsViewModel
             viewModelScope.launch {
                 launchRequest.pending.filterNotNull().collect {
                     launchRequest.consume()?.let { launch -> applyLaunch(launch, reload = true) }
+                }
+            }
+            // D-19: same shape for a review submitted from a Past card. Posted before this ViewModel existed it is
+            // applied before the first load (which is already fresh); otherwise it forces a quiet reload.
+            if (reviewLaunch.bookingsReviewed.consume() != null) {
+                _uiState.update { it.copy(reviewThanks = true) }
+            }
+            viewModelScope.launch {
+                reviewLaunch.bookingsReviewed.pending.filterNotNull().collect {
+                    if (reviewLaunch.bookingsReviewed.consume() != null) {
+                        _uiState.update { it.copy(reviewThanks = true) }
+                        startLoad(if (_uiState.value.load is MyBookingsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud)
+                    }
                 }
             }
         }
@@ -152,6 +175,10 @@ class MyBookingsViewModel
 
         fun consumeNotice() {
             _uiState.update { it.copy(notice = null) }
+        }
+
+        fun consumeReviewThanks() {
+            _uiState.update { it.copy(reviewThanks = false) }
         }
 
         private fun applyLaunch(

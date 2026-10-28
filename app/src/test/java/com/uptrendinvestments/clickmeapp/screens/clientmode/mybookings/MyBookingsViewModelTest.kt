@@ -9,6 +9,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.BookingExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewSubmitted
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -39,6 +42,7 @@ class MyBookingsViewModelTest {
     private val realtime = FakeRealtimeConnection()
     private val clock = MutableClock(Instant.parse("2026-10-22T16:00:00Z"))
     private val launchRequest = BookingsLaunchRequest()
+    private val reviewLaunch = ReviewLaunchRequest()
     private val saved = SavedStateHandle()
 
     private val upcomingRows =
@@ -75,6 +79,7 @@ class MyBookingsViewModelTest {
         realtime,
         clock,
         launchRequest,
+        reviewLaunch,
         callStarter,
         JoinClock(clock, joinScope),
     )
@@ -479,5 +484,77 @@ class MyBookingsViewModelTest {
             val vm = vm(joinScope = backgroundScope)
             runCurrent()
             assertEquals(clock.instant, vm.joinNow.value)
+        }
+
+    // D-19 review hand-off
+
+    @Test
+    fun reviewHandOffReloadsQuietlyAndThanks() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            val callsBefore = api.clientBookingsCalls
+            val gate = CompletableDeferred<Unit>()
+            api.clientBookingsHandler = { type ->
+                gate.await()
+                payload(if (type == "upcoming") upcomingRows else pastRows)
+            }
+
+            reviewLaunch.bookingsReviewed.post(ReviewSubmitted("p1"))
+            runCurrent()
+
+            assertNull(reviewLaunch.bookingsReviewed.pending.value)
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            assertTrue(vm.uiState.value.reviewThanks)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(callsBefore + 2, api.clientBookingsCalls)
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            vm.consumeReviewThanks()
+            assertFalse(vm.uiState.value.reviewThanks)
+        }
+
+    @Test
+    fun aReviewHandOffPostedBeforeTheViewModelExistsThanksWithoutASecondLoad() =
+        runTest(main.testDispatcher) {
+            serve()
+            reviewLaunch.bookingsReviewed.post(ReviewSubmitted("p1"))
+            val vm = vm()
+            runCurrent()
+
+            assertNull(reviewLaunch.bookingsReviewed.pending.value)
+            assertTrue(vm.uiState.value.reviewThanks)
+            assertEquals(2, api.clientBookingsCalls)
+        }
+
+    @Test
+    fun summaryHandOffIsLeftAlone() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            val callsBefore = api.clientBookingsCalls
+
+            reviewLaunch.onSubmitted("p1", ReviewOpener.BookingSummary)
+            runCurrent()
+
+            assertEquals(ReviewSubmitted("p1"), reviewLaunch.summaryReviewed.pending.value)
+            assertEquals(callsBefore, api.clientBookingsCalls)
+            assertFalse(vm.uiState.value.reviewThanks)
+        }
+
+    @Test
+    fun reviewedIdsMirrorLaunchRequest() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            assertEquals(emptySet<String>(), vm.reviewedBookingIds.value)
+
+            reviewLaunch.onSubmitted("p1", ReviewOpener.BookingSummary)
+            reviewLaunch.onSubmitted("p2", ReviewOpener.MyBookings)
+
+            assertEquals(setOf("p1", "p2"), vm.reviewedBookingIds.value)
         }
 }

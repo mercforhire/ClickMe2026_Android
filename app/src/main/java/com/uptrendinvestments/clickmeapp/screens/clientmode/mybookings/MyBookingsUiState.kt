@@ -23,6 +23,8 @@ sealed interface MyBookingsLoad {
  * @property isRefreshing a pull-to-refresh is running.
  * @property refreshFailed a pull-to-refresh failed; the screen shows a snackbar then calls `consumeRefreshFailure`.
  * @property notice a one-time message handed over by the cancel flow; cleared by `consumeNotice`.
+ * @property reviewThanks a review submitted from a Past card brought the user back (D-19); the screen shows the
+ *   thank-you snackbar then calls `consumeReviewThanks`.
  */
 data class MyBookingsUiState(
     val load: MyBookingsLoad = MyBookingsLoad.Loading,
@@ -31,4 +33,5 @@ data class MyBookingsUiState(
     val isRefreshing: Boolean = false,
     val refreshFailed: Boolean = false,
     val notice: BookingsNotice? = null,
+    val reviewThanks: Boolean = false,
 )

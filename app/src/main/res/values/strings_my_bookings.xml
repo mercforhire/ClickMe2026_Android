@@ -16,6 +16,7 @@
     <string name="my_bookings_badge_expert_proposed">Expert proposed a new time · Tap to review</string>
     <string name="my_bookings_badge_client_proposed">Reschedule pending expert\'s response</string>
     <string name="my_bookings_pending_banner">Waiting for expert to accept</string>
+    <string name="my_bookings_past_leave_review">Leave a review</string>
     <string name="my_bookings_past_topic_label">Topic:</string>
     <string name="my_bookings_date_time">%1$s, %2$s</string>
     <string name="booking_status_completed">Completed</string>
