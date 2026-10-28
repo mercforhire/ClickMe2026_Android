@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,9 +13,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,11 +26,14 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.test.core.app.ApplicationProvider
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.BlockState
 import com.uptrendinvestments.clickmeapp.screens.chat.ThreadNotice
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_INPUT_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_SEND_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSlotTime
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -163,7 +170,32 @@ class ChatThreadScreenTest {
         rule.onNodeWithText("Ada Lovelace").assertIsDisplayed()
         rule.onNodeWithText("Hello there").assertIsDisplayed()
         rule.onNodeWithText("Hi Ada").assertIsDisplayed()
-        rule.onNodeWithText("Read").assertIsDisplayed()
+        rule.onNodeWithText("Read", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun readReceiptStatusLineIsOneAccessiblePhrase() {
+        show(loaded(listOf(own("m2", "Hi Ada", Delivery.Read))))
+        val time = formatSlotTime(Instant.parse("2026-10-27T09:01:00Z"), zone, timeFormat)
+        val phrase =
+            ApplicationProvider
+                .getApplicationContext<Context>()
+                .getString(R.string.chat_thread_read_status_a11y, time)
+        assertEquals("$time, Read", phrase)
+
+        rule.onNode(hasText("Hi Ada") and hasContentDescription(phrase)).assertIsDisplayed()
+        rule.onAllNodes(hasContentDescription(phrase)).assertCountEquals(1)
+        rule.onAllNodesWithText("·", substring = true).assertCountEquals(0)
+        rule.onNodeWithText("·", substring = true, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun sentStatusLineExposesTimeOnly() {
+        show(loaded(listOf(own("m1", "On it", Delivery.Sent))))
+        val time = formatSlotTime(Instant.parse("2026-10-27T09:01:00Z"), zone, timeFormat)
+
+        rule.onNode(hasText("On it") and hasContentDescription(time)).assertIsDisplayed()
+        rule.onAllNodesWithText("Read", useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test

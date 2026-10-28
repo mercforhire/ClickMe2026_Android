@@ -3,6 +3,8 @@
     <string name="chat_thread_title_fallback">Chat</string>
     <string name="chat_thread_sending">Sending…</string>
     <string name="chat_thread_read">Read</string>
+    <string name="chat_thread_read_separator">" · "</string>
+    <string name="chat_thread_read_status_a11y">%1$s, Read</string>
     <string name="chat_thread_you">You</string>
     <string name="chat_thread_loading">Loading</string>
     <string name="chat_thread_today">Today</string>

@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -58,7 +59,7 @@ private const val FAILED_BORDER_ALPHA = 0.5f
 /**
  * One chat message bubble (UI-SPEC surface 2): own messages on the end in `primary`, incoming on the start in
  * `surfaceContainerHigh` with the peer avatar at the end of a run. Text is selectable and plain (no link detection,
- * T-12-27). The row is one merged node read as "{You|name}, {text}, {time or Sending}, {Read}".
+ * T-12-27). The row is one merged node read as "{You|name}, {text}, {time or Sending}", with "{time}, Read" for read ones.
  */
 @Composable
 fun MessageBubble(
@@ -193,8 +194,8 @@ private fun BubbleBody(message: ThreadItem.Message) {
 }
 
 /**
- * The line under a bubble: the time, "Sending…" while sending, and " · Read" (Read in `primary`, 150 ms fade) on my
- * read messages.
+ * The line under a bubble: the time, "Sending…" while sending, and the chat_thread_read_separator plus Read (Read in
+ * `primary`, 150 ms fade) on my read messages. TalkBack reads the time/Read row as chat_thread_read_status_a11y.
  */
 @Composable
 fun MessageStatusLine(
@@ -221,19 +222,27 @@ fun MessageStatusLine(
         } else if (message.delivery == Delivery.Sending) {
             Text(text = stringResource(R.string.chat_thread_sending), style = style, color = muted)
         } else {
-            Text(text = timeText, style = style, color = muted)
-            AnimatedVisibility(
-                visible = message.mine && message.delivery == Delivery.Read,
-                enter = fadeIn(tween(READ_FADE_MS)),
-                exit = fadeOut(tween(READ_FADE_MS)),
+            val showRead = message.mine && message.delivery == Delivery.Read
+            val statusDescription =
+                if (showRead) stringResource(R.string.chat_thread_read_status_a11y, timeText) else timeText
+            Row(
+                modifier = Modifier.clearAndSetSemantics { contentDescription = statusDescription },
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row {
-                    Text(text = " · ", style = style, color = muted)
-                    Text(
-                        text = stringResource(R.string.chat_thread_read),
-                        style = style,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                Text(text = timeText, style = style, color = muted)
+                AnimatedVisibility(
+                    visible = showRead,
+                    enter = fadeIn(tween(READ_FADE_MS)),
+                    exit = fadeOut(tween(READ_FADE_MS)),
+                ) {
+                    Row {
+                        Text(text = stringResource(R.string.chat_thread_read_separator), style = style, color = muted)
+                        Text(
+                            text = stringResource(R.string.chat_thread_read),
+                            style = style,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
