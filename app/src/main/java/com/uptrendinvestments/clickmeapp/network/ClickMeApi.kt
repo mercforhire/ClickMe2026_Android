@@ -15,11 +15,13 @@ import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
+import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
@@ -66,9 +68,11 @@ import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
+import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
@@ -532,4 +536,35 @@ interface ClickMeApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): SuccessDataResponse<NotificationsPayload>
+
+    /**
+     * Ports iOS push registration. The backend `registerTokenSchema` is `.strict()` (see
+     * [RegisterDeviceTokenRequest]). It replaces every token row of the caller with this one.
+     */
+    @POST(ApiRequestUrls.NOTIFICATION_TOKENS)
+    suspend fun registerDeviceToken(
+        @Body body: RegisterDeviceTokenRequest,
+    ): SuccessMessageResponse
+
+    /** Ports iOS push unregistration. The device id travels in the path; answers `{status, message}`. */
+    @DELETE(ApiRequestUrls.NOTIFICATION_TOKEN)
+    suspend fun deleteDeviceToken(
+        @Path("device_id") deviceId: String,
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+Reviews getReviewContext. 404 unknown booking, 403 non-participant. */
+    @GET(ApiRequestUrls.BOOKING_REVIEW_CONTEXT)
+    suspend fun getReviewContext(
+        @Path("id") bookingId: String,
+    ): SuccessDataResponse<ReviewContextData>
+
+    /**
+     * Ports iOS ClickMeAPI+Reviews submitReview. The backend `submitReviewSchema` is `.strict()` (see
+     * [SubmitReviewRequest]). 201 on success; 404 when the booking is not found or not completed.
+     */
+    @POST(ApiRequestUrls.BOOKING_REVIEWS)
+    suspend fun submitReview(
+        @Path("id") bookingId: String,
+        @Body body: SubmitReviewRequest,
+    ): SuccessDataResponse<SubmitReviewData>
 }
