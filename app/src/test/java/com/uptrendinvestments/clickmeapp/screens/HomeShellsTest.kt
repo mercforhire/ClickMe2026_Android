@@ -27,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
@@ -35,11 +36,20 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingMa
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMethodsEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
+import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
+import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
+import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -63,11 +73,13 @@ class HomeShellsTest {
         refreshStatus: String? = null,
         paymentMethods: Boolean = false,
         chatLaunch: ChatLaunchRequest? = null,
+        shellRoutes: ShellRouteRequest? = null,
     ) {
         composeRule.setContent {
             ClickMeTheme {
                 expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
                 val pendingThread = pendingThreadOf(chatLaunch)
+                val pendingRoute = pendingRouteOf(shellRoutes)
                 HomeClientShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
@@ -78,9 +90,12 @@ class HomeShellsTest {
                     detailEntries = { navigator ->
                         if (paymentMethods) fakePaymentMethodsEntry(navigator)
                         fakeChatThreadEntry()
+                        pushStandIns()
                     },
                     pendingChatThread = pendingThread,
                     onConsumeChatThread = { chatLaunch?.thread?.consume() },
+                    pendingShellRoute = pendingRoute,
+                    onConsumeShellRoute = { shellRoutes?.consumeFor(AppMode.Client) },
                 )
             }
         }
@@ -90,11 +105,13 @@ class HomeShellsTest {
         showDebug: Boolean,
         refreshStatus: String? = null,
         chatLaunch: ChatLaunchRequest? = null,
+        shellRoutes: ShellRouteRequest? = null,
     ) {
         composeRule.setContent {
             ClickMeTheme {
                 expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
                 val pendingThread = pendingThreadOf(chatLaunch)
+                val pendingRoute = pendingRouteOf(shellRoutes)
                 HomeExpertShell(
                     avatarUrl = null,
                     showDebugAffordances = showDebug,
@@ -102,9 +119,14 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
-                    detailEntries = { fakeChatThreadEntry() },
+                    detailEntries = {
+                        fakeChatThreadEntry()
+                        pushStandIns()
+                    },
                     pendingChatThread = pendingThread,
                     onConsumeChatThread = { chatLaunch?.thread?.consume() },
+                    pendingShellRoute = pendingRoute,
+                    onConsumeShellRoute = { shellRoutes?.consumeFor(AppMode.Expert) },
                 )
             }
         }
@@ -937,5 +959,72 @@ class HomeShellsTest {
         composeRule.onNodeWithText("Ada Lovelace").assertDoesNotExist()
         composeRule.onNodeWithText("Grace Hopper").assertDoesNotExist()
         composeRule.onNode(tab("Chats")).assertIsSelected()
+    }
+
+    @Composable
+    private fun pendingRouteOf(routes: ShellRouteRequest?): ShellRoute? {
+        if (routes == null) return null
+        val pending by routes.pending.collectAsState()
+        return pending
+    }
+
+    /**
+     * Stand-ins for the routes a push can land on, registered with the same hidden-bar metadata as the real ones.
+     * The real routes are not used: they get Hilt ViewModels that Robolectric cannot build.
+     */
+    private fun EntryProviderScope<NavKey>.pushStandIns() {
+        entry<BookingSummaryKey> { Text("summary-stub:${it.bookingId}") }
+        entry<UpcomingBookingKey> { Text("upcoming-stub:${it.bookingId}") }
+        entry<ExpertBookingSummaryKey> { Text("expert-summary-stub:${it.bookingId}") }
+        entry<IncomingRequestsKey> { Text("incoming-stub") }
+        entry<RequestDecisionKey> { Text("decision-stub:${it.requestId}") }
+    }
+
+    @Test
+    fun postedClientRouteOpensSummaryOnBookingsTab() {
+        val routes = ShellRouteRequest()
+        setClient(showDebug = false, shellRoutes = routes)
+        routes.post(ShellRoute(AppMode.Client, ClientBookingsRoot, listOf(BookingSummaryKey("B1"))))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("summary-stub:B1").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        assertNull(routes.pending.value)
+        pressSystemBack()
+        composeRule.onNodeWithText("summary-stub:B1").assertDoesNotExist()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+    }
+
+    @Test
+    fun expertRouteIsLeftForTheExpertShell() {
+        val routes = ShellRouteRequest()
+        setClient(showDebug = false, shellRoutes = routes)
+        val route =
+            ShellRoute(
+                AppMode.Expert,
+                ExpertBookingsRoot,
+                listOf(ExpertBookingSummaryKey("B1", ExpertBookingOrigin.Bookings)),
+            )
+        routes.post(route)
+        composeRule.waitForIdle()
+        composeRule.onNode(tab("Explore")).assertIsSelected()
+        composeRule.onNodeWithText("Nothing here yet.").assertExists()
+        assertEquals(route, routes.pending.value)
+    }
+
+    @Test
+    fun expertShellConsumesItsRoute() {
+        val routes = ShellRouteRequest()
+        setExpert(showDebug = false, shellRoutes = routes)
+        routes.post(
+            ShellRoute(
+                AppMode.Expert,
+                ExpertBookingsRoot,
+                listOf(ExpertBookingSummaryKey("B1", ExpertBookingOrigin.Bookings)),
+            ),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("expert-summary-stub:B1").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        assertNull(routes.pending.value)
     }
 }

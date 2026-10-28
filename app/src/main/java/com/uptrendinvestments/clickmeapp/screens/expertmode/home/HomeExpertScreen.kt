@@ -59,6 +59,8 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicE
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorViewModel
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRoute
+import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
+import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -76,8 +78,10 @@ fun HomeExpertScreen(
     onSwitchMode: (AppMode) -> Unit,
     viewModel: HomeExpertViewModel = hiltViewModel(),
     chatLaunch: ChatLaunchViewModel = hiltViewModel(),
+    shellRoute: ShellRouteViewModel = hiltViewModel(),
 ) {
     val pendingChatThread by chatLaunch.pendingThread.collectAsStateWithLifecycle()
+    val pendingShellRoute by shellRoute.pending.collectAsStateWithLifecycle()
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
     val debugRefreshStatus by viewModel.debugRefreshStatus.collectAsStateWithLifecycle()
     HomeExpertShell(
@@ -132,6 +136,8 @@ fun HomeExpertScreen(
         },
         pendingChatThread = pendingChatThread,
         onConsumeChatThread = chatLaunch::consumeThread,
+        pendingShellRoute = pendingShellRoute,
+        onConsumeShellRoute = { shellRoute.consumeFor(AppMode.Expert) },
     )
 }
 
@@ -145,7 +151,8 @@ fun HomeExpertScreen(
  * the placeholders, so Robolectric can render the shell with no Hilt graph) and [detailEntries] registers extra
  * routes pushed on top of a tab, such as the Topic Editor and Availability. [pendingChatThread] /
  * [onConsumeChatThread] are the chat hand-off: when a thread key is pending the shell consumes it and opens it on the
- * Chats tab ([Navigator.openChatThread]).
+ * Chats tab ([Navigator.openChatThread]). [pendingShellRoute] / [onConsumeShellRoute] are the push route hand-off: a
+ * resolved expert [ShellRoute] is consumed only by this shell and inserted with [Navigator.openRouted].
  */
 @Composable
 fun HomeExpertShell(
@@ -168,6 +175,8 @@ fun HomeExpertShell(
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
     pendingChatThread: ChatThreadKey? = null,
     onConsumeChatThread: () -> ChatThreadKey? = { null },
+    pendingShellRoute: ShellRoute? = null,
+    onConsumeShellRoute: () -> ShellRoute? = { null },
 ) {
     val state = rememberNavigationState(expertStartTab, expertTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
@@ -176,6 +185,17 @@ fun HomeExpertShell(
     LaunchedEffect(pendingChatThread) {
         if (pendingChatThread != null) {
             onConsumeChatThread()?.let { navigator.openChatThread(ExpertChatsRoot, it) }
+        }
+    }
+
+    // A resolved push route. Only the expert shell consumes an expert route: the outgoing shell of a mode switch is
+    // still composed for the cross-fade and must leave a client route alone.
+    LaunchedEffect(pendingShellRoute) {
+        if (pendingShellRoute?.mode == AppMode.Expert) {
+            onConsumeShellRoute()?.let { route ->
+                val routable = route.tab in state.backStacks && route.keys.isNotEmpty()
+                if (routable) navigator.openRouted(route.tab, route.keys)
+            }
         }
     }
 

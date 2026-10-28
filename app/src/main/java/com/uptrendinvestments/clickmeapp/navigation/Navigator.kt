@@ -154,6 +154,33 @@ class Navigator(
         state.topLevelRoute = tab
     }
 
+    /**
+     * Inserts a push destination: the key chain [keys] (last key is the screen the user lands on) on [tab]'s stack,
+     * then selects [tab]. The Phase 13 push entry point (PUSH-04).
+     *
+     * When [tab] is not the selected tab its stack is popped to the root first and the chain is added in order
+     * (`TabSwitch`); when it is the selected tab the chain goes on top (`Push`). Both arguments are validated before
+     * anything is mutated. Duplicate-key handling is added on top of this rule.
+     *
+     * @throws IllegalArgumentException if [tab] is not a tab of this shell or [keys] is empty.
+     */
+    fun openRouted(
+        tab: NavKey,
+        keys: List<NavKey>,
+    ) {
+        require(tab in state.backStacks) { "Unknown tab: $tab" }
+        require(keys.isNotEmpty()) { "Empty route chain" }
+        val stack = state.backStacks.getValue(tab)
+        if (tab != state.topLevelRoute) {
+            while (stack.size > 1) stack.removeAt(stack.lastIndex)
+            state.lastTransition = NavTransition.TabSwitch
+        } else {
+            state.lastTransition = NavTransition.Push
+        }
+        stack.addAll(keys)
+        state.topLevelRoute = tab
+    }
+
     private fun currentStack() =
         state.backStacks[state.topLevelRoute] ?: error("Stack for ${state.topLevelRoute} not found")
 }

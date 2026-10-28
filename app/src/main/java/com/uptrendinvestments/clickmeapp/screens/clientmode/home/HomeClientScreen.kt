@@ -65,6 +65,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.Upco
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
+import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
+import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
@@ -77,8 +79,10 @@ fun HomeClientScreen(
     onSwitchMode: (AppMode) -> Unit,
     viewModel: HomeClientViewModel = hiltViewModel(),
     chatLaunch: ChatLaunchViewModel = hiltViewModel(),
+    shellRoute: ShellRouteViewModel = hiltViewModel(),
 ) {
     val pendingChatThread by chatLaunch.pendingThread.collectAsStateWithLifecycle()
+    val pendingShellRoute by shellRoute.pending.collectAsStateWithLifecycle()
     val avatarUrl by viewModel.avatarUrl.collectAsStateWithLifecycle()
     val debugRefreshStatus by viewModel.debugRefreshStatus.collectAsStateWithLifecycle()
     val hasSeenOnboarding by viewModel.hasSeenOnboarding.collectAsStateWithLifecycle()
@@ -200,6 +204,8 @@ fun HomeClientScreen(
                 },
                 pendingChatThread = pendingChatThread,
                 onConsumeChatThread = chatLaunch::consumeThread,
+                pendingShellRoute = pendingShellRoute,
+                onConsumeShellRoute = { shellRoute.consumeFor(AppMode.Client) },
             )
         },
     )
@@ -240,6 +246,8 @@ private const val ONBOARDING_FADE_MS = 200
  * [clientBookingFlowEntries]), the booking-management routes (see [clientBookingManagementEntries]) and Payment
  * Methods (see [clientPaymentMethodsEntry]). [pendingChatThread] / [onConsumeChatThread] are the chat hand-off: when a
  * thread key is pending the shell consumes it and opens it on the Chats tab ([Navigator.openChatThread]).
+ * [pendingShellRoute] / [onConsumeShellRoute] are the push route hand-off: a resolved client [ShellRoute] is consumed
+ * only by this shell and inserted with [Navigator.openRouted].
  */
 @Composable
 fun HomeClientShell(
@@ -261,6 +269,8 @@ fun HomeClientShell(
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
     pendingChatThread: ChatThreadKey? = null,
     onConsumeChatThread: () -> ChatThreadKey? = { null },
+    pendingShellRoute: ShellRoute? = null,
+    onConsumeShellRoute: () -> ShellRoute? = { null },
 ) {
     val state = rememberNavigationState(clientStartTab, clientTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
@@ -269,6 +279,17 @@ fun HomeClientShell(
     LaunchedEffect(pendingChatThread) {
         if (pendingChatThread != null) {
             onConsumeChatThread()?.let { navigator.openChatThread(ClientChatsRoot, it) }
+        }
+    }
+
+    // A resolved push route. Only the client shell consumes a client route: the outgoing shell of a mode switch is
+    // still composed for the cross-fade and must leave an expert route alone.
+    LaunchedEffect(pendingShellRoute) {
+        if (pendingShellRoute?.mode == AppMode.Client) {
+            onConsumeShellRoute()?.let { route ->
+                val routable = route.tab in state.backStacks && route.keys.isNotEmpty()
+                if (routable) navigator.openRouted(route.tab, route.keys)
+            }
         }
     }
 
