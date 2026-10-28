@@ -507,9 +507,12 @@ class HomeShellsTest {
                                     Button(onClick = onCancelled) { Text("cancel done") }
                                 }
                             },
-                            summary = { key, onBack, onBookAgain, onOpenPaymentMethods ->
+                            summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview ->
                                 Column {
                                     Text("fake summary ${key.bookingId}")
+                                    Button(onClick = { onLeaveReview(WriteReviewKey(key.bookingId)) }) {
+                                        Text("summary leave review")
+                                    }
                                     Button(onClick = onBack) { Text("summary back") }
                                     Button(
                                         onClick = { onBookAgain(BookingKey("e1", "Ada Lovelace", "Engineer", null)) },
@@ -519,6 +522,12 @@ class HomeShellsTest {
                             },
                         )
                         fakePaymentMethodsEntry(nav)
+                        entry<WriteReviewKey>(metadata = BottomBar.hidden()) {
+                            Column {
+                                Text("fake write review ${it.bookingId}")
+                                Button(onClick = { nav.goBack() }) { Text("review back") }
+                            }
+                        }
                     },
                 )
             }
@@ -621,6 +630,18 @@ class HomeShellsTest {
         composeRule.onNodeWithText("summary add card").performClick()
         composeRule.onNodeWithText("fake payment methods").assertExists()
         composeRule.onNodeWithText("pm back").performClick()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
+    }
+
+    @Test
+    fun summaryLeaveReviewPushesWriteReview() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open summary").performClick()
+        composeRule.onNodeWithText("summary leave review").performClick()
+        composeRule.onNodeWithText("fake write review b2").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        composeRule.onNodeWithText("review back").performClick()
         composeRule.onNodeWithText("fake summary b2").assertExists()
     }
 

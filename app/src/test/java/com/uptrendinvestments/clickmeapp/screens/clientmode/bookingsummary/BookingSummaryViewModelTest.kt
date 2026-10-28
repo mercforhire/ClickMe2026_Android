@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
+import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusLabel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
@@ -10,6 +11,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.rescheduleDto
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewSubmitted
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -18,6 +24,8 @@ import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -38,12 +46,16 @@ class BookingSummaryViewModelTest {
     private val clock = MutableClock(Instant.parse("2026-10-23T12:00:00Z"))
     private val now = clock.instant()
 
-    private fun vm() =
+    private val reviewLaunch = ReviewLaunchRequest()
+
+    private fun vm(key: BookingSummaryKey = BookingSummaryKey("b1")) =
         BookingSummaryViewModel(
-            BookingSummaryKey("b1"),
+            key,
             ClientBookingsRepository(api),
             RescheduleResponder(ClientBookingsRepository(api), PaymentMethodsRepository(api)),
             clock,
+            ReviewsRepository(api),
+            reviewLaunch,
         )
 
     // ---- display model ----
@@ -232,6 +244,68 @@ class BookingSummaryViewModelTest {
             vm.refreshQuietly()
             runCurrent()
             assertEquals(2, api.clientBookingDetailCalls)
+        }
+
+    // ---- Leave a review (D-18, D-19) ----
+
+    @Test
+    fun leaveReviewKeyCarriesSeedAndOrigin() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            val vm = vm(BookingSummaryKey("b1", StackOrigin.Chats))
+            assertNull(vm.leaveReviewKey())
+            runCurrent()
+            assertEquals(
+                WriteReviewKey("b1", "Ada Lovelace", null, ReviewOpener.BookingSummary, StackOrigin.Chats),
+                vm.leaveReviewKey(),
+            )
+        }
+
+    @Test
+    fun submittedHandOffReloadsAndThanks() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            val vm = vm()
+            runCurrent()
+            assertEquals(false, vm.reviewThanks.value)
+            val states = mutableListOf<BookingSummaryUiState>()
+            val collector = launch { vm.uiState.toList(states) }
+            runCurrent()
+            reviewLaunch.onSubmitted("b1", ReviewOpener.BookingSummary)
+            runCurrent()
+            assertEquals(2, api.clientBookingDetailCalls)
+            assertTrue(states.none { it is BookingSummaryUiState.Loading })
+            assertTrue(vm.reviewThanks.value)
+            assertNull(reviewLaunch.summaryReviewed.pending.value)
+            assertEquals(setOf("b1"), vm.reviewedBookingIds.value)
+            vm.consumeReviewThanks()
+            assertEquals(false, vm.reviewThanks.value)
+            collector.cancel()
+        }
+
+    @Test
+    fun handOffPostedBeforeTheViewModelExistsIsConsumedInInit() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            reviewLaunch.onSubmitted("b1", ReviewOpener.BookingSummary)
+            val vm = vm()
+            runCurrent()
+            assertTrue(vm.reviewThanks.value)
+            assertNull(reviewLaunch.summaryReviewed.pending.value)
+            assertTrue(vm.uiState.value is BookingSummaryUiState.Loaded)
+        }
+
+    @Test
+    fun aHandOffForAnotherBookingIsLeftInTheSlot() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            val vm = vm()
+            runCurrent()
+            reviewLaunch.onSubmitted("other", ReviewOpener.BookingSummary)
+            runCurrent()
+            assertEquals(ReviewSubmitted("other"), reviewLaunch.summaryReviewed.pending.value)
+            assertEquals(false, vm.reviewThanks.value)
+            assertEquals(1, api.clientBookingDetailCalls)
         }
 
     @Test

@@ -188,7 +188,7 @@ fun HomeClientScreen(
                                 onCancelled = onCancelled,
                             )
                         },
-                        summary = { key, onBack, onBookAgain, onOpenPaymentMethods ->
+                        summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview ->
                             val summaryViewModel =
                                 hiltViewModel<BookingSummaryViewModel, BookingSummaryViewModel.Factory>(
                                     creationCallback = { it.create(key) },
@@ -198,6 +198,7 @@ fun HomeClientScreen(
                                 onBack = onBack,
                                 onBookAgain = onBookAgain,
                                 onOpenPaymentMethods = onOpenPaymentMethods,
+                                onLeaveReview = onLeaveReview,
                             )
                         },
                     )
