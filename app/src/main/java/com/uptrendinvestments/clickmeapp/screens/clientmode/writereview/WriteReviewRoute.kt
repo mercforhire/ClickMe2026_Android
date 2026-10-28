@@ -1,35 +1,25 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.writereview
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import com.uptrendinvestments.clickmeapp.R
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
-import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 
 /**
- * The Write Review route: the app bar with Back over an empty body. The review form replaces the body in a later plan
- * (13-13); this signature stays.
+ * The Write Review route: binds the assisted [WriteReviewViewModel] to [key] and pops on back and on a successful
+ * submit. The screen that opened Write Review reloads and shows the thanks snackbar (13-15, 13-18).
  */
 @Composable
 fun WriteReviewRoute(
     key: WriteReviewKey,
     navigator: Navigator,
 ) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            AuthTopAppBar(
-                title = stringResource(R.string.write_review_title),
-                onBack = navigator::goBack,
-            )
-        },
-    ) { innerPadding ->
-        Box(Modifier.fillMaxSize().padding(innerPadding))
-    }
+    val viewModel =
+        hiltViewModel<WriteReviewViewModel, WriteReviewViewModel.Factory>(
+            creationCallback = { factory -> factory.create(key) },
+        )
+    WriteReviewScreen(
+        viewModel = viewModel,
+        onBack = navigator::goBack,
+        onSubmitted = navigator::goBack,
+    )
 }
