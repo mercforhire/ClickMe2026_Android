@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.NotificationBellButton
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
@@ -56,6 +57,7 @@ fun ExploreScreen(
     onAvatarClick: () -> Unit,
     onOpenExpert: (ExpertProfileKey) -> Unit,
     onOpenBooking: (bookingId: String) -> Unit,
+    onOpenNotifications: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExploreViewModel = hiltViewModel(),
     sheetViewModel: CategoriesSheetViewModel = hiltViewModel(),
@@ -69,6 +71,7 @@ fun ExploreScreen(
         state = state,
         avatarUrl = avatarUrl,
         onAvatarClick = onAvatarClick,
+        onOpenNotifications = onOpenNotifications,
         onRefresh = viewModel::onRefresh,
         onRetry = viewModel::onRetry,
         onChipTap = viewModel::onChipTap,
@@ -117,6 +120,7 @@ fun ExploreContent(
     onJoinSession: (TodaysSessionUi) -> Unit,
     onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenNotifications: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -150,7 +154,13 @@ fun ExploreContent(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.tab_explore), style = MaterialTheme.typography.titleLarge) },
-                actions = { TopBarAvatarButton(avatarUrl, onClick = onAvatarClick) },
+                actions = {
+                    NotificationBellButton(
+                        onClick = onOpenNotifications,
+                        modifier = Modifier.testTag("explore_notifications_bell"),
+                    )
+                    TopBarAvatarButton(avatarUrl, onClick = onAvatarClick)
+                },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,

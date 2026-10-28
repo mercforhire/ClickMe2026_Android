@@ -1,5 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Phase 13 UI-SPEC Copywriting Contract: Notifications list. -->
+    <!-- Phase 13 UI-SPEC Copywriting Contract: Notifications list. Also uses: section_retry, content_loading,
+         login_error_network. -->
     <string name="notifications_title">Notifications</string>
+    <string name="notifications_bell_description">Notifications</string>
+
+    <string name="notifications_section_today">Today</string>
+    <string name="notifications_section_yesterday">Yesterday</string>
+    <string name="notifications_section_earlier">Earlier</string>
+
+    <string name="notifications_time_just_now">Just now</string>
+    <plurals name="notifications_time_minutes">
+        <item quantity="one">%d min ago</item>
+        <item quantity="other">%d min ago</item>
+    </plurals>
+    <plurals name="notifications_time_hours">
+        <item quantity="one">%d hr ago</item>
+        <item quantity="other">%d hr ago</item>
+    </plurals>
+    <string name="notifications_time_yesterday">Yesterday, %1$s</string>
+    <string name="notifications_time_date">%1$s, %2$s</string>
+
+    <string name="notifications_row_click_label">Open notification</string>
+    <string name="notifications_row_description">%1$s, %2$s, %3$s</string>
+    <string name="notifications_row_description_no_body">%1$s, %2$s</string>
+    <string name="notifications_end_note">End of recent updates</string>
+
+    <string name="notifications_off_title">Notifications are off</string>
+    <string name="notifications_off_action">Turn on</string>
+    <string name="notifications_off_description">Notifications are off — Turn on</string>
+    <string name="notifications_off_click_label">Open notification settings</string>
+
+    <string name="notifications_empty_heading">You\'re all caught up</string>
+    <string name="notifications_empty_body">No new notifications right now.</string>
+    <string name="notifications_error_heading">Couldn\'t load notifications</string>
+    <string name="notifications_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
 </resources>
