@@ -1,7 +1,8 @@
 ---
 phase: 13
 slug: push-notifications-internal-testing
-status: draft
+status: approved
+reviewed_at: 2026-10-27
 shadcn_initialized: false
 preset: none
 created: 2026-10-27
@@ -304,7 +305,7 @@ Route `WriteReviewKey(bookingId, expertName, expertAvatarUrl)`. Background `surf
 | `account_payouts` | Account & payouts | Payout and account security updates. | High | `payout`, `account` |
 | `general` | General | Other ClickMe updates. | Default | anything else; also the manifest `default_notification_channel_id` |
 
-The existing `ongoing_call` channel (Low importance) is unchanged and separate. `review` pushes map to Sessions so review nudges arrive with the session they belong to (Open Items 4; the backend task confirms the mapping). A foreground post on a Default channel appears in the shade with a status-bar icon but without a heads-up banner; that is the platform behavior for Default importance.
+The existing `ongoing_call` channel (Low importance) is unchanged and separate. `review` pushes map to Sessions so review nudges arrive with the session they belong to (user-confirmed 2026-10-27; CONTEXT D-04 amended). A foreground post on a Default channel appears in the shade with a status-bar icon but without a heads-up banner; that is the platform behavior for Default importance.
 
 **Small icon and accent color.** A new vector `ic_stat_clickme.xml` (24dp, white-only, transparent background, derived from the launcher monochrome mark) is the small icon for every ClickMe push; the manifest sets `com.google.firebase.messaging.default_notification_icon` to it so background (system-rendered) notifications use it too. The accent color is `primary` `#44F697`: foreground posts use `ClickMePalette.primary.toArgb()` (as `CallNotificationFactory`); the manifest `default_notification_color` needs an XML color, so add `res/values/colors.xml` with `notification_accent` = `#44F697`, with a comment that it mirrors `ClickMePalette.primary`, the only hex outside `Color.kt` (the design-rules script must allow it or be told; Open Items 5). No large icon, no inline image.
 
@@ -379,36 +380,71 @@ All new strings go into new `res/values/strings_notifications.xml`, `strings_wri
 
 ## UI Considerations
 
-Applicable state considerations resolved: 22 covered, 4 backstop, 0 unresolved. The probe was not run interactively; the categories below were derived from the surfaces and accepted by default (Open Items 7). Empty and error copy lives in the Copywriting Contract and is referenced here, not repeated.
+Coverage from `ui-consideration-probe.cjs` (run 2026-10-27, 8 elements E1–E8, 61 applicable considerations): 39 resolved (explicit), 4 resolved (backstop), 18 dismissed with reason, 0 unresolved. The user accepted the proposed resolutions in one pass and decided two gaps explicitly (E8 error: fallback to Booking Summary; channel mapping review→sessions, amending CONTEXT D-04). Empty and error copy lives in the Copywriting Contract and is referenced here, not repeated.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | Notifications list | ✅ covered | Zero items shows "You're all caught up" with a working pull-to-refresh |
-| empty | Review comment (read-only) | ✅ covered | A review without a comment shows "No written comment."; the Feedback block shows stars only |
-| empty | Date sections | ✅ covered | Empty Today / Yesterday / Earlier sections are omitted |
-| loading | Notifications, Write Review | ✅ covered | First load shows skeletons copying the real layout; quiet reloads never return to them |
-| loading | Submit | ✅ covered | Inline spinner with `stateDescription`; Back, stars, field and repeat taps are ignored |
-| loading | Booking Summary review context | ✅ covered | Leave a review shows while the context is pending or failed; the Feedback block appears when data arrives |
-| error | List load | ✅ covered | Heading, server message or network line, and Retry; pull-to-refresh failure shows the snackbar |
-| error | Write Review context | ✅ covered | "Couldn't load review" with Retry; no footer |
-| error | Submit | ✅ covered | `AuthErrorDialog` "Couldn't submit review"; form intact |
-| error | Notification with no routable destination | ✅ covered | The row is inert (no ripple, no `Role.Button`) |
-| partial | Row with a missing title, body or category | ✅ covered | An empty body line is omitted; an unknown category uses `NotificationsNone` with the neutral tile |
-| partial | Expert name or avatar missing | ✅ covered | Headline falls back to "your expert"; the avatar falls back to the silhouette |
-| partial | Session topic missing | ✅ covered | The topic line is omitted |
-| partial | Review state unknown (Summary context pending or failed) | ✅ covered | Leave a review stays visible; Write Review resolves the real state |
-| partial | Notifications permission off | ✅ covered | The hint row appears in Loaded and Empty states and clears on return from settings |
-| zero-one-many | Notifications | ✅ covered | 0 shows the empty state; 1 shows one section; many are grouped; more than 50 are not fetched (D-16) |
-| long-text | Notification title and body | ✅ covered | Both wrap with no max lines; the tile stays top-aligned; rows grow |
-| long-text | Expert name in the Write Review headline | ✅ covered | Wraps to at most 3 lines, then ellipsis |
-| long-text | Review comment | ✅ covered | Field grows to 8 lines then scrolls; the Feedback comment and read-only comment wrap fully |
-| long-text | 200% font scale | ✅ covered | Rows, the hint row, the banner and the headline grow; star targets stay 48dp; the footer button grows with `heightIn` |
-| overflow | Review length | ✅ covered | Capped at 1000 with a counter from 800 |
-| overflow | More than 50 notifications | ✅ covered | First page only, the end note closes the list (D-16 deferred paging) |
-| populated | Foreground push while the list is open | 🧪 backstop | The list reloads silently and the new row animates in; verify on device with a second client |
-| populated | `**bold**` spans in bodies | 🧪 backstop | Unit-test the parser (matched, unmatched, adjacent spans, none); verify against real backend strings |
-| populated | Permission-off row after returning from system settings | 🧪 backstop | Row clears on `ON_RESUME`; verify on a real Android 13+ device (deferred manual test) |
-| populated | Push heads-up on each channel | 🧪 backstop | Foreground post on all five channels with correct icon and accent; verify on the Samsung test device (deferred manual test) |
+| Element | Category | Status | Resolution / Reason |
+|---|---|---|---|
+| E1 Notifications list | empty | resolved (explicit) | Zero items renders `EmptyState` "You're all caught up" (Copywriting Contract); pull-to-refresh still works; permission-off row sits above it when applicable |
+| E1 Notifications list | loading | resolved (explicit) | First load renders `NotificationsSkeleton`; quiet reloads (resume, push tick, pull) never return to the skeleton |
+| E1 Notifications list | error | resolved (explicit) | First-load failure renders "Couldn't load notifications" + server message or network line + Retry; failed pull-to-refresh shows the refresh snackbar; failed quiet reload shows nothing |
+| E1 Notifications list | populated | resolved (backstop) | { statement: "A foreground push while the list is open triggers a silent reload and the new row appears in Today", verification: backstop } |
+| E1 Notifications list | partial | resolved (explicit) | Empty Today/Yesterday/Earlier sections are omitted; server order kept inside each section |
+| E1 Notifications list | overflow | resolved (explicit) | Only page 1 (limit 50) is fetched; the end note "End of recent updates" closes the list (D-16, paging deferred) |
+| E1 Notifications list | zero-one-many | resolved (explicit) | 0 → empty state; 1 → a single section with one row; many → grouped sections |
+| E2 Notification row | empty | resolved (explicit) | A blank body line is omitted; the title alone renders |
+| E2 Notification row | loading | dismissed | Rows render only from loaded data; the list-level skeleton covers loading |
+| E2 Notification row | error | resolved (explicit) | A row resolving to no destination (or to the list itself: payout/account until Phase 14, unknown category, missing id) is inert: no ripple, no `Role.Button` |
+| E2 Notification row | populated | resolved (backstop) | { statement: "`**bold**` spans render as weight 600 onSurface; unmatched markers render literally (parser unit-tested against real backend strings)", verification: backstop } |
+| E2 Notification row | partial | resolved (explicit) | Unknown category uses `NotificationsNone` on the neutral tile |
+| E2 Notification row | overflow | resolved (explicit) | Title and body wrap with no max lines; the tile stays top-aligned and the row grows |
+| E2 Notification row | zero-one-many | dismissed | A single row has no collection of its own; list cardinality is covered under E1 |
+| E2 Notification row | long-text | resolved (explicit) | At 200% font scale title, body and timestamp wrap; no truncation |
+| E3 Permission-off row | empty | dismissed | Static copy, no data to be empty |
+| E3 Permission-off row | loading | resolved (explicit) | Hidden while the list's first load is in progress |
+| E3 Permission-off row | error | resolved (explicit) | If `ACTION_APP_NOTIFICATION_SETTINGS` cannot be resolved, fall back to `ACTION_APPLICATION_DETAILS_SETTINGS` for the package; never crash |
+| E3 Permission-off row | populated | resolved (backstop) | { statement: "Row shows when notifications are disabled and clears (200 ms fade/shrink) on ON_RESUME after enabling in system settings, on a real Android 13+ device", verification: backstop } |
+| E3 Permission-off row | partial | resolved (explicit) | Below API 33 the row follows `areNotificationsEnabled()` only (app-level toggle), same rendering |
+| E3 Permission-off row | overflow | dismissed | Fixed one-line copy pinned by D-02; no variable content |
+| E3 Permission-off row | zero-one-many | dismissed | Single row; at most one instance |
+| E3 Permission-off row | long-text | resolved (explicit) | At 200% font scale the label wraps inside the 56dp-min row, which grows; "Turn on" stays visible |
+| E4 Bell button | empty | dismissed | Stateless icon button; no badge (no read state, D-16) |
+| E4 Bell button | loading | dismissed | No data fetched by the bell |
+| E4 Bell button | error | dismissed | No data fetched by the bell |
+| E4 Bell button | populated | resolved (explicit) | Tap pushes `NotificationsKey(origin)` onto the current tab's stack (Explore client / Dashboard expert); contentDescription "Notifications" |
+| E4 Bell button | partial | dismissed | No variable content |
+| E4 Bell button | overflow | dismissed | No count badge to overflow |
+| E4 Bell button | zero-one-many | dismissed | No count badge |
+| E4 Bell button | long-text | dismissed | Icon only; 48dp target fixed |
+| E5 Write Review | empty | resolved (explicit) | No comment is valid: field optional, blank text omitted on send; read-only with no comment shows "No written comment." |
+| E5 Write Review | loading | resolved (explicit) | Context load shows `WriteReviewSkeleton`; submit replaces the label with a spinner, locks inputs, ignores Back and repeat taps |
+| E5 Write Review | error | resolved (explicit) | Context failure → "Couldn't load review" + Retry, no footer; submit failure → `AuthErrorDialog` "Couldn't submit review" with "Edit review", form intact |
+| E5 Write Review | populated | resolved (explicit) | `has_submitted` → read-only form with the already-submitted banner, prefilled stars and comment, no footer |
+| E5 Write Review | partial | resolved (explicit) | Missing name → "your expert"; missing avatar → silhouette; null session topic → line omitted |
+| E5 Write Review | overflow | resolved (explicit) | Comment capped at 1000 (paste truncated), counter from 800, `tertiary` at the cap; field grows to 8 lines then scrolls |
+| E5 Write Review | long-text | resolved (explicit) | Headline wraps to 3 lines then ellipsis; at 200% font scale the footer button grows via `heightIn`, star targets stay 48dp |
+| E6 Summary Feedback + Leave a review | empty | resolved (explicit) | No submitted review → Feedback block not rendered; Leave a review shown for completed bookings |
+| E6 Summary Feedback + Leave a review | loading | resolved (explicit) | While the review context loads, Leave a review is shown and the Feedback block is absent; it appears with `SectionAppear` when data arrives |
+| E6 Summary Feedback + Leave a review | error | resolved (explicit) | Context failure is silent: Leave a review stays visible and Write Review resolves the true state |
+| E6 Summary Feedback + Leave a review | populated | resolved (explicit) | Submitted review → Feedback card with `RatingStars` and comment; Leave a review not rendered (fades after a submit) |
+| E6 Summary Feedback + Leave a review | partial | resolved (explicit) | Review with no comment shows stars only; cancelled or missed bookings show neither block nor button |
+| E6 Summary Feedback + Leave a review | overflow | dismissed | Comment is capped at 1000 by the backend and wraps fully; no other variable content |
+| E6 Summary Feedback + Leave a review | zero-one-many | dismissed | At most one review per booking |
+| E6 Summary Feedback + Leave a review | long-text | resolved (explicit) | Comment wraps with no max lines; at 200% font scale the button grows via `heightIn(min = 56.dp)` |
+| E7 Past card pill | empty | resolved (explicit) | Not rendered for non-completed bookings or ids reviewed this session |
+| E7 Past card pill | loading | dismissed | Rendered from the already-loaded bookings list; list loading is owned by Phase 8 |
+| E7 Past card pill | error | dismissed | Pill only navigates; errors surface in Write Review |
+| E7 Past card pill | populated | resolved (explicit) | Completed card shows the end-aligned outlined pill; tap opens Write Review and does not trigger the card tap |
+| E7 Past card pill | partial | resolved (explicit) | No review flag in the list payload: shown on every completed card until reviewed this session or a reload reports a review (Open Items 2) |
+| E7 Past card pill | overflow | dismissed | Fixed label; no variable content |
+| E7 Past card pill | zero-one-many | dismissed | At most one pill per card; list cardinality owned by Phase 8 |
+| E7 Past card pill | long-text | resolved (explicit) | At 200% font scale the pill wraps onto its own full-width row below the date line instead of clipping |
+| E8 System notification + snackbar | empty | resolved (explicit) | Missing title or body: the remaining field is shown; a push with neither falls back to title "ClickMe" |
+| E8 System notification + snackbar | loading | resolved (explicit) | Routing a tap that needs a lookup (D-05 role, D-06 booking status) shows no extra UI: the shell stays put and the destination pushes when resolved |
+| E8 System notification + snackbar | error | resolved (explicit) | If the D-06 booking-status fetch fails, route to `BookingSummaryKey` (its own error/Retry); unroutable payloads open the notifications list (D-10) |
+| E8 System notification + snackbar | populated | resolved (backstop) | { statement: "Foreground posts appear on all five channels with ic_stat_clickme and the #44F697 accent; High channels heads-up, General does not; tap routes correctly cold and warm (Samsung test device)", verification: backstop } |
+| E8 System notification + snackbar | partial | resolved (explicit) | Unknown category posts on `general`; chat push for the visible thread is not posted (D-13) |
+| E8 System notification + snackbar | overflow | resolved (explicit) | Repeat pushes for the same (category, entity id) update in place; the system auto-groups; `BigTextStyle` for long bodies |
+| E8 System notification + snackbar | long-text | resolved (explicit) | Long bodies expand via `BigTextStyle`; the "Thanks for your review" snackbar is one line, Short duration |
 
 ---
 
@@ -506,7 +542,7 @@ Open items:
 1. **Dashboard bell.** CONTEXT says `DashboardHeader.kt` already has the bell icon; the `NotificationsNone` there is the Pending-requests banner icon. The actual bell action belongs in the `AuthTopAppBar` `actions` of `ExpertDashboardScreen.kt` (beside `TopBarAvatarButton`). The planner confirms.
 2. **Review state in the data.** `ClientBookingItem` (list) and `ClientBookingDetail` carry no review fields, and iOS also resolves it separately. Booking Summary needs a quiet `GET /bookings/{id}/reviews/context` call (or the Write Review context cached by the repository) to know `has_submitted`, the rating and the comment. The Past card cannot know per-card review state without a backend `has_review` flag; the in-memory reviewed-ids set bridges the session. Raise a backend follow-up if the always-visible action proves noisy.
 3. **Reload-and-snackbar hand-off** from Write Review to the screen below it follows the Phase 8 launch-argument pattern (a one-shot field on shared client state), because the destination may be Booking Summary on the Bookings stack or on another tab stack.
-4. **Backend `channel_id` mapping** (D-04): `booking`→`bookings`, `session` and `review`→`sessions`, `message`→`messages`, `payout` and `account`→`account_payouts`, else `general`. The `review` mapping is this spec's choice; the backend task confirms the category names from `events.js` (`EVENT_CATEGORY`).
+4. **Backend `channel_id` mapping** (D-04): `booking`→`bookings`, `session` and `review`→`sessions`, `message`→`messages`, `payout` and `account`→`account_payouts`, else `general`. The `review`→`sessions` mapping was user-confirmed on 2026-10-27 (CONTEXT D-04 amended); the backend task still confirms the category names from `events.js` (`EVENT_CATEGORY`).
 5. **Design-rules script.** The `notification_accent` XML color is the only hex outside `Color.kt`. `scripts/check-design-rules.sh` must either exempt `res/values/colors.xml` or this one value is added with an explicit allow comment. `ic_stat_clickme.xml` must be derived from the launcher monochrome mark; if the mark does not reduce cleanly to 24dp, fall back to the `ic_stat_call` pattern with a simple bell silhouette.
 6. **Deferred manual checks** (project preference): permission prompt on a fresh Android 13+ install, deny then the list hint row and system settings round trip, one push per channel in foreground and background with icon and accent, a notification tap from cold start and while running, the list with a foreground push arriving, the Past card nested-click and TalkBack behavior, 200% font scale on the list (with and without the hint row), Write Review (both states) and the Past card.
 7. **Probe not run interactively.** The UI Considerations table was derived by hand from the six surfaces; re-run the probe if the checker requires the original run record.
