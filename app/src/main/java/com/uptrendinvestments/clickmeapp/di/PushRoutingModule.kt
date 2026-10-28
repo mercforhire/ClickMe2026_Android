@@ -1,6 +1,10 @@
 package com.uptrendinvestments.clickmeapp.di
 
 import com.uptrendinvestments.clickmeapp.managers.SessionDataCleaner
+import com.uptrendinvestments.clickmeapp.screens.push.ClientBookingProbe
+import com.uptrendinvestments.clickmeapp.screens.push.PendingRequestLookup
+import com.uptrendinvestments.clickmeapp.screens.push.RepositoryClientBookingProbe
+import com.uptrendinvestments.clickmeapp.screens.push.RepositoryPendingRequestLookup
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import dagger.Binds
 import dagger.Module
@@ -9,8 +13,8 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 
 /**
- * Push routing seams. A resolved route that no shell consumed is dropped with the session. 13-07 adds the resolver
- * lookup bindings here.
+ * Push routing seams. A resolved route that no shell consumed is dropped with the session. The resolver's two lookups
+ * (client-booking probe, pending-request lookup) are bound to their repository implementations here.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -18,4 +22,10 @@ abstract class PushRoutingModule {
     @Binds
     @IntoSet
     abstract fun bindShellRouteCleaner(impl: ShellRouteRequest): SessionDataCleaner
+
+    @Binds
+    abstract fun bindClientBookingProbe(impl: RepositoryClientBookingProbe): ClientBookingProbe
+
+    @Binds
+    abstract fun bindPendingRequestLookup(impl: RepositoryPendingRequestLookup): PendingRequestLookup
 }
