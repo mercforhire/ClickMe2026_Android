@@ -5,10 +5,10 @@ current_phase: 13
 current_phase_name: Push, Notifications & Internal Testing
 status: planning
 stopped_at: Phase 12 complete, ready to plan Phase 13
-last_updated: "2026-10-28T02:46:45.334Z"
+last_updated: "2026-10-28T02:58:23.067Z"
 last_activity: 2026-10-27
 last_activity_desc: Phase 12 complete (UAT 5/5, security 66/66 closed), transitioned to Phase 13
-state_head: 8b7bf316a5f7c132a45b65de3681913420dacd21
+state_head: fea65c4c31db5b4d537a722434c51cfa9b1c5264
 progress:
   total_phases: 17
   completed_phases: 11
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 Phase: 13 — Push, Notifications & Internal Testing
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-27 - Completed quick task 261027-v9i: Phase 12 UI review fixes (read-receipt separator, Outlined chat icons)
+Last activity: 2026-10-27 - Completed quick task 261027-vow: Outlined back arrows app-wide
 
 Progress: [███████░░░] 65%
 
@@ -259,6 +259,7 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 261027-v9i | Phase 12 UI review fixes: externalise read-receipt separator, switch chat icons to Outlined | 2026-10-27 | 8b7bf31 | [261027-v9i-phase-12-ui-review-fixes-externalise-rea](./quick/261027-v9i-phase-12-ui-review-fixes-externalise-rea/) |
+| 261027-vow | Switch all app back arrows to AutoMirrored.Outlined.ArrowBack per UI spec | 2026-10-27 | fea65c4 | [261027-vow-switch-all-app-back-arrows-to-automirror](./quick/261027-vow-switch-all-app-back-arrows-to-automirror/) |
 
 ## Deferred Items
 
