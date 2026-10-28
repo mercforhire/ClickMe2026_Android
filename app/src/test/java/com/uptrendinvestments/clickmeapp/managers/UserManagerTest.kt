@@ -616,6 +616,30 @@ class UserManagerTest {
     private fun expertLogin() = sampleLogin.copy(user = sampleLogin.user.copy(roles = listOf("expert")))
 
     @Test
+    fun sessionStartsCountsLoginAndSignupOnly() =
+        runTest {
+            val h = Harness(this, authedPair)
+            h.api.meHandler = { me("client") }
+            h.api.userProfileHandler = { sampleProfile }
+            h.api.loginHandler = { sampleLogin }
+            h.api.signupHandler = { sampleSignup }
+            h.manager.restore()
+            runCurrent()
+            assertEquals(0, h.manager.sessionStarts.value)
+
+            h.manager.login("a@b.co", "pw")
+            runCurrent()
+            assertEquals(1, h.manager.sessionStarts.value)
+
+            h.manager.signup("a@b.co", "abcdefg1")
+            runCurrent()
+            assertEquals(2, h.manager.sessionStarts.value)
+
+            h.manager.logout()
+            assertEquals(2, h.manager.sessionStarts.value)
+        }
+
+    @Test
     fun signupStoresTokensAndMarksLoggedIn() =
         runTest {
             val h = Harness(this)

@@ -23,6 +23,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientScree
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
+import com.uptrendinvestments.clickmeapp.screens.push.PushPermissionRequester
 import com.uptrendinvestments.clickmeapp.screens.push.PushRoutingHost
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
@@ -44,6 +45,7 @@ fun ClickMeApp(
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
     PushRoutingHost(route = route, onSwitchMode = appViewModel::switchMode)
+    PushPermissionRequester(route = route)
     // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
     CallOverlayHost {
         AnimatedContent(
