@@ -672,15 +672,15 @@ Plans:
   5. A build is on the internal testing track with a few real users on a mix of devices. The store listing, data safety form and foreground-service declaration are drafted in Play Console. (PRD Week 6 checkpoint: every MVP flow except payouts and settings works, and a build is with testers)
 
 **Planning notes:** Third-biggest schedule risk: deep links into per-tab back stacks. If the schedule slips, the notifications list is cut #2 and Write Review is cut #3. Phase 11 hand-off: a push that routes to an incoming request must build `RequestDecisionKey` with `isExpired` and the expiry (the request detail endpoint has no status or expiry), and a push to an expert booking builds `ExpertBookingSummaryKey(bookingId, origin)`. Phase 12 hand-off: chat push routing posts a `ChatThreadKey` to `ChatLaunchRequest.thread` (or calls `Navigator.openChatThread`); the thread fills peer seeds from `GET /chats`.
-**Plans:** 18 plans
+**Plans:** 5/18 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 13-01-PLAN.md — Pure push routing core: PushEvent parse with the event_type fallback and UUID validation, PushRouter (iOS table plus audience), the pending-destination slot (Wave 1)
-- [ ] 13-02-PLAN.md — Backend D-04 (cross-repo): Android channel_id and android-only category/sub_category in push.js, iOS payload unchanged, jest; deploy left to the human checklist (Wave 1)
-- [ ] 13-03-PLAN.md — Network contract: device-token register/delete, notifications list, review context/submit, repositories, FakeClickMeApi and fixtures (Wave 1)
-- [ ] 13-04-PLAN.md — Push-to-shell navigation: ShellRoute hand-off, Navigator.openRouted dedupe, Notifications and Write Review keys/routes registered in the shells (Wave 1)
-- [ ] 13-05-PLAN.md — Firebase wiring with the guarded google-services plugin, five contract channels, manifest meta-data, status icon and accent (Wave 1)
+- [x] 13-01-PLAN.md — Pure push routing core: PushEvent parse with the event_type fallback and UUID validation, PushRouter (iOS table plus audience), the pending-destination slot (Wave 1)
+- [x] 13-02-PLAN.md — Backend D-04 (cross-repo): Android channel_id and android-only category/sub_category in push.js, iOS payload unchanged, jest; deploy left to the human checklist (Wave 1)
+- [x] 13-03-PLAN.md — Network contract: device-token register/delete, notifications list, review context/submit, repositories, FakeClickMeApi and fixtures (Wave 1)
+- [x] 13-04-PLAN.md — Push-to-shell navigation: ShellRoute hand-off, Navigator.openRouted dedupe, Notifications and Write Review keys/routes registered in the shells (Wave 1)
+- [x] 13-05-PLAN.md — Firebase wiring with the guarded google-services plugin, five contract channels, manifest meta-data, status icon and accent (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -709,6 +709,7 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [ ] 13-17-PLAN.md — Phase gate: sweeps, full gate with lint and R8, backend suite, validation sign-off, STATE follow-ups and hand-offs (Wave 6)
+
 **UI hint**: yes
 
 ### Phase 14: Payouts & Account Settings
@@ -791,7 +792,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 10. Expert Topics & Availability | 20/20 | Complete    | 2026-10-25 |
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
-| 13. Push, Notifications & Internal Testing | 0/TBD | Not started | - |
+| 13. Push, Notifications & Internal Testing | 5/18 | In Progress | - |
 | 14. Payouts & Account Settings | 0/TBD | Not started | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
