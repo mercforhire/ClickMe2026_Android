@@ -114,6 +114,7 @@ fun HomeClientScreen(
                         onOpenUpcoming = navigator::openUpcomingBooking,
                         onOpenPast = navigator::openBookingSummary,
                         onExploreExperts = navigator::showExplore,
+                        onLeaveReview = { navigator.navigate(it) },
                     )
                 },
                 chatsRoot = { navigator ->

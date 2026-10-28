@@ -54,6 +54,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.PastBookingCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.UpcomingBookingCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import kotlinx.coroutines.launch
@@ -79,12 +81,14 @@ fun MyBookingsScreen(
     onOpenUpcoming: (String) -> Unit,
     onOpenPast: (String) -> Unit,
     onExploreExperts: () -> Unit,
+    onLeaveReview: (WriteReviewKey) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MyBookingsViewModel = hiltViewModel(),
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+    val reviewedBookingIds by viewModel.reviewedBookingIds.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
@@ -106,6 +110,9 @@ fun MyBookingsScreen(
         joinNow = joinNow,
         onJoin = viewModel::join,
         modifier = modifier,
+        onLeaveReview = onLeaveReview,
+        reviewedBookingIds = reviewedBookingIds,
+        onReviewThanksShown = viewModel::consumeReviewThanks,
         messageBusyPeerId = entryState.busyPeerId,
         onMessage = { item ->
             chatEntry.open(ChatPeer(item.expert.id, item.expert.fullName, item.expert.avatarUrl, isExpert = true))
@@ -140,6 +147,9 @@ fun MyBookingsContent(
     modifier: Modifier = Modifier,
     messageBusyPeerId: String? = null,
     onMessage: (ClientBookingItem) -> Unit = {},
+    onLeaveReview: (WriteReviewKey) -> Unit = {},
+    reviewedBookingIds: Set<String> = emptySet(),
+    onReviewThanksShown: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -149,6 +159,7 @@ fun MyBookingsContent(
     val upcomingListState = rememberLazyListState()
     val pastListState = rememberLazyListState()
     val refreshFailedMessage = stringResource(R.string.my_bookings_refresh_failed)
+    val reviewThanksMessage = stringResource(R.string.review_thanks_snackbar)
     val noticeMessage =
         when (val notice = state.notice) {
             null -> null
@@ -162,6 +173,13 @@ fun MyBookingsContent(
             // Launched on the composition scope so consuming the notice does not cancel the Snackbar.
             scope.launch { snackbarHostState.showSnackbar(noticeMessage, duration = SnackbarDuration.Long) }
             onNoticeConsumed()
+        }
+    }
+    LaunchedEffect(state.reviewThanks) {
+        if (state.reviewThanks) {
+            // D-19: Short, and launched on the composition scope so consuming the flag does not cancel it.
+            scope.launch { snackbarHostState.showSnackbar(reviewThanksMessage, duration = SnackbarDuration.Short) }
+            onReviewThanksShown()
         }
     }
     LaunchedEffect(state.refreshFailed) {
@@ -248,6 +266,8 @@ fun MyBookingsContent(
                         onJoin = onJoin,
                         messageBusyPeerId = messageBusyPeerId,
                         onMessage = onMessage,
+                        onLeaveReview = onLeaveReview,
+                        reviewedBookingIds = reviewedBookingIds,
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -272,6 +292,8 @@ private fun TabBody(
     onJoin: (ClientBookingItem) -> Unit,
     messageBusyPeerId: String?,
     onMessage: (ClientBookingItem) -> Unit,
+    onLeaveReview: (WriteReviewKey) -> Unit,
+    reviewedBookingIds: Set<String>,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
@@ -324,6 +346,23 @@ private fun TabBody(
                                     row = row,
                                     onClick = { onOpenPast(row.item.bookingId) },
                                     modifier = Modifier.animateItem(),
+                                    onLeaveReview =
+                                        if (row.status.raw == STATUS_COMPLETED &&
+                                            row.item.bookingId !in reviewedBookingIds
+                                        ) {
+                                            {
+                                                onLeaveReview(
+                                                    WriteReviewKey(
+                                                        bookingId = row.item.bookingId,
+                                                        expertName = row.item.expert.fullName,
+                                                        expertAvatarUrl = row.item.expert.avatarUrl,
+                                                        opener = ReviewOpener.MyBookings,
+                                                    ),
+                                                )
+                                            }
+                                        } else {
+                                            null
+                                        },
                                     zone = zone,
                                     timeFormat = timeFormat,
                                     locale = locale,
