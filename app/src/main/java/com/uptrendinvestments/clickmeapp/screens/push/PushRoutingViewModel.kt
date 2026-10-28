@@ -55,10 +55,23 @@ class PushRoutingViewModel
                 combine(route, launchRequest.destination.pending) { current, pending -> current to pending }
                     .collect { (current, pending) ->
                         val mode = current.homeMode()
-                        if (mode != null && pending != null) {
-                            val destination = launchRequest.destination.consume() ?: return@collect
-                            routingJob?.cancel()
-                            routingJob = launch { deliver(destination, mode) }
+                        when {
+                            // D-14, RESEARCH A3: a logged-out, expired or mid-setup session holds no tap. Cancel any
+                            // resolution in flight too, so nothing lands in the next session.
+                            current == AppRoute.Login || current == AppRoute.SignupSetup -> {
+                                routingJob?.cancel()
+                                routingJob?.join()
+                                launchRequest.destination.consume()
+                            }
+
+                            mode != null && pending != null -> {
+                                val destination = launchRequest.destination.consume() ?: return@collect
+                                // D-15: the newest tap wins, so an older resolution is cancelled before it posts. The
+                                // join lets its cleanup finish before the new one touches the switch request.
+                                routingJob?.cancel()
+                                routingJob?.join()
+                                routingJob = launch { deliver(destination, mode) }
+                            }
                         }
                     }
             }
@@ -85,7 +98,10 @@ class PushRoutingViewModel
         ) {
             val context = PushRoutingContext(currentMode, roles.hasExpertRole(), callGuard.isCallActive.value)
             val resolved = resolver.resolve(destination, context)
+            // The route may have changed while the lookups ran (logout, a manual switch): never post into it.
+            if (route.value != currentMode.homeRoute()) return
             if (resolved.targetMode != currentMode && !switchTo(resolved.targetMode)) return
+            if (route.value != resolved.targetMode.homeRoute()) return
             post(resolved.route)
         }
 

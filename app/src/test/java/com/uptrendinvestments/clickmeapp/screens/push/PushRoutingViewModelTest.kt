@@ -13,6 +13,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClientBookingProbe
 import com.uptrendinvestments.clickmeapp.testing.FakePendingRequestLookup
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -146,5 +147,102 @@ class PushRoutingViewModelTest {
             assertEquals(ChatThreadKey("T1"), chatLaunch.thread.pending.value)
             assertNull(shellRoutes.pending.value)
             assertNull(vm.switchRequest.value)
+        }
+
+    private fun clientTap(id: String) = PushDestination.BookingDetail(id, PushAudience.Client)
+
+    @Test
+    fun loginDropsPendingTap() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.Splash)
+            launchRequest.destination.post(clientTap("B1"))
+            runCurrent()
+
+            vm.onRouteChanged(AppRoute.Login)
+            runCurrent()
+            assertNull(launchRequest.destination.pending.value)
+
+            vm.onRouteChanged(AppRoute.ClientHome)
+            advanceUntilIdle()
+            assertNull(shellRoutes.pending.value)
+        }
+
+    @Test
+    fun signupSetupDropsPendingTap() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.Splash)
+            launchRequest.destination.post(clientTap("B1"))
+            runCurrent()
+
+            vm.onRouteChanged(AppRoute.SignupSetup)
+            runCurrent()
+            assertNull(launchRequest.destination.pending.value)
+
+            vm.onRouteChanged(AppRoute.ClientHome)
+            advanceUntilIdle()
+            assertNull(shellRoutes.pending.value)
+        }
+
+    @Test
+    fun newestTapWinsBeforeHome() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.Splash)
+            launchRequest.destination.post(clientTap("A"))
+            launchRequest.destination.post(clientTap("B"))
+            runCurrent()
+
+            vm.onRouteChanged(AppRoute.ClientHome)
+            advanceUntilIdle()
+
+            assertEquals(clientSummary("B"), shellRoutes.pending.value)
+        }
+
+    @Test
+    fun newerTapCancelsSlowResolution() =
+        runTest(mainRule.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            probe.result = { id ->
+                if (id == "A") gate.await()
+                ClientBookingProbeResult.Client("completed")
+            }
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.ClientHome)
+            launchRequest.destination.post(clientTap("A"))
+            runCurrent()
+            assertEquals(listOf("A"), probe.probed)
+
+            launchRequest.destination.post(clientTap("B"))
+            runCurrent()
+            assertEquals(clientSummary("B"), shellRoutes.pending.value)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+            assertEquals(clientSummary("B"), shellRoutes.pending.value)
+        }
+
+    @Test
+    fun logoutDuringResolutionDrops() =
+        runTest(mainRule.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            probe.result = {
+                gate.await()
+                ClientBookingProbeResult.Client("completed")
+            }
+            val vm = viewModel()
+            vm.onRouteChanged(AppRoute.ClientHome)
+            launchRequest.destination.post(clientTap("A"))
+            runCurrent()
+            assertEquals(listOf("A"), probe.probed)
+
+            vm.onRouteChanged(AppRoute.Login)
+            runCurrent()
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            assertNull(shellRoutes.pending.value)
+            assertNull(chatLaunch.thread.pending.value)
         }
 }
