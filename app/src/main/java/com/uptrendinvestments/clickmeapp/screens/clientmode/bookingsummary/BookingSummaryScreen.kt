@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -59,12 +60,15 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryFeedback
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.LeaveReviewButton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -81,9 +85,11 @@ private val BookAgainMinHeight = 56.dp
 private val BookAgainIconSize = 24.dp
 
 /**
- * Booking Summary (BOOK-08, D-13), opened from a Past card. Port of iOS `BookingSummaryView` without Leave a Review
- * and Feedback (Phase 13). Message Expert opens the chat with the booking's expert (D-14). A pending reschedule shows the shared reschedule card first (D-01).
- * The summary reloads quietly on resume, so returning from Payment Methods shows fresh data (D-02).
+ * Booking Summary (BOOK-08, D-13), opened from a Past card or a push. Port of iOS `BookingSummaryView`. Leave a
+ * review pushes Write Review ([onLeaveReview], D-18); after a submit the summary reloads and thanks the user (D-19).
+ * Message Expert opens the chat with the booking's expert (D-14). A pending reschedule shows the shared reschedule
+ * card first (D-01). The summary reloads quietly on resume, so returning from Payment Methods shows fresh data
+ * (D-02).
  */
 @Composable
 fun BookingSummaryScreen(
@@ -91,12 +97,15 @@ fun BookingSummaryScreen(
     onBack: () -> Unit,
     onBookAgain: (BookingKey) -> Unit,
     onOpenPaymentMethods: () -> Unit,
+    onLeaveReview: (WriteReviewKey) -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
+    val reviewThanks by viewModel.reviewThanks.collectAsStateWithLifecycle()
+    val reviewedIds by viewModel.reviewedBookingIds.collectAsStateWithLifecycle()
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
@@ -117,6 +126,10 @@ fun BookingSummaryScreen(
         onOpenPaymentMethods = onOpenPaymentMethods,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
         modifier = modifier,
+        reviewedIds = reviewedIds,
+        reviewThanks = reviewThanks,
+        onReviewThanksConsumed = viewModel::consumeReviewThanks,
+        onLeaveReview = { viewModel.leaveReviewKey()?.let(onLeaveReview) },
         messageBusy = entryState.busyPeerId != null,
         onMessage = {
             val details = (state as? BookingSummaryUiState.Loaded)?.details
@@ -142,6 +155,10 @@ fun BookingSummaryContent(
     onOpenPaymentMethods: () -> Unit,
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    reviewedIds: Set<String> = emptySet(),
+    onLeaveReview: () -> Unit = {},
+    reviewThanks: Boolean = false,
+    onReviewThanksConsumed: () -> Unit = {},
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
@@ -152,6 +169,16 @@ fun BookingSummaryContent(
     val scope = rememberCoroutineScope()
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
+    val thanksMessage = stringResource(R.string.review_thanks_snackbar)
+
+    LaunchedEffect(reviewThanks) {
+        if (!reviewThanks) return@LaunchedEffect
+        // Launched on the composition scope so consuming the flag does not cancel the Snackbar (D-19, Short).
+        scope.launch {
+            snackbarHostState.showSnackbar(thanksMessage, duration = SnackbarDuration.Short)
+        }
+        onReviewThanksConsumed()
+    }
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -199,6 +226,9 @@ fun BookingSummaryContent(
                     onBookAgain = onBookAgain,
                     onAccept = onAccept,
                     onDecline = onDecline,
+                    review = state.review,
+                    showLeaveReview = state.showLeaveReview(reviewedIds),
+                    onLeaveReview = onLeaveReview,
                     messageBusy = messageBusy,
                     onMessage = onMessage,
                     modifier = bodyModifier,
@@ -246,6 +276,9 @@ private fun LoadedBody(
     onBookAgain: (BookingKey) -> Unit,
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
+    review: SummaryReview,
+    showLeaveReview: Boolean,
+    onLeaveReview: () -> Unit,
     messageBusy: Boolean,
     onMessage: () -> Unit,
     modifier: Modifier,
@@ -287,6 +320,7 @@ private fun LoadedBody(
             }
         }
         BookingSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
+        (review as? SummaryReview.Submitted)?.let { BookingSummaryFeedback(it.rating, it.comment) }
         details.bookAgain?.let { seed ->
             PressScaleButton(
                 onClick = { onBookAgain(seed.toBookingKey(expertFallback)) },
@@ -301,6 +335,15 @@ private fun LoadedBody(
                 Spacer(Modifier.width(Spacing.sm))
                 Text(stringResource(R.string.booking_summary_book_again))
             }
+        }
+        // 200 ms fade and shrink once a submitted review hides the button (UI-SPEC Motion).
+        AnimatedVisibility(
+            visible = showLeaveReview,
+            exit =
+                fadeOut(tween(Motion.STRENGTH_METER_VISIBILITY_MS)) +
+                    shrinkVertically(tween(Motion.STRENGTH_METER_VISIBILITY_MS)),
+        ) {
+            LeaveReviewButton(onClick = onLeaveReview, modifier = Modifier.padding(top = Spacing.md))
         }
         MessageButton(
             label = stringResource(R.string.chat_entry_message_expert),

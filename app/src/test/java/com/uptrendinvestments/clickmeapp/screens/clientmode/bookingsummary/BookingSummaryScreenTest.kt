@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -15,11 +17,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.RATING_STAR_FILLED_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_FEEDBACK_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_LEAVE_REVIEW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
@@ -91,26 +97,36 @@ class BookingSummaryScreenTest {
         rescheduleState: RescheduleUiState = RescheduleUiState(),
         calls: Calls = Calls(),
         messageBusy: Boolean = false,
+        reviewedIds: Set<String> = emptySet(),
+        reviewThanks: Boolean = false,
+        fontScale: Float = 1f,
     ): Calls {
         rule.setContent {
-            ClickMeTheme {
-                BookingSummaryContent(
-                    state = state,
-                    rescheduleState = rescheduleState,
-                    onBack = { calls.events += "back" },
-                    onRetry = { calls.events += "retry" },
-                    onBookAgain = { calls.bookAgain = it },
-                    onAccept = { calls.events += "accept" },
-                    onDecline = { calls.events += "decline:$it" },
-                    onDismissRescheduleDialog = { calls.events += "dismiss" },
-                    onOpenPaymentMethods = { calls.events += "paymentMethods" },
-                    onRescheduleNoticeConsumed = { calls.events += "consumed" },
-                    messageBusy = messageBusy,
-                    onMessage = { calls.events += "message" },
-                    zone = zone,
-                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
-                    locale = Locale.US,
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                ClickMeTheme {
+                    BookingSummaryContent(
+                        state = state,
+                        rescheduleState = rescheduleState,
+                        onBack = { calls.events += "back" },
+                        onRetry = { calls.events += "retry" },
+                        onBookAgain = { calls.bookAgain = it },
+                        onAccept = { calls.events += "accept" },
+                        onDecline = { calls.events += "decline:$it" },
+                        onDismissRescheduleDialog = { calls.events += "dismiss" },
+                        onOpenPaymentMethods = { calls.events += "paymentMethods" },
+                        onRescheduleNoticeConsumed = { calls.events += "consumed" },
+                        reviewedIds = reviewedIds,
+                        onLeaveReview = { calls.events += "leaveReview" },
+                        reviewThanks = reviewThanks,
+                        onReviewThanksConsumed = { calls.events += "thanksConsumed" },
+                        messageBusy = messageBusy,
+                        onMessage = { calls.events += "message" },
+                        zone = zone,
+                        timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                        locale = Locale.US,
+                    )
+                }
             }
         }
         return calls
@@ -251,11 +267,94 @@ class BookingSummaryScreenTest {
     }
 
     @Test
-    fun phaseThirteenElementsDoNotRender() {
+    fun privateNoteDoesNotRender() {
         setScreen(BookingSummaryUiState.Loaded(details()))
-        listOf("Leave a Review", "Feedback", "My Note").forEach {
-            rule.onAllNodesWithText(it).assertCountEquals(0)
+        rule.onAllNodesWithText("My Note").assertCountEquals(0)
+    }
+
+    // ---- Leave a review and Feedback (D-18, REV-01) ----
+
+    private fun loaded(
+        review: SummaryReview,
+        status: String = "completed",
+    ) = BookingSummaryUiState.Loaded(details(status = status), review)
+
+    @Test
+    fun feedbackShownWhenSubmitted() {
+        setScreen(loaded(SummaryReview.Submitted(4, "Helpful")))
+        rule.onNodeWithText("Your feedback").assertExists()
+        rule.onNodeWithTag(BOOKING_SUMMARY_FEEDBACK_TAG).assertExists()
+        rule.onNodeWithContentDescription("Rated 4 out of 5", useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("Helpful").assertExists()
+        rule.onAllNodesWithTag(BOOKING_SUMMARY_LEAVE_REVIEW_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun starsOnlyWithoutComment() {
+        setScreen(loaded(SummaryReview.Submitted(5, null)))
+        rule.onNodeWithTag(BOOKING_SUMMARY_FEEDBACK_TAG).assertExists()
+        rule.onNodeWithContentDescription("Rated 5 out of 5", useUnmergedTree = true).assertExists()
+        rule.onAllNodesWithTag(RATING_STAR_FILLED_TAG, useUnmergedTree = true).assertCountEquals(5)
+    }
+
+    @Test
+    fun leaveReviewWhileUnknownOrNotSubmitted() {
+        setScreen(loaded(SummaryReview.Unknown))
+        rule.onNodeWithTag(BOOKING_SUMMARY_LEAVE_REVIEW_TAG).assertExists()
+        rule.onAllNodesWithTag(BOOKING_SUMMARY_FEEDBACK_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun leaveReviewSitsBetweenBookAgainAndMessageExpertAndClicks() {
+        val calls = setScreen(loaded(SummaryReview.NotSubmitted))
+        rule.onAllNodesWithTag(BOOKING_SUMMARY_FEEDBACK_TAG).assertCountEquals(0)
+
+        fun y(tag: String): Float {
+            val node = rule.onNodeWithTag(tag).fetchSemanticsNode()
+            return node.positionInRoot.y
         }
+        val book = y(BOOKING_SUMMARY_BOOK_AGAIN_TAG)
+        val review = y(BOOKING_SUMMARY_LEAVE_REVIEW_TAG)
+        val message = y(BOOKING_SUMMARY_MESSAGE_TAG)
+        assertTrue(book < review && review < message)
+        rule.onNodeWithTag(BOOKING_SUMMARY_LEAVE_REVIEW_TAG).performScrollTo().performClick()
+        assertEquals(listOf("leaveReview"), calls.events)
+    }
+
+    @Test
+    fun noReviewUiForCancelledOrMissed() {
+        assertEquals(false, loaded(SummaryReview.Unknown, "missed").showLeaveReview(emptySet()))
+        setScreen(loaded(SummaryReview.Unknown, "cancelled"))
+        rule.onAllNodesWithTag(BOOKING_SUMMARY_LEAVE_REVIEW_TAG).assertCountEquals(0)
+        rule.onAllNodesWithTag(BOOKING_SUMMARY_FEEDBACK_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun reviewedThisSessionHidesButton() {
+        setScreen(loaded(SummaryReview.NotSubmitted), reviewedIds = setOf("b1"))
+        rule.waitForIdle()
+        rule.onAllNodesWithTag(BOOKING_SUMMARY_LEAVE_REVIEW_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun thanksSnackbarShowsAndIsConsumed() {
+        val calls = setScreen(loaded(SummaryReview.NotSubmitted), reviewThanks = true)
+        rule.onNodeWithText("Thanks for your review").assertExists()
+        assertEquals(listOf("thanksConsumed"), calls.events)
+    }
+
+    @Test
+    fun largeFontButtonGrows() {
+        setScreen(loaded(SummaryReview.NotSubmitted), fontScale = 2f)
+        rule.onNodeWithTag(BOOKING_SUMMARY_LEAVE_REVIEW_TAG).performScrollTo().assertExists()
+        rule.onNodeWithText("Leave a review").assertExists()
+    }
+
+    @Test
+    fun largeFontShowsALongCommentInFull() {
+        val longComment = "A very long comment about the session. ".repeat(20).trim()
+        setScreen(loaded(SummaryReview.Submitted(4, longComment)), fontScale = 2f)
+        rule.onNodeWithText(longComment).assertExists()
     }
 
     // ---- Message Expert (D-14) ----

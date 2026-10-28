@@ -5,6 +5,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.Booking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.DEFAULT_DURATION_MINS
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.summaryStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.toRescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -35,8 +36,8 @@ data class BookAgainSeed(
 }
 
 /**
- * What Booking Summary shows for one booking (D-13). There is deliberately no private note, review or feedback
- * field here (D-16, Phase 13).
+ * What Booking Summary shows for one booking (D-13). There is deliberately no private note here; the review the user
+ * left (Feedback block) and the Leave a review control follow [SummaryReview] and the booking status (D-18).
  *
  * @property expertId the expert's user id, the peer for Message Expert (D-14); null disables the control.
  */
@@ -56,6 +57,24 @@ data class BookingSummaryDetails(
     val reschedule: RescheduleProposalUi?,
 )
 
+/**
+ * What the review-context call said about this booking (D-18). [Unknown] covers "not loaded yet", "not a completed
+ * booking" and "the call failed": all show Leave a review and no Feedback block, and Write Review resolves the truth.
+ */
+sealed interface SummaryReview {
+    data object Unknown : SummaryReview
+
+    data object NotSubmitted : SummaryReview
+
+    /** A submitted review. [toString] prints the rating only, so a comment never reaches logs. */
+    data class Submitted(
+        val rating: Int,
+        val comment: String?,
+    ) : SummaryReview {
+        override fun toString(): String = "Submitted(rating=$rating)"
+    }
+}
+
 /** Booking Summary load state: fetch by booking id, retry on failure. */
 sealed interface BookingSummaryUiState {
     data object Loading : BookingSummaryUiState
@@ -66,8 +85,19 @@ sealed interface BookingSummaryUiState {
 
     data class Loaded(
         val details: BookingSummaryDetails,
+        val review: SummaryReview = SummaryReview.Unknown,
     ) : BookingSummaryUiState
 }
+
+/** The Feedback block shows only when the booking has a submitted review (D-18). */
+val BookingSummaryUiState.Loaded.showFeedback: Boolean get() = review is SummaryReview.Submitted
+
+/**
+ * Leave a review shows for a completed booking with no known submitted review, including while the context call is
+ * loading or has failed. [reviewedIds] are the bookings reviewed this session, which hide it before the reload lands.
+ */
+fun BookingSummaryUiState.Loaded.showLeaveReview(reviewedIds: Set<String>): Boolean =
+    details.status.raw == STATUS_COMPLETED && !showFeedback && details.bookingId !in reviewedIds
 
 /**
  * Maps the booking detail to the display model. The price label follows the payment status: `captured` is "Price

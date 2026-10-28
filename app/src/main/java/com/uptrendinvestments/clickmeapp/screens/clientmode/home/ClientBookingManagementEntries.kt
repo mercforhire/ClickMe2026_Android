@@ -11,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
 
 /** Pushes Upcoming Booking Details for [bookingId] on the selected tab's stack (Explore card or Bookings card). */
@@ -41,6 +42,7 @@ fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot))
  *   [clientPaymentMethodsEntry], so it is not registered here.
  * - D-12: [upcoming]'s `onCancel` opens the cancel screen for the same booking.
  * - D-13: [summary]'s `onBookAgain` opens Make a Booking in the same stack.
+ * - D-18: [summary]'s `onLeaveReview` pushes Write Review on the same stack as the summary; Back returns to it.
  */
 fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
     navigator: Navigator,
@@ -60,6 +62,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
         onBack: () -> Unit,
         onBookAgain: (BookingKey) -> Unit,
         onOpenPaymentMethods: () -> Unit,
+        onLeaveReview: (WriteReviewKey) -> Unit,
     ) -> Unit,
 ) {
     entry<UpcomingBookingKey>(metadata = BottomBar.hidden()) { key ->
@@ -79,6 +82,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
             navigator::goBack,
             { navigator.navigate(it) },
             { navigator.navigate(PaymentMethodsKey) },
+            { navigator.navigate(it) },
         )
     }
 }
