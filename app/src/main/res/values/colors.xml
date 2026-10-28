@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="surface">#FF131313</color>
+    <!-- Mirrors ClickMePalette.primary. The FCM default_notification_color meta-data needs an XML color. -->
+    <color name="notification_accent">#FF44F697</color>
 </resources>

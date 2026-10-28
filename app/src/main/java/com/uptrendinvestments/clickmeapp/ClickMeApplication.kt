@@ -7,6 +7,7 @@ import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnectionManager
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeDebugLogger
 import com.uptrendinvestments.clickmeapp.services.call.CallNotificationFactory
+import com.uptrendinvestments.clickmeapp.services.push.NotificationChannels
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -28,6 +29,7 @@ class ClickMeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CallNotificationFactory.createChannel(this)
+        NotificationChannels.ensureCreated(this)
         PaymentConfiguration.init(this, AppConfig.stripePublishableKey)
         realtimeConnectionManager.start()
         RealtimeDebugLogger.install(realtimeConnection)
