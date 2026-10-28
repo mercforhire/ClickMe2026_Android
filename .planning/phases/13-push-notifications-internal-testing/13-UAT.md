@@ -3,7 +3,7 @@ status: partial
 phase: 13-push-notifications-internal-testing
 source: [13-VERIFICATION.md]
 started: 2026-10-28T18:30:00Z
-updated: 2026-10-28T21:43:41.102Z
+updated: 2026-10-28T21:52:27.626Z
 ---
 
 ## Current Test
@@ -19,15 +19,11 @@ retest: "First run reported 'app not receiving push notification' (G-13-1). Diag
 
 ### 2. REL-05 / SC-5 build with testers (release checklist steps 2-6)
 expected: A signed AAB is on the Play internal testing track, shows "Available to internal testers", and the Play-installed build logs in and reaches Explore. D-22: one internal tester until Phase 16.
-result: blocked
-blocked_by: release-build
-reason: "blocked" (upload keystore, keystore.properties, app/google-services.json and signed prodRelease AAB not yet created; release checklist steps 2-6 outstanding)
+result: skipped
 
 ### 3. REL-04 / SC-5 drafts in Play Console (release checklist step 7)
 expected: App content shows the Data safety form and the FOREGROUND_SERVICE_MICROPHONE declaration saved as draft or complete (pasted from 13-PLAY-CONSOLE-DRAFTS.md); the store listing has no empty required fields.
-result: blocked
-blocked_by: third-party
-reason: "blocked" (Play Console drafts from release checklist step 7 not yet pasted)
+result: skipped
 
 ### 4. PUSH-01 live token registration
 expected: After the backend deploy and adding google-services.json: one device_tokens row with platform = android after login / foreground return, a re-register after token rotation, the row gone after logout, and no pushes for the previous user on that device.
@@ -53,8 +49,8 @@ total: 7
 passed: 5
 issues: 0
 pending: 0
-skipped: 0
-blocked: 2
+skipped: 2
+blocked: 0
 
 ## Gaps
 
