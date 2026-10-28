@@ -15,11 +15,13 @@ import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
+import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
@@ -59,6 +61,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
@@ -66,9 +69,11 @@ import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
 import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
+import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
@@ -164,6 +169,13 @@ class FakeClickMeApi : ClickMeApi {
     var chatActionHandler: suspend (threadId: String, body: ChatActionRequest) -> StatusOnlyResponse =
         { _, _ -> StatusOnlyResponse("success") }
     var reportUserHandler: suspend (userId: String, body: ReportUserRequest) -> ReportUserData =
+        { _, _ -> notStubbed() }
+    var notificationsHandler: suspend (page: Int, limit: Int) -> NotificationsPayload = { _, _ -> notStubbed() }
+    var registerDeviceTokenHandler: suspend (RegisterDeviceTokenRequest) -> SuccessMessageResponse =
+        { SuccessMessageResponse("success") }
+    var deleteDeviceTokenHandler: suspend (String) -> SuccessMessageResponse = { SuccessMessageResponse("success") }
+    var reviewContextHandler: suspend (bookingId: String) -> ReviewContextData = { notStubbed() }
+    var submitReviewHandler: suspend (bookingId: String, body: SubmitReviewRequest) -> SubmitReviewData =
         { _, _ -> notStubbed() }
 
     @Volatile var loginCalls = 0
@@ -506,6 +518,36 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /users/{id}/report call (userId, body), in call order. */
     val reportUserRequests: List<Pair<String, ReportUserRequest>>
         get() = synchronized(_reportUserRequests) { _reportUserRequests.toList() }
+
+    private val _notificationsQueries = mutableListOf<Pair<Int, Int>>()
+
+    /** The (page, limit) of every getNotifications call, in call order. */
+    val notificationsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_notificationsQueries) { _notificationsQueries.toList() }
+
+    private val _registeredDeviceTokens = mutableListOf<RegisterDeviceTokenRequest>()
+
+    /** Every POST /notifications/tokens body received, in call order. */
+    val registeredDeviceTokens: List<RegisterDeviceTokenRequest>
+        get() = synchronized(_registeredDeviceTokens) { _registeredDeviceTokens.toList() }
+
+    private val _deletedDeviceTokens = mutableListOf<String>()
+
+    /** The device id of every DELETE /notifications/tokens/{device_id} call, in call order. */
+    val deletedDeviceTokens: List<String>
+        get() = synchronized(_deletedDeviceTokens) { _deletedDeviceTokens.toList() }
+
+    private val _reviewContextRequests = mutableListOf<String>()
+
+    /** The booking id of every getReviewContext call, in call order. */
+    val reviewContextRequests: List<String>
+        get() = synchronized(_reviewContextRequests) { _reviewContextRequests.toList() }
+
+    private val _submittedReviews = mutableListOf<Pair<String, SubmitReviewRequest>>()
+
+    /** Every POST /bookings/{id}/reviews call (bookingId, body), in call order. */
+    val submittedReviews: List<Pair<String, SubmitReviewRequest>>
+        get() = synchronized(_submittedReviews) { _submittedReviews.toList() }
 
     private val _clientBookingsQueries = mutableListOf<Triple<String, Int, Int>>()
 
@@ -931,6 +973,37 @@ class FakeClickMeApi : ClickMeApi {
     ): SuccessDataResponse<ReportUserData> {
         synchronized(_reportUserRequests) { _reportUserRequests += userId to body }
         return ok(reportUserHandler(userId, body))
+    }
+
+    override suspend fun getNotifications(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<NotificationsPayload> {
+        synchronized(_notificationsQueries) { _notificationsQueries += page to limit }
+        return ok(notificationsHandler(page, limit))
+    }
+
+    override suspend fun registerDeviceToken(body: RegisterDeviceTokenRequest): SuccessMessageResponse {
+        synchronized(_registeredDeviceTokens) { _registeredDeviceTokens += body }
+        return registerDeviceTokenHandler(body)
+    }
+
+    override suspend fun deleteDeviceToken(deviceId: String): SuccessMessageResponse {
+        synchronized(_deletedDeviceTokens) { _deletedDeviceTokens += deviceId }
+        return deleteDeviceTokenHandler(deviceId)
+    }
+
+    override suspend fun getReviewContext(bookingId: String): SuccessDataResponse<ReviewContextData> {
+        synchronized(_reviewContextRequests) { _reviewContextRequests += bookingId }
+        return ok(reviewContextHandler(bookingId))
+    }
+
+    override suspend fun submitReview(
+        bookingId: String,
+        body: SubmitReviewRequest,
+    ): SuccessDataResponse<SubmitReviewData> {
+        synchronized(_submittedReviews) { _submittedReviews += bookingId to body }
+        return ok(submitReviewHandler(bookingId, body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */
