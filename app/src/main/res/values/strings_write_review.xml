@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Phase 13 UI-SPEC Copywriting Contract: Write Review. -->
+    <!-- Phase 13 UI-SPEC Copywriting Contract: Write Review. Also uses: content_loading, section_retry. -->
     <string name="write_review_title">Leave a Review</string>
     <string name="write_review_error_generic">Something went wrong. Please try again.</string>
+    <string name="write_review_headline">How was your experience with %1$s?</string>
+    <string name="write_review_name_fallback">your expert</string>
+    <string name="write_review_subtitle">Your feedback helps other users and experts.</string>
+    <string name="write_review_placeholder">Share your experience…</string>
+    <string name="write_review_submit">Submit review</string>
+    <plurals name="review_star_label">
+        <item quantity="one">%d star</item>
+        <item quantity="other">%d stars</item>
+    </plurals>
 </resources>
