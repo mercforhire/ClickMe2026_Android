@@ -127,14 +127,31 @@ class ClientProfileSettingsViewModel
             saver.onEdited(next)
         }
 
-        fun openProfessionalSheet() = Unit
+        fun openProfessionalSheet() = _uiState.update { it.copy(professionalSheetOpen = true) }
 
+        /** "Update details": applies the sheet's working copy, closes the sheet and schedules the save. */
         fun applyProfessional(
             jobTitle: String,
             company: String,
-        ) = Unit
+        ) {
+            val current = _uiState.value.snapshot ?: return
+            val next =
+                current.copy(
+                    jobTitle = jobTitle.take(ProfileTextFieldId.JobTitle.maxLength),
+                    company = company.take(ProfileTextFieldId.Company.maxLength),
+                )
+            _uiState.update {
+                it.copy(
+                    snapshot = next,
+                    professionalSheetOpen = false,
+                    fieldErrors = it.fieldErrors - ProfileTextFieldId.JobTitle - ProfileTextFieldId.Company,
+                )
+            }
+            saver.onEdited(next)
+        }
 
-        fun discardProfessional() = Unit
+        /** "Discard changes" (or dismissing the sheet): closes it; nothing is applied or saved. */
+        fun discardProfessional() = _uiState.update { it.copy(professionalSheetOpen = false) }
 
         /** The status icon's tap: re-sends the newest snapshot. */
         fun retrySave() = saver.retry()

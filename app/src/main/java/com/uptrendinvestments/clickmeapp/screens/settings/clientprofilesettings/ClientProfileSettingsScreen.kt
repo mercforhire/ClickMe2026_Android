@@ -30,7 +30,9 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AutoSaveStatusIcon
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheet
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileBioField
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileProfessionalCard
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileReadOnlyField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileTextField
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -146,6 +148,11 @@ fun ClientProfileSettingsContent(
                     onValueChange = { onFieldChange(ProfileTextFieldId.Bio, it) },
                     error = state.fieldErrors[ProfileTextFieldId.Bio]?.asString(),
                 )
+                ProfileProfessionalCard(
+                    jobTitle = snapshot.jobTitle,
+                    company = snapshot.company,
+                    onClick = onOpenProfessional,
+                )
                 ProfileTextField(
                     label = stringResource(R.string.profile_settings_city_label),
                     value = snapshot.city,
@@ -166,6 +173,16 @@ fun ClientProfileSettingsContent(
                 )
             }
         }
+    }
+
+    val sheetSnapshot = state.snapshot
+    if (state.professionalSheetOpen && sheetSnapshot != null) {
+        ProfessionalDetailsSheet(
+            jobTitle = sheetSnapshot.jobTitle,
+            company = sheetSnapshot.company,
+            onUpdate = onApplyProfessional,
+            onDiscard = onDiscardProfessional,
+        )
     }
 
     state.dialog?.let { message ->

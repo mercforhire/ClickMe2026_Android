@@ -12,8 +12,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -21,13 +21,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_COMPANY_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_JOB_TITLE_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_BIO_COUNTER_TAG
-import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheetContent
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsBody
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.userProfileData
@@ -221,10 +222,10 @@ class ClientProfileSettingsScreenTest {
                 SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button) and hasText("Professional Details"),
             )
         card.assertExists()
-        rule.onAllNodesWithText("—").assertCountEquals(2)
+        rule.onAllNodesWithText("—", useUnmergedTree = true).assertCountEquals(2)
         rule.onNodeWithText("Job Title").assertExists()
         rule.onNodeWithText("Company").assertExists()
-        card.performClick()
+        card.performScrollTo().performClick()
         assertEquals(1, opens.size)
     }
 
@@ -251,7 +252,7 @@ class ClientProfileSettingsScreenTest {
     fun sheetUpdateAppliesTheTypedValues() {
         rule.setContent {
             ClickMeTheme {
-                ProfessionalDetailsSheetContent(
+                ProfessionalDetailsBody(
                     jobTitle = "",
                     company = "",
                     onUpdate = { jobTitle, company -> applied += jobTitle to company },
@@ -276,7 +277,7 @@ class ClientProfileSettingsScreenTest {
     fun sheetDiscardAppliesNothing() {
         rule.setContent {
             ClickMeTheme {
-                ProfessionalDetailsSheetContent(
+                ProfessionalDetailsBody(
                     jobTitle = "Old",
                     company = "Co",
                     onUpdate = { jobTitle, company -> applied += jobTitle to company },

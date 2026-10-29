@@ -5,41 +5,62 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -48,9 +69,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ValidatedField
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.BIO_COUNTER_FROM
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.BIO_MAX
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.PROFESSIONAL_MAX
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -71,6 +94,7 @@ const val PROFESSIONAL_COMPANY_TAG = "profile_professional_company"
 
 private val StatusSlotSize = 48.dp
 private val StatusGlyphSize = 24.dp
+private val ValueColumnMinWidth = 120.dp
 private val StatusSpinnerStroke = 2.dp
 private val LockIconSize = 20.dp
 private val ReadOnlyMinHeight = 56.dp
@@ -294,24 +318,168 @@ fun ProfileBioField(
     }
 }
 
-/** Professional Details card (stub, implemented in the GREEN step). */
+/**
+ * The Professional Details summary card. The whole card is one button that opens the edit sheet; an empty value shows
+ * "—". The two label/value columns sit in a [FlowRow], so they stack once a large font scale leaves no room side by
+ * side.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileProfessionalCard(
     jobTitle: String,
     company: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-) = Unit
+) {
+    val shape = MaterialTheme.shapes.medium
+    val editLabel = stringResource(R.string.profile_settings_professional_edit_a11y)
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(bottom = Spacing.md)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow, shape)
+                .border(RestBorder, MaterialTheme.colorScheme.outlineVariant, shape)
+                .clickable(onClickLabel = editLabel, role = Role.Button, onClick = onClick)
+                .padding(Spacing.md),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Text(
+                text = stringResource(R.string.profile_settings_professional_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                ProfessionalValue(stringResource(R.string.profile_settings_job_title_label), jobTitle)
+                ProfessionalValue(stringResource(R.string.profile_settings_company_label), company)
+            }
+        }
+        Icon(
+            imageVector = Icons.Outlined.Edit,
+            contentDescription = null,
+            modifier = Modifier.size(StatusGlyphSize),
+            tint = MaterialTheme.extras.onSurfaceMuted,
+        )
+    }
+}
 
-/** Body of the Professional Details sheet (stub, implemented in the GREEN step). */
 @Composable
-fun ProfessionalDetailsSheetContent(
+private fun ProfessionalValue(
+    label: String,
+    value: String,
+) {
+    Column(modifier = Modifier.widthIn(min = ValueColumnMinWidth)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.extras.onSurfaceMuted,
+        )
+        Text(
+            text = value.ifBlank { stringResource(R.string.profile_settings_empty_value) },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+/**
+ * The Professional Details editor in a bottom sheet. The sheet keeps a working copy: nothing reaches the screen until
+ * "Update details"; "Discard changes", the scrim and Back all close it without applying.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfessionalDetailsSheet(
     jobTitle: String,
     company: String,
     onUpdate: (jobTitle: String, company: String) -> Unit,
     onDiscard: () -> Unit,
     modifier: Modifier = Modifier,
-) = Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDiscard,
+        modifier = modifier,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape =
+            MaterialTheme.shapes.extraLarge.copy(
+                bottomStart = ZeroCornerSize,
+                bottomEnd = ZeroCornerSize,
+            ),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        ProfessionalDetailsBody(
+            jobTitle = jobTitle,
+            company = company,
+            onUpdate = onUpdate,
+            onDiscard = onDiscard,
+        )
+    }
+}
+
+/** Stateless body of [ProfessionalDetailsSheet], separate so it is testable without a window. */
+@Composable
+fun ProfessionalDetailsBody(
+    jobTitle: String,
+    company: String,
+    onUpdate: (jobTitle: String, company: String) -> Unit,
+    onDiscard: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var draftJobTitle by rememberSaveable(jobTitle) { mutableStateOf(jobTitle) }
+    var draftCompany by rememberSaveable(company) { mutableStateOf(company) }
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+    ) {
+        Text(
+            text = stringResource(R.string.profile_settings_sheet_title),
+            modifier = Modifier.padding(bottom = Spacing.md).semantics { heading() },
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        ProfileTextField(
+            label = stringResource(R.string.profile_settings_job_title_label),
+            value = draftJobTitle,
+            onValueChange = { draftJobTitle = it },
+            icon = Icons.Outlined.Work,
+            modifier = Modifier.testTag(PROFESSIONAL_JOB_TITLE_TAG),
+            maxLength = PROFESSIONAL_MAX,
+        )
+        ProfileTextField(
+            label = stringResource(R.string.profile_settings_company_label),
+            value = draftCompany,
+            onValueChange = { draftCompany = it },
+            icon = Icons.Outlined.Business,
+            modifier = Modifier.testTag(PROFESSIONAL_COMPANY_TAG),
+            maxLength = PROFESSIONAL_MAX,
+        )
+        PressScaleButton(
+            onClick = { onUpdate(draftJobTitle, draftCompany) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.profile_settings_update_details))
+        }
+        TextButton(
+            onClick = onDiscard,
+            modifier = Modifier.fillMaxWidth().heightIn(min = StatusSlotSize),
+        ) {
+            Text(
+                text = stringResource(R.string.profile_settings_discard_details),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
 
 @Preview(name = "ProfileFields")
 @Composable
