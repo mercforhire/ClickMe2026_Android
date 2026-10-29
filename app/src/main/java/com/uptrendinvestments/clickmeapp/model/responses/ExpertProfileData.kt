@@ -9,8 +9,8 @@ import com.squareup.moshi.JsonClass
  * a null default so older `{setup_completed}`-only bodies and explicit nulls still decode.
  *
  * Note the location key differs by direction: GET returns `state_province` ([ExpertLocationDetails]), the
- * PATCH body sends `province_state` (`SetupLocation`). `professional_details` and tag `category_id` are not
- * modelled this phase; unknown keys are ignored.
+ * PATCH body sends `province_state` (`SetupLocation`). `professional_details` is modelled since Phase 14 (the
+ * expert meeting link); tag `category_id` is still not modelled; unknown keys are ignored.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertProfileData(
@@ -21,6 +21,16 @@ data class ExpertProfileData(
     @Json(name = "location_details") val locationDetails: ExpertLocationDetails? = null,
     val languages: List<ExpertLanguage>? = null,
     @Json(name = "expertise_tags") val expertiseTags: List<ExpertTag>? = null,
+    @Json(name = "professional_details") val professionalDetails: ExpertProfessionalDetails? = null,
+)
+
+/** `professional_details` of the expert profile. [meetingUrl] is the Skype/Zoom link (Phase 14, PROF-05). */
+@JsonClass(generateAdapter = true)
+data class ExpertProfessionalDetails(
+    @Json(name = "job_title") val jobTitle: String? = null,
+    val company: String? = null,
+    val education: String? = null,
+    @Json(name = "meeting_url") val meetingUrl: String? = null,
 )
 
 @JsonClass(generateAdapter = true)

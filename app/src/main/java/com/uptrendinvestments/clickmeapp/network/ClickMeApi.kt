@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.network
 
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.AccountDeletionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
@@ -10,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeleteAccountRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
@@ -18,13 +20,17 @@ import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -44,6 +50,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -53,6 +61,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -69,18 +78,21 @@ import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsDat
 import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
+import com.uptrendinvestments.clickmeapp.model.responses.SaveTaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
+import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -98,8 +110,10 @@ import retrofit2.http.Query
  * request, client booking detail). Phase 7 adds the payment group (saved cards, setup and payment intents,
  * booking confirm). Phase 8 adds the client booking actions (cancel, accept and decline a reschedule).
  * Phase 9 adds the call group (join, confirm connection, end). Phase 10 adds expert topics (create, update, delete),
- * the expert's own weekly availability and the profile-tags update. Other API groups arrive with their features
- * (ROADMAP Phase 2 planning note).
+ * the expert's own weekly availability and the profile-tags update. Phase 14 adds nine endpoints: the profile
+ * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
+ * earnings transactions ledger and the expert tax profile (get and save). Other API groups arrive with their
+ * features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
  * wrapped by `apiCall` at the repository layer, which maps failures to `ApiException`.
@@ -567,4 +581,78 @@ interface ClickMeApi {
         @Path("id") bookingId: String,
         @Body body: SubmitReviewRequest,
     ): SuccessDataResponse<SubmitReviewData>
+
+    /**
+     * Ports iOS ClickMeAPI+Account changePassword. 403 when the current password is wrong, 422 with `errors[]` naming
+     * `current_password` or `new_password` when validation fails.
+     */
+    @PATCH(ApiRequestUrls.USER_PASSWORD)
+    suspend fun updatePassword(
+        @Body body: UpdatePasswordRequest,
+    ): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+Account requestAccountDeletion: step one of the deletion (CONTEXT D-05). Answers a
+     * single-use `deletion_token`. 401 with no code means a wrong password; 409 `EXPERT_HAS_UPCOMING_BOOKINGS` blocks
+     * an expert with upcoming sessions; 429 past the limiter.
+     */
+    @POST(ApiRequestUrls.USER_ACCOUNT_DELETE_REQUEST)
+    suspend fun requestAccountDeletion(
+        @Body body: AccountDeletionRequest,
+    ): SuccessDataResponse<DeletionRequestData>
+
+    /**
+     * Ports iOS ClickMeAPI+Account deleteAccount: step two. An HTTP DELETE that carries a JSON body, which a plain
+     * `@DELETE` cannot do, hence `@HTTP(hasBody = true)` (RESEARCH Pattern 1). 400 `INVALID_TOKEN` for a stale or
+     * reused deletion token, 409 for the same expert block as step one, 429 past the limiter.
+     */
+    @HTTP(method = "DELETE", path = ApiRequestUrls.USER_ACCOUNT, hasBody = true)
+    suspend fun deleteAccount(
+        @Body body: DeleteAccountRequest,
+    ): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+UserProfile updateUserProfile. Partial merge: only the non-null groups of
+     * [UpdateUserProfileRequest] are sent, and `basic.email` is never sent (403). Answers the full profile.
+     */
+    @PATCH(ApiRequestUrls.USER_PROFILE)
+    suspend fun updateUserProfile(
+        @Body body: UpdateUserProfileRequest,
+    ): SuccessDataResponse<UserProfileData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertProfile updateExpertProfile (meeting link only). Same route as
+     * [updateExpertProfileTags]; the body carries only `professional_details.meeting_url`.
+     */
+    @PATCH(ApiRequestUrls.EXPERT_PROFILE)
+    suspend fun updateExpertMeetingUrl(
+        @Body body: UpdateExpertMeetingUrlRequest,
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+Help getFaqs: categories with their featured articles. */
+    @GET(ApiRequestUrls.HELP_FAQS)
+    suspend fun getFaqs(): SuccessDataResponse<FaqsPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertEarnings getEarningsTransactions. Amounts are MINOR units. The server clamps `limit`
+     * to 1..100 and a garbage `page` to 1.
+     */
+    @GET(ApiRequestUrls.EXPERT_EARNINGS_TRANSACTIONS)
+    suspend fun getEarningsTransactions(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<EarningsTransactionsData>
+
+    /** Ports iOS ClickMeAPI+TaxProfile getTaxProfile. The TIN is never returned, only `tin_on_file`. */
+    @GET(ApiRequestUrls.EXPERT_TAX_PROFILE)
+    suspend fun getTaxProfile(): SuccessDataResponse<TaxProfileData>
+
+    /**
+     * Ports iOS ClickMeAPI+TaxProfile saveTaxProfile. The backend schema is `.strict()`. A first save without a TIN
+     * answers `saved=false, tin_required=true` and writes nothing.
+     */
+    @POST(ApiRequestUrls.EXPERT_TAX_PROFILE)
+    suspend fun saveTaxProfile(
+        @Body body: SaveTaxProfileRequest,
+    ): SuccessDataResponse<SaveTaxProfileData>
 }

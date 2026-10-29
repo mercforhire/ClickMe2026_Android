@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.testing
 
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.AccountDeletionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
@@ -10,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeleteAccountRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
@@ -18,13 +20,17 @@ import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -45,6 +51,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -54,6 +62,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -70,12 +79,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsDat
 import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
+import com.uptrendinvestments.clickmeapp.model.responses.SaveTaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
+import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -1004,6 +1015,134 @@ class FakeClickMeApi : ClickMeApi {
     ): SuccessDataResponse<SubmitReviewData> {
         synchronized(_submittedReviews) { _submittedReviews += bookingId to body }
         return ok(submitReviewHandler(bookingId, body))
+    }
+
+    // Phase 14: account security and deletion.
+    var updatePasswordHandler: suspend (UpdatePasswordRequest) -> SuccessMessageResponse = { notStubbed() }
+    var requestAccountDeletionHandler: suspend (AccountDeletionRequest) -> DeletionRequestData = { notStubbed() }
+    var deleteAccountHandler: suspend (DeleteAccountRequest) -> SuccessMessageResponse = { notStubbed() }
+
+    @Volatile var updatePasswordCalls = 0
+        private set
+
+    @Volatile var requestAccountDeletionCalls = 0
+        private set
+
+    @Volatile var deleteAccountCalls = 0
+        private set
+
+    private val _updatePasswordRequests = mutableListOf<UpdatePasswordRequest>()
+    private val _accountDeletionRequests = mutableListOf<AccountDeletionRequest>()
+    private val _deleteAccountRequests = mutableListOf<DeleteAccountRequest>()
+
+    val updatePasswordRequests: List<UpdatePasswordRequest>
+        get() = synchronized(_updatePasswordRequests) { _updatePasswordRequests.toList() }
+    val accountDeletionRequests: List<AccountDeletionRequest>
+        get() = synchronized(_accountDeletionRequests) { _accountDeletionRequests.toList() }
+    val deleteAccountRequests: List<DeleteAccountRequest>
+        get() = synchronized(_deleteAccountRequests) { _deleteAccountRequests.toList() }
+
+    override suspend fun updatePassword(body: UpdatePasswordRequest): SuccessMessageResponse {
+        updatePasswordCalls++
+        synchronized(_updatePasswordRequests) { _updatePasswordRequests += body }
+        return updatePasswordHandler(body)
+    }
+
+    override suspend fun requestAccountDeletion(
+        body: AccountDeletionRequest,
+    ): SuccessDataResponse<DeletionRequestData> {
+        requestAccountDeletionCalls++
+        synchronized(_accountDeletionRequests) { _accountDeletionRequests += body }
+        return ok(requestAccountDeletionHandler(body))
+    }
+
+    override suspend fun deleteAccount(body: DeleteAccountRequest): SuccessMessageResponse {
+        deleteAccountCalls++
+        synchronized(_deleteAccountRequests) { _deleteAccountRequests += body }
+        return deleteAccountHandler(body)
+    }
+
+    // Phase 14: profile edit, expert meeting link and help.
+    var updateUserProfileHandler: suspend (UpdateUserProfileRequest) -> UserProfileData = { notStubbed() }
+    var updateExpertMeetingUrlHandler: suspend (UpdateExpertMeetingUrlRequest) -> SuccessMessageResponse =
+        { notStubbed() }
+    var faqsHandler: suspend () -> FaqsPayload = { notStubbed() }
+
+    @Volatile var updateUserProfileCalls = 0
+        private set
+
+    @Volatile var updateExpertMeetingUrlCalls = 0
+        private set
+
+    @Volatile var faqsCalls = 0
+        private set
+
+    private val _updateUserProfileRequests = mutableListOf<UpdateUserProfileRequest>()
+    private val _updateExpertMeetingUrlRequests = mutableListOf<UpdateExpertMeetingUrlRequest>()
+
+    val updateUserProfileRequests: List<UpdateUserProfileRequest>
+        get() = synchronized(_updateUserProfileRequests) { _updateUserProfileRequests.toList() }
+    val updateExpertMeetingUrlRequests: List<UpdateExpertMeetingUrlRequest>
+        get() = synchronized(_updateExpertMeetingUrlRequests) { _updateExpertMeetingUrlRequests.toList() }
+
+    override suspend fun updateUserProfile(body: UpdateUserProfileRequest): SuccessDataResponse<UserProfileData> {
+        updateUserProfileCalls++
+        synchronized(_updateUserProfileRequests) { _updateUserProfileRequests += body }
+        return ok(updateUserProfileHandler(body))
+    }
+
+    override suspend fun updateExpertMeetingUrl(body: UpdateExpertMeetingUrlRequest): SuccessMessageResponse {
+        updateExpertMeetingUrlCalls++
+        synchronized(_updateExpertMeetingUrlRequests) { _updateExpertMeetingUrlRequests += body }
+        return updateExpertMeetingUrlHandler(body)
+    }
+
+    override suspend fun getFaqs(): SuccessDataResponse<FaqsPayload> {
+        faqsCalls++
+        return ok(faqsHandler())
+    }
+
+    // Phase 14: earnings ledger and tax profile.
+    var earningsTransactionsHandler: suspend (page: Int, limit: Int) -> EarningsTransactionsData =
+        { _, _ -> notStubbed() }
+    var taxProfileHandler: suspend () -> TaxProfileData = { notStubbed() }
+    var saveTaxProfileHandler: suspend (SaveTaxProfileRequest) -> SaveTaxProfileData = { notStubbed() }
+
+    @Volatile var earningsTransactionsCalls = 0
+        private set
+
+    @Volatile var taxProfileCalls = 0
+        private set
+
+    @Volatile var saveTaxProfileCalls = 0
+        private set
+
+    private val _earningsTransactionsQueries = mutableListOf<Pair<Int, Int>>()
+    private val _saveTaxProfileRequests = mutableListOf<SaveTaxProfileRequest>()
+
+    val earningsTransactionsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_earningsTransactionsQueries) { _earningsTransactionsQueries.toList() }
+    val saveTaxProfileRequests: List<SaveTaxProfileRequest>
+        get() = synchronized(_saveTaxProfileRequests) { _saveTaxProfileRequests.toList() }
+
+    override suspend fun getEarningsTransactions(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<EarningsTransactionsData> {
+        earningsTransactionsCalls++
+        synchronized(_earningsTransactionsQueries) { _earningsTransactionsQueries += page to limit }
+        return ok(earningsTransactionsHandler(page, limit))
+    }
+
+    override suspend fun getTaxProfile(): SuccessDataResponse<TaxProfileData> {
+        taxProfileCalls++
+        return ok(taxProfileHandler())
+    }
+
+    override suspend fun saveTaxProfile(body: SaveTaxProfileRequest): SuccessDataResponse<SaveTaxProfileData> {
+        saveTaxProfileCalls++
+        synchronized(_saveTaxProfileRequests) { _saveTaxProfileRequests += body }
+        return ok(saveTaxProfileHandler(body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */
