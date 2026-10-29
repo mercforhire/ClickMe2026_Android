@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Expert Settings. The shared profile fields reuse profile_settings_*; the load error body reuses
+         login_error_network. -->
+    <string name="expert_settings_title">Expert Settings</string>
+    <string name="expert_settings_meeting_label">Skype / Zoom Meeting Link</string>
+    <string name="expert_settings_meeting_placeholder">https://</string>
+    <string name="expert_settings_meeting_invalid">Enter a link that starts with https://</string>
+    <string name="expert_settings_expertise">Expertise</string>
+    <string name="expert_settings_edit_expertise">Edit expertise</string>
+    <string name="expert_settings_load_error">Couldn\'t load profile</string>
+    <string name="expert_settings_retry">Retry</string>
+</resources>
