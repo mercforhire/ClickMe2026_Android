@@ -41,20 +41,22 @@ private val IconSize = 20.dp
 /**
  * Book Session sits above Message (D-14). An expert who is not bookable gets the same Book Session pill, disabled and
  * relabelled (D-04); the server still gates the booking itself. Message stays enabled either way (D-12) and is
- * omitted when [showMessage] is false, on the signed-in user's own profile.
+ * omitted when [showMessage] is false, on the signed-in user's own profile. The Book Session pill (enabled or not) is
+ * omitted when [showBookSession] is false: an expert viewing their own profile cannot book themselves.
  */
 @Composable
 fun ExpertProfileActionButtons(
     isBookable: Boolean,
     onBookSession: () -> Unit,
     modifier: Modifier = Modifier,
+    showBookSession: Boolean = true,
     showMessage: Boolean = false,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
 ) {
     val buttonModifier = Modifier.fillMaxWidth().heightIn(min = ButtonMinHeight)
     Column(modifier.fillMaxWidth()) {
-        if (isBookable) {
+        if (showBookSession && isBookable) {
             PressScaleButton(
                 onClick = onBookSession,
                 modifier = buttonModifier.testTag(BOOK_SESSION_TAG),
@@ -63,7 +65,7 @@ fun ExpertProfileActionButtons(
                 Spacer(Modifier.width(Spacing.sm))
                 Text(stringResource(R.string.expert_profile_book_session))
             }
-        } else {
+        } else if (showBookSession) {
             PressScaleButton(
                 onClick = {},
                 modifier = buttonModifier,
@@ -75,7 +77,7 @@ fun ExpertProfileActionButtons(
             }
         }
         if (showMessage) {
-            Spacer(Modifier.height(Spacing.md))
+            if (showBookSession) Spacer(Modifier.height(Spacing.md))
             MessageButton(
                 label = stringResource(R.string.chat_entry_message),
                 onClick = onMessage,

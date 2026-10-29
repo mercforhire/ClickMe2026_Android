@@ -286,6 +286,46 @@ class ExpertProfileScreenTest {
         }
     }
 
+    private fun setContentWithoutBooking(state: ExpertProfileUiState) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileContent(
+                    state = state,
+                    onBack = {},
+                    onBookSession = { bookCount++ },
+                    onRetry = {},
+                    showBookSession = false,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun selfViewHidesBookSession() {
+        setContentWithoutBooking(loadedState())
+
+        rule.onNodeWithText("Experience").assertExists()
+        rule.onAllNodesWithText("Book Session").assertCountEquals(0)
+        rule.onAllNodesWithTag(BOOK_SESSION_TAG).assertCountEquals(0)
+        assertEquals(0, bookCount)
+    }
+
+    @Test
+    fun bookSessionStaysByDefault() {
+        setContent(loadedState())
+
+        rule.onAllNodesWithText("Book Session").assertCountEquals(1)
+    }
+
+    @Test
+    fun selfViewKeepsTheRestOfTheProfile() {
+        setContentWithoutBooking(loadedState())
+
+        rule.onAllNodesWithText("Ada Lovelace").assertCountEquals(1)
+        rule.onNodeWithText("About").assertExists()
+        rule.onNodeWithText("Hi").assertExists()
+    }
+
     private fun yOf(text: String): Float {
         val node = rule.onNodeWithText(text).fetchSemanticsNode()
         return node.positionInRoot.y

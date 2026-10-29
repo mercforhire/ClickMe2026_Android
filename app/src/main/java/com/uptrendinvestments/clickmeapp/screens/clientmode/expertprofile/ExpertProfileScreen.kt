@@ -93,6 +93,12 @@ private enum class ReviewsKind { Loading, Shown, Absent }
 /**
  * Expert Profile route body. The ViewModel (created by the Nav3 entry) starts both requests in its `init`; Book
  * Session hands the [BookingKey] to [onBook].
+ *
+ * Book Session is hidden when [showBookSession] is false, when [isSelfView] is true (the expert opened their own
+ * profile from the expert hub; booking yourself ends in `422 CANNOT_BOOK_SELF`) or when the profile is the signed-in
+ * user's own. The expert shell passes `showBookSession = false` (an expert cannot book from Expert mode and
+ * `BookingKey` is not registered there) and the hub passes [isSelfView] from the key. `isSelf` already hides
+ * Message and the safety menu.
  */
 @Composable
 fun ExpertProfileScreen(
@@ -100,6 +106,8 @@ fun ExpertProfileScreen(
     onBack: () -> Unit,
     onBook: (BookingKey) -> Unit,
     modifier: Modifier = Modifier,
+    isSelfView: Boolean = false,
+    showBookSession: Boolean = true,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
     safety: ProfileSafetyViewModel = hiltViewModel(),
 ) {
@@ -160,6 +168,7 @@ fun ExpertProfileScreen(
         onBookSession = { onBook(viewModel.bookingKey()) },
         onRetry = viewModel::retry,
         modifier = modifier,
+        showBookSession = showBookSession && !isSelfView && !chatEntry.isSelf(state.expertId),
         showMessage = !chatEntry.isSelf(state.expertId),
         messageBusy = entryState.busyPeerId != null,
         onMessage = { chatEntry.open(ChatPeer(state.expertId, state.name, state.imageUrl, isExpert = true)) },
@@ -182,6 +191,7 @@ fun ExpertProfileContent(
     onBookSession: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    showBookSession: Boolean = true,
     showMessage: Boolean = false,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
@@ -233,6 +243,7 @@ fun ExpertProfileContent(
                         state = state,
                         onBookSession = onBookSession,
                         onRetry = onRetry,
+                        showBookSession = showBookSession,
                         showMessage = showMessage,
                         messageBusy = messageBusy,
                         onMessage = onMessage,
@@ -357,6 +368,7 @@ private fun DetailsSection(
     state: ExpertProfileUiState,
     onBookSession: () -> Unit,
     onRetry: () -> Unit,
+    showBookSession: Boolean,
     showMessage: Boolean,
     messageBusy: Boolean,
     onMessage: () -> Unit,
@@ -384,6 +396,7 @@ private fun DetailsSection(
                         details = loaded.details,
                         tags = state.tags,
                         onBookSession = onBookSession,
+                        showBookSession = showBookSession,
                         showMessage = showMessage,
                         messageBusy = messageBusy,
                         onMessage = onMessage,
@@ -413,6 +426,7 @@ private fun LoadedDetails(
     details: ProfileDetailsUi,
     tags: List<String>,
     onBookSession: () -> Unit,
+    showBookSession: Boolean,
     showMessage: Boolean,
     messageBusy: Boolean,
     onMessage: () -> Unit,
@@ -424,6 +438,7 @@ private fun LoadedDetails(
         ExpertProfileActionButtons(
             isBookable = details.isBookable,
             onBookSession = onBookSession,
+            showBookSession = showBookSession,
             showMessage = showMessage,
             messageBusy = messageBusy,
             onMessage = onMessage,
