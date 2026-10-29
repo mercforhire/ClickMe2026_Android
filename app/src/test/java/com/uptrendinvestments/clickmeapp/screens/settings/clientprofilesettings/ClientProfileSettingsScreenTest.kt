@@ -241,19 +241,23 @@ class ClientProfileSettingsScreenTest {
     fun fieldOrderComplete() {
         setContent(state())
 
+        val emailTop =
+            rule
+                .onNodeWithContentDescription("Email, ana@example.com, read only")
+                .fetchSemanticsNode()
+                .positionInRoot.y
         val tops =
-            listOf(
-                "Change photo",
-                "Email",
-                "First Name",
-                "Last Name",
-                "Bio",
-                "Professional Details",
-                "City",
-                "State/Province",
-                "Country",
-                "Spoken Languages",
-            ).map { top(it) }
+            listOf(top("Change photo"), emailTop) +
+                listOf(
+                    "First Name",
+                    "Last Name",
+                    "Bio",
+                    "Professional Details",
+                    "City",
+                    "State/Province",
+                    "Country",
+                    "Spoken Languages",
+                ).map { top(it) }
         assertEquals(tops.sorted(), tops)
         assertEquals(tops.distinct(), tops)
     }

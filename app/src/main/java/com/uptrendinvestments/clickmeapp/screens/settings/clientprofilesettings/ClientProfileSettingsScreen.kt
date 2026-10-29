@@ -40,11 +40,13 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheet
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileAvatarSection
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileBioField
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileCountryField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileLanguagesField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileProfessionalCard
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileReadOnlyField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileTextField
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Test tag on the Profile Settings scroll column. */
@@ -227,9 +229,21 @@ fun ClientProfileSettingsContent(
                     error = state.fieldErrors[ProfileTextFieldId.StateProvince]?.asString(),
                     maxLength = LOCATION_MAX,
                 )
+                ProfileCountryField(countryCode = snapshot.countryCode, onClick = onOpenCountry)
                 ProfileLanguagesField(languages = snapshot.languages, onEdit = onOpenLanguages)
             }
         }
+    }
+
+    if (state.countrySheetOpen) {
+        CountryPickerSheet(
+            countries = state.visibleCountries,
+            selectedCode = state.snapshot?.countryCode.orEmpty(),
+            query = state.countryQuery,
+            onQueryChange = onCountryQueryChange,
+            onSelect = onSelectCountry,
+            onDismiss = onDismissCountry,
+        )
     }
 
     state.languageSheet?.let { sheet ->

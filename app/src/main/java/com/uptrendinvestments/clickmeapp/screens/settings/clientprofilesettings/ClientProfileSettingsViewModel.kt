@@ -142,7 +142,12 @@ class ClientProfileSettingsViewModel
         private fun seed(profile: UserProfileData) {
             if (seeded) return
             seeded = true
-            val snapshot = ProfileSnapshot.from(profile)
+            // A legacy alpha-2 (or unrecognizable) stored country is seeded as alpha-3 (or blank), so the baseline and
+            // every later location PATCH use the form the server requires.
+            val snapshot =
+                ProfileSnapshot.from(profile).let {
+                    it.copy(countryCode = Countries.normalize(it.countryCode).orEmpty())
+                }
             saver.rebase(snapshot)
             _uiState.update { it.copy(snapshot = snapshot, email = profile.personalDetails.email.orEmpty()) }
         }
@@ -171,13 +176,19 @@ class ClientProfileSettingsViewModel
 
         // ---- country ----
 
-        fun openCountry(): Unit = TODO()
+        fun openCountry() = _uiState.update { it.copy(countrySheetOpen = true, countryQuery = "") }
 
-        fun onCountryQuery(value: String): Unit = TODO()
+        fun onCountryQuery(value: String) = _uiState.update { it.copy(countryQuery = value) }
 
-        fun selectCountry(code: String): Unit = TODO()
+        /** Applies [code] (normalized to alpha-3), closes the sheet and schedules the save. */
+        fun selectCountry(code: String) {
+            val current = _uiState.value.snapshot ?: return
+            val next = current.copy(countryCode = Countries.normalize(code).orEmpty())
+            _uiState.update { it.copy(snapshot = next, countrySheetOpen = false, countryQuery = "") }
+            saver.onEdited(next)
+        }
 
-        fun dismissCountry(): Unit = TODO()
+        fun dismissCountry() = _uiState.update { it.copy(countrySheetOpen = false, countryQuery = "") }
 
         // ---- spoken languages ----
 
