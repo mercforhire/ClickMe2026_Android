@@ -1,6 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.help
 
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.faqArticle
@@ -13,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HelpViewModelTest {
@@ -61,5 +64,80 @@ class HelpViewModelTest {
 
             assertEquals(listOf("Account"), vm.titles())
             assertEquals(1, api.faqsCalls)
+        }
+
+    @Test
+    fun failureShowsServerMessageOrNetworkCopyAndRetryReloads() =
+        runTest(main.testDispatcher) {
+            api.faqsHandler = { throw api.httpError(500, """{"status":"error","message":"Down"}""") }
+            val vm = vm()
+            runCurrent()
+            assertEquals(HelpLoad.Failed(FieldError.Text("Down")), vm.uiState.value.load)
+
+            api.faqsHandler = { throw IOException("offline") }
+            vm.retry()
+            runCurrent()
+            assertEquals(HelpLoad.Failed(FieldError.Res(R.string.login_error_network)), vm.uiState.value.load)
+
+            api.faqsHandler = { faqsPayload(faqCategory(title = "Account", articles = articles)) }
+            vm.retry()
+            runCurrent()
+            assertEquals(listOf("Account"), vm.titles())
+            assertEquals(3, api.faqsCalls)
+        }
+
+    @Test
+    fun retryWhileLoadingKeepsOnlyTheNewestAnswer() =
+        runTest(main.testDispatcher) {
+            val first = CompletableDeferred<Unit>()
+            api.faqsHandler = {
+                first.await()
+                faqsPayload(faqCategory(title = "Old", articles = articles))
+            }
+            val vm = vm()
+            runCurrent()
+
+            api.faqsHandler = { faqsPayload(faqCategory(title = "New", articles = articles)) }
+            vm.retry()
+            runCurrent()
+            first.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf("New"), vm.titles())
+        }
+
+    @Test
+    fun refreshReplacesTheListQuietly() =
+        runTest(main.testDispatcher) {
+            api.faqsHandler = { faqsPayload(faqCategory(title = "Account", articles = articles)) }
+            val vm = vm()
+            runCurrent()
+
+            api.faqsHandler = { faqsPayload(faqCategory(title = "Calls", articles = articles)) }
+            vm.refresh()
+            runCurrent()
+
+            assertEquals(listOf("Calls"), vm.titles())
+            assertEquals(false, vm.uiState.value.isRefreshing)
+            assertEquals(false, vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun refreshFailureKeepsListAndFlags() =
+        runTest(main.testDispatcher) {
+            api.faqsHandler = { faqsPayload(faqCategory(title = "Account", articles = articles)) }
+            val vm = vm()
+            runCurrent()
+
+            api.faqsHandler = { throw IOException("offline") }
+            vm.refresh()
+            runCurrent()
+
+            assertEquals(listOf("Account"), vm.titles())
+            assertEquals(true, vm.uiState.value.refreshFailed)
+            assertEquals(false, vm.uiState.value.isRefreshing)
+
+            vm.consumeRefreshFailure()
+            assertEquals(false, vm.uiState.value.refreshFailed)
         }
 }

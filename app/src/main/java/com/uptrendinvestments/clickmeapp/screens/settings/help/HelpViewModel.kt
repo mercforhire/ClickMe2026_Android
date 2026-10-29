@@ -61,6 +61,10 @@ class HelpViewModel
             retry()
         }
 
+        fun refresh() {}
+
+        fun consumeRefreshFailure() {}
+
         fun retry() {
             loadJob?.cancel()
             _uiState.update { it.copy(load = HelpLoad.Loading) }
