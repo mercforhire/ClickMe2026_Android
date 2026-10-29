@@ -313,7 +313,7 @@ class ExpertTaxProfileViewModelTest {
             runCurrent()
 
             assertEquals(FieldError.Text("Something odd"), vm.uiState.value.dialog)
-            assertTrue(vm.uiState.value.fieldErrors.isEmpty())
+            assertEquals(emptyMap<TaxProfileField, String>(), vm.uiState.value.fieldErrors)
             assertEquals(SaveState.Idle, vm.uiState.value.saveState)
 
             vm.dismissDialog()
@@ -390,9 +390,9 @@ class ExpertTaxProfileViewModelTest {
     fun dobPickerProducesIso() =
         runTest(main.testDispatcher) {
             val vm = filledViewModel(this)
-            val millis = LocalDate.of(1985, 12, 31).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            val start = LocalDate.of(1985, 12, 31).atStartOfDay(ZoneOffset.UTC)
 
-            vm.onDobPicked(millis)
+            vm.onDobPicked(start.toInstant().toEpochMilli())
 
             assertEquals("1985-12-31", vm.uiState.value.form.dob)
         }

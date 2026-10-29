@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.TaxAddressBody
@@ -26,6 +27,7 @@ import javax.inject.Inject
 const val DEFAULT_TAX_COUNTRY = "CA"
 
 private const val COUNTRY_CODE_LENGTH = 2
+private const val HTTP_UNPROCESSABLE = 422
 
 /** The inputs of the Tax & Payout Info form. */
 enum class TaxProfileField { LegalName, Dob, Line1, Line2, City, Region, PostalCode, Country, FinancialAccount, Tin }
@@ -90,7 +92,7 @@ data class TaxProfileUiState(
 /**
  * State holder of Tax & Payout Info (PAYOUT-04, port of iOS `ExpertTaxProfileViewModel`).
  *
- * The form lives in memory only: no `SavedStateHandle`, so neither the TIN nor the personal details survive process
+ * The form lives in memory only: no saved-state handle, so neither the TIN nor the personal details survive process
  * death and the form reloads from the server (threat T-14-31). The TIN is typed, sent once and cleared after a save.
  */
 @HiltViewModel
@@ -174,25 +176,59 @@ class ExpertTaxProfileViewModel
                 try {
                     applySaved(repository.save(request))
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(saveState = SaveState.Idle, dialog = e.toDialogError()) }
+                    _uiState.update { it.copy(saveState = SaveState.Idle) }
+                    handleSaveError(e)
                 }
             }
         }
 
         private fun applySaved(result: SaveTaxProfileData) {
             _uiState.update { state ->
-                if (result.saved) {
-                    // The TIN is sent once; it must not linger in memory after the server has it.
-                    state.copy(
-                        saveState = SaveState.Idle,
-                        form = state.form.copy(tin = ""),
-                        tinOnFile = true,
-                        savedEvent = true,
-                    )
-                } else {
-                    state.copy(saveState = SaveState.Idle)
+                when {
+                    result.saved ->
+                        // The TIN is sent once; it must not linger in memory after the server has it.
+                        state.copy(
+                            saveState = SaveState.Idle,
+                            form = state.form.copy(tin = ""),
+                            tinOnFile = true,
+                            savedEvent = true,
+                        )
+                    // The server wrote nothing because it still needs the TIN: a prompt, not an error (iOS parity).
+                    // Every field stays so the expert only adds the TIN and saves again.
+                    result.tinRequired ->
+                        state.copy(
+                            saveState = SaveState.Idle,
+                            banner = messageOr(result.message, R.string.tax_profile_tin_required_fallback),
+                            focusTinEvent = true,
+                        )
+                    // `saved: false` without a TIN request is not a documented answer; never read it as success.
+                    else ->
+                        state.copy(
+                            saveState = SaveState.Idle,
+                            dialog = messageOr(result.message, R.string.login_error_unknown),
+                        )
                 }
             }
+        }
+
+        /** A 422 puts the server's messages on the fields they name; anything else opens the save dialog. */
+        private fun handleSaveError(e: ApiException) {
+            if (e is ApiException.Http && e.status == HTTP_UNPROCESSABLE && mapFieldErrors(e)) return
+            _uiState.update { it.copy(dialog = e.toDialogError()) }
+        }
+
+        /** Returns true when at least one server field error landed on a field. The last message for a field wins. */
+        private fun mapFieldErrors(e: ApiException.Http): Boolean {
+            val errors = mutableMapOf<TaxProfileField, String>()
+            for (fieldError in e.fieldErrors) {
+                val field = fieldFor(fieldError.field) ?: continue
+                errors[field] = fieldError.message
+            }
+            if (errors.isEmpty()) return false
+            _uiState.update {
+                it.copy(fieldErrors = errors, focusTinEvent = it.focusTinEvent || TaxProfileField.Tin in errors)
+            }
+            return true
         }
 
         fun dismissDialog() {
@@ -207,6 +243,27 @@ class ExpertTaxProfileViewModel
             _uiState.update { it.copy(focusTinEvent = false) }
         }
     }
+
+/** The field a server validation error names; paths like `address.postal_code` match on their last segment. */
+private fun fieldFor(serverField: String): TaxProfileField? =
+    when (serverField.substringAfterLast('.')) {
+        "tin" -> TaxProfileField.Tin
+        "dob" -> TaxProfileField.Dob
+        "legal_name" -> TaxProfileField.LegalName
+        "postal_code" -> TaxProfileField.PostalCode
+        "line1" -> TaxProfileField.Line1
+        "line2" -> TaxProfileField.Line2
+        "city" -> TaxProfileField.City
+        "region", "province" -> TaxProfileField.Region
+        "country" -> TaxProfileField.Country
+        "financial_account_identifier" -> TaxProfileField.FinancialAccount
+        else -> null
+    }
+
+private fun messageOr(
+    message: String?,
+    fallback: Int,
+): FieldError = if (message.isNullOrBlank()) FieldError.Res(fallback) else FieldError.Text(message)
 
 /** The server answers `region` or `province`; the TIN is never part of the answer, so it always starts empty. */
 private fun TaxProfileData.toForm(): TaxProfileForm {

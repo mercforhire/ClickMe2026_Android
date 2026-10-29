@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationCity
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockPerson
@@ -30,19 +32,28 @@ import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
@@ -51,7 +62,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -72,6 +85,8 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.Year
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -84,6 +99,7 @@ const val TAX_TIN_TAG = "tax_tin"
 private val FieldBlockHeight = 56.dp
 private val IconSize = 24.dp
 private val BorderWidth = 1.dp
+private const val MIN_DOB_YEAR = 1900
 private const val SKELETON_SECTIONS = 3
 private const val SKELETON_FIELDS = 4
 private const val SKELETON_TEXT_LINES = 3
@@ -149,6 +165,9 @@ fun ExpertTaxProfileContent(
             actions.consumeSaved()
         }
     }
+
+    // While a save is in flight Back (arrow and system) is ignored: the request is already out.
+    BackHandler(enabled = state.saving) {}
 
     Scaffold(
         modifier = modifier,
@@ -231,6 +250,14 @@ private fun TaxProfileBody(
     val enabled = !state.saving
     val errors = state.fieldErrors
     val tinFocus = remember { FocusRequester() }
+    var showDobPicker by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(state.focusTinEvent) {
+        if (state.focusTinEvent) {
+            tinFocus.requestFocus()
+            actions.consumeFocusTin()
+        }
+    }
 
     @Composable
     fun row(
@@ -272,7 +299,7 @@ private fun TaxProfileBody(
                     iso = form.dob,
                     error = errors[TaxProfileField.Dob],
                     enabled = enabled,
-                    onClick = {},
+                    onClick = { showDobPicker = true },
                 )
             }
             TaxSection(stringResource(R.string.tax_profile_section_address)) {
@@ -321,7 +348,11 @@ private fun TaxProfileBody(
             }
             Spacer(Modifier.height(Spacing.xl))
         }
-        Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(Spacing.md)) {
+        Column(
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            state.banner?.let { TinBanner(it.asString()) }
             AsyncSaveButton(
                 title = stringResource(R.string.tax_profile_save),
                 state = state.saveState,
@@ -330,6 +361,14 @@ private fun TaxProfileBody(
                 enabled = state.canSave,
             )
         }
+    }
+
+    if (showDobPicker) {
+        DobPickerDialog(
+            iso = form.dob,
+            onPicked = actions.onDobPicked,
+            onDismiss = { showDobPicker = false },
+        )
     }
 }
 
@@ -410,6 +449,93 @@ private fun DobField(
     }
 }
 
+/** The server deferred the save because it still needs the TIN. Information, not an error. */
+@Composable
+private fun TinBanner(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(BorderWidth, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier.padding(Spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                modifier = Modifier.size(IconSize),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+/** Material date picker for the date of birth (UI-SPEC A6): 1900 through the current year, no future days. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DobPickerDialog(
+    iso: String,
+    onPicked: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val pickerState =
+        rememberDatePickerState(
+            initialSelectedDateMillis = utcMillisOf(iso),
+            yearRange = taxDobYearRange(),
+            selectableDates = remember { NotInTheFuture(todayUtcMillis()) },
+        )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    pickerState.selectedDateMillis?.let(onPicked)
+                    onDismiss()
+                },
+                enabled = pickerState.selectedDateMillis != null,
+            ) {
+                Text(stringResource(R.string.tax_profile_dob_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.tax_profile_dob_dismiss)) }
+        },
+    ) {
+        DatePicker(state = pickerState)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+private class NotInTheFuture(
+    private val todayUtcMillis: Long,
+) : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis <= todayUtcMillis
+
+    override fun isSelectableYear(year: Int): Boolean = year <= Year.now().value
+}
+
+private fun utcMillis(day: LocalDate): Long {
+    val start = day.atStartOfDay(ZoneOffset.UTC)
+    return start.toInstant().toEpochMilli()
+}
+
+private fun todayUtcMillis(): Long = utcMillis(LocalDate.now())
+
+/** The picker throws on an initial date outside its year range, so an out-of-range stored date starts empty. */
+private fun utcMillisOf(iso: String): Long? {
+    val day = runCatching { LocalDate.parse(iso.trim()) }.getOrNull() ?: return null
+    if (day.year !in taxDobYearRange()) return null
+    return utcMillis(day)
+}
+
 @Composable
 private fun TinOnFileRow() {
     Surface(
@@ -439,7 +565,7 @@ private fun TinOnFileRow() {
 }
 
 /** Years the date of birth picker offers: 1900 through [currentYear]. */
-internal fun taxDobYearRange(currentYear: Int = 0): IntRange = IntRange.EMPTY
+internal fun taxDobYearRange(currentYear: Int = Year.now().value): IntRange = MIN_DOB_YEAR..currentYear
 
 /** `yyyy-MM-dd` as `MMM d, yyyy`, or null when [iso] is not a calendar date. */
 internal fun formatTaxDob(iso: String): String? =

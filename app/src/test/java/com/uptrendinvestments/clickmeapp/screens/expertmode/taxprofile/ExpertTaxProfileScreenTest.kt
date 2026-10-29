@@ -6,6 +6,8 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -79,6 +81,19 @@ class ExpertTaxProfileScreenTest {
     }
 
     private fun tinInput() = hasSetTextAction() and hasAnyAncestor(hasTestTag(TAX_TIN_TAG))
+
+    /** The TIN text field whether or not it is enabled (a disabled field has no SetText action). */
+    private fun tinField() =
+        SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText) and hasAnyAncestor(hasTestTag(TAX_TIN_TAG))
+
+    private fun utcMillis(
+        year: Int,
+        month: Int,
+        day: Int,
+    ): Long {
+        val start = LocalDate.of(year, month, day).atStartOfDay(ZoneOffset.UTC)
+        return start.toInstant().toEpochMilli()
+    }
 
     private fun serverProfile() {
         api.taxProfileHandler = {
@@ -269,7 +284,7 @@ class ExpertTaxProfileScreenTest {
         show(ready(saveState = SaveState.Saving))
         rule.waitForIdle()
 
-        rule.onNode(tinInput()).assertIsNotEnabled()
+        rule.onNode(tinField()).assertIsNotEnabled()
         rule.onNodeWithContentDescription("Back").assertIsNotEnabled()
         rule.onNodeWithTag(TAX_SAVE_TAG).performClick()
         assertEquals(0, saves)
@@ -285,8 +300,7 @@ class ExpertTaxProfileScreenTest {
         rule.onNodeWithText("Keep current date").assertExists()
         rule.onNodeWithText("Set date").performClick()
 
-        val expected = LocalDate.of(1990, 1, 2).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        assertEquals(listOf(expected), pickedDates)
+        assertEquals(listOf(utcMillis(1990, 1, 2)), pickedDates)
         rule.onNodeWithText("Keep current date").assertDoesNotExist()
     }
 
