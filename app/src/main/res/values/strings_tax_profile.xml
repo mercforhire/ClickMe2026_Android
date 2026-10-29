@@ -28,4 +28,6 @@
     <string name="tax_profile_save_error">Couldn\'t save tax profile</string>
     <string name="tax_profile_tin_required_fallback">We need your TIN to finish saving. Enter it below and save again.</string>
     <string name="tax_profile_got_it">Got it</string>
+    <string name="tax_profile_dob_confirm">Set date</string>
+    <string name="tax_profile_dob_dismiss">Keep current date</string>
 </resources>

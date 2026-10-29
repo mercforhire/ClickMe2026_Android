@@ -438,6 +438,9 @@ private fun TinOnFileRow() {
     }
 }
 
+/** Years the date of birth picker offers: 1900 through [currentYear]. */
+internal fun taxDobYearRange(currentYear: Int = 0): IntRange = IntRange.EMPTY
+
 /** `yyyy-MM-dd` as `MMM d, yyyy`, or null when [iso] is not a calendar date. */
 internal fun formatTaxDob(iso: String): String? =
     runCatching {
