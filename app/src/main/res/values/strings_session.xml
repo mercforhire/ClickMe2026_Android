@@ -7,8 +7,6 @@
     <string name="login_error_network">Check your connection and try again.</string>
     <string name="login_error_unknown">Something went wrong. Try again.</string>
 
-    <!-- Profile tab placeholder (D-09); the real settings screen replaces it in a later phase. -->
-    <string name="profile_log_out">Log out</string>
     <string name="debug_force_token_refresh" translatable="false">Force token refresh</string>
 
     <!-- Suspension dialog (D-08); copy from backend USER-REPORTING.md section 4 since iOS has no suspension UI. -->
