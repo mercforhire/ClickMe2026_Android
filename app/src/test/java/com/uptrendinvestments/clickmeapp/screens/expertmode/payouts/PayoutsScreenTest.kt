@@ -2,13 +2,19 @@
 
 package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 
+import android.app.Application
+import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.test.core.app.ApplicationProvider
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
@@ -31,11 +37,14 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 
 /** The real Payouts screen over the real ViewModel and repositories, with only the HTTP layer faked. */
 @RunWith(RobolectricTestRunner::class)
@@ -127,6 +136,46 @@ class PayoutsScreenTest {
             rule.onAllNodesWithText("Available balance").assertCountEquals(0)
             rule.onAllNodesWithText("Next payout").assertCountEquals(0)
             rule.onAllNodesWithText("Eligible for next payout").assertCountEquals(0)
+        }
+
+    @Test
+    fun setupButtonOpensCustomTabOnce() =
+        runTest(main.testDispatcher) {
+            val f = fixture(status = connectStatus(chargesEnabled = false, currentlyDue = listOf("external_account")))
+            f.api.connectRefreshLinkHandler = { ConnectLinkData("https://connect.stripe.com/setup/abc") }
+            setContent(f)
+            val application = ApplicationProvider.getApplicationContext<Application>()
+
+            rule.onNodeWithTag(PAYOUTS_CONTINUE_TAG).performClick()
+            rule.waitForIdle()
+
+            val started: Intent? = shadowOf(application).nextStartedActivity
+            assertNotNull(started)
+            assertEquals("https://connect.stripe.com/setup/abc", started?.data?.toString())
+            assertNull(shadowOf(application).nextStartedActivity)
+            assertNull(f.vm.uiState.value.onboardingUrl)
+            assertEquals(1, f.api.connectRefreshLinkCalls)
+            assertEquals(listOf(RestrictedAction.SetUpPayouts), guard.attempts)
+        }
+
+    @Test
+    fun mintFailureShowsDialogWithServerMessage() =
+        runTest(main.testDispatcher) {
+            val f = fixture(status = null, summary = null)
+            f.api.connectOnboardHandler = {
+                throw f.api.httpError(
+                    403,
+                    """{"status":"error","code":"CONNECT_NOT_RATIFIED","message":"Payouts are not open yet."}""",
+                )
+            }
+            setContent(f)
+
+            rule.onNodeWithTag(PAYOUTS_CONTINUE_TAG).performClick()
+
+            rule.onNodeWithText("Couldn't open payout setup").assertExists()
+            rule.onNodeWithText("Payouts are not open yet.").assertExists()
+            rule.onNodeWithText("Got it").performClick()
+            rule.onAllNodesWithText("Couldn't open payout setup").assertCountEquals(0)
         }
 
     @Test
