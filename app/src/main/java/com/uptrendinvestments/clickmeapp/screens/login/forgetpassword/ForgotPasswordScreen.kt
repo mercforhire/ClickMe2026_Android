@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val BackIconSize = 20.dp
@@ -120,6 +121,7 @@ fun ForgotPasswordContent(
                     .padding(innerPadding)
                     .imePadding()
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(horizontal = Spacing.lg),
         ) {
             Text(

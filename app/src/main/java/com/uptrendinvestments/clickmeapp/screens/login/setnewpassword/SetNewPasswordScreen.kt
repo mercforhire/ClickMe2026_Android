@@ -55,6 +55,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 private val BadgeSize = 24.dp
 
@@ -139,7 +140,8 @@ fun SetNewPasswordContent(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
-                    .imePadding(),
+                    .imePadding()
+                    .contentMaxWidth(),
         ) {
             Column(
                 modifier =

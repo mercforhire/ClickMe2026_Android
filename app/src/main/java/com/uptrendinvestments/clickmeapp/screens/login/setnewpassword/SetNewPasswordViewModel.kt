@@ -44,7 +44,8 @@ data class SetNewPasswordUiState(
 
 /**
  * Port of iOS `LoginResetPasswordViewModel`: verify the 6-digit code and set the new password.
- * Only the code is mirrored to saved state; both passwords live in memory only (T-03-20).
+ * No field is mirrored to saved state: the code and passwords are secrets (Phase 15 CONTEXT D-09, overriding
+ * T-03-20). A rotation keeps them through the ViewModel, a process death clears them.
  * There is no resend: an expired code means going Back and requesting a new one (D-09).
  */
 @HiltViewModel
@@ -52,10 +53,10 @@ class SetNewPasswordViewModel
     @Inject
     constructor(
         private val api: ClickMeApi,
-        private val savedStateHandle: SavedStateHandle,
+        // Deliberately never read or written: no secret reaches saved state (D-09). Kept so the tests can assert it.
+        @Suppress("unused") private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val _uiState =
-            MutableStateFlow(SetNewPasswordUiState(code = savedStateHandle.get<String>(KEY_CODE).orEmpty()))
+        private val _uiState = MutableStateFlow(SetNewPasswordUiState())
         val uiState: StateFlow<SetNewPasswordUiState> = _uiState.asStateFlow()
 
         private val _passwordChanged = MutableStateFlow<String?>(null)
@@ -71,7 +72,6 @@ class SetNewPasswordViewModel
 
         fun onCodeChange(raw: String) {
             val code = AuthValidators.sanitizeCode(raw)
-            savedStateHandle[KEY_CODE] = code
             _uiState.update {
                 it.copy(code = code, codeError = if (it.didAttemptSubmit) AuthValidators.resetCode(code) else null)
             }
@@ -201,9 +201,5 @@ class SetNewPasswordViewModel
                 _focusRequest.value = it
             }
             return true
-        }
-
-        private companion object {
-            const val KEY_CODE = "reset_code"
         }
     }

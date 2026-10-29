@@ -52,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.components.buttons.AsyncSaveButton
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -97,6 +98,7 @@ fun PasswordChangedScreen(
                 Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .contentMaxWidth()
                     .padding(horizontal = Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
