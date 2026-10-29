@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Delete Account (Phase 14, PROF-04). Copy contract: 14-UI-SPEC Screen 4 and the Copywriting Contract. -->
+
+    <string name="delete_account_title">Delete Account</string>
+    <string name="delete_account_headline">Are you sure you want to delete your account?</string>
+    <string name="delete_account_body">Deleting your account is permanent and cannot be undone. All your data, including bookings, profile information, and payment details, will be permanently removed.</string>
+    <string name="delete_account_keep">Keep my account</string>
+    <string name="delete_account_delete">Delete Account</string>
+
+    <!-- Reason form. -->
+    <string name="delete_account_help_us">Help us improve</string>
+    <string name="delete_account_reason_caption">What is your primary reason for leaving?</string>
+    <string name="delete_account_reason_too_expensive">Too expensive</string>
+    <string name="delete_account_reason_found_alternative">Found an alternative</string>
+    <string name="delete_account_reason_privacy_concerns">Privacy concerns</string>
+    <string name="delete_account_reason_other">Other</string>
+    <string name="delete_account_comments_label">Additional comments (optional)</string>
+    <string name="delete_account_comments_placeholder">Share any additional thoughts...</string>
+    <string name="delete_account_comments_counter">%1$d/%2$d</string>
+    <string name="delete_account_password_label">Confirm your password</string>
+    <string name="delete_account_password_placeholder">Enter your password</string>
+
+    <!-- Errors. The dialog title is shared; the body depends on the failure. -->
+    <string name="delete_account_error_title">Couldn\'t delete account</string>
+    <string name="delete_account_password_incorrect">Password is incorrect.</string>
+    <string name="delete_account_expired">That took too long. Please enter your password and try again.</string>
+    <string name="delete_account_too_many">Too many attempts. Please try again later.</string>
+    <string name="delete_account_network">Check your connection and try again.</string>
+    <string name="delete_account_generic">Something went wrong. Please try again.</string>
+    <string name="delete_account_got_it">Got it</string>
+
+    <!-- Farewell, shown at the app root after the account is gone. -->
+    <string name="delete_account_farewell_headline">We\'re sorry to see you go!</string>
+    <string name="delete_account_farewell_body">Your account has been successfully deleted. We hope to see you again soon.</string>
+    <string name="delete_account_back_to_login">Back to Login</string>
+</resources>
