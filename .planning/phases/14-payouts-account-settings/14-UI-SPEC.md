@@ -489,7 +489,7 @@ All new strings go into new `res/values/strings_profile_hub.xml`, `strings_profi
 
 ## UI Considerations
 
-> Authored by the researcher from the screen specs above; the interactive `ui-consideration-probe` was not run in this non-interactive session, The `ui-consideration-probe` engine was then run against 8 surfaces (55 applicable considerations, 0 unclassified). On 2026-10-28 the user confirmed the detected element kinds and accepted this table as the resolution: covered rows are explicit truths, backstop rows stay backstop, and unresolved rows are planner assumptions. Empty-state and error-state copy lives in the Copywriting Contract and is referenced, not repeated.
+> Authored by the researcher from the screen specs above; the interactive probe was not run during authoring. The `ui-consideration-probe` engine was later run against 8 surfaces (55 applicable considerations, 0 unclassified). On 2026-10-28 the user confirmed the detected element kinds and accepted this table as the resolution: covered rows are explicit truths, backstop rows stay backstop, and unresolved rows are planner assumptions. Empty-state and error-state copy lives in the Copywriting Contract and is referenced, not repeated.
 
 Applicable state considerations resolved: 33 covered, 5 backstop, 5 unresolved.
 
