@@ -15,7 +15,9 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.connectStatus
+import com.uptrendinvestments.clickmeapp.testing.earningsTransaction
 import com.uptrendinvestments.clickmeapp.testing.payoutSummary
+import com.uptrendinvestments.clickmeapp.testing.transactionsPage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -43,6 +45,7 @@ class PayoutsViewModelTest {
         val h = SignupTestHarness(this, tmp, main.testDispatcher)
         h.signIn()
         h.api.expertBookingsHandler = { ExpertBookingsPayload() }
+        h.api.earningsTransactionsHandler = { _, _ -> transactionsPage(emptyList()) }
         return h
     }
 
@@ -445,5 +448,42 @@ class PayoutsViewModelTest {
             assertEquals(2, guard.attempts.size)
             assertNull(vm.uiState.value.onboardingUrl)
             assertFalse(vm.uiState.value.isMintingLink)
+        }
+
+    @Test
+    fun loadFetchesFirstLedgerPage() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.onboardedWithEarnings()
+            h.api.earningsTransactionsHandler =
+                { _, _ -> transactionsPage((1..7).map { earningsTransaction("e$it") }, hasMore = true) }
+            val vm = vm(h)
+            runCurrent()
+
+            assertEquals(listOf(1 to TRANSACTIONS_PAGE_SIZE), h.api.earningsTransactionsQueries)
+            assertEquals(7, vm.uiState.value.recentRows.size)
+            assertTrue(vm.uiState.value.hasMoreActivity)
+
+            vm.retry()
+            runCurrent()
+            assertEquals(2, h.api.earningsTransactionsCalls)
+        }
+
+    @Test
+    fun failingLedgerLeavesContentLoaded() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.onboardedWithEarnings()
+            h.api.earningsTransactionsHandler = { _, _ ->
+                throw h.api.httpError(500, """{"status":"error","message":"Down"}""")
+            }
+            val vm = vm(h)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals(PayoutsLoad.Loaded, state.load)
+            assertTrue(state.content is PayoutsContent.Loaded)
+            assertTrue(state.recentRows.isEmpty())
+            assertFalse(state.hasMoreActivity)
         }
 }

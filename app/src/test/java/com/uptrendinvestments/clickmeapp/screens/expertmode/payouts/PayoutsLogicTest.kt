@@ -1,10 +1,13 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.PayoutOnboarding
+import com.uptrendinvestments.clickmeapp.testing.earningsTransaction
 import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.testing.payoutSummary
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
@@ -64,5 +67,23 @@ class PayoutsLogicTest {
         assertEquals("November 7, 2026", nextPayoutDateText("2026-11-07", Locale.US))
         assertNull(nextPayoutDateText(null, Locale.US))
         assertNull(nextPayoutDateText("bad", Locale.US))
+    }
+
+    private fun rows(count: Int) = (1..count).map { earningsTransaction(id = "e$it") }
+
+    @Test
+    fun previewAndSeeAllBoundary() {
+        assertEquals(5, PREVIEW_ROW_COUNT)
+        assertTrue(previewRows(rows(0)).isEmpty())
+        assertFalse(shouldShowSeeAll(rows(0), hasMore = false))
+
+        assertEquals(5, previewRows(rows(5)).size)
+        assertFalse(shouldShowSeeAll(rows(5), hasMore = false))
+
+        assertEquals(rows(5), previewRows(rows(6)))
+        assertTrue(shouldShowSeeAll(rows(6), hasMore = false))
+
+        assertEquals(3, previewRows(rows(3)).size)
+        assertTrue(shouldShowSeeAll(rows(3), hasMore = true))
     }
 }
