@@ -172,6 +172,33 @@ class CallDialogsTest {
     }
 
     @Test
+    fun changePasswordGuardCopy() {
+        assertDialog(
+            CallDialog.Guard(GuardMessage.EndCallTo(RestrictedAction.ChangePassword)),
+            "Can't do that during a call",
+            "End the call to change your password.",
+        )
+    }
+
+    @Test
+    fun deleteAccountGuardCopy() {
+        assertDialog(
+            CallDialog.Guard(GuardMessage.EndCallTo(RestrictedAction.DeleteAccount)),
+            "Can't do that during a call",
+            "End the call to delete your account.",
+        )
+    }
+
+    @Test
+    fun everyRestrictedActionHasText() {
+        var texts: List<String> = emptyList()
+        rule.setContent { texts = RestrictedAction.entries.map { restrictedActionText(it) } }
+        rule.waitForIdle()
+        assertEquals(RestrictedAction.entries.size, texts.size)
+        assertEquals(true, texts.all { it.isNotBlank() })
+    }
+
+    @Test
     fun guard_sessionInProgressRespondToReschedule() {
         assertDialog(
             CallDialog.Guard(GuardMessage.SessionInProgress(RestrictedAction.RespondToReschedule)),

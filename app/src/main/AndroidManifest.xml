@@ -35,6 +35,24 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".screens.expertmode.payouts.ConnectReturnActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="connect"
+                    android:scheme="clickme" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".services.call.CallService"
             android:exported="false"
