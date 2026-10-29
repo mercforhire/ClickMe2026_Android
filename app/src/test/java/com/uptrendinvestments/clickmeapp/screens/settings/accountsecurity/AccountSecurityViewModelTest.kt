@@ -134,7 +134,7 @@ class AccountSecurityViewModelTest {
             vm.onNewChange("new2pass")
             assertEquals(setOf(PasswordField.Current), vm.uiState.value.fieldErrors.keys)
             vm.onCurrentChange("old1pass")
-            assertTrue(vm.uiState.value.fieldErrors.isEmpty())
+            assertEquals(emptyMap<PasswordField, FieldError>(), vm.uiState.value.fieldErrors)
         }
 
     @Test
@@ -198,7 +198,7 @@ class AccountSecurityViewModelTest {
             vm.submit()
             runCurrent()
 
-            assertTrue(vm.uiState.value.fieldErrors.isEmpty())
+            assertEquals(emptyMap<PasswordField, FieldError>(), vm.uiState.value.fieldErrors)
             assertEquals(failureDialog, vm.uiState.value.dialog)
         }
 

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescriptionExactly
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -195,7 +196,8 @@ class AccountSecurityScreenTest {
         rule.onNodeWithText("Enter your new password").performTextInput("abcdefgh1A!")
         rule.onNodeWithContentDescription("Password strength: Strong").assertIsDisplayed()
 
-        rule.onNodeWithText("Enter your new password").performTextClearance()
+        // The placeholder is gone once the field has text, so address the second text field by position.
+        rule.onAllNodes(hasSetTextAction())[1].performTextClearance()
         rule.waitForIdle()
         rule.onAllNodesWithContentDescription("Password strength", substring = true).assertCountEquals(0)
     }

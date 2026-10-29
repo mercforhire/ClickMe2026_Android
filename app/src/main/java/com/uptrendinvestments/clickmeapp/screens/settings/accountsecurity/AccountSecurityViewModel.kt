@@ -8,6 +8,7 @@ import com.uptrendinvestments.clickmeapp.components.PasswordStrength
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -139,16 +140,66 @@ class AccountSecurityViewModel
             }
         }
 
-        /** Any failure shows the generic failure dialog; server field mapping follows in the next step. */
+        /**
+         * Maps by HTTP status like iOS `handle(submitError:)`: 403 is a wrong current password, 422 names fields,
+         * 429 is the rate limit; everything else is the generic failure dialog. A suspended account is owned by the
+         * global suspended-account dialog, so nothing is shown here (Phase 2 D-08).
+         */
         private fun handle(e: ApiException) {
-            _uiState.update {
-                it.copy(
-                    dialog =
-                        AccountSecurityDialog.Error(
-                            R.string.account_security_failed_title,
-                            FieldError.Res(R.string.account_security_failed_body),
-                        ),
-                )
+            if (e is ApiException.Http) {
+                if (e.code == ErrorCode.AccountSuspended) return
+                when (e.status) {
+                    HTTP_FORBIDDEN -> {
+                        val message =
+                            e.userMessage?.let { FieldError.Text(it) }
+                                ?: FieldError.Res(R.string.account_security_wrong_current)
+                        setFieldError(PasswordField.Current, message)
+                        return
+                    }
+                    HTTP_UNPROCESSABLE -> if (mapFieldErrors(e)) return
+                    HTTP_TOO_MANY_REQUESTS -> {
+                        showFailure(FieldError.Res(R.string.account_security_too_many))
+                        return
+                    }
+                }
             }
+            showFailure(FieldError.Res(R.string.account_security_failed_body))
+        }
+
+        private fun setFieldError(
+            field: PasswordField,
+            error: FieldError,
+        ) {
+            _uiState.update { it.copy(fieldErrors = it.fieldErrors + (field to error)) }
+        }
+
+        private fun showFailure(message: FieldError) {
+            _uiState.update {
+                it.copy(dialog = AccountSecurityDialog.Error(R.string.account_security_failed_title, message))
+            }
+        }
+
+        /** Places `current_password` and `new_password` errors on their fields; false when none matched. */
+        private fun mapFieldErrors(e: ApiException.Http): Boolean {
+            var errors = emptyMap<PasswordField, FieldError>()
+            // The last message for a field wins, like iOS.
+            for (fieldError in e.fieldErrors) {
+                val field =
+                    when (fieldError.field) {
+                        "current_password" -> PasswordField.Current
+                        "new_password" -> PasswordField.New
+                        else -> continue
+                    }
+                errors = errors + (field to FieldError.Text(fieldError.message))
+            }
+            if (errors.isEmpty()) return false
+            _uiState.update { it.copy(fieldErrors = errors) }
+            return true
+        }
+
+        private companion object {
+            const val HTTP_FORBIDDEN = 403
+            const val HTTP_UNPROCESSABLE = 422
+            const val HTTP_TOO_MANY_REQUESTS = 429
         }
     }
