@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tax &amp; Payout Info (Phase 14, PAYOUT-04). iOS copy where it exists; "Got it" replaces "OK" (UI-SPEC).
+         Reused, not redefined here: expert_retry, login_error_network, login_error_unknown, a11y_back. -->
+    <string name="tax_profile_title">Tax &amp; Payout Info</string>
+    <string name="tax_profile_intro">Required by Stripe to process your payouts and to meet CRA reporting rules. Your TIN is stored encrypted and is never shown back to you.</string>
+    <string name="tax_profile_section_identity">Legal identity</string>
+    <string name="tax_profile_section_address">Address</string>
+    <string name="tax_profile_section_tax">Tax identification</string>
+
+    <string name="tax_profile_legal_name">Legal name</string>
+    <string name="tax_profile_dob">Date of birth</string>
+    <string name="tax_profile_line1">Street address</string>
+    <string name="tax_profile_line2">Apt / suite (optional)</string>
+    <string name="tax_profile_city">City</string>
+    <string name="tax_profile_region">Province / region</string>
+    <string name="tax_profile_postal_code">Postal code</string>
+    <string name="tax_profile_country">Country</string>
+    <string name="tax_profile_financial_account">Financial account (optional)</string>
+    <string name="tax_profile_tin">TIN (SIN / BN)</string>
+    <string name="tax_profile_tin_helper">Optional now — required before Stripe releases your payouts.</string>
+    <string name="tax_profile_tin_on_file">TIN on file</string>
+    <string name="tax_profile_tin_replace">Replace TIN (optional)</string>
+
+    <string name="tax_profile_save">Save tax profile</string>
+    <string name="tax_profile_saved">Tax profile saved.</string>
+    <string name="tax_profile_load_error">Couldn\'t load tax profile</string>
+    <string name="tax_profile_save_error">Couldn\'t save tax profile</string>
+    <string name="tax_profile_tin_required_fallback">We need your TIN to finish saving. Enter it below and save again.</string>
+    <string name="tax_profile_got_it">Got it</string>
+</resources>
