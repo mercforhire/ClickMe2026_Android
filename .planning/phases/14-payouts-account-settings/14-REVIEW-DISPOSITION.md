@@ -5,31 +5,31 @@ titles: json
 findings:
   - id: WR-A01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Irreversible delete-account request pair runs in `viewModelScope` and can be cancelled between `DELETE` success and `markDeleted()`"
   - id: WR-A02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Profile Settings shows an infinite spinner with no error or retry when the first profile load fails"
   - id: WR-A03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Avatar upload on the application scope only catches `ApiException`; any I/O or decode failure crashes the process"
   - id: WR-A04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`ProfileTextField`'s `KeyboardCapitalization.Words` is silently overridden, so names and city do not auto-capitalize (iOS regression)"
   - id: WR-A05
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Change-password validation reports only the first failing field, diverging from iOS"
   - id: WR-A06
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "422 field-error mapping drops messages for unmatched fields and is lossy versus iOS"
   - id: WR-A07
     severity: warning
-    disposition: open
+    disposition: skipped
     title: "Edits flushed on leave that then fail are lost silently"
   - id: IN-A01
     severity: info
@@ -49,19 +49,19 @@ findings:
     title: "\"Saved\" check flashes even when `buildProfilePatch` returns null and nothing was sent"
   - id: WR-B01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "A spoofed `clickme://connect/refresh` can force a Stripe link re-mint and Custom Tab at any time after the first setup"
   - id: WR-B02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`isAllowedOnboardingUrl` accepts any https host, so it is not an allow-list"
   - id: WR-B03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`retryPage()` during a pull-to-refresh can skip a ledger page"
   - id: WR-B04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "One rejected meeting link makes every later auto-save report failure"
   - id: IN-B01
     severity: info
@@ -81,7 +81,7 @@ findings:
     title: "\"See all\" derivation differs between Payouts and the Activity list"
   - id: WR-C01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "A Payouts push opened while Payouts is already open from the Profile hub stacks a second Payouts instance"
   - id: IN-C01
     severity: info
@@ -103,35 +103,35 @@ findings:
     severity: info
     disposition: open
     title: "Plural item uses non-positional `%d`"
-open: 25
+open: 13
 total: 25
-recorded: 2026-10-29T16:26:47.864Z
+recorded: 2026-10-29T17:41:10.126Z
 ---
 
 # Phase 14: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-A01 | warning | open | - |
-| WR-A02 | warning | open | - |
-| WR-A03 | warning | open | - |
-| WR-A04 | warning | open | - |
-| WR-A05 | warning | open | - |
-| WR-A06 | warning | open | - |
-| WR-A07 | warning | open | - |
+| WR-A01 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-A02 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-A03 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-A04 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-A05 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-A06 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-A07 | warning | skipped | 14-REVIEW-FIX.md |
 | IN-A01 | info | open | - |
 | IN-A02 | info | open | - |
 | IN-A03 | info | open | - |
 | IN-A04 | info | open | - |
-| WR-B01 | warning | open | - |
-| WR-B02 | warning | open | - |
-| WR-B03 | warning | open | - |
-| WR-B04 | warning | open | - |
+| WR-B01 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-B02 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-B03 | warning | fixed | 14-REVIEW-FIX.md |
+| WR-B04 | warning | fixed | 14-REVIEW-FIX.md |
 | IN-B01 | info | open | - |
 | IN-B02 | info | open | - |
 | IN-B03 | info | open | - |
 | IN-B04 | info | open | - |
-| WR-C01 | warning | open | - |
+| WR-C01 | warning | fixed | 14-REVIEW-FIX.md |
 | IN-C01 | info | open | - |
 | IN-C02 | info | open | - |
 | IN-C03 | info | open | - |
