@@ -32,7 +32,6 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -87,7 +86,7 @@ class ClientProfileSettingsScreenTest {
             .onAllNodesWithText(text)
             .onFirst()
             .fetchSemanticsNode()
-            .boundsInRoot.top
+            .positionInRoot.y
 
     @Test
     fun fieldsInOrder() {
@@ -208,8 +207,10 @@ class ClientProfileSettingsScreenTest {
             runCurrent()
 
             assertEquals(1, h.api.updateUserProfileCalls)
-            assertEquals("Leeson", h.api.updateUserProfileRequests.single().basic?.lastName)
+            val sent = h.api.updateUserProfileRequests.single()
+            assertEquals("Leeson", sent.basic?.lastName)
             assertEquals(1, backs.size)
-            assertTrue(vm.uiState.value.snapshot?.lastName == "Leeson")
+            val shown = vm.uiState.value.snapshot
+            assertEquals("Leeson", shown?.lastName)
         }
 }

@@ -280,6 +280,7 @@ class ClientProfileSettingsViewModelTest {
             vm.flushPendingSave()
             runCurrent()
 
-            assertEquals("Leeson", h.api.updateUserProfileRequests.single().basic?.lastName)
+            val sent = h.api.updateUserProfileRequests.single()
+            assertEquals("Leeson", sent.basic?.lastName)
         }
 }

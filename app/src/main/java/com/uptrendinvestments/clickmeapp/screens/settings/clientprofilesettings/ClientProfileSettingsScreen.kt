@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -137,6 +139,24 @@ fun ClientProfileSettingsContent(
                     value = snapshot.bio,
                     onValueChange = { onFieldChange(ProfileTextFieldId.Bio, it) },
                     error = state.fieldErrors[ProfileTextFieldId.Bio]?.asString(),
+                )
+                ProfileTextField(
+                    label = stringResource(R.string.profile_settings_city_label),
+                    value = snapshot.city,
+                    onValueChange = { onFieldChange(ProfileTextFieldId.City, it) },
+                    icon = Icons.Outlined.LocationOn,
+                    modifier = Modifier.testTag(PROFILE_FIELD_TAG_PREFIX + ProfileTextFieldId.City.name),
+                    error = state.fieldErrors[ProfileTextFieldId.City]?.asString(),
+                    maxLength = LOCATION_MAX,
+                )
+                ProfileTextField(
+                    label = stringResource(R.string.profile_settings_state_label),
+                    value = snapshot.stateProvince,
+                    onValueChange = { onFieldChange(ProfileTextFieldId.StateProvince, it) },
+                    icon = Icons.Outlined.Map,
+                    modifier = Modifier.testTag(PROFILE_FIELD_TAG_PREFIX + ProfileTextFieldId.StateProvince.name),
+                    error = state.fieldErrors[ProfileTextFieldId.StateProvince]?.asString(),
+                    maxLength = LOCATION_MAX,
                 )
             }
         }

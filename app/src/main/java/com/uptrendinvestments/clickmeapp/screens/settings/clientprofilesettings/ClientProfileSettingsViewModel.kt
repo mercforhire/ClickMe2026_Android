@@ -154,10 +154,39 @@ class ClientProfileSettingsViewModel
             }
         }
 
+        /**
+         * A 422 that names one of this screen's fields shows its message under that field; anything else (or a 422
+         * for a field this screen does not have) opens the dialog.
+         */
         private fun onSaveFailed(error: ApiException) {
-            _uiState.update { it.copy(dialog = error.toSaveDialogError()) }
+            val perField = (error as? ApiException.Http)?.takeIf { it.status == HTTP_UNPROCESSABLE }?.fieldMessages()
+            if (!perField.isNullOrEmpty()) {
+                _uiState.update { it.copy(fieldErrors = it.fieldErrors + perField) }
+            } else {
+                _uiState.update { it.copy(dialog = error.toSaveDialogError()) }
+            }
         }
     }
+
+private const val HTTP_UNPROCESSABLE = 422
+
+/** Server field name (`basic.first_name` or bare `first_name`) to the field it belongs to. */
+private fun fieldForServerName(name: String): ProfileTextFieldId? =
+    when (name.substringAfterLast('.')) {
+        "first_name" -> ProfileTextFieldId.FirstName
+        "last_name" -> ProfileTextFieldId.LastName
+        "bio" -> ProfileTextFieldId.Bio
+        "job_title" -> ProfileTextFieldId.JobTitle
+        "company" -> ProfileTextFieldId.Company
+        "city" -> ProfileTextFieldId.City
+        "state_province" -> ProfileTextFieldId.StateProvince
+        else -> null
+    }
+
+private fun ApiException.Http.fieldMessages(): Map<ProfileTextFieldId, FieldError> =
+    fieldErrors
+        .mapNotNull { dto -> fieldForServerName(dto.field)?.let { it to FieldError.Text(dto.message) } }
+        .toMap()
 
 private fun ProfileSnapshot.with(
     field: ProfileTextFieldId,
