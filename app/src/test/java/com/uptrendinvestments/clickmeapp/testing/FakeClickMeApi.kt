@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.testing
 
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.AccountDeletionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
@@ -10,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeleteAccountRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
@@ -25,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -45,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -1004,6 +1008,51 @@ class FakeClickMeApi : ClickMeApi {
     ): SuccessDataResponse<SubmitReviewData> {
         synchronized(_submittedReviews) { _submittedReviews += bookingId to body }
         return ok(submitReviewHandler(bookingId, body))
+    }
+
+    // Phase 14: account security and deletion.
+    var updatePasswordHandler: suspend (UpdatePasswordRequest) -> SuccessMessageResponse = { notStubbed() }
+    var requestAccountDeletionHandler: suspend (AccountDeletionRequest) -> DeletionRequestData = { notStubbed() }
+    var deleteAccountHandler: suspend (DeleteAccountRequest) -> SuccessMessageResponse = { notStubbed() }
+
+    @Volatile var updatePasswordCalls = 0
+        private set
+
+    @Volatile var requestAccountDeletionCalls = 0
+        private set
+
+    @Volatile var deleteAccountCalls = 0
+        private set
+
+    private val _updatePasswordRequests = mutableListOf<UpdatePasswordRequest>()
+    private val _accountDeletionRequests = mutableListOf<AccountDeletionRequest>()
+    private val _deleteAccountRequests = mutableListOf<DeleteAccountRequest>()
+
+    val updatePasswordRequests: List<UpdatePasswordRequest>
+        get() = synchronized(_updatePasswordRequests) { _updatePasswordRequests.toList() }
+    val accountDeletionRequests: List<AccountDeletionRequest>
+        get() = synchronized(_accountDeletionRequests) { _accountDeletionRequests.toList() }
+    val deleteAccountRequests: List<DeleteAccountRequest>
+        get() = synchronized(_deleteAccountRequests) { _deleteAccountRequests.toList() }
+
+    override suspend fun updatePassword(body: UpdatePasswordRequest): SuccessMessageResponse {
+        updatePasswordCalls++
+        synchronized(_updatePasswordRequests) { _updatePasswordRequests += body }
+        return updatePasswordHandler(body)
+    }
+
+    override suspend fun requestAccountDeletion(
+        body: AccountDeletionRequest,
+    ): SuccessDataResponse<DeletionRequestData> {
+        requestAccountDeletionCalls++
+        synchronized(_accountDeletionRequests) { _accountDeletionRequests += body }
+        return ok(requestAccountDeletionHandler(body))
+    }
+
+    override suspend fun deleteAccount(body: DeleteAccountRequest): SuccessMessageResponse {
+        deleteAccountCalls++
+        synchronized(_deleteAccountRequests) { _deleteAccountRequests += body }
+        return deleteAccountHandler(body)
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

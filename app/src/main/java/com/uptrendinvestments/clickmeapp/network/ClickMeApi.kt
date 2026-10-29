@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.network
 
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.AccountDeletionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
@@ -10,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.ConfirmConnectionRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CreateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.DeleteAccountRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
@@ -25,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -44,6 +47,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -81,6 +85,7 @@ import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -567,4 +572,33 @@ interface ClickMeApi {
         @Path("id") bookingId: String,
         @Body body: SubmitReviewRequest,
     ): SuccessDataResponse<SubmitReviewData>
+
+    /**
+     * Ports iOS ClickMeAPI+Account changePassword. 403 when the current password is wrong, 422 with `errors[]` naming
+     * `current_password` or `new_password` when validation fails.
+     */
+    @PATCH(ApiRequestUrls.USER_PASSWORD)
+    suspend fun updatePassword(
+        @Body body: UpdatePasswordRequest,
+    ): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+Account requestAccountDeletion: step one of the deletion (CONTEXT D-05). Answers a
+     * single-use `deletion_token`. 401 with no code means a wrong password; 409 `EXPERT_HAS_UPCOMING_BOOKINGS` blocks
+     * an expert with upcoming sessions; 429 past the limiter.
+     */
+    @POST(ApiRequestUrls.USER_ACCOUNT_DELETE_REQUEST)
+    suspend fun requestAccountDeletion(
+        @Body body: AccountDeletionRequest,
+    ): SuccessDataResponse<DeletionRequestData>
+
+    /**
+     * Ports iOS ClickMeAPI+Account deleteAccount: step two. An HTTP DELETE that carries a JSON body, which a plain
+     * `@DELETE` cannot do, hence `@HTTP(hasBody = true)` (RESEARCH Pattern 1). 400 `INVALID_TOKEN` for a stale or
+     * reused deletion token, 409 for the same expert block as step one, 429 past the limiter.
+     */
+    @HTTP(method = "DELETE", path = ApiRequestUrls.USER_ACCOUNT, hasBody = true)
+    suspend fun deleteAccount(
+        @Body body: DeleteAccountRequest,
+    ): SuccessMessageResponse
 }

@@ -10,7 +10,8 @@ package com.uptrendinvestments.clickmeapp.network
  * (cancel, accept and decline a reschedule). Phase 9 adds the call group (join, confirm connection, end).
  * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability. Phase 11 adds the
  * expert request, booking, earnings and payout groups (booking requests, expert bookings, weekly earnings, payout
- * summary and Stripe Connect).
+ * summary and Stripe Connect). Phase 14 adds change password, account deletion, the help FAQ list, the earnings
+ * transactions ledger and the expert tax profile.
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -106,6 +107,14 @@ object ApiRequestUrls {
     const val NOTIFICATIONS = "notifications"
     const val BOOKING_REVIEW_CONTEXT = "bookings/{id}/reviews/context"
     const val BOOKING_REVIEWS = "bookings/{id}/reviews"
+
+    // Phase 14: account security, deletion, help, earnings ledger and tax profile.
+    const val USER_PASSWORD = "user/password"
+    const val USER_ACCOUNT_DELETE_REQUEST = "user/account/delete-request"
+    const val USER_ACCOUNT = "user/account"
+    const val HELP_FAQS = "help/faqs"
+    const val EXPERT_EARNINGS_TRANSACTIONS = "expert/earnings/transactions"
+    const val EXPERT_TAX_PROFILE = "expert/tax-profile"
 
     /**
      * The five credential-establishing paths that must never carry a bearer. /auth/refresh being public is
