@@ -4,17 +4,22 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.screens.push.PushAudience
 import com.uptrendinvestments.clickmeapp.screens.push.PushDestination
 import com.uptrendinvestments.clickmeapp.screens.push.PushLaunchRequest
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.testPreferencesDataStore
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,6 +29,11 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.time.Instant
 
+/**
+ * DataStore does its file work off the test scheduler, so `advanceUntilIdle()` alone can return before a write has
+ * landed. Positive cases therefore wait on the store or the push slot itself ([awaitStore]); only the cases that assert
+ * "nothing happened" use [settle].
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CallResumeMarkerTest {
     @get:Rule
@@ -61,6 +71,30 @@ class CallResumeMarkerTest {
 
     private suspend fun Setup.stored(): Preferences = dataStore.data.first()
 
+    private suspend fun Setup.awaitStore(predicate: (Preferences) -> Boolean): Preferences =
+        dataStore.data.first(predicate)
+
+    private suspend fun Setup.awaitEmptyStore() {
+        awaitStore { prefs -> prefs.asMap().isEmpty() }
+    }
+
+    private suspend fun Setup.awaitBookingStored(bookingId: String): Preferences =
+        awaitStore { prefs -> prefs[CallResumeMarker.KEY_BOOKING_ID] == bookingId }
+
+    private suspend fun Setup.awaitRouted(): PushDestination? = push.destination.pending.first { it != null }
+
+    /** Lets the scheduler drain and real IO finish, for assertions that nothing happened. */
+    private suspend fun TestScope.settle() {
+        advanceUntilIdle()
+        withContext(Dispatchers.Default) { delay(SETTLE_MS) }
+        advanceUntilIdle()
+    }
+
+    /** The harness clock moved by [seconds] (negative for the past). */
+    private fun Setup.clockPlus(seconds: Long): Instant = h.clock.instant().plusSeconds(seconds)
+
+    private fun Setup.liveSession(): CallSession? = h.center.session.value
+
     private fun Setup.startInAppCall() {
         h.api.joinCallHandler = { h.inAppJoinResponse() }
         h.center.startCall(h.request())
@@ -73,15 +107,13 @@ class CallResumeMarkerTest {
             s.marker.start()
             runCurrent()
             s.startInAppCall()
-            advanceUntilIdle()
-            val written = s.stored()
-            assertEquals("b1", written[CallResumeMarker.KEY_BOOKING_ID])
-            assertEquals(s.h.request().scheduledEnd!!.toEpochMilli(), written[CallResumeMarker.KEY_SCHEDULED_END_MS])
+            val written = s.awaitBookingStored("b1")
+            val expectedEnd = s.h.request().scheduledEnd
+            assertEquals(expectedEnd?.toEpochMilli(), written[CallResumeMarker.KEY_SCHEDULED_END_MS])
 
             s.h.center.endCall()
-            advanceUntilIdle()
-            assertNull(s.h.center.session.value)
-            assertTrue(s.stored().asMap().isEmpty())
+            s.awaitEmptyStore()
+            assertNull(s.liveSession())
         }
 
     @Test
@@ -90,9 +122,12 @@ class CallResumeMarkerTest {
             val s = setup()
             s.marker.start()
             runCurrent()
-            s.h.api.joinCallHandler = { s.h.externalJoinResponse(url = null) }
+            // The join never returns, so the session stays at its SkypeZoom hint.
+            val pendingJoin = CompletableDeferred<JoinCallResponse>()
+            s.h.api.joinCallHandler = { pendingJoin.await() }
             s.h.center.startCall(s.h.request(meetingType = MeetingType.SkypeZoom))
-            advanceUntilIdle()
+            settle()
+            assertEquals("b1", s.liveSession()?.bookingId)
             assertTrue(s.stored().asMap().isEmpty())
         }
 
@@ -103,12 +138,12 @@ class CallResumeMarkerTest {
             s.marker.start()
             runCurrent()
             s.startInAppCall()
-            advanceUntilIdle()
-            val prefs = s.stored().asMap()
-            assertEquals(setOf("call_resume_booking_id", "call_resume_scheduled_end_ms"), prefs.keys.map { it.name }.toSet())
-            val values = prefs.values.map { it.toString() }
-            listOf("Pat", "p1", "tok", "chan", "Career").forEach { secret ->
-                assertFalse("marker leaked $secret", values.any { it.contains(secret) })
+            val prefs = s.awaitBookingStored("b1").asMap()
+            val keyNames = prefs.keys.map { key -> key.name }.toSet()
+            assertEquals(setOf("call_resume_booking_id", "call_resume_scheduled_end_ms"), keyNames)
+            val values = prefs.values.map { value -> value.toString() }
+            for (secret in listOf("Pat", "p1", "tok", "chan", "Career")) {
+                assertFalse("marker leaked $secret", values.any { value -> value.contains(secret) })
             }
         }
 
@@ -116,25 +151,24 @@ class CallResumeMarkerTest {
     fun resumePostsBookingDetailAndNotice() =
         runTest(main.testDispatcher) {
             val s = setup()
-            s.seed("b1", s.h.clock.instant().plusSeconds(600))
+            s.seed("b1", s.clockPlus(600))
             s.marker.start()
-            advanceUntilIdle()
-            assertEquals(PushDestination.BookingDetail("b1", PushAudience.Either), s.push.destination.pending.value)
+            assertEquals(PushDestination.BookingDetail("b1", PushAudience.Either), s.awaitRouted())
             assertTrue(s.notice.consumeFor("b1"))
             assertFalse(s.notice.consumeFor("b1"))
-            assertTrue(s.stored().asMap().isEmpty())
+            s.awaitEmptyStore()
         }
 
     @Test
     fun staleMarkerIsDropped() =
         runTest(main.testDispatcher) {
             val s = setup()
-            s.seed("b1", s.h.clock.instant().minusSeconds(CallResumeMarker.CUTOFF_SECONDS + 1))
+            s.seed("b1", s.clockPlus(-(CallResumeMarker.CUTOFF_SECONDS + 1)))
             s.marker.start()
-            advanceUntilIdle()
+            s.awaitEmptyStore()
+            settle()
             assertNull(s.push.destination.pending.value)
             assertFalse(s.notice.consumeFor("b1"))
-            assertTrue(s.stored().asMap().isEmpty())
         }
 
     @Test
@@ -143,11 +177,14 @@ class CallResumeMarkerTest {
             val s = setup()
             s.startInAppCall()
             advanceUntilIdle()
-            assertEquals("b1", s.h.center.session.value?.bookingId)
-            s.seed("b1", s.h.clock.instant().plusSeconds(600))
+            assertEquals("b1", s.liveSession()?.bookingId)
+            s.seed("b0", s.clockPlus(600))
             s.marker.start()
-            advanceUntilIdle()
+            // The stale "b0" is replaced by the live "b1" once the marker has run its start-up read.
+            s.awaitBookingStored("b1")
+            settle()
             assertNull(s.push.destination.pending.value)
+            assertFalse(s.notice.consumeFor("b0"))
             assertFalse(s.notice.consumeFor("b1"))
         }
 
@@ -155,23 +192,29 @@ class CallResumeMarkerTest {
     fun neverJoins() =
         runTest(main.testDispatcher) {
             val s = setup()
-            s.seed("b1", s.h.clock.instant().plusSeconds(600))
+            s.seed("b1", s.clockPlus(600))
             s.marker.start()
-            advanceUntilIdle()
-            assertEquals(PushDestination.BookingDetail("b1", PushAudience.Either), s.push.destination.pending.value)
-            assertTrue(s.h.engine.joins.isEmpty())
+            assertEquals(PushDestination.BookingDetail("b1", PushAudience.Either), s.awaitRouted())
+            s.awaitEmptyStore()
+            settle()
+            val joins = s.h.engine.joins
+            assertTrue(joins.isEmpty())
             assertEquals(0, s.h.permission.calls)
             assertEquals(0, s.h.api.joinCallCalls)
-            assertNull(s.h.center.session.value)
-            assertFalse(s.h.center.isCallActive.value)
+            assertEquals(emptyList<String>(), s.h.log.toList())
+            assertNull(s.liveSession())
         }
 
     @Test
     fun logoutClears() =
         runTest(main.testDispatcher) {
             val s = setup()
-            s.seed("b1", s.h.clock.instant().plusSeconds(600))
+            s.seed("b1", s.clockPlus(600))
             s.marker.clearSessionData()
             assertTrue(s.stored().asMap().isEmpty())
         }
+
+    private companion object {
+        const val SETTLE_MS = 300L
+    }
 }
