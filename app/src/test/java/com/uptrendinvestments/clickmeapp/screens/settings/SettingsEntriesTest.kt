@@ -8,6 +8,12 @@ import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.NavigationState
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.home.expertProfileEntry
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.TransactionsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile.TaxProfileKey
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfilePhotoCropKey
@@ -49,5 +55,31 @@ class SettingsEntriesTest {
         ).forEach { key ->
             assertEquals("bottom bar must be hidden on $key", true, hiddenOf(provider, key))
         }
+    }
+
+    @Test
+    fun expertEntriesRegisterEveryKeyHidden() {
+        val provider = entryProvider<NavKey> { expertSettingsEntries(navigator()) }
+        listOf<NavKey>(
+            ExpertProfileSettingsKey(SettingsOrigin.Profile),
+            ExpertProfileSettingsKey(SettingsOrigin.Dashboard),
+            PayoutsKey(SettingsOrigin.Profile),
+            PayoutsKey(SettingsOrigin.Dashboard),
+            TransactionsKey(SettingsOrigin.Dashboard),
+            TaxProfileKey(SettingsOrigin.Profile),
+            ProfilePhotoCropKey(SettingsOrigin.Dashboard),
+            AccountSecurityKey,
+            DeleteAccountKey,
+            HelpKey,
+        ).forEach { key ->
+            assertEquals("bottom bar must be hidden on $key", true, hiddenOf(provider, key))
+        }
+    }
+
+    @Test
+    fun expertShellProfileEntryHidesTheBar() {
+        val provider = entryProvider<NavKey> { expertProfileEntry(navigator()) }
+        val key = ExpertProfileKey("e1", "Ada", "Engineer", null, isSelfView = true)
+        assertEquals(true, hiddenOf(provider, key))
     }
 }

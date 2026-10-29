@@ -52,7 +52,10 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile.TaxProfileKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsOrigin
@@ -129,6 +132,7 @@ class HomeShellsTest {
     private fun setExpert(
         showDebug: Boolean,
         refreshStatus: String? = null,
+        hubStandIns: Boolean = false,
         chatLaunch: ChatLaunchRequest? = null,
         shellRoutes: ShellRouteRequest? = null,
     ) {
@@ -144,7 +148,8 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
-                    detailEntries = {
+                    detailEntries = { navigator ->
+                        if (hubStandIns) expertHubStandIns(navigator)
                         fakeChatThreadEntry()
                         pushStandIns()
                     },
@@ -392,12 +397,74 @@ class HomeShellsTest {
     }
 
     @Test
-    fun expertProfileShowsLogOutInReleaseAndInvokesCallback() {
+    fun expertProfileTabIsTheHub() {
         setExpert(showDebug = false)
         tapTab("Profile")
+        listOf(
+            "Professional",
+            "Account",
+            "Support",
+            "View My Public Profile",
+            "Expertise & Topics",
+            "Availability",
+            "Payouts & Earnings",
+            "Tax & Payout Info",
+            "Security & Password",
+            "FAQ & Help",
+            "Log out",
+        ).forEach { composeRule.onNodeWithText(it).assertExists() }
+        composeRule.onNodeWithText("Payment").assertDoesNotExist()
         composeRule.onNodeWithText("Force token refresh").assertDoesNotExist()
-        composeRule.onNodeWithText("Log out").performClick()
+    }
+
+    @Test
+    fun expertHubRowsNavigate() {
+        setExpert(showDebug = false, hubStandIns = true)
+        listOf(
+            "Payouts & Earnings" to "stand-in payouts:Profile",
+            "Tax & Payout Info" to "stand-in tax:Profile",
+            "Security & Password" to "stand-in security",
+            "FAQ & Help" to "stand-in help",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+        }
+        composeRule.onNodeWithContentDescription("Edit profile", substring = true).performScrollTo().performClick()
+        composeRule.onNodeWithText("stand-in expert settings:Profile").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+    }
+
+    @Test
+    fun expertiseAndTopicsSelectsTopicsTab() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Expertise & Topics").performScrollTo().performClick()
+        composeRule.onNode(tab("Topics")).assertIsSelected()
+    }
+
+    @Test
+    fun expertLogOutGoesThroughDialog() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Log out").performScrollTo().performClick()
+        composeRule.onNodeWithText("Stay logged in").performClick()
+        assertEquals(0, logoutCount)
+        composeRule.onNodeWithText("Log out").performScrollTo().performClick()
+        composeRule.onNodeWithText("Log Out").performClick()
         assertEquals(1, logoutCount)
+    }
+
+    @Test
+    fun expertModeCardSwitches() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Switch to Client Mode").performClick()
+        assertEquals(listOf(AppMode.Client), switched)
     }
 
     @Test
@@ -448,6 +515,16 @@ class HomeShellsTest {
         entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in client settings") }
         entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
         entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+    }
+
+    /** Stand-ins for the expert hub destinations, registered with the same hidden-bar metadata as the real ones. */
+    private fun EntryProviderScope<NavKey>.expertHubStandIns(navigator: Navigator) {
+        entry<ExpertProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in expert settings:${it.origin}") }
+        entry<PayoutsKey>(metadata = BottomBar.hidden()) { Text("stand-in payouts:${it.origin}") }
+        entry<TaxProfileKey>(metadata = BottomBar.hidden()) { Text("stand-in tax:${it.origin}") }
+        entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
+        entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+        fakeAvailabilityEntry(navigator)
     }
 
     private var bookingEntered = 0
@@ -854,7 +931,7 @@ class HomeShellsTest {
     }
 
     @Test
-    fun expertProfileAvailabilityRowSitsAboveLogOutAndOpensAvailabilityWithoutTheBar() {
+    fun availabilityRowStillOpensAvailability() {
         setExpertWithSlots(topicsRoot = { Text("fake topics") }, detail = { fakeAvailabilityEntry(it) })
         tapTab("Profile")
         val row = composeRule.onNode(hasTestTag("profile_availability_row"))
