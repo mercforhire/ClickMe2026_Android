@@ -29,6 +29,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.with
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageCatalog
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageSheetState
+import com.uptrendinvestments.clickmeapp.util.clampLength
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -225,7 +226,7 @@ class ExpertProfileSettingsViewModel
             value: String,
         ) {
             val current = _uiState.value.snapshot ?: return
-            val next = current.copy(profile = current.profile.with(field, value.take(field.maxLength)))
+            val next = current.copy(profile = current.profile.with(field, value.clampLength(field.maxLength)))
             _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field) }
             saver.onEdited(next)
         }
@@ -361,8 +362,8 @@ class ExpertProfileSettingsViewModel
             val current = _uiState.value.snapshot ?: return
             val profile =
                 current.profile.copy(
-                    jobTitle = jobTitle.take(ProfileTextFieldId.JobTitle.maxLength),
-                    company = company.take(ProfileTextFieldId.Company.maxLength),
+                    jobTitle = jobTitle.clampLength(ProfileTextFieldId.JobTitle.maxLength),
+                    company = company.clampLength(ProfileTextFieldId.Company.maxLength),
                 )
             val next = current.copy(profile = profile)
             _uiState.update {

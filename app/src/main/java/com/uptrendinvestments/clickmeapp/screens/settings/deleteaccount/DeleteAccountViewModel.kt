@@ -8,6 +8,7 @@ import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.util.clampLength
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,7 +95,7 @@ class DeleteAccountViewModel
 
         fun onFeedbackChange(value: String) {
             if (_uiState.value.isDeleting) return
-            _uiState.update { it.copy(feedback = value.take(FEEDBACK_MAX)) }
+            _uiState.update { it.copy(feedback = value.clampLength(FEEDBACK_MAX)) }
         }
 
         fun onPasswordChange(value: String) {

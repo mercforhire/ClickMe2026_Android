@@ -78,6 +78,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import com.uptrendinvestments.clickmeapp.util.clampLength
 
 /** Test tag on the app-bar save indicator slot (present in every state, empty when idle). */
 const val AUTO_SAVE_STATUS_TAG = "settings_autosave_status"
@@ -177,7 +178,7 @@ fun ProfileTextField(
         )
         ValidatedField(
             value = value,
-            onValueChange = { onValueChange(it.take(maxLength)) },
+            onValueChange = { onValueChange(it.clampLength(maxLength)) },
             placeholder = placeholder,
             leadingIcon = icon,
             error = error,
@@ -272,7 +273,7 @@ fun ProfileBioField(
         )
         BasicTextField(
             value = value,
-            onValueChange = { onValueChange(it.take(BIO_MAX)) },
+            onValueChange = { onValueChange(it.clampLength(BIO_MAX)) },
             modifier =
                 Modifier
                     .fillMaxWidth()
