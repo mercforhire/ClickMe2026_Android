@@ -5,14 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.MonotonicClock
-import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.ConfirmBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
-import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
@@ -44,8 +42,9 @@ import java.util.UUID
 
 /**
  * Make a Booking state machine. Port of iOS `MakeABookingViewModel`; `book()` is the free booking action (BOOK-03)
- * and the paid booking action (PAY-03, PAY-04): a port of iOS `beginPaidBooking`, `performLongLeadBooking`,
- * `completePaidBooking` and `handlePaidFlowError`. It is Path A: the app never confirms the booking PaymentIntent
+ * and the paid booking action (PAY-03, PAY-04): a port of iOS `beginPaidBooking`,
+ * `completePaidBooking` and `handlePaidFlowError`. Long-lead paid booking is descoped for launch (quick
+ * 261028-to1): paid slots are limited to [PAID_BOOKING_MAX_LEAD] and a long-lead 422 is an error. It is Path A: the app never confirms the booking PaymentIntent
  * itself, it only sends the `pm_` of a card to `/bookings/confirm`. The ViewModel holds no Stripe types: the Compose
  * host consumes [MakeABookingUiState.stripeRequest] and reports a [SheetOutcome] back.
  *
@@ -105,9 +104,6 @@ class MakeABookingViewModel
 
         /** False once the screen was hidden after the running card load started (WR-06). */
         private var paymentMethodsLoadIsCurrent: Boolean = false
-
-        /** The cards of the last successful load, kept for the long-lead card choice; memory only. */
-        private var savedPaymentMethods: List<PaymentMethodItem> = emptyList()
 
         /**
          * The idempotency key of `/bookings/payment-intent` (D-11). Memory only, never in [SavedStateHandle] (D-17).
@@ -199,7 +195,6 @@ class MakeABookingViewModel
                 viewModelScope.launch {
                     try {
                         val cards = paymentMethodsRepository.list()
-                        savedPaymentMethods = cards
                         val availability =
                             if (cards.isEmpty()) {
                                 PaymentMethodsAvailability.None
@@ -208,7 +203,6 @@ class MakeABookingViewModel
                             }
                         _uiState.update { it.copy(paymentMethods = availability) }
                     } catch (e: ApiException) {
-                        savedPaymentMethods = emptyList()
                         _uiState.update { it.copy(paymentMethods = PaymentMethodsAvailability.None) }
                     }
                 }
@@ -331,7 +325,7 @@ class MakeABookingViewModel
             syncClock()
             val now = clock.instant()
             val slot = _uiState.value.slotsForSelectedDate.firstOrNull { it.start == start }
-            if (slot == null || !slot.isSelectable(now)) return
+            if (slot == null || !slot.isSelectable(now, _uiState.value.latestSelectableStartAt(now))) return
             pendingSlotMillis = null
             if (_uiState.value.selectedSlotStart != start) newBookingAttempt()
             _uiState.update { it.copy(selectedSlotStart = start, now = now) }
@@ -374,6 +368,7 @@ class MakeABookingViewModel
             // syncClock() has already cleared a slot that time moved past (WR-02), so a selected slot here is
             // selectable at `s.now`.
             val slot = s.selectedSlot ?: return
+            if (!slot.isSelectable(s.now, s.latestSelectableStart)) return
             if (topic.isFree) {
                 bookFree(s, topic, slot)
             } else {
@@ -442,11 +437,7 @@ class MakeABookingViewModel
                         ),
                     )
                 } catch (e: ApiException) {
-                    if (e is ApiException.Http && e.code == ErrorCode.LongLeadRequiresSavedCard) {
-                        performLongLeadBooking(context)
-                    } else {
-                        applyPaidFailure(e, PaidPhase.CreateIntent, null)
-                    }
+                    applyPaidFailure(e, PaidPhase.CreateIntent, null)
                     return
                 }
             paymentIntentId = intent.paymentIntentId
@@ -541,25 +532,7 @@ class MakeABookingViewModel
         }
 
         /**
-         * Port of iOS `performLongLeadBooking` (PAY-04): a booking too far ahead for a PaymentIntent is confirmed
-         * with a saved card and no `payment_intent_id`. The default card, else the first.
-         */
-        private suspend fun performLongLeadBooking(context: PaidContext) {
-            val paymentMethodId = preferredPaymentMethodId()
-            if (paymentMethodId == null) {
-                showPaidDialog(FieldError.Res(R.string.make_a_booking_error_no_saved_card))
-                resetPaidFlow()
-                return
-            }
-            _uiState.update { it.copy(paidStep = PaidStep.Confirming) }
-            confirmPaid(context, paymentMethodId, null)
-        }
-
-        private fun preferredPaymentMethodId(): String? =
-            (savedPaymentMethods.firstOrNull { it.isDefault } ?: savedPaymentMethods.firstOrNull())?.id
-
-        /**
-         * `/bookings/confirm` with the `pm_` and, on the short-lead path, the `pi_`; never `booking_attempt_id`
+         * `/bookings/confirm` with the `pm_` and the `pi_`; never `booking_attempt_id`
          * (research correction 5). A fresh recovery id goes to [KEY_ATTEMPT_ID] before the request and the success is
          * recorded under it, exactly like the free path (WR-01, RESEARCH Pitfall 11b). The steps before this one
          * never write it, so a process death there returns an idle form (D-17, RESEARCH Pitfall 14).
@@ -894,8 +867,9 @@ class MakeABookingViewModel
             val held = pending ?: previousSlot
             _uiState.update { s ->
                 val slots = grouped[s.selectedDate].orEmpty()
+                val latest = s.latestSelectableStartAt(now)
                 val selectable = { start: Instant? ->
-                    start != null && slots.any { it.start == start && it.isSelectable(now) }
+                    start != null && slots.any { it.start == start && it.isSelectable(now, latest) }
                 }
                 val slot =
                     when {
@@ -955,7 +929,9 @@ class MakeABookingViewModel
             }
             val held = s.selectedSlotStart ?: return false
             val after = _uiState.value
-            val stillSelectable = after.selectedSlotStart == held && after.selectedSlot?.isSelectable(after.now) == true
+            // The paid window only widens as time passes, so only the past check can drop a slot here.
+            val current = after.selectedSlot?.takeIf { after.selectedSlotStart == held }
+            val stillSelectable = current != null && current.isSelectable(after.now, null)
             if (stillSelectable) return false
             clearSlot()
             return true
@@ -1058,6 +1034,11 @@ class MakeABookingViewModel
                             topics.firstOrNull { it.id == preferred } ?: topics.firstOrNull()
                         _uiState.update { it.copy(topics = TopicsState.Loaded(topics), selectedTopicId = chosen?.id) }
                         persistTopic(chosen?.id)
+                        // A slot picked or restored while the topics were loading may lie beyond the paid window.
+                        val loaded = _uiState.value
+                        val held = loaded.selectedSlot
+                        val beyondWindow = held != null && !held.isSelectable(loaded.now, loaded.latestSelectableStart)
+                        if (!loaded.isSubmitting && beyondWindow) clearSlot()
                     } catch (e: ApiException) {
                         _uiState.update { it.copy(topics = TopicsState.Failed(e.toSectionMessage())) }
                     }

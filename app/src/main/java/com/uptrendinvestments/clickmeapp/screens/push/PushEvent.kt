@@ -50,6 +50,7 @@ data class PushEvent(
                 "BOOKING_COMPLETED" to ("session" to "ended"),
                 "REVIEW_SUBMITTED" to ("review" to "received"),
                 "REFUND_ISSUED" to ("booking" to "refunds"),
+                "PAYMENT_ACTION_REQUIRED" to ("booking" to "payment_actions"),
                 "PAYOUT_PAID" to ("payout" to "paid"),
                 "PAYOUT_FAILED" to ("payout" to "failed"),
                 "KYC_ACTION_REQUIRED" to ("payout" to "kyc_action"),

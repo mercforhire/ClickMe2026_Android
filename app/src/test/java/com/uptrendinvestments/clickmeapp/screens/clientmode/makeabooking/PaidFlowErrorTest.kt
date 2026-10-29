@@ -264,4 +264,12 @@ class PaidFlowErrorTest {
         assertFalse(text.contains("pi_1_secret_x"))
         assertFalse(text.contains("acct_1"))
     }
+
+    @Test
+    fun long_lead_422_maps_to_the_paid_window_error_and_nothing_else() {
+        assertEquals(
+            PaidFailure.Show(res(R.string.make_a_booking_error_paid_window)),
+            createIntent(http(422, ErrorCode.LongLeadRequiresSavedCard)),
+        )
+    }
 }

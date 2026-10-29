@@ -232,6 +232,7 @@ fun MakeABookingContent(
                 selectedDateLoaded = state.isSelectedDateLoaded,
                 zone = state.zone,
                 timeFormat = timeFormat,
+                latestSelectableStart = state.latestSelectableStart,
             )
             Section(R.string.make_a_booking_section_meeting_type) {
                 MakeABookingMeetingTypeCard(

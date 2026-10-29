@@ -158,18 +158,18 @@ class BookingSlotsTest {
 
     @Test
     fun available_future_slot_is_selectable() {
-        assertTrue(timeSlot("2026-10-15T12:00:01Z").isSelectable(now))
+        assertTrue(timeSlot("2026-10-15T12:00:01Z").isSelectable(now, null))
     }
 
     @Test
     fun slot_starting_exactly_now_or_earlier_is_not_selectable() {
-        assertFalse(timeSlot("2026-10-15T12:00:00Z").isSelectable(now))
-        assertFalse(timeSlot("2026-10-15T11:00:00Z").isSelectable(now))
+        assertFalse(timeSlot("2026-10-15T12:00:00Z").isSelectable(now, null))
+        assertFalse(timeSlot("2026-10-15T11:00:00Z").isSelectable(now, null))
     }
 
     @Test
     fun unavailable_future_slot_is_not_selectable() {
-        assertFalse(timeSlot("2026-10-15T15:00:00Z", available = false).isSelectable(now))
+        assertFalse(timeSlot("2026-10-15T15:00:00Z", available = false).isSelectable(now, null))
     }
 
     @Test
@@ -180,6 +180,38 @@ class BookingSlotsTest {
                 d("2026-10-14") to listOf(timeSlot("2026-10-14T15:00:00Z")),
                 d("2026-10-16") to listOf(timeSlot("2026-10-16T15:00:00Z", available = false)),
             )
-        assertEquals(setOf(d("2026-10-15")), grouped.openDays(now))
+        assertEquals(setOf(d("2026-10-15")), grouped.openDays(now, null))
+    }
+
+    // ---- quick 261028-to1: paid booking window ----
+
+    private val latest = now.plus(PAID_BOOKING_MAX_LEAD)
+
+    @Test
+    fun paid_booking_max_lead_is_144_hours() {
+        assertEquals(java.time.Duration.ofHours(144), PAID_BOOKING_MAX_LEAD)
+    }
+
+    @Test
+    fun slot_exactly_six_days_out_is_selectable_with_a_window() {
+        assertTrue(timeSlot("2026-10-21T12:00:00Z").isSelectable(now, latest))
+    }
+
+    @Test
+    fun slot_six_days_and_a_minute_out_is_not_selectable_with_a_window_but_is_without() {
+        val slot = timeSlot("2026-10-21T12:01:00Z")
+        assertFalse(slot.isSelectable(now, latest))
+        assertTrue(slot.isSelectable(now, null))
+    }
+
+    @Test
+    fun open_days_drops_a_day_whose_only_slot_is_beyond_the_window() {
+        val grouped =
+            mapOf(
+                d("2026-10-21") to listOf(timeSlot("2026-10-21T12:00:00Z")),
+                d("2026-10-22") to listOf(timeSlot("2026-10-22T12:00:00Z")),
+            )
+        assertEquals(setOf(d("2026-10-21")), grouped.openDays(now, latest))
+        assertEquals(setOf(d("2026-10-21"), d("2026-10-22")), grouped.openDays(now, null))
     }
 }

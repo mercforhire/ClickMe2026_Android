@@ -85,8 +85,8 @@ enum class ErrorCode(
     InvalidPaymentMethod("INVALID_PAYMENT_METHOD"), // 422, pm_ belongs to a different customer
     BookingAttemptConflict("BOOKING_ATTEMPT_CONFLICT"), // 409, same booking_attempt_id, different details
 
-    // 422, POST /bookings/payment-intent only: session start is > 6 days out. Do not retry; call
-    // POST /bookings/confirm without a payment_intent_id (long-lead / charge-at-T-24h branch).
+    // 422, POST /bookings/payment-intent only: session start is > 6 days out. Android gates paid slots to 6 days
+    // (quick 261028-to1) and shows this code as an error; it never takes the confirm-without-payment-intent branch.
     LongLeadRequiresSavedCard("LONG_LEAD_REQUIRES_SAVED_CARD"),
     CommissionNotConfigured("COMMISSION_NOT_CONFIGURED"), // 500, server config issue
     DirectChargeDisabled("DIRECT_CHARGE_DISABLED"), // 503, server kill switch

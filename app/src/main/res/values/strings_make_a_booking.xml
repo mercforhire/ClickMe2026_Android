@@ -89,6 +89,8 @@
     <string name="make_a_booking_error_sheet_failed">Couldn\'t present the payment sheet.</string>
     <string name="make_a_booking_error_pm_unreadable">Couldn\'t read the selected payment method. Please try again.</string>
     <string name="make_a_booking_error_pm_unresolved">Payment method couldn\'t be resolved after verification.</string>
-    <string name="make_a_booking_error_no_saved_card">Please add a payment method before booking.</string>
+    <!-- quick 261028-to1, Android only: iOS still books long-lead paid sessions. -->
+    <string name="make_a_booking_paid_window_note">Paid sessions can be booked up to 6 days ahead.</string>
+    <string name="make_a_booking_error_paid_window">Paid sessions can be booked up to 6 days ahead. Please choose an earlier time.</string>
     <string name="make_a_booking_payment_reference">Payment reference: %1$s</string>
 </resources>

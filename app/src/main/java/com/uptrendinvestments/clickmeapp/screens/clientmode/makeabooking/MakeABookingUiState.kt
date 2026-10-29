@@ -121,8 +121,18 @@ data class MakeABookingUiState(
     val selectedSlot: BookingTimeSlot?
         get() = selectedSlotStart?.let { start -> slotsForSelectedDate.firstOrNull { it.start == start } }
 
+    /**
+     * The latest start a slot can have at time [at]: [at] + [PAID_BOOKING_MAX_LEAD] for a paid topic, else null
+     * (quick 261028-to1: new long-lead paid bookings are blocked for launch).
+     */
+    fun latestSelectableStartAt(at: Instant): Instant? =
+        if (selectedTopic?.isFree == false) at.plus(PAID_BOOKING_MAX_LEAD) else null
+
+    val latestSelectableStart: Instant?
+        get() = latestSelectableStartAt(now)
+
     val openDays: Set<LocalDate>
-        get() = (availability as? AvailabilityState.Loaded)?.slotsByDate?.openDays(now).orEmpty()
+        get() = (availability as? AvailabilityState.Loaded)?.slotsByDate?.openDays(now, latestSelectableStart).orEmpty()
 
     val canGoToPreviousMonth: Boolean
         get() = canGoToPreviousMonth(displayedMonth, today)
@@ -133,7 +143,8 @@ data class MakeABookingUiState(
 
     /**
      * D-08: no topic first. For a paid topic, unknown saved cards disable the CTA, and no cards leave it enabled
-     * without a slot (it routes to Payment Methods, iOS `canBook`). Otherwise a missing or stale slot (D-06).
+     * without a slot (it routes to Payment Methods, iOS `canBook`). Otherwise a missing, stale or (paid topic) beyond
+     * the paid window slot (D-06, quick 261028-to1).
      */
     val bookDisabledReason: BookDisabledReason?
         get() {
@@ -146,7 +157,8 @@ data class MakeABookingUiState(
                 }
             }
             val slot = selectedSlot
-            return if (slot == null || !slot.isSelectable(now)) BookDisabledReason.NoSlot else null
+            val selectable = slot != null && slot.isSelectable(now, latestSelectableStart)
+            return if (selectable) null else BookDisabledReason.NoSlot
         }
 
     /** iOS `requiresPaymentMethodSetup`: a paid topic with no saved card. */

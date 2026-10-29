@@ -61,6 +61,9 @@ private const val SKELETON_CHIP_COUNT = 4
 private val ChipMinHeight = 48.dp
 private val SkeletonChipWidth = 96.dp
 
+/** Test tag of the paid-window note (quick 261028-to1). */
+const val PAID_WINDOW_NOTE_TEST_TAG = "make_a_booking_paid_window_note"
+
 /** Test tag of the time slot chip that starts at [start]. */
 fun slotChipTestTag(start: Instant): String = "make_a_booking_slot_${start.toEpochMilli()}"
 
@@ -69,7 +72,8 @@ fun slotChipTestTag(start: Instant): String = "make_a_booking_slot_${start.toEpo
  *
  * Shows the selected date, the friendly timezone note (never the raw IANA id) and every slot of that day as a chip in
  * a wrapping [FlowRow]. Slots that are not selectable at [now] (unavailable, held, or already started) are dimmed and
- * cannot be tapped, but are never hidden. Chip labels use [timeFormat] in [zone], so the device 12/24 hour setting
+ * cannot be tapped, but are never hidden. When [latestSelectableStart] is set (a paid topic, quick 261028-to1),
+ * slots starting after it are dimmed the same way and a short note under the timezone note explains the 6 day window. Chip labels use [timeFormat] in [zone], so the device 12/24 hour setting
  * wins.
  *
  * While [enabled] is false (a booking is in flight) no chip responds, but nothing is dimmed or marked unavailable.
@@ -95,6 +99,7 @@ fun MakeABookingTimeSlotsCard(
     selectedDateLoaded: Boolean = true,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
+    latestSelectableStart: Instant? = null,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     Surface(
@@ -131,6 +136,14 @@ fun MakeABookingTimeSlotsCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.extras.onSurfaceMuted,
             )
+            if (latestSelectableStart != null) {
+                Text(
+                    text = stringResource(R.string.make_a_booking_paid_window_note),
+                    modifier = Modifier.testTag(PAID_WINDOW_NOTE_TEST_TAG),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.extras.onSurfaceMuted,
+                )
+            }
             when (availability) {
                 AvailabilityState.Loading -> SlotsSkeleton()
                 is AvailabilityState.Failed ->
@@ -162,7 +175,7 @@ fun MakeABookingTimeSlotsCard(
                                     slot = slot,
                                     label = formatSlotTime(slot.start, zone, timeFormat),
                                     isSelected = slot.start == selectedSlotStart,
-                                    enabled = slot.isSelectable(now),
+                                    enabled = slot.isSelectable(now, latestSelectableStart),
                                     interactive = enabled,
                                     onSelect = { onSelectSlot(slot.start) },
                                 )

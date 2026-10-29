@@ -364,31 +364,29 @@ class MakeABookingViewModelPaidTest {
             assertEquals("b9", vm.uiState.value.completedBookingId)
         }
 
-    // ---- Task 1: long lead (PAY-04) ----
+    // ---- quick 261028-to1: long-lead 422 is an error ----
 
     @Test
-    fun aLongLeadBookingConfirmsWithTheDefaultCardAndNoPaymentIntent() =
+    fun aLongLead422ShowsThePaidWindowDialogAndResetsTheFlow() =
         runTest(main.testDispatcher) {
             api.paymentIntentHandler = { throw http(422, ErrorCode.LongLeadRequiresSavedCard) }
             val vm = paidVm()
             bookAndRun(vm)
+            val s = vm.uiState.value
+            assertEquals(res(R.string.make_a_booking_error_paid_window), s.dialogError)
+            assertNull(s.dialogPaymentReference)
+            assertEquals(PaidStep.Idle, s.paidStep)
+            assertFalse(s.isSubmitting)
+            assertNull(s.stripeRequest)
+            assertNull(s.completedBookingId)
+            assertEquals(slotB, s.selectedSlotStart)
             assertEquals(0, api.setupIntentCalls)
-            assertNull(vm.uiState.value.stripeRequest)
-            assertEquals(
-                ConfirmBookingRequest(null, "e1", "t2", "2026-10-23T01:00:00Z", "in_app_voice", "pm_default", null),
-                api.confirmBookingRequests.single(),
-            )
-            assertEquals("b9", vm.uiState.value.completedBookingId)
-        }
+            assertTrue(api.confirmBookingRequests.isEmpty())
 
-    @Test
-    fun aLongLeadBookingWithoutADefaultCardUsesTheFirst() =
-        runTest(main.testDispatcher) {
-            api.stubCards(cardDto("pm_a"), cardDto("pm_b"))
-            api.paymentIntentHandler = { throw http(422, ErrorCode.LongLeadRequiresSavedCard) }
-            val vm = paidVm()
+            vm.dismissError()
+            api.paymentIntentHandler = { PaymentIntentResponse("pi_1", "pi_1_secret_x", "cad") }
             bookAndRun(vm)
-            assertEquals("pm_a", api.confirmBookingRequests.single().stripePaymentMethodId)
+            assertTrue(vm.uiState.value.stripeRequest is StripeRequest.PresentSheet)
         }
 
     // ---- Task 1: gates ----
@@ -620,17 +618,6 @@ class MakeABookingViewModelPaidTest {
         }
 
     @Test
-    fun aLongLeadConfirmTimeoutHasNoPaymentReference() =
-        runTest(main.testDispatcher) {
-            api.paymentIntentHandler = { throw http(422, ErrorCode.LongLeadRequiresSavedCard) }
-            api.confirmBookingHandler = { throw IOException("timeout") }
-            val vm = paidVm()
-            bookAndRun(vm)
-            assertEquals(res(R.string.login_error_network), dialog(vm))
-            assertNull(vm.uiState.value.dialogPaymentReference)
-        }
-
-    @Test
     fun aSuspendedAccountShowsNoDialogHere() =
         runTest(main.testDispatcher) {
             api.confirmBookingHandler = { throw http(403, ErrorCode.AccountSuspended) }
@@ -715,5 +702,77 @@ class MakeABookingViewModelPaidTest {
             vm.dismissError()
             assertNull(vm.uiState.value.dialogError)
             assertNull(vm.uiState.value.dialogPaymentReference)
+        }
+
+    // ---- quick 261028-to1: paid booking window ----
+
+    private val sixDays = Instant.parse("2026-10-28T16:00:00Z")
+    private val sixDaysAndAMinute = Instant.parse("2026-10-28T16:01:00Z")
+    private val sevenDays = Instant.parse("2026-10-29T16:00:00Z")
+
+    private fun windowAvailability() {
+        api.expertAvailabilityHandler = { _, _ ->
+            availabilityOf(
+                slotDto("2026-10-28T16:00:00Z"),
+                slotDto("2026-10-28T16:01:00Z"),
+                slotDto("2026-10-29T16:00:00Z"),
+            )
+        }
+    }
+
+    @Test
+    fun aPaidTopicSelectsASlotExactlySixDaysOutButNotSixDaysAndAMinute() =
+        runTest(main.testDispatcher) {
+            windowAvailability()
+            val vm = newViewModel(api, SavedStateHandle(), clock, store, reader, monotonic)
+            runCurrent()
+            vm.selectTopic("t2")
+            vm.selectDate(java.time.LocalDate.of(2026, 10, 28))
+            vm.selectSlot(sixDays)
+            assertEquals(sixDays, vm.uiState.value.selectedSlotStart)
+            vm.selectSlot(sixDaysAndAMinute)
+            assertEquals(sixDays, vm.uiState.value.selectedSlotStart)
+            val open = vm.uiState.value.openDays
+            assertTrue(java.time.LocalDate.of(2026, 10, 28) in open)
+            assertFalse(java.time.LocalDate.of(2026, 10, 29) in open)
+        }
+
+    @Test
+    fun aFreeTopicIsNotLimitedAndBooksTheLongLeadSlot() =
+        runTest(main.testDispatcher) {
+            windowAvailability()
+            val vm = newViewModel(api, SavedStateHandle(), clock, store, reader, monotonic)
+            runCurrent()
+            vm.selectTopic("t1")
+            vm.selectDate(java.time.LocalDate.of(2026, 10, 28))
+            vm.selectSlot(sixDaysAndAMinute)
+            assertEquals(sixDaysAndAMinute, vm.uiState.value.selectedSlotStart)
+            assertTrue(java.time.LocalDate.of(2026, 10, 29) in vm.uiState.value.openDays)
+            bookAndRun(vm)
+            assertEquals("2026-10-28T16:01:00Z", api.requestBookingRequests.single().scheduledStart)
+            assertTrue(api.paymentIntentRequests.isEmpty())
+        }
+
+    @Test
+    fun aSlotBeyondTheWindowSelectedWhileTopicsLoadIsClearedOnceThePaidTopicApplies() =
+        runTest(main.testDispatcher) {
+            windowAvailability()
+            val gate = CompletableDeferred<Unit>()
+            api.expertDetailsHandler = {
+                gate.await()
+                detailsWith(
+                    topicDto("t2", isFree = false, durationMins = 60, amount = 5000, currency = "CAD"),
+                    topicDto("t1", isFree = true, durationMins = 60),
+                )
+            }
+            val vm = newViewModel(api, SavedStateHandle(), clock, store, reader, monotonic)
+            runCurrent()
+            vm.selectDate(java.time.LocalDate.of(2026, 10, 29))
+            vm.selectSlot(sevenDays)
+            assertEquals(sevenDays, vm.uiState.value.selectedSlotStart)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals("t2", vm.uiState.value.selectedTopicId)
+            assertNull(vm.uiState.value.selectedSlotStart)
         }
 }

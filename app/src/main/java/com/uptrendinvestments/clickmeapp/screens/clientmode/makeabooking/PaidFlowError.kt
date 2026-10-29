@@ -6,8 +6,7 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 
 /**
- * iOS `PaidPhase`. [Confirm] starts once a payment method has been chosen, including the long-lead path that has
- * no payment intent yet.
+ * iOS `PaidPhase`. [Confirm] starts once a payment method has been chosen.
  */
 enum class PaidPhase { CreateIntent, Confirm }
 
@@ -117,6 +116,7 @@ private fun ApiException.Http.toHttpPaidFailure(
             )
         ErrorCode.MeetingLinkUnavailable ->
             PaidFailure.Show(FieldError.Res(R.string.make_a_booking_error_no_link), resetMeetingType = true)
+        ErrorCode.LongLeadRequiresSavedCard -> res(R.string.make_a_booking_error_paid_window)
         ErrorCode.ExpertNotBookable -> res(R.string.make_a_booking_error_not_bookable)
         ErrorCode.InvalidPaymentMethod -> res(R.string.make_a_booking_error_invalid_payment_method)
         ErrorCode.DirectChargeDisabled -> res(R.string.make_a_booking_error_payments_unavailable)

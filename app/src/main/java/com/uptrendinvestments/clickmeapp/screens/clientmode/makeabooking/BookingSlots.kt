@@ -3,6 +3,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -19,8 +20,25 @@ data class BookingTimeSlot(
     val isAvailable: Boolean,
 )
 
-/** D-04: a slot can be chosen only if it is available and starts after [now]. The server never filters past slots. */
-fun BookingTimeSlot.isSelectable(now: Instant): Boolean = isAvailable && start.isAfter(now)
+/** The paid booking window in whole days (quick 261028-to1). */
+const val PAID_BOOKING_MAX_LEAD_DAYS: Long = 6
+
+/**
+ * How far ahead a PAID topic can be booked (quick 261028-to1, user decision 2026-10-28, option B).
+ *
+ * Mirrors the backend `LONG_LEAD_THRESHOLD_MS = 6*24h`, which is applied with a strict greater-than
+ * (booking.controller.js:382), so a start exactly 6 days out is still short-lead and bookable.
+ */
+val PAID_BOOKING_MAX_LEAD: Duration = Duration.ofDays(PAID_BOOKING_MAX_LEAD_DAYS)
+
+/**
+ * D-04: a slot can be chosen only if it is available and starts after [now]. The server never filters past slots.
+ * For a paid topic [latestStart] (now + [PAID_BOOKING_MAX_LEAD]) is the inclusive upper bound; null means no limit.
+ */
+fun BookingTimeSlot.isSelectable(
+    now: Instant,
+    latestStart: Instant?,
+): Boolean = isAvailable && start.isAfter(now) && (latestStart == null || !start.isAfter(latestStart))
 
 /**
  * Regroups every slot of [days] by the viewer's local date (D-07, BOOK-02).
@@ -56,6 +74,8 @@ fun groupSlots(
         .groupBy { it.start.atZone(zone).toLocalDate() }
 }
 
-/** D-03: the days that have at least one selectable slot. */
-fun Map<LocalDate, List<BookingTimeSlot>>.openDays(now: Instant): Set<LocalDate> =
-    filterValues { slots -> slots.any { it.isSelectable(now) } }.keys
+/** D-03: the days that have at least one selectable slot, within the paid window when [latestStart] is set. */
+fun Map<LocalDate, List<BookingTimeSlot>>.openDays(
+    now: Instant,
+    latestStart: Instant?,
+): Set<LocalDate> = filterValues { slots -> slots.any { it.isSelectable(now, latestStart) } }.keys
