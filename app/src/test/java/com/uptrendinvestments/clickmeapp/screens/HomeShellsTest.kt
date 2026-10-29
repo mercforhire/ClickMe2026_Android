@@ -938,7 +938,7 @@ class HomeShellsTest {
         row.assertExists()
         composeRule.onNodeWithText("Availability").assertExists()
         assertTrue(topOf("Availability") < topOf("Log out"))
-        row.performClick()
+        row.performScrollTo().performClick()
         composeRule.onNodeWithText("availability-stub:Profile").assertExists()
         composeRule.onNode(tab("Profile")).assertDoesNotExist()
         composeRule.onNodeWithText("availability back").performClick()

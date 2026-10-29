@@ -128,7 +128,8 @@ class HelpScreenTest {
     @Test
     fun emailUsStartsSendTo() {
         api.faqsHandler = { faqsPayload() }
-        rule.setContent { ClickMeTheme { HelpScreen(viewModel = HelpViewModel(HelpRepository(api)), onBack = {}) } }
+        val viewModel = HelpViewModel(HelpRepository(api))
+        rule.setContent { ClickMeTheme { HelpScreen(viewModel = viewModel, onBack = {}) } }
 
         rule.onNodeWithTag("help_email_us").performClick()
 
@@ -151,7 +152,8 @@ class HelpScreenTest {
     @Test
     fun failedLoadKeepsContactUs() {
         api.faqsHandler = { throw api.httpError(500, """{"status":"error","message":"Down"}""") }
-        rule.setContent { ClickMeTheme { HelpScreen(viewModel = HelpViewModel(HelpRepository(api)), onBack = {}) } }
+        val viewModel = HelpViewModel(HelpRepository(api))
+        rule.setContent { ClickMeTheme { HelpScreen(viewModel = viewModel, onBack = {}) } }
 
         rule.onNodeWithText("Couldn't load help").assertExists()
         rule.onNodeWithText("Down").assertExists()
