@@ -90,7 +90,7 @@ Plans:
   5. A signed release bundle of `com.uptrendinvestments.clickmeapp` builds. If org verification has cleared, the bundle is uploaded to the internal track, which registers the package name. If not, the upload is logged as an open blocker in STATE.md.
 
 **Planning notes:** Port only the API groups this phase needs (auth, `/me`). Other groups come with their features. Token storage is locked to EncryptedSharedPreferences, which is deprecated upstream; keep it.
-**Plans:** 12/16 plans executed
+**Plans:** 13/16 plans closed (12 executed, 02-12 superseded; 02-09, 02-15, 02-16 deferred to backlog 999.1)
 Plans:
 **Wave 1**
 
@@ -114,7 +114,7 @@ Plans:
 
 - [x] 02-10-PLAN.md — NetworkFactory, debug-only BASIC logging, Hilt NetworkModule, full-stack MockWebServer test (FND-05, FND-06)
 - [x] 02-11-PLAN.md — UserManager: login, restore matrix (D-01/D-03/D-05), logout, suspension flag, stale /me retry (FND-06, FND-07, FND-08)
-- [ ] 02-12-PLAN.md — Agora spike device run with the iOS expert, 5+ min background audio evidence (FND-14, user checkpoint)
+- [x] 02-12-PLAN.md — Agora spike device run with the iOS expert, 5+ min background audio evidence (FND-14, user checkpoint) (SUPERSEDED by 09-17, D-16; device check moved to Phase 9 list, backlog 999.1)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -781,7 +781,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, App Shell & Play Account | 9/9 | Complete    | 2026-10-20 |
-| 2. Networking, Session & SDK Spikes | 12/16 | In Progress|  |
+| 2. Networking, Session & SDK Spikes | 13/16 | In Progress (3 deferred, 999.1) |  |
 | 3. Login, Password Recovery & Realtime | 12/12 | Complete    | 2026-10-21 |
 | 4. Signup, Onboarding & Mode Switch | 20/20 | Complete    | 2026-10-21 |
 | 5. Explore & Expert Profile | 11/11 | Complete    | 2026-10-22 |
@@ -797,3 +797,17 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 15. Polish & Hardening | 0/TBD | Not started | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
+
+## Backlog
+
+### Phase 999.1: Follow-up — Phase 2 incomplete plans (BACKLOG)
+
+**Goal:** Run the Phase 2 device and release checkpoints that were deferred while the code work moved on. All of them need the user.
+**Source phase:** 2
+**Deferred at:** 2026-10-28 during /gsd-progress --next advancement to Phase 14
+**Target:** Phase 16 (Cross-Platform QA), or earlier when the inputs are ready
+**Plans:**
+- [ ] 02-09: Stripe spike device run (FND-13). It can run now on the local test-mode backend; see `phases/07-payment-methods-paid-booking/07-LOCAL-STRIPE-TESTING.md`. The Phase 7 SC-1..SC-4 device checks may stand in, by user decision.
+- [ ] 02-15: Device end-to-end on devDebug plus the signed R8 prodRelease cold start. Needs the upload keystore (02-05 Task 2).
+- [ ] 02-16: Release smoke and the Play internal-track upload that registers the package (REL-03). It is the same work as Phase 13 release checklist steps 3-5.
+- [ ] FND-14: 5+ minute backgrounded Agora audio, run from the Phase 9 deferred list (02-12 was superseded).
