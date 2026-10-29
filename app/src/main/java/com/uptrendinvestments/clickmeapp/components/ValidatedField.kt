@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -75,6 +76,10 @@ private const val DISABLED_ALPHA = 0.38f
  * before the reveal toggle when [isSecure]. [contentType] sets the autofill content type (for example
  * `ContentType.SmsOtpCode` or `ContentType.EmailAddress`); when null, secure fields default to
  * `ContentType.Password` and other fields set none.
+ *
+ * Accessible name: while empty the placeholder text is the name; once filled the [placeholder] is kept as the
+ * field's content description (Phase 15 POL-04, UI-SPEC rule 7), so the name survives typing. The value itself stays
+ * the editable text only. How TalkBack speaks name plus value is a device-checklist row (A6).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,6 +165,9 @@ fun ValidatedField(
                             semanticsContentType = contentType ?: ContentType.Password
                         }
                         if (error != null) error(error)
+                        // The placeholder disappears once the user types, so keep the label as the field's name.
+                        // Only the label goes here, never the value (a password must not reach Text/ContentDescription).
+                        if (value.isNotEmpty()) contentDescription = placeholder
                     },
             enabled = enabled,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurface),
