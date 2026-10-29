@@ -25,6 +25,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.SuspendedAccountDialog
 import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
 import com.uptrendinvestments.clickmeapp.screens.push.PushPermissionRequester
 import com.uptrendinvestments.clickmeapp.screens.push.PushRoutingHost
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.AccountDeletionFarewellHost
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
 /**
@@ -35,6 +36,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Motion
  * above every route and survive tab changes and the Client/Expert switch because the call lives in `CallCenter`
  * (D-08, CALL-04). The suspended-account dialog stays outside it. The root push router lives here too, because a
  * tapped notification may need a mode switch before any shell exists (RESEARCH F-7).
+ *
+ * The account-deleted Farewell is rendered last, above the route switch, because deleting an account revokes every
+ * session and the resulting forced logout changes the route to Login underneath it (RESEARCH Pitfall 3).
  */
 @Composable
 fun ClickMeApp(
@@ -46,55 +50,61 @@ fun ClickMeApp(
     val context = LocalContext.current
     PushRoutingHost(route = route, onSwitchMode = appViewModel::switchMode)
     PushPermissionRequester(route = route)
-    // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
-    CallOverlayHost {
-        AnimatedContent(
-            targetState = route,
-            transitionSpec = {
-                if (initialState in HOMES && targetState in HOMES) {
-                    fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
-                        fadeOut(tween(Motion.TAB_FADE_OUT_MS))
-                } else {
-                    EnterTransition.None togetherWith ExitTransition.None
+    Box(modifier.fillMaxSize()) {
+        // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
+        CallOverlayHost {
+            AnimatedContent(
+                targetState = route,
+                transitionSpec = {
+                    if (initialState in HOMES && targetState in HOMES) {
+                        fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
+                            fadeOut(tween(Motion.TAB_FADE_OUT_MS))
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "root-route",
+            ) { targetRoute ->
+                when (targetRoute) {
+                    // The OS splash covers Splash.
+                    AppRoute.Splash -> EmptySurface()
+
+                    AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
+
+                    // Publish success sets mode Client and routes to client home (D-22).
+                    AppRoute.SignupSetup ->
+                        SignupSetupNavHost(
+                            onPublished = appViewModel::onSetupPublished,
+                            onNotNow = appViewModel::onSetupDeferred,
+                        )
+
+                    AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
+
+                    AppRoute.ExpertHome -> HomeExpertScreen(onSwitchMode = appViewModel::switchMode)
                 }
-            },
-            label = "root-route",
-        ) { targetRoute ->
-            when (targetRoute) {
-                // The OS splash covers Splash.
-                AppRoute.Splash -> EmptySurface(modifier)
-
-                AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
-
-                // Publish success sets mode Client and routes to client home (D-22).
-                AppRoute.SignupSetup ->
-                    SignupSetupNavHost(
-                        onPublished = appViewModel::onSetupPublished,
-                        onNotNow = appViewModel::onSetupDeferred,
-                    )
-
-                AppRoute.ClientHome -> HomeClientScreen(onSwitchMode = appViewModel::switchMode)
-
-                AppRoute.ExpertHome -> HomeExpertScreen(onSwitchMode = appViewModel::switchMode)
             }
         }
-    }
 
-    if (showSuspendedDialog) {
-        SuspendedAccountDialog(
-            onDismiss = appViewModel::onSuspendedDialogDismissed,
-            onContactSupport = {
-                // No mail app installed throws ActivityNotFoundException; nothing to recover.
-                runCatching { context.startActivity(supportEmailIntent()) }
-                appViewModel.onSuspendedDialogDismissed()
-            },
-        )
+        if (showSuspendedDialog) {
+            SuspendedAccountDialog(
+                onDismiss = appViewModel::onSuspendedDialogDismissed,
+                onContactSupport = {
+                    // No mail app installed throws ActivityNotFoundException; nothing to recover.
+                    runCatching { context.startActivity(supportEmailIntent()) }
+                    appViewModel.onSuspendedDialogDismissed()
+                },
+            )
+        }
+
+        // Last child, so it draws above the route switch and the call overlay. A forced logout after the account
+        // deletion swaps the route underneath it without removing it (RESEARCH Pitfall 3).
+        AccountDeletionFarewellHost()
     }
 }
 
 private val HOMES = setOf(AppRoute.ClientHome, AppRoute.ExpertHome)
 
 @Composable
-private fun EmptySurface(modifier: Modifier) {
-    Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+private fun EmptySurface() {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
 }

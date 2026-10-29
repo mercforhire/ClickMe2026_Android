@@ -146,6 +146,10 @@ enum class ErrorCode(
     // 422, a paid reschedule (propose or accept, client or expert) to a start more than 6 days from now (261028-uph).
     // Accept re-checks against the server clock, so only a proposal made before that change can hit it on Android.
     RescheduleTooFarAhead("RESCHEDULE_TOO_FAR_AHEAD"),
+
+    // 409, DELETE /user/account for a client with upcoming bookings (the client side of the booking guard; the
+    // expert side is ExpertHasUpcomingBookings). The Delete Account form shows the server message (phase 14-05).
+    ClientHasUpcomingBookings("CLIENT_HAS_UPCOMING_BOOKINGS"),
     ;
 
     /**
