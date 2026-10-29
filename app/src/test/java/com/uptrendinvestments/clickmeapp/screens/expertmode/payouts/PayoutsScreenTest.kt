@@ -13,6 +13,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_BALANCE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -64,7 +65,8 @@ class PayoutsScreenTest {
             summary ?: throw h.api.httpError(400, """{"status":"error","code":"NO_PAYOUT_METHOD","message":"Set up"}""")
         }
         h.api.expertBookingsHandler = { ExpertBookingsPayload() }
-        return Fixture(PayoutsViewModel(ExpertFinancialRepository(h.api), ExpertBookingsRepository(h.api), guard), h.api)
+        val vm = PayoutsViewModel(ExpertFinancialRepository(h.api), ExpertBookingsRepository(h.api), guard)
+        return Fixture(vm, h.api)
     }
 
     private fun setContent(f: Fixture) {
