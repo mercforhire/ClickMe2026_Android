@@ -44,7 +44,8 @@ private const val GLOW_ALPHA = 0.5f
 /**
  * Full-width pill button with three states of identical size (iOS AsyncSaveButton): Idle shows [title],
  * Saving shows a spinner, Saved shows a check and [savedTitle]. Taps are ignored unless the state is
- * [SaveState.Idle] and [enabled]; Saving and Saved keep the primary look.
+ * [SaveState.Idle] and [enabled]; Saving and Saved keep the primary look. [busyDescription] is the
+ * stateDescription announced while Saving (flows pass "In progress").
  */
 @Composable
 fun AsyncSaveButton(
@@ -54,11 +55,12 @@ fun AsyncSaveButton(
     modifier: Modifier = Modifier,
     savedTitle: String = stringResource(R.string.save_button_saved_default),
     enabled: Boolean = true,
+    busyDescription: String = stringResource(R.string.a11y_state_saving),
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val interactive = enabled && state == SaveState.Idle
     val primaryLook = enabled || state != SaveState.Idle
-    val savingDescription = stringResource(R.string.a11y_state_saving)
+    val savingDescription = busyDescription
     val savedDescription = stringResource(R.string.a11y_state_saved)
 
     val colors =
