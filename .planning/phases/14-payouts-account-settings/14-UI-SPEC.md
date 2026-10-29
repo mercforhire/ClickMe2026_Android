@@ -1,7 +1,8 @@
 ---
 phase: 14
 slug: payouts-account-settings
-status: draft
+status: approved
+reviewed_at: 2026-10-28
 shadcn_initialized: false
 preset: none
 created: 2026-10-28
@@ -62,9 +63,9 @@ This table is a **non-exhaustive** list of known-good components, never a closed
 | `SkeletonBlock`, `SkeletonGroup` | `components/SkeletonBlock.kt` | First loads of Payouts, Activity, Help, Tax, Expert settings |
 | `SectionAppear` | `components/SectionAppear.kt` | Payouts cards appearing after a quiet reload |
 | `Avatar` | `components/avatar/Avatar.kt` | User card 56dp, settings avatar 96dp (both existing sizes) |
-| `PressScaleButton`, `PressScaleButtonDefaults` | `components/buttonstyles/PressScale.kt` | Filled primary CTAs (Update password, Continue, Save, Back to Login) and neutral outlined buttons |
+| `PressScaleButton`, `PressScaleButtonDefaults` | `components/buttonstyles/PressScale.kt` | Filled primary CTAs (Update Password, Set up payouts, Save tax profile, Back to Login) and neutral outlined buttons |
 | `DestructiveOutlinedButton` | `components/buttonstyles/DestructiveOutlinedButton.kt` | "Delete Account" (both entry and final), "Log out" row button. Error-outlined pill, never a filled error button (A5) |
-| `AsyncSaveButton` | `components/buttons/AsyncSaveButton.kt` | Tax Profile "Save" and Account Security "Update password" (inline spinner, no layout shift) |
+| `AsyncSaveButton` | `components/buttons/AsyncSaveButton.kt` | Tax Profile "Save tax profile" and Account Security "Update Password" (inline spinner, no layout shift) |
 | `ValidatedField` | `components/ValidatedField.kt` | All text inputs (names, city, state, bio, job title, company, meeting link, password fields, tax fields) |
 | `PasswordStrength`, `PasswordStrengthMeter` | `components/PasswordStrength*.kt` | New-password strength on Account Security (D carried) |
 | `PickerField`, `PickerSheet` | `components/PickerField.kt`, `PickerSheet.kt` | Country field, Language field launchers |
@@ -148,7 +149,7 @@ Dark only. All colors come from the Phase 1 ColorScheme and `MaterialTheme.extra
 | Destructive | `#FFB4AB` `colorScheme.error` | "Delete Account" buttons (text, icon, 1dp border at 50% alpha, `DestructiveOutlinedButton`), the "Log out" button and the "Log Out" confirm text, "Failed" status pill tint, field error text, the auto-save Error glyph. Never a filled error button; `extras.destructive` is not used (fails 4.5:1, A5) |
 
 Accent reserved for (and nothing else in this phase):
-1. Fill of the single primary CTA per surface: "Update password", "Continue" (payout setup), "Save" (tax profile), "Keep my account" (Delete steps), "Back to Login" (Farewell), "Retry" (error states via `EmptyStateAction`).
+1. Fill of the single primary CTA per surface: "Update Password", "Set up payouts" (payout setup), "Save tax profile" (tax profile), "Keep my account" (Delete steps), "Back to Login" (Farewell), "Retry" (error states via `EmptyStateAction`).
 2. The glyph and 12% tile fill of the mode-switch card icon, and of the payout status-card icon tile.
 3. Selected state of a Delete reason row: `RadioButton` selected color and the row border (2dp `primary`).
 4. Focused border and cursor of text inputs; every `CircularProgressIndicator` (auto-save Saving, button spinners, pull-to-refresh).
@@ -221,7 +222,7 @@ All pushed screens use `BottomBar.hidden()`; the two hubs are tab roots and keep
 |---|---|---|
 | Hubs | `TopAppBar` title "Profile" (client) / "Expert Settings" (expert, iOS), no back, existing avatar button unchanged | Tab root |
 | Settings (both) | `AuthTopAppBar`, back arrow, title "Profile Settings" / "Expert Settings", action: `AutoSaveStatusIcon` | Pops; a pending debounce is flushed first (RESEARCH anti-pattern); never blocked, an in-flight avatar upload keeps running in the app scope |
-| Account Security | `AuthTopAppBar`, back, "Account Security" | While Update password is in flight Back is ignored |
+| Account Security | `AuthTopAppBar`, back, "Account Security" | While Update Password is in flight Back is ignored |
 | Delete Account | `AuthTopAppBar`, back, title "Delete Account"; no title and no back on Farewell | While a request is in flight Back (arrow, system, predictive) is ignored and the arrow is disabled (`backEnabled = false`, Phase 8 convention). Farewell: system Back does nothing; the only exit is "Back to Login" |
 | Help | `AuthTopAppBar`, back, "Help" | Pops |
 | Payouts | `AuthTopAppBar`, back, "Payouts" | Pops |
@@ -254,7 +255,7 @@ Both hubs: background `surface`, one `verticalScroll` column, `md` horizontal pa
 
 The client "Payment" row keeps the existing `PaymentMethodsKey` destination. The debug affordances already in the Profile footers stay behind `showDebugAffordances`, below the version footer, unchanged.
 
-**Log out.** After the last section, `lg` gap, a full-width `DestructiveOutlinedButton`, `heightIn(min = 56.dp)`, `Logout` 24dp + `sm` + "Log out". Tap opens `LogOutConfirmDialog`: `AlertDialog`, title "Log out of ClickMe?", no body, confirm "Log Out" (text button, `error` color), dismiss "Cancel" (text button, `onSurface`). Confirm runs the existing `callGuard.attempt(LogOut)` path. Test tag `profile_hub_logout`.
+**Log out.** After the last section, `lg` gap, a full-width `DestructiveOutlinedButton`, `heightIn(min = 56.dp)`, `Logout` 24dp + `sm` + "Log out". Tap opens `LogOutConfirmDialog`: `AlertDialog`, title "Log out of ClickMe?", no body, confirm "Log Out" (text button, `error` color), dismiss "Stay logged in" (Android; text button, `onSurface`). Confirm runs the existing `callGuard.attempt(LogOut)` path. Test tag `profile_hub_logout`.
 
 **Version footer (`ProfileHubVersionFooter`).** `xl` above, centered, "Version {versionName} ({versionCode})" (`bodySmall` `onSurfaceMuted`) and "© 2026 ClickMe Innovations" (`bodySmall` `onSurfaceMuted`, `xs` below), from `BuildConfig`. Not tappable in release builds.
 
@@ -273,7 +274,7 @@ Routes `ClientProfileSettingsKey`, `ExpertProfileSettingsKey`. Background `surfa
 | Saved | `CheckCircle` Outlined 24dp `onSurfaceVariant`, fades to Idle after 2 s | `contentDescription` "Changes saved", `liveRegion = Polite` |
 | Error | `ErrorOutline` 24dp `error`, stays until the next successful save; tapping it re-runs the save | `contentDescription` "Couldn't save changes. Tap to retry." |
 
-A save failure also opens `AuthErrorDialog` titled "Couldn't save changes" with the server message else "Check your connection and try again." (dismiss "OK"). A failed avatar upload opens its own `AuthErrorDialog` titled "Couldn't upload avatar" (iOS), same body rule, and the previous avatar remains. Test tags `settings_autosave_status`.
+A save failure also opens `AuthErrorDialog` titled "Couldn't save changes" with the server message else "Check your connection and try again." (dismiss "Got it"). A failed avatar upload opens its own `AuthErrorDialog` titled "Couldn't upload avatar" (iOS), same body rule, and the previous avatar remains. Test tags `settings_autosave_status`.
 
 **Avatar block (`ProfileAvatarSection`).** Centered `Avatar` 96dp, `lg` top, `md` below it a text button "Change photo" (`labelLarge`, `onSurface`, underlined, 48dp target). Tapping the avatar or the button launches `PickVisualMedia` (image only); the result goes through the Phase 4 `PhotoCropScreen` / `PhotoProcessor`, then uploads. While uploading, a 96dp scrim (`scrim` 40%) with a 32dp `primary` spinner covers the avatar. On success `userManager.refreshProfile()` updates the hub card and top-bar avatar.
 
@@ -284,10 +285,10 @@ A save failure also opens `AuthErrorDialog` titled "Couldn't save changes" with 
 | 1 | Email | `ProfileReadOnlyField`: `surfaceContainerLow` container, `medium`, 1dp `outlineVariant`, value `bodyLarge` `onSurfaceVariant`, `Lock` 20dp `onSurfaceMuted` trailing. Not focusable; semantics "Email, {value}, read only" |
 | 2 | First Name, Last Name | Single-line, `KeyboardCapitalization.Words`, max 100. Stacked (never side by side, so 200% font scale cannot clip) |
 | 3 | Bio | Multi-line, `heightIn(min = 120.dp)`, `maxLines = 8`, max 500, counter "{n}/500" (`bodySmall` `onSurfaceMuted`, end-aligned) from 400 characters, `tertiary` at the cap. Placeholder "Tell people about yourself" (Android) |
-| 4 | Professional Details card | `ProfileProfessionalCard`: `surfaceContainerLow` card, caption "Professional Details" (`titleMedium`), two columns "Job Title" / "Company" (label `bodySmall` `onSurfaceMuted`, value `bodyLarge`; "—" when empty; stack vertically at large font scale), trailing `Edit` 24dp. Whole card is one `Role.Button`; tap opens `ProfileProfessionalDetailsSheet` (`ModalBottomSheet`): title "Edit Professional Details" (Heading), `ValidatedField` Job Title (max 200) and Company (max 200), the Phase 4 suggested-roles chips if the signup editor exposes them (D-12), buttons "Update" (filled, closes and triggers auto-save) and "Cancel" (text). Sheet edits apply only on Update |
+| 4 | Professional Details card | `ProfileProfessionalCard`: `surfaceContainerLow` card, caption "Professional Details" (`titleMedium`), two columns "Job Title" / "Company" (label `bodySmall` `onSurfaceMuted`, value `bodyLarge`; "—" when empty; stack vertically at large font scale), trailing `Edit` 24dp. Whole card is one `Role.Button`; tap opens `ProfileProfessionalDetailsSheet` (`ModalBottomSheet`): title "Edit Professional Details" (Heading), `ValidatedField` Job Title (max 200) and Company (max 200), the Phase 4 suggested-roles chips if the signup editor exposes them (D-12), buttons "Update details" (filled, closes and triggers auto-save) and "Discard changes" (text; closes without applying the sheet edits). Sheet edits apply only on Update details |
 | 5 | City, State/Province | Single-line, max 100 |
 | 6 | Country | `PickerField` opening `CountryPickerSheet`; value normalized with `Countries.normalize` to alpha-3 on save; placeholder "Select" |
-| 7 | Spoken Languages | `ProfileLanguagesField`: caption "Spoken Languages", read-only chips (`ExpertTagChip`, wrap in a `FlowRow`, `sm` gaps) and an "Edit" text button; opens the Phase 4 `LanguageSelectionSheet` (title "Edit Languages", done "Done"). Languages are saved (id list + custom list), unlike iOS |
+| 7 | Spoken Languages | `ProfileLanguagesField`: caption "Spoken Languages", read-only chips (`ExpertTagChip`, wrap in a `FlowRow`, `sm` gaps) and an "Edit languages" text button; opens the Phase 4 `LanguageSelectionSheet` (title "Edit Languages", done "Done"). Languages are saved (id list + custom list), unlike iOS |
 
 **Expert Settings additions (after field 4 and before field 5, as iOS):**
 
@@ -302,7 +303,7 @@ A save failure also opens `AuthErrorDialog` titled "Couldn't save changes" with 
 
 Route `AccountSecurityKey`. Two blocks, `lg` apart, in a `verticalScroll` column.
 
-**Change password card.** Heading "Change Password" (`titleLarge`), `sm` below it the rule line "Your new password must be at least 8 characters long and include numbers." (`bodyLarge` `onSurfaceVariant`). Three `ValidatedField`s (labels "Current Password", "New Password", "Confirm New Password"), each masked with a 48dp `Visibility` / `VisibilityOff` toggle (`contentDescription` "Show password" / "Hide password"), `KeyboardType.Password`, `autoCorrectEnabled = false`, IME Next, Done on the last. `PasswordStrengthMeter` appears under New Password (labels "Strength: Weak / Fair / Good / Secure", iOS). Primary CTA below, full width, `AsyncSaveButton` filled `primary`, `heightIn(min = 56.dp)`, label "Update Password" (iOS), spinner in flight. Validation runs on tap and shows inline (iOS copy): "Please enter your current password.", "Please enter a new password.", "Password must be at least 8 characters.", "Password must include a number.", "New password must be different from your current password.", "Please confirm your new password.", "Passwords do not match." A server 403 shows "Current password is incorrect." under Current Password (server message if present); 422 maps `errors[].field`; 429 "Too many attempts. Please try again in a moment." in the dialog; anything else the dialog "Couldn't update password" with "Couldn't update your password. Please try again." Success: `AlertDialog` "Password updated" / "Your password has been changed." / "OK", and all three fields are cleared. The action goes through `CallGuard.attempt(RestrictedAction.ChangePassword)`.
+**Change password card.** Heading "Change Password" (`titleLarge`), `sm` below it the rule line "Your new password must be at least 8 characters long and include numbers." (`bodyLarge` `onSurfaceVariant`). Three `ValidatedField`s (labels "Current Password", "New Password", "Confirm New Password"), each masked with a 48dp `Visibility` / `VisibilityOff` toggle (`contentDescription` "Show password" / "Hide password"), `KeyboardType.Password`, `autoCorrectEnabled = false`, IME Next, Done on the last. `PasswordStrengthMeter` appears under New Password (labels "Strength: Weak / Fair / Good / Secure", iOS). Primary CTA below, full width, `AsyncSaveButton` filled `primary`, `heightIn(min = 56.dp)`, label "Update Password" (iOS), spinner in flight. Validation runs on tap and shows inline (iOS copy): "Please enter your current password.", "Please enter a new password.", "Password must be at least 8 characters.", "Password must include a number.", "New password must be different from your current password.", "Please confirm your new password.", "Passwords do not match." A server 403 shows "Current password is incorrect." under Current Password (server message if present); 422 maps `errors[].field`; 429 "Too many attempts. Please try again in a moment." in the dialog; anything else the dialog "Couldn't update password" with "Couldn't update your password. Please try again." Success: `AlertDialog` "Password updated" / "Your password has been changed." / "Got it", and all three fields are cleared. The action goes through `CallGuard.attempt(RestrictedAction.ChangePassword)`.
 
 **Delete Account entry card.** `surfaceContainerLow`, `medium`, 1dp `outlineVariant`, `md` padding, below the password card with `lg` gap. Heading "Delete Account" (`titleMedium` `onSurface`, `heading()`), body "Once you delete your account, there is no going back. Please be certain." (`bodyLarge` `onSurfaceVariant`), `md` below, a full-width `DestructiveOutlinedButton`, 56dp min, label "Delete Account". Tap runs `CallGuard.attempt(RestrictedAction.DeleteAccount)` then pushes `DeleteAccountKey`. Test tags `account_security_update`, `account_security_delete`.
 
@@ -316,7 +317,7 @@ The flow is the iOS three-surface port: **Warning**, **Reason + password**, **Fa
 
 **Step 2: Reason and password.** Header, then "Help us improve" (`titleLarge`, `heading()`); `ReasonSection`: caption "What is your primary reason for leaving?" (`titleMedium`), then four rows in a `selectableGroup`, `sm` apart — "Too expensive", "Found an alternative", "Privacy concerns", "Other" (`too_expensive`, `found_alternative`, `privacy_concerns`, `other`). Each row: `surfaceContainerLow`, `medium`, 1dp `outlineVariant` (selected: 2dp `primary`), `heightIn(min = 56.dp)`, `RadioButton` + `md` + label (`titleMedium`), `selectable(role = Role.RadioButton)` over the whole row. None preselected. Then `ValidatedField` "Additional comments (optional)", multi-line `heightIn(min = 120.dp)`, placeholder "Share any additional thoughts...", cap 1000 with counter from 800 (spec; the backend sets no maximum), trimmed, omitted when blank. Then `ValidatedField` "Confirm your password", placeholder "Enter your password", masked with the visibility toggle, `autoCorrectEnabled = false`, inline error under it. Footer bar as above, but the top button is `DestructiveOutlinedButton` "Delete Account", enabled only when a reason is selected and the password is non-empty (`canConfirmDeletion`), with an in-flight spinner (24dp, `error`) replacing the label, and "Keep my account" below it (always enabled except in flight). The action is `CallGuard.attempt(RestrictedAction.DeleteAccount)` then request-deletion, then the final DELETE; a single in-flight flag covers both calls. No extra confirm dialog: this two-form flow is the confirmation (Phase 8 precedent); the server additionally requires `confirm_permanent_action: true`.
 
-**Errors (stay on step 2, form intact).** 401/403 on request-deletion: inline under the password "Password is incorrect." (server message if present). 429: `AuthErrorDialog` "Couldn't delete account" / "Too many attempts. Please try again later." 400 `INVALID_TOKEN`: inline under the password "That took too long. Please enter your password and try again." 409 (`EXPERT_HAS_UPCOMING_BOOKINGS`, `CLIENT_HAS_UPCOMING_BOOKINGS`, `SESSION_IN_PROGRESS`): `AuthErrorDialog` "Couldn't delete account" with the server `message` verbatim (it is user-ready); retry mints a new token. Network or other: the same dialog with "Check your connection and try again." else "Something went wrong. Please try again." Dialog dismiss "OK".
+**Errors (stay on step 2, form intact).** 401/403 on request-deletion: inline under the password "Password is incorrect." (server message if present). 429: `AuthErrorDialog` "Couldn't delete account" / "Too many attempts. Please try again later." 400 `INVALID_TOKEN`: inline under the password "That took too long. Please enter your password and try again." 409 (`EXPERT_HAS_UPCOMING_BOOKINGS`, `CLIENT_HAS_UPCOMING_BOOKINGS`, `SESSION_IN_PROGRESS`): `AuthErrorDialog` "Couldn't delete account" with the server `message` verbatim (it is user-ready); retry mints a new token. Network or other: the same dialog with "Check your connection and try again." else "Something went wrong. Please try again." Dialog dismiss "Got it".
 
 **Farewell (`DeleteAccountFarewell`).** Rendered by the root-level `AccountDeletionState` host above the route switch (RESEARCH Pitfall 3), full screen `surface`, no app bar, no bottom bar, centered column, `lg` horizontal padding: a 96dp circle tile (`surfaceContainerHigh`, `CheckCircle` 48dp `onSurfaceVariant`), `lg` below, headline "We're sorry to see you go!" (`headlineLarge`, centered, `heading()`), `sm` below, body "Your account has been successfully deleted. We hope to see you again soon." (`bodyLarge` `onSurfaceVariant`, centered), and a pinned footer `PressScaleButton` filled `primary`, full width, 56dp min, "Back to Login" (`labelLarge`). The button clears the flag and calls `UserManager.logout()` (idempotent). System Back is ignored. No authenticated request is made while this screen is up. Test tags `delete_farewell`, `delete_back_to_login`.
 
@@ -354,11 +355,11 @@ Route `PayoutsKey(origin)`. `PullToRefreshBox` around a `verticalScroll` column,
 
 | Variant | Title | Body | Action |
 |---|---|---|---|
-| Setup | "Complete payout setup" | "Verify your identity and connect a bank account to start receiving your earnings." | Filled `primary` `PressScaleButton`, full width, 56dp, "Continue" |
+| Setup | "Complete payout setup" | "Verify your identity and connect a bank account to start receiving your earnings." | Filled `primary` `PressScaleButton`, full width, 56dp, "Set up payouts" |
 | Hold | "Payment on hold" | "{n} upcoming session(s). You'll be paid once your session(s) complete(s)." — singular "1 upcoming session. You'll be paid once your session completes." (plural via `<plurals>`) | none |
 | Ready | "You're ready to receive payouts" | "Once you complete a paid session, your earnings will appear here and pay out on the schedule below." | none |
 
-**Continue (onboarding).** Runs `CallGuard.attempt(RestrictedAction.SetUpPayouts)`, mints the Account Link (`onboard`, or `refresh-link` when an account exists), checks `isAllowedOnboardingUrl`, and opens it in the Custom Tab. In flight the label is replaced by a 24dp `onPrimary` spinner and taps are ignored. Failure: `AuthErrorDialog` "Couldn't open payout setup" (iOS) with the server message else "Check your connection and try again."; `403 CONNECT_NOT_RATIFIED` shows the server message. Returning (deep link `clickme://connect/return`) reloads status and summary and never assumes success; `/refresh` mints a new link and reopens the tab; closing the tab by hand is covered by the `ON_RESUME` reload.
+**Set up payouts (onboarding).** Runs `CallGuard.attempt(RestrictedAction.SetUpPayouts)`, mints the Account Link (`onboard`, or `refresh-link` when an account exists), checks `isAllowedOnboardingUrl`, and opens it in the Custom Tab. In flight the label is replaced by a 24dp `onPrimary` spinner and taps are ignored. Failure: `AuthErrorDialog` "Couldn't open payout setup" (iOS) with the server message else "Check your connection and try again."; `403 CONNECT_NOT_RATIFIED` shows the server message. Returning (deep link `clickme://connect/return`) reloads status and summary and never assumes success; `/refresh` mints a new link and reopens the tab; closing the tab by hand is covered by the `ON_RESUME` reload.
 
 **Recent activity.** `SectionHeader` "Recent activity" with action "See all activity" (underlined, `onSurface`; shown if `has_more` or more than 5 rows). The first five `EarningsTransactionRow`s, `sm` apart. With no rows the section shows nothing (the status cards already explain it). Test tags `payouts_balance`, `payouts_continue`, `payouts_see_all`.
 
@@ -389,7 +390,7 @@ Route `TaxProfileKey`. `GET expert/tax-profile` on entry. `verticalScroll` colum
 
 **Intro:** "Required by Stripe to process your payouts and to meet CRA reporting rules. Your TIN is stored encrypted and is never shown back to you." (`bodyLarge` `onSurfaceVariant`). **Sections** (`titleMedium` `onSurfaceVariant` `heading()` captions, sentence case): "Legal identity" — Legal name; Date of birth, a read-only `PickerField` with `CalendarToday` that opens a Material `DatePickerDialog` (years 1900 to the current year, produces `YYYY-MM-DD`; field label "Date of birth", value shown as `MMM d, yyyy` with the ISO value sent). "Address" — Street address; Apt / suite (optional); City; Province / region and Postal code (stacked); Country (plain field, default `CA`, uppercase two letters). "Tax identification" — Financial account (optional); TIN (SIN / BN), masked with a visibility toggle, `autoCorrectEnabled = false`. When `tin_on_file`: a `surfaceContainerLow` row above the TIN field with `LockPerson` 24dp `onSurfaceVariant` and "TIN on file" (`titleMedium`), and the TIN field label becomes "Replace TIN (optional)"; otherwise the helper under the field reads "Optional now — required before Stripe releases your payouts." (iOS, `bodySmall` `onSurfaceMuted`). Fields use `ValidatedField` labels from iOS: "Legal name", "Street address", "Apt / suite (optional)", "City", "Province / region", "Postal code", "Country", "Financial account (optional)", "TIN (SIN / BN)".
 
-**Save footer.** `AsyncSaveButton` filled `primary`, full width, `heightIn(min = 56.dp)`, label "Save" (iOS), spinner "Saving…" state. Enabled when legal name, date of birth, street address, city, province / region, postal code and country are non-blank (iOS `canSave`). Outcomes: `saved: true` — snackbar "Tax profile saved." (iOS alert text as a snackbar), the TIN field is cleared and `tin_on_file` shows; `saved: false, tin_required: true` is **not an error** — an inline info banner above the Save bar (`surfaceContainerLow`, `medium`, 1dp `outlineVariant`, `md` padding, `Info` 24dp `onSurfaceVariant` + the server `message` else "We need your TIN to finish saving. Enter it below and save again."), fields stay intact and the TIN field takes focus; 422: inline field errors from `errors[]` ("TIN format is invalid", bad date) else `AuthErrorDialog` "Couldn't save tax profile" (iOS) with the server message; network/other: the same dialog with the network line. TIN and the form are never restored from saved state. Test tags `tax_save`, `tax_tin`.
+**Save footer.** `AsyncSaveButton` filled `primary`, full width, `heightIn(min = 56.dp)`, label "Save tax profile" (Android; iOS "Save", renamed to a verb + noun and to match the "Tax profile saved." snackbar), spinner "Saving…" state. Enabled when legal name, date of birth, street address, city, province / region, postal code and country are non-blank (iOS `canSave`). Outcomes: `saved: true` — snackbar "Tax profile saved." (iOS alert text as a snackbar), the TIN field is cleared and `tin_on_file` shows; `saved: false, tin_required: true` is **not an error** — an inline info banner above the Save bar (`surfaceContainerLow`, `medium`, 1dp `outlineVariant`, `md` padding, `Info` 24dp `onSurfaceVariant` + the server `message` else "We need your TIN to finish saving. Enter it below and save again."), fields stay intact and the TIN field takes focus; 422: inline field errors from `errors[]` ("TIN format is invalid", bad date) else `AuthErrorDialog` "Couldn't save tax profile" (iOS) with the server message; network/other: the same dialog with the network line. TIN and the form are never restored from saved state. Test tags `tax_save`, `tax_tin`.
 
 ### 9. Hand-off surfaces (no new layout)
 
@@ -410,9 +411,9 @@ Route `TaxProfileKey`. `GET expert/tax-profile` on entry. `verticalScroll` colum
 | Delete Account | "Keep my account" | The filled `primary` button is the safe default; Delete is an outlined error pill, never filled |
 | Farewell | The headline | 28sp headline centered over a quiet tile; "Back to Login" is the single control |
 | Help | The first FAQ category | Cards are uniform; "Email Us" is a quiet row below |
-| Payouts | The available-balance amount | 28sp amount alone in the hero; the status card or Continue is the single accent control in setup state |
+| Payouts | The available-balance amount | 28sp amount alone in the hero; the status card or Set up payouts is the single accent control in setup state |
 | Activity | The net amounts | Right-aligned `titleMedium` amounts on a uniform row stack |
-| Tax | The Save button | Pinned filled footer; sections are quiet captions |
+| Tax | The Save tax profile button | Pinned filled footer; sections are quiet captions |
 
 ---
 
@@ -425,11 +426,11 @@ Route `TaxProfileKey`. `GET expert/tax-profile` on entry. `verticalScroll` colum
 | Meeting link | http(s) only, never sent blank |
 | Change password | Validate on tap, inline errors, success dialog, fields wiped, `CallGuard` `ChangePassword` |
 | Delete (D-05) | `CallGuard` `DeleteAccount` at both taps; password + reason required; single in-flight flag; no auto-retry; Farewell hosted at the root and independent of `isLoggedIn`; "Back to Login" runs `logout()` |
-| Payouts (D-07, D-09) | Summary states per RESEARCH; Continue guarded by `SetUpPayouts`; return re-fetches status; `/refresh` reopens; `ON_RESUME` reload backstop; no withdraw |
+| Payouts (D-07, D-09) | Summary states per RESEARCH; Set up payouts guarded by `SetUpPayouts`; return re-fetches status; `/refresh` reopens; `ON_RESUME` reload backstop; no withdraw |
 | Money (PAYOUT-03) | Minor units via `Money.format` on Payouts and Activity; null text fields render "—"; unknown status "Unknown" |
 | Tax (D-08) | `saved:false, tin_required` is a prompt not an error; TIN cleared after save and never persisted |
 | Help | Server order, empty categories hidden, collapsed by default; mail via `ACTION_SENDTO` with a fallback snackbar |
-| In flight | While Update password, Delete, Save (tax) or Continue runs: Back and repeat taps are ignored |
+| In flight | While Update password, Delete, Save tax profile or Set up payouts runs: Back and repeat taps are ignored |
 | Rotation / process death | Entry-scoped Hilt ViewModels; non-sensitive form fields use `SavedStateHandle`; passwords, the deletion token and the TIN are held in ViewModel memory only |
 
 ---
@@ -441,8 +442,8 @@ All new strings go into new `res/values/strings_profile_hub.xml`, `strings_profi
 | Element | Copy |
 |---------|------|
 | Primary CTA (Account Security) | "Update Password" (iOS) |
-| Primary CTA (Payouts setup) | "Continue" (iOS; sits under the heading "Complete payout setup" that names the object) |
-| Primary CTA (Tax) | "Save" (iOS; the screen title "Tax & Payout Info" supplies the object) |
+| Primary CTA (Payouts setup) | "Set up payouts" (Android; iOS "Continue", renamed to a verb + noun and to match the `SetUpPayouts` action) |
+| Primary CTA (Tax) | "Save tax profile" (Android; iOS "Save", renamed to a verb + noun and to match the "Tax profile saved." snackbar) |
 | Primary CTA (Delete) | Safe default "Keep my account" (Android); destructive "Delete Account" (iOS) |
 | Primary CTA (Farewell) | "Back to Login" (iOS) |
 | Primary CTA (error states) | "Retry" (project-wide retry label, under a heading that names the object, as Phase 13) |
@@ -450,14 +451,14 @@ All new strings go into new `res/values/strings_profile_hub.xml`, `strings_profi
 | Hub rows | "Security & Password", "Payment", "FAQ & Help", "Privacy", "View My Public Profile", "Expertise & Topics", "Availability", "Payouts & Earnings", "Tax & Payout Info" (iOS) |
 | Hub section captions | "Account", "Support", "Professional" (iOS; "Preferences" folded into Support, spec) |
 | Mode switch | "Switch to Expert Mode" / "Start offering consultations"; "Switch to Client Mode" / "Browse and book other experts" (iOS) |
-| Log out | Button "Log out" (Android sentence case); dialog title "Log out of ClickMe?", confirm "Log Out", dismiss "Cancel" (iOS) |
+| Log out | Button "Log out" (Android sentence case); dialog title "Log out of ClickMe?", confirm "Log Out", dismiss "Stay logged in" (Android; iOS "Cancel") |
 | User card a11y | "Edit profile" (iOS) |
 | Version footer | "Version {name} ({build})", "© 2026 ClickMe Innovations" (iOS) |
 | Settings titles | "Profile Settings", "Expert Settings" (iOS) |
 | Settings labels | "Email", "First Name", "Last Name", "Bio", "Professional Details", "Job Title", "Company", "City", "State/Province", "Country", "Spoken Languages", "Skype / Zoom Meeting Link", "Expertise" (iOS); "Change photo", "Edit expertise", placeholder "Tell people about yourself" (Android) |
-| Settings sheets | "Edit Professional Details" with "Update" / "Cancel"; "Edit Languages" with "Done" (iOS) |
+| Settings sheets | "Edit Professional Details" with "Update details" / "Discard changes" (Android; iOS "Update" / "Cancel"); "Edit Languages" with "Done" (iOS, exception E2) |
 | Auto-save a11y | "Saving", "Changes saved", "Couldn't save changes. Tap to retry." (Android) |
-| Save error dialog | Title "Couldn't save changes" (iOS); body = server message, else "Check your connection and try again."; dismiss "OK" |
+| Save error dialog | Title "Couldn't save changes" (iOS); body = server message, else "Check your connection and try again."; dismiss "Got it" (Android) |
 | Avatar error dialog | Title "Couldn't upload avatar" (iOS); same body rule |
 | Meeting link error | "Enter a link that starts with https://" (spec) |
 | Expert profile load error | Heading "Couldn't load profile" (iOS); body = server message else network line; action "Retry" |
@@ -468,7 +469,7 @@ All new strings go into new `res/values/strings_profile_hub.xml`, `strings_profi
 | Delete reasons | "Help us improve"; "What is your primary reason for leaving?"; "Too expensive", "Found an alternative", "Privacy concerns", "Other"; comments label "Additional comments (optional)", placeholder "Share any additional thoughts..."; password label "Confirm your password", placeholder "Enter your password" (iOS) |
 | Delete errors | "Password is incorrect." (spec); "That took too long. Please enter your password and try again." (iOS); dialog title "Couldn't delete account" (iOS) with "Too many attempts. Please try again later." (spec), the server message for 409, else the network line |
 | Farewell | Headline "We're sorry to see you go!"; body "Your account has been successfully deleted. We hope to see you again soon." (iOS) |
-| Destructive confirmation | Delete Account: the Warning form plus the Reason form are the confirmation, ending in the outlined "Delete Account" button; Log out: "Log out of ClickMe?" dialog with "Log Out" / "Cancel" |
+| Destructive confirmation | Delete Account: the Warning form plus the Reason form are the confirmation, ending in the outlined "Delete Account" button; Log out: "Log out of ClickMe?" dialog with "Log Out" / "Stay logged in" |
 | Call-guard strings | `call_action_change_password` "change your password"; `call_action_delete_account` "delete your account" (the iOS `CallCenter` phrases, lower-case verb phrases like the existing `call_action_*` strings in `strings_call.xml`) |
 | Help | Title "Help"; "Frequently Asked Questions"; "Contact Us"; "Email Us"; loading "Loading"; error heading "Couldn't load help" (iOS); no-mail snackbar "No email app found. Write to {address} from any mail app." (spec) |
 | Payouts titles | "Payouts" (screen), "Activity" (full list) (iOS) |
@@ -481,12 +482,14 @@ All new strings go into new `res/values/strings_profile_hub.xml`, `strings_profi
 | Link failure | Snackbar "Couldn't open the link. Try again later." (spec) |
 | Empty state heading / body | Activity: see Activity row. Hubs, Help, Payouts and Tax have no empty state of their own (a Help category list that comes back empty shows only Contact Us) |
 | Error state | Each screen: heading names the object, body = server message else "Check your connection and try again.", action "Retry" |
+| Dialog dismiss labels | Every single-button informational or error dialog (`AuthErrorDialog` via its `confirmLabel` parameter, password-updated dialog) dismisses with "Got it" (Android; replaces "OK"). `AlertDialog` pairs use outcome-specific labels: Log out is "Log Out" / "Stay logged in"; Professional Details sheet is "Update details" / "Discard changes" (Android; replaces "Cancel") |
+| Justified generic-label exceptions | E1: "Retry" on `EmptyStateAction` and the Activity page-error text button; the project-wide retry label (Phases 8, 12, 13), always rendered directly under a heading or error line that names the failed object, so the action is unambiguous. E2: "Done" on the inherited Phase 4 `LanguageSelectionSheet`; the sheet title "Edit Languages" names the object and the label is shared with signup. No other generic label ("Save", "OK", "Cancel", "Continue", bare "Update") is used in this phase |
 
 ---
 
 ## UI Considerations
 
-> Authored by the researcher from the screen specs above; the interactive `ui-consideration-probe` was not run in this non-interactive session, so every row is the researcher's resolution, not a user-accepted one (Assumption A2). Empty-state and error-state copy lives in the Copywriting Contract and is referenced, not repeated.
+> Authored by the researcher from the screen specs above; the interactive `ui-consideration-probe` was not run in this non-interactive session, The `ui-consideration-probe` engine was then run against 8 surfaces (55 applicable considerations, 0 unclassified). On 2026-10-28 the user confirmed the detected element kinds and accepted this table as the resolution: covered rows are explicit truths, backstop rows stay backstop, and unresolved rows are planner assumptions. Empty-state and error-state copy lives in the Copywriting Contract and is referenced, not repeated.
 
 Applicable state considerations resolved: 33 covered, 5 backstop, 5 unresolved.
 
@@ -497,7 +500,7 @@ Applicable state considerations resolved: 33 covered, 5 backstop, 5 unresolved.
 | empty | Help FAQ list | ✅ covered | Zero categories after filtering shows only Contact Us |
 | empty | Profile fields (bio, job title, company, city) | ✅ covered | Blank values are valid; professional card shows "—" |
 | loading | Payouts, Activity, Help, Tax, Expert settings first load | ✅ covered | Skeletons copy real dimensions; quiet reloads never return to them |
-| loading | Delete, Update password, Tax Save, Continue | ✅ covered | Button label replaced by a spinner, repeat taps and Back ignored |
+| loading | Delete, Update Password, Save tax profile, Set up payouts | ✅ covered | Button label replaced by a spinner, repeat taps and Back ignored |
 | error | Payouts, Activity, Help, Tax, Expert settings load | ✅ covered | `EmptyState` "Couldn't load …" + Retry |
 | error | Auto-save | ✅ covered | Error icon + `AuthErrorDialog`; icon tap retries |
 | error | Delete request | ✅ covered | Inline password errors; dialog for 429, 409, network; form intact |
@@ -526,15 +529,15 @@ Applicable state considerations resolved: 33 covered, 5 backstop, 5 unresolved.
 | a11y | Auto-save icon, password toggles, FAQ cards, reason rows | 🧪 backstop | { statement: "TalkBack announces the save status, toggle state, FAQ expanded/collapsed state and the selected reason", verification: backstop } |
 | a11y | Hub and settings rows | ✅ covered | One `Role.Button` node per row, icons decorative |
 | security | TIN, passwords, deletion token | ✅ covered | Never in saved state, logs or screenshots-visible plain text; fields masked |
-| concurrency | Double tap on Delete / Update / Save / Continue | ✅ covered | One in-flight flag per action |
+| concurrency | Double tap on Delete / Update Password / Save tax profile / Set up payouts | ✅ covered | One in-flight flag per action |
 | concurrency | Settings Back with a pending edit | ✅ covered | Debounce flushed before pop |
-| platform | Photo picker on API 26-32 | ⚠ unresolved | `PickVisualMedia` falls back to the system document picker; look unverified (no AVD), logged as a device item |
+| platform | Photo picker on API 26-32 | ⚠ unresolved — planner must treat as assumption | `PickVisualMedia` falls back to the system document picker; look unverified (no AVD), logged as a device item |
 | platform | No mail app / no browser | ✅ covered | Fallback snackbars specified |
 | deep link | `clickme://connect/*` spoofing | ✅ covered | Treated as a re-check signal only (RESEARCH Pitfall 1) |
-| edge | Pause Account | ⚠ unresolved | Absent unless the backend ships the endpoint; planner re-reads `14-BACKEND-REQUEST.md` |
-| edge | Meeting link cannot be cleared | ⚠ unresolved | iOS parity; backend question open (RESEARCH Open Question 2) |
-| edge | Tax gating on payouts | ⚠ unresolved | Built ungated; backend answer pending (RESEARCH A6) |
-| edge | Chrome follows the backend 302 into the app | ⚠ unresolved | Device check pending; `ON_RESUME` reload is the always-on backstop (RESEARCH Pitfall 2) |
+| edge | Pause Account | ⚠ unresolved — planner must treat as assumption | Absent unless the backend ships the endpoint; planner re-reads `14-BACKEND-REQUEST.md` |
+| edge | Meeting link cannot be cleared | ⚠ unresolved — planner must treat as assumption | iOS parity; backend question open (RESEARCH Open Question 2) |
+| edge | Tax gating on payouts | ⚠ unresolved — planner must treat as assumption | Built ungated; backend answer pending (RESEARCH A6) |
+| edge | Chrome follows the backend 302 into the app | ⚠ unresolved — planner must treat as assumption | Device check pending; `ON_RESUME` reload is the always-on backstop (RESEARCH Pitfall 2) |
 
 ---
 
@@ -572,18 +575,19 @@ Applicable state considerations resolved: 33 covered, 5 backstop, 5 unresolved.
 | A7 | Pause Account endpoint availability | Card absent; re-read `14-BACKEND-REQUEST.md` at plan time | Planner |
 | A8 | `Info`, `Schedule`, `Verified`, `LockPerson`, `ReceiptLong`, `Psychology`, `Badge` Outlined names may be missing in the pinned icons set | Substitute the nearest Outlined icon and keep the role | Executor |
 | A9 | Version footer shows `BuildConfig` versionName and versionCode | "Version 0.1.0 (1)"-style | Executor |
+| A11 | Copy revision (checker Dimension 1): CTA and dialog labels renamed from iOS generics ("Save", "Continue", "OK", "Cancel", "Update") to specific verb + noun labels | "Save tax profile", "Set up payouts", "Got it", "Stay logged in", "Update details" / "Discard changes"; "Retry" and "Done" recorded as justified exceptions E1 / E2 (Copywriting Contract) | User |
 | A10 | Device items logged, not blocked (project policy): Custom Tab return, avatar pick on API 26-32, delete on a throwaway account, 200% font scale, TalkBack pass | Open manual items for the Phase 14 gate | User at UAT |
 
 ---
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: FLAG (non-blocking; justified exceptions E1, E2)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-10-28 (gsd-ui-checker, after 1 revision)
