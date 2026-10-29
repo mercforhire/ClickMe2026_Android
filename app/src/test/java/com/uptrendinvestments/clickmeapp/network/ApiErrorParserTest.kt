@@ -90,7 +90,12 @@ class ApiErrorParserTest {
 
     /** Codes the backend returns that iOS `ErrorCode.swift` lacks; appended after the 65 iOS cases. */
     private val androidOnlyWireValues =
-        listOf("CANNOT_CHAT_WITH_SELF", "LONG_LEAD_NOT_AVAILABLE", "RESCHEDULE_TOO_FAR_AHEAD")
+        listOf(
+            "CANNOT_CHAT_WITH_SELF",
+            "LONG_LEAD_NOT_AVAILABLE",
+            "RESCHEDULE_TOO_FAR_AHEAD",
+            "CLIENT_HAS_UPCOMING_BOOKINGS",
+        )
 
     private fun httpException(
         status: Int,
@@ -103,14 +108,14 @@ class ApiErrorParserTest {
     @Test
     fun errorCode_has65IosCasesThenAndroidAdditions() {
         assertEquals(65, iosWireValues.size)
-        assertEquals(68, ErrorCode.entries.size)
+        assertEquals(69, ErrorCode.entries.size)
     }
 
     @Test
     fun errorCode_wireValuesAreUniqueAndMatchIosInOrder() {
         assertEquals(iosWireValues + androidOnlyWireValues, ErrorCode.entries.map { it.wire })
         assertEquals(
-            68,
+            69,
             ErrorCode.entries
                 .map { it.wire }
                 .toSet()
@@ -132,6 +137,7 @@ class ApiErrorParserTest {
         }
         assertEquals(ErrorCode.LongLeadNotAvailable, ErrorCode.fromWire("LONG_LEAD_NOT_AVAILABLE"))
         assertEquals(ErrorCode.RescheduleTooFarAhead, ErrorCode.fromWire("RESCHEDULE_TOO_FAR_AHEAD"))
+        assertEquals(ErrorCode.ClientHasUpcomingBookings, ErrorCode.fromWire("CLIENT_HAS_UPCOMING_BOOKINGS"))
     }
 
     @Test

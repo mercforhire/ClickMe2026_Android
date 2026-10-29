@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,14 @@ const val FEEDBACK_MAX = 1000
 
 /** The comments counter appears from this length. */
 const val FEEDBACK_COUNTER_FROM = 800
+
+private const val HTTP_BAD_REQUEST = 400
+private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
+private const val HTTP_CONFLICT = 409
+private const val HTTP_TOO_MANY_REQUESTS = 429
+private val PASSWORD_INCORRECT = FieldError.Res(R.string.delete_account_password_incorrect)
+private val GENERIC = FieldError.Res(R.string.delete_account_generic)
 
 /**
  * Everything the Delete Account screen shows. [password] and the deletion token are secrets: this state is never put
@@ -104,16 +113,69 @@ class DeleteAccountViewModel
             val feedback = state.feedback.trim().ifEmpty { null }
             _uiState.update { it.copy(isDeleting = true, passwordError = null, dialog = null) }
             viewModelScope.launch {
+                var failedCall = FailedCall.RequestDeletion
                 try {
                     // A local on purpose: the token is never stored, saved or logged.
                     val token = repository.requestDeletion(password)
+                    failedCall = FailedCall.Delete
                     repository.deleteAccount(token, reason, feedback)
                     deletionState.markDeleted()
-                } catch (_: ApiException) {
-                    val generic = FieldError.Res(R.string.delete_account_generic)
-                    _uiState.update { it.copy(isDeleting = false, dialog = generic) }
+                } catch (e: ApiException) {
+                    onFailure(e, failedCall)
                 }
             }
+        }
+
+        private enum class FailedCall { RequestDeletion, Delete }
+
+        /**
+         * Keeps the user on the form with the right message and re-enables it. Never retries by itself: a 409 spends
+         * the token, so a retry runs both calls again and mints a new one (RESEARCH Pitfall 5).
+         */
+        private fun onFailure(
+            e: ApiException,
+            failedCall: FailedCall,
+        ) {
+            val failure: Failure =
+                when {
+                    e is ApiException.Http && e.code == ErrorCode.AccountSuspended -> Failure.Silent
+                    e is ApiException.Network -> Failure.Dialog(FieldError.Res(R.string.delete_account_network))
+                    e !is ApiException.Http -> Failure.Dialog(FieldError.Res(R.string.delete_account_generic))
+                    e.status == HTTP_TOO_MANY_REQUESTS ->
+                        Failure.Dialog(FieldError.Res(R.string.delete_account_too_many))
+                    // A wrong password is a code-less 401 (RESEARCH Pitfall 4); 403 is treated the same.
+                    failedCall == FailedCall.RequestDeletion &&
+                        (e.status == HTTP_UNAUTHORIZED || e.status == HTTP_FORBIDDEN) ->
+                        Failure.Password(e.userMessage?.let { FieldError.Text(it) } ?: PASSWORD_INCORRECT)
+                    failedCall == FailedCall.Delete &&
+                        e.status == HTTP_BAD_REQUEST &&
+                        e.code == ErrorCode.InvalidToken ->
+                        Failure.Password(FieldError.Res(R.string.delete_account_expired))
+                    // The server message is user-ready (upcoming bookings, session in progress).
+                    e.status == HTTP_CONFLICT ->
+                        Failure.Dialog(e.userMessage?.let { FieldError.Text(it) } ?: GENERIC)
+                    else -> Failure.Dialog(GENERIC)
+                }
+            _uiState.update {
+                when (failure) {
+                    is Failure.Password -> it.copy(isDeleting = false, passwordError = failure.error)
+                    is Failure.Dialog -> it.copy(isDeleting = false, dialog = failure.error)
+                    Failure.Silent -> it.copy(isDeleting = false)
+                }
+            }
+        }
+
+        private sealed interface Failure {
+            data class Password(
+                val error: FieldError,
+            ) : Failure
+
+            data class Dialog(
+                val error: FieldError,
+            ) : Failure
+
+            /** ACCOUNT_SUSPENDED is owned by the global suspended-account dialog (Phase 2 D-08). */
+            data object Silent : Failure
         }
 
         fun dismissDialog() {
