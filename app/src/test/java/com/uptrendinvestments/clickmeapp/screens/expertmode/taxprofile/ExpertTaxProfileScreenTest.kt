@@ -5,6 +5,9 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -61,6 +64,8 @@ class ExpertTaxProfileScreenTest {
         return viewModel
     }
 
+    private fun tinInput() = hasSetTextAction() and hasAnyAncestor(hasTestTag(TAX_TIN_TAG))
+
     private fun serverProfile() {
         api.taxProfileHandler = {
             taxProfile(
@@ -105,8 +110,8 @@ class ExpertTaxProfileScreenTest {
         rule.onNodeWithText("Jan 2, 1990").assertExists()
         rule.onNodeWithTag(TAX_SAVE_TAG).assertIsEnabled()
 
-        rule.onNodeWithTag(TAX_TIN_TAG).performScrollTo().performTextInput("123456789")
-        rule.onNodeWithTag(TAX_SAVE_TAG).performScrollTo().performClick()
+        rule.onNode(tinInput()).performScrollTo().performTextInput("123456789")
+        rule.onNodeWithTag(TAX_SAVE_TAG).performClick()
         rule.waitForIdle()
 
         rule.onNodeWithText("Tax profile saved.").assertExists()
