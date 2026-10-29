@@ -218,7 +218,7 @@ class ClientProfileSettingsScreenTest {
         setContent(state(languages = emptyList()))
 
         rule.onNodeWithText("Add the languages you speak").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("Edit languages").assertIsDisplayed()
+        rule.onNodeWithText("Edit languages").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -227,7 +227,7 @@ class ClientProfileSettingsScreenTest {
         setContent(state(languages = many))
 
         rule.onNodeWithText("Language number 11").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("Edit languages").assertIsDisplayed()
+        rule.onNodeWithText("Edit languages").performScrollTo().assertIsDisplayed()
     }
 
     @Test

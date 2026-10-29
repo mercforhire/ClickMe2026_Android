@@ -11,9 +11,11 @@ import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.toDialogError
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageCatalog
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageSheetState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,6 +98,10 @@ class ClientProfileSettingsViewModel
 
         private var seeded = false
 
+        /** The language catalogue, fetched once per ViewModel. */
+        private var catalog: LanguageCatalog = LanguageCatalog.Loading
+        private var catalogJob: Job? = null
+
         init {
             viewModelScope.launch {
                 saver.status.collect { status -> _uiState.update { it.copy(status = status) } }
@@ -155,17 +161,73 @@ class ClientProfileSettingsViewModel
         /** Called on every resume: uploads a confirmed crop (or cleans up after a cancelled one). */
         fun onScreenShown() = avatarController.onReturnedFromCrop()
 
-        fun openLanguages(): Unit = TODO()
+        // ---- spoken languages ----
 
-        fun onLanguageQuery(value: String): Unit = TODO()
+        /** Opens the language sheet with the catalogue entries the user has as the working selection. */
+        fun openLanguages() {
+            val snapshot = _uiState.value.snapshot ?: return
+            val selection =
+                snapshot.languages.mapNotNull { language ->
+                    language.id?.takeIf { it.isNotBlank() }?.let { LanguageItem(it, language.label) }
+                }
+            _uiState.update { it.copy(languageSheet = LanguageSheetState(selection = selection, catalog = catalog)) }
+            // Reopening after a failure retries; a loaded catalogue is never fetched again.
+            if (catalog !is LanguageCatalog.Loaded && catalogJob?.isActive != true) loadCatalog()
+        }
 
-        fun toggleLanguage(item: LanguageItem): Unit = TODO()
+        fun onLanguageQuery(value: String) =
+            _uiState.update { state -> state.copy(languageSheet = state.languageSheet?.copy(query = value)) }
 
-        fun applyLanguages(): Unit = TODO()
+        /** Adds [item] to the working selection, or removes it when already selected (tap order is kept). */
+        fun toggleLanguage(item: LanguageItem) =
+            _uiState.update { state ->
+                val sheet = state.languageSheet ?: return@update state
+                val selection =
+                    if (sheet.selection.any { it.id == item.id }) {
+                        sheet.selection.filterNot { it.id == item.id }
+                    } else {
+                        sheet.selection + item
+                    }
+                state.copy(languageSheet = sheet.copy(selection = selection))
+            }
 
-        fun dismissLanguages(): Unit = TODO()
+        /**
+         * "Done": the selection (in tap order) followed by the custom languages the catalogue cannot express, which
+         * are kept as they are. Closes the sheet and schedules the save.
+         */
+        fun applyLanguages() {
+            val sheet = _uiState.value.languageSheet ?: return
+            val current = _uiState.value.snapshot ?: return
+            val customs = current.languages.filter { it.id.isNullOrBlank() }
+            val next = current.copy(languages = sheet.selection.map { ProfileLanguage(it.id, it.label) } + customs)
+            _uiState.update { it.copy(snapshot = next, languageSheet = null) }
+            saver.onEdited(next)
+        }
 
-        fun retryLanguages(): Unit = TODO()
+        /** Cancel (or dismissing the sheet): nothing is applied or saved. */
+        fun dismissLanguages() = _uiState.update { it.copy(languageSheet = null) }
+
+        fun retryLanguages() {
+            if (catalogJob?.isActive == true) return
+            loadCatalog()
+        }
+
+        private fun loadCatalog() {
+            setCatalog(LanguageCatalog.Loading)
+            catalogJob =
+                viewModelScope.launch {
+                    try {
+                        setCatalog(LanguageCatalog.Loaded(repository.languages()))
+                    } catch (_: ApiException) {
+                        setCatalog(LanguageCatalog.Failed)
+                    }
+                }
+        }
+
+        private fun setCatalog(value: LanguageCatalog) {
+            catalog = value
+            _uiState.update { state -> state.copy(languageSheet = state.languageSheet?.copy(catalog = value)) }
+        }
 
         fun openProfessionalSheet() = _uiState.update { it.copy(professionalSheetOpen = true) }
 

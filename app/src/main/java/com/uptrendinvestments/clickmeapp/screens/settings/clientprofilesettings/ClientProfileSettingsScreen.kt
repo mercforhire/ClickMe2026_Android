@@ -40,9 +40,11 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheet
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileAvatarSection
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileBioField
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileLanguagesField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileProfessionalCard
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileReadOnlyField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileTextField
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Test tag on the Profile Settings scroll column. */
@@ -217,8 +219,20 @@ fun ClientProfileSettingsContent(
                     error = state.fieldErrors[ProfileTextFieldId.StateProvince]?.asString(),
                     maxLength = LOCATION_MAX,
                 )
+                ProfileLanguagesField(languages = snapshot.languages, onEdit = onOpenLanguages)
             }
         }
+    }
+
+    state.languageSheet?.let { sheet ->
+        LanguageSelectionSheet(
+            state = sheet,
+            onQueryChange = onLanguageQueryChange,
+            onToggle = onToggleLanguage,
+            onRetry = onRetryLanguages,
+            onCancel = onDismissLanguages,
+            onDone = onApplyLanguages,
+        )
     }
 
     val sheetSnapshot = state.snapshot
