@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -29,6 +30,15 @@ class ExpertFinancialRepository
 
         /** `GET /expert/connect/status`: 404 when no connected account exists yet. */
         suspend fun connectStatus(): ConnectStatusData = apiCall { api.getConnectStatus() }.data
+
+        /**
+         * `GET /expert/earnings/transactions`: one page of the per-session earnings ledger, newest first. Every amount
+         * is in MINOR units. The server clamps [page] and [limit] to 1..100.
+         */
+        suspend fun transactions(
+            page: Int,
+            limit: Int,
+        ): EarningsTransactionsData = apiCall { api.getEarningsTransactions(page, limit) }.data
 
         /** A fresh single-use Stripe link: `refresh-link` when [refresh] is true, otherwise `onboard`. */
         suspend fun onboardingLink(refresh: Boolean): String =

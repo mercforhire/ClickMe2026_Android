@@ -31,7 +31,8 @@ class TransactionsViewModelTest {
             runCurrent()
 
             assertEquals(listOf(1 to 20), api.earningsTransactionsQueries)
-            assertEquals(TransactionsLoad.Loaded, vm.uiState.value.load)
-            assertEquals(listOf("e1", "e2"), vm.uiState.value.rows.map { it.id })
+            val state = vm.uiState.value
+            assertEquals(TransactionsLoad.Loaded, state.load)
+            assertEquals(listOf("e1", "e2"), state.rows.map { it.id })
         }
 }

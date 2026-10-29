@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Payouts Activity (earnings ledger) and the shared transaction row (Phase 14, PAYOUT-03). Reused elsewhere,
+         not duplicated here: login_error_network, login_error_unknown. -->
+    <string name="payouts_activity_title">Activity</string>
+
+    <string name="payouts_activity_status_pending">Pending</string>
+    <string name="payouts_activity_status_processing">Processing</string>
+    <string name="payouts_activity_status_settled">Settled</string>
+    <string name="payouts_activity_status_processed">Processed</string>
+    <string name="payouts_activity_status_failed">Failed</string>
+    <string name="payouts_activity_status_unknown">Unknown</string>
+
+    <string name="payouts_activity_empty_title">No activity yet</string>
+    <string name="payouts_activity_empty_body">Your completed sessions will appear here as they\'re processed.</string>
+    <string name="payouts_activity_error_title">Couldn\'t load activity</string>
+    <string name="payouts_activity_loading_more">Loading more…</string>
+    <string name="payouts_activity_retry">Retry</string>
+    <string name="payouts_activity_refresh_failed">Couldn\'t refresh your activity. Showing what was loaded.</string>
+
+    <!-- "{client} · {date}" under the topic; "—" stands in for any missing text. -->
+    <string name="payouts_activity_row_line" translatable="false">%1$s · %2$s</string>
+    <!-- "{topic}, {client}, {date}, {status}, {amount}" -->
+    <string name="payouts_activity_row_a11y" translatable="false">%1$s, %2$s, %3$s, %4$s, %5$s</string>
+    <string name="payouts_activity_none" translatable="false">—</string>
+</resources>
