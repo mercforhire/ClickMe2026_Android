@@ -103,7 +103,7 @@ class ProfileHelpApiTest {
             val data =
                 apiCall {
                     api.updateUserProfile(
-                        UpdateUserProfileRequest(basic = ProfileBasicBody(firstName = "Ana", lastName = "Lee", bio = "")),
+                        UpdateUserProfileRequest(basic = ProfileBasicBody("Ana", "Lee", "")),
                     )
                 }.data
             val request = server.takeRequest()
@@ -182,7 +182,8 @@ class ProfileHelpApiTest {
                 200,
                 """{"status":"success","data":{"categories":[""" +
                     """{"id":"c2","title":"Payments","icon_url":null,"display_order":2,"featured_articles":[""" +
-                    """{"id":"a1","category_id":"c2","question":"How do I get paid?","snippet":null,"view_count":3}]},""" +
+                    """{"id":"a1","category_id":"c2","question":"How do I get paid?",""" +
+                    """"snippet":null,"view_count":3}]},""" +
                     """{"id":"c1","title":"Account","display_order":1}]}}""",
             )
 
@@ -194,9 +195,11 @@ class ProfileHelpApiTest {
             val payments = payload.categories.first { it.id == "c2" }
             assertEquals(2, payments.displayOrder)
             assertNull(payments.iconUrl)
-            assertEquals("How do I get paid?", payments.featuredArticles.single().question)
-            assertNull(payments.featuredArticles.single().snippet)
-            assertTrue(payload.categories.first { it.id == "c1" }.featuredArticles.isEmpty())
+            val article = payments.featuredArticles.single()
+            val account = payload.categories.first { it.id == "c1" }
+            assertEquals("How do I get paid?", article.question)
+            assertNull(article.snippet)
+            assertTrue(account.featuredArticles.isEmpty())
             assertTrue(payload.trendingArticles.isEmpty())
         }
 

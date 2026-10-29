@@ -24,10 +24,12 @@ import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -57,6 +59,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -601,4 +604,26 @@ interface ClickMeApi {
     suspend fun deleteAccount(
         @Body body: DeleteAccountRequest,
     ): SuccessMessageResponse
+
+    /**
+     * Ports iOS ClickMeAPI+UserProfile updateUserProfile. Partial merge: only the non-null groups of
+     * [UpdateUserProfileRequest] are sent, and `basic.email` is never sent (403). Answers the full profile.
+     */
+    @PATCH(ApiRequestUrls.USER_PROFILE)
+    suspend fun updateUserProfile(
+        @Body body: UpdateUserProfileRequest,
+    ): SuccessDataResponse<UserProfileData>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertProfile updateExpertProfile (meeting link only). Same route as
+     * [updateExpertProfileTags]; the body carries only `professional_details.meeting_url`.
+     */
+    @PATCH(ApiRequestUrls.EXPERT_PROFILE)
+    suspend fun updateExpertMeetingUrl(
+        @Body body: UpdateExpertMeetingUrlRequest,
+    ): SuccessMessageResponse
+
+    /** Ports iOS ClickMeAPI+Help getFaqs: categories with their featured articles. */
+    @GET(ApiRequestUrls.HELP_FAQS)
+    suspend fun getFaqs(): SuccessDataResponse<FaqsPayload>
 }

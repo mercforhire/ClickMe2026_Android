@@ -24,10 +24,12 @@ import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
@@ -58,6 +60,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -1053,6 +1056,46 @@ class FakeClickMeApi : ClickMeApi {
         deleteAccountCalls++
         synchronized(_deleteAccountRequests) { _deleteAccountRequests += body }
         return deleteAccountHandler(body)
+    }
+
+    // Phase 14: profile edit, expert meeting link and help.
+    var updateUserProfileHandler: suspend (UpdateUserProfileRequest) -> UserProfileData = { notStubbed() }
+    var updateExpertMeetingUrlHandler: suspend (UpdateExpertMeetingUrlRequest) -> SuccessMessageResponse =
+        { notStubbed() }
+    var faqsHandler: suspend () -> FaqsPayload = { notStubbed() }
+
+    @Volatile var updateUserProfileCalls = 0
+        private set
+
+    @Volatile var updateExpertMeetingUrlCalls = 0
+        private set
+
+    @Volatile var faqsCalls = 0
+        private set
+
+    private val _updateUserProfileRequests = mutableListOf<UpdateUserProfileRequest>()
+    private val _updateExpertMeetingUrlRequests = mutableListOf<UpdateExpertMeetingUrlRequest>()
+
+    val updateUserProfileRequests: List<UpdateUserProfileRequest>
+        get() = synchronized(_updateUserProfileRequests) { _updateUserProfileRequests.toList() }
+    val updateExpertMeetingUrlRequests: List<UpdateExpertMeetingUrlRequest>
+        get() = synchronized(_updateExpertMeetingUrlRequests) { _updateExpertMeetingUrlRequests.toList() }
+
+    override suspend fun updateUserProfile(body: UpdateUserProfileRequest): SuccessDataResponse<UserProfileData> {
+        updateUserProfileCalls++
+        synchronized(_updateUserProfileRequests) { _updateUserProfileRequests += body }
+        return ok(updateUserProfileHandler(body))
+    }
+
+    override suspend fun updateExpertMeetingUrl(body: UpdateExpertMeetingUrlRequest): SuccessMessageResponse {
+        updateExpertMeetingUrlCalls++
+        synchronized(_updateExpertMeetingUrlRequests) { _updateExpertMeetingUrlRequests += body }
+        return updateExpertMeetingUrlHandler(body)
+    }
+
+    override suspend fun getFaqs(): SuccessDataResponse<FaqsPayload> {
+        faqsCalls++
+        return ok(faqsHandler())
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */
