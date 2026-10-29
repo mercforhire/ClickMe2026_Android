@@ -52,7 +52,7 @@ private const val TOOLS_PER_ROW = 2
 
 /**
  * The six Expert Tools in display order (D-11, UI-SPEC A2). [tag] completes the test tag `dashboard_tool_{tag}`.
- * Profile Settings and Payouts are placeholders that look like the others, so Phase 14 only swaps their handler.
+ * Profile Settings opens Expert Settings and Payouts opens Payouts (Phase 14).
  */
 enum class ExpertTool(
     @StringRes val label: Int,

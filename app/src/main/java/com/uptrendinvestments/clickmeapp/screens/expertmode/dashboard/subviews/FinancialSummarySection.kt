@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -74,6 +75,7 @@ fun FinancialSummarySection(
     payoutSummary: PayoutSummaryData?,
     isMinting: Boolean,
     onStartPayoutSetup: () -> Unit,
+    onOpenPayouts: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -84,7 +86,7 @@ fun FinancialSummarySection(
             modifier = Modifier.semantics { heading() },
         )
         Spacer(Modifier.height(Spacing.sm))
-        EarningsCard(weekly = weekly, onboarding = onboarding, payoutSummary = payoutSummary)
+        EarningsCard(weekly = weekly, onboarding = onboarding, payoutSummary = payoutSummary, onClick = onOpenPayouts)
         if (onboarding is PayoutOnboarding.Required) {
             Spacer(Modifier.height(Spacing.md))
             PayoutOnboardingCard(isBusy = isMinting, onClick = onStartPayoutSetup)
@@ -95,8 +97,8 @@ fun FinancialSummarySection(
 /**
  * Weekly earnings card (D-10, UI-SPEC A4): "This week" with the net amount and the session count on the left, the
  * available payout on the right and, unless payout setup is still required, the next payout line. Amounts are integer
- * minor units formatted by [Money.format]; the gross amount is never shown. Not tappable. The columns wrap at large
- * font scales.
+ * minor units formatted by [Money.format]; the gross amount is never shown. Tapping it opens Payouts (Phase 14). The
+ * columns wrap at large font scales.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -104,8 +106,10 @@ fun EarningsCard(
     weekly: WeeklyEarningsData?,
     onboarding: PayoutOnboarding,
     payoutSummary: PayoutSummaryData?,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val openPayoutsLabel = stringResource(R.string.dashboard_open_payouts)
     val unavailable = stringResource(R.string.dashboard_amount_unavailable)
     val net = weekly?.let { Money.format(it.netAmount, it.currency) } ?: unavailable
     val sessions =
@@ -118,7 +122,12 @@ fun EarningsCard(
             unavailable
         }
     Surface(
-        modifier = modifier.fillMaxWidth().testTag(DASHBOARD_EARNINGS_CARD_TAG),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .testTag(DASHBOARD_EARNINGS_CARD_TAG)
+                .clip(MaterialTheme.shapes.medium)
+                .clickable(onClickLabel = openPayoutsLabel, role = Role.Button, onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),

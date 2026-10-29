@@ -28,8 +28,8 @@ data class NotificationRowModel(
  * Maps a server row to its list model, with the time label relative to [now] in [zone].
  *
  * The destination is the push router's, so a tap is the same as a push tap. A null destination makes the row inert
- * (UI-SPEC A2): the category is unknown, a required id is missing or invalid, or it is payout or account, which land
- * on this very list until Phase 14.
+ * (UI-SPEC A2): the category is unknown, a required id is missing or invalid, or the destination is the notifications
+ * list itself (a tap there would only reopen this screen).
  */
 fun NotificationItem.toRowModel(
     now: Instant,

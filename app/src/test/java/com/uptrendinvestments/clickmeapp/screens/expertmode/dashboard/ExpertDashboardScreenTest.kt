@@ -3,7 +3,9 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -135,6 +137,8 @@ class ExpertDashboardScreenTest {
                     onOpenAvailability = { calls += "availability" },
                     onOpenTopics = { calls += "topics" },
                     onOpenNotifications = { calls += "notifications" },
+                    onOpenPayouts = { calls += "payouts" },
+                    onOpenProfileSettings = { calls += "profileSettings" },
                     viewModel = f.vm,
                 )
             }
@@ -463,27 +467,56 @@ class ExpertDashboardScreenTest {
         }
 
     @Test
-    fun placeholderToolsShowComingSoon() =
+    fun profileSettingsToolOpensSettings() =
         runTest(main.testDispatcher) {
             val f = fixture()
             setContent(f)
 
             rule.onNodeWithTag("dashboard_tool_profile").performScrollTo().performClick()
-            rule.onNodeWithText("Profile Settings is coming soon").assertExists()
 
-            assertTrue(calls.isEmpty())
+            assertEquals(listOf("profileSettings"), calls)
         }
 
     @Test
-    fun payoutsToolShowsComingSoon() =
+    fun payoutsToolOpensPayouts() =
         runTest(main.testDispatcher) {
             val f = fixture()
             setContent(f)
 
             rule.onNodeWithTag("dashboard_tool_payouts").performScrollTo().performClick()
-            rule.onNodeWithText("Payouts is coming soon").assertExists()
 
-            assertTrue(calls.isEmpty())
+            assertEquals(listOf("payouts"), calls)
+            rule.onAllNodesWithText("coming soon", substring = true, ignoreCase = true).assertCountEquals(0)
+        }
+
+    @Test
+    fun earningsCardOpensPayouts() =
+        runTest(main.testDispatcher) {
+            val net = Money.format(12_750, "CAD")
+            val f = fixture(weekly = week(12_750, 3), status = complete, summary = PayoutSummaryData(0, 0, "CAD"))
+            setContent(f)
+
+            val card = rule.onNodeWithTag(DASHBOARD_EARNINGS_CARD_TAG)
+            card.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            card.assert(
+                SemanticsMatcher("click label is Open payouts") {
+                    it.config.getOrNull(SemanticsActions.OnClick)?.label == "Open payouts"
+                },
+            )
+            rule.onNodeWithContentDescription("$net this week · 3 sessions").assertExists()
+            card.performScrollTo().performClick()
+
+            assertEquals(listOf("payouts"), calls)
+        }
+
+    @Test
+    fun noComingSoonText() =
+        runTest(main.testDispatcher) {
+            val f = fixture(weekly = week(1_000, 1), status = complete, summary = PayoutSummaryData(0, 0, "CAD"))
+            setContent(f)
+
+            rule.onNodeWithTag("dashboard_tool_payouts").performScrollTo()
+            rule.onAllNodesWithText("coming soon", substring = true, ignoreCase = true).assertCountEquals(0)
         }
 
     @Test

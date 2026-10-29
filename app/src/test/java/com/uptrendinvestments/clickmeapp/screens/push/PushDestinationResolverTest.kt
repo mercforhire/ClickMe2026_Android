@@ -2,19 +2,24 @@ package com.uptrendinvestments.clickmeapp.screens.push
 
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsOrigin
+import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.testing.FakeClientBookingProbe
 import com.uptrendinvestments.clickmeapp.testing.FakePendingRequestLookup
 import kotlinx.coroutines.delay
@@ -195,14 +200,58 @@ class PushDestinationResolverTest {
             }
         }
 
+    private fun payoutsRoute() =
+        ResolvedPush(
+            AppMode.Expert,
+            PushRoute.Shell(
+                ShellRoute(AppMode.Expert, DashboardRoot, listOf(PayoutsKey(SettingsOrigin.Dashboard))),
+            ),
+        )
+
     @Test
-    fun phase14LandingsOpenTheList() =
+    fun payoutsPushOpensPayoutsOnDashboard() =
         runTest {
-            listOf(PushDestination.Payouts, PushDestination.KycOnboarding, PushDestination.AccountSecurity)
-                .forEach { destination ->
-                    assertEquals(clientList(), resolver.resolve(destination, context(AppMode.Client)))
-                    assertEquals(expertList(), resolver.resolve(destination, context(AppMode.Expert)))
-                }
+            listOf(PushDestination.Payouts, PushDestination.KycOnboarding).forEach { destination ->
+                assertEquals(payoutsRoute(), resolver.resolve(destination, context(AppMode.Expert)))
+                assertEquals(payoutsRoute(), resolver.resolve(destination, context(AppMode.Client)))
+            }
+        }
+
+    @Test
+    fun payoutsPushForClientOnlyOpensList() =
+        runTest {
+            listOf(PushDestination.Payouts, PushDestination.KycOnboarding).forEach { destination ->
+                val clientOnly = resolver.resolve(destination, context(AppMode.Client, hasExpertRole = false))
+                assertEquals(clientList(), clientOnly)
+                assertEquals(AppMode.Client, clientOnly.targetMode)
+                assertEquals(clientList(), resolver.resolve(destination, context(AppMode.Client, callActive = true)))
+                // Already in Expert mode, so no switch is needed even during a call.
+                assertEquals(
+                    payoutsRoute(),
+                    resolver.resolve(destination, context(AppMode.Expert, callActive = true)),
+                )
+            }
+        }
+
+    @Test
+    fun accountSecurityOpensProfileTab() =
+        runTest {
+            val client = resolver.resolve(PushDestination.AccountSecurity, context(AppMode.Client))
+            assertEquals(
+                ResolvedPush(
+                    AppMode.Client,
+                    PushRoute.Shell(ShellRoute(AppMode.Client, ClientProfileRoot, listOf(AccountSecurityKey))),
+                ),
+                client,
+            )
+            val expert = resolver.resolve(PushDestination.AccountSecurity, context(AppMode.Expert))
+            assertEquals(
+                ResolvedPush(
+                    AppMode.Expert,
+                    PushRoute.Shell(ShellRoute(AppMode.Expert, ExpertProfileRoot, listOf(AccountSecurityKey))),
+                ),
+                expert,
+            )
         }
 
     @Test

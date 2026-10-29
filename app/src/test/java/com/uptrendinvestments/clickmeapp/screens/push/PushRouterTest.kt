@@ -102,9 +102,9 @@ class PushRouterTest {
     @Test
     fun landsOnNotificationsList() {
         assertTrue(PushDestination.NotificationsList.landsOnNotificationsList)
-        assertTrue(PushDestination.Payouts.landsOnNotificationsList)
-        assertTrue(PushDestination.KycOnboarding.landsOnNotificationsList)
-        assertTrue(PushDestination.AccountSecurity.landsOnNotificationsList)
+        assertFalse(PushDestination.Payouts.landsOnNotificationsList)
+        assertFalse(PushDestination.KycOnboarding.landsOnNotificationsList)
+        assertFalse(PushDestination.AccountSecurity.landsOnNotificationsList)
         assertFalse(PushDestination.BookingDetail(b1, PushAudience.Either).landsOnNotificationsList)
         assertFalse(PushDestination.IncomingRequests(b1).landsOnNotificationsList)
         assertFalse(PushDestination.ChatThread(t1).landsOnNotificationsList)

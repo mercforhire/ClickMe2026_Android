@@ -50,6 +50,6 @@
     <string name="dashboard_tool_topics">Topics</string>
     <string name="dashboard_tool_profile">Profile Settings</string>
     <string name="dashboard_tool_payouts">Payouts</string>
-    <string name="dashboard_coming_soon">%1$s is coming soon</string>
+    <string name="dashboard_open_payouts">Open payouts</string>
     <string name="dashboard_payout_setup_error_title">Couldn\'t open payout setup</string>
 </resources>

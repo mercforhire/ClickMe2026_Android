@@ -47,18 +47,9 @@ sealed interface PushDestination {
     data object NotificationsList : PushDestination
 }
 
-/**
- * True when the tap opens the notifications list: the list itself, plus the destinations whose screens do not exist
- * yet.
- */
+/** True only for the notifications list itself; every other destination opens its own screen. */
 val PushDestination.landsOnNotificationsList: Boolean
-    get() =
-        this is PushDestination.NotificationsList ||
-            // PHASE-14: Payouts, KycOnboarding and AccountSecurity open the notifications list until Phase 14 adds
-            // those screens (D-10).
-            this is PushDestination.Payouts ||
-            this is PushDestination.KycOnboarding ||
-            this is PushDestination.AccountSecurity
+    get() = this is PushDestination.NotificationsList
 
 /**
  * Translates a [PushEvent] into a [PushDestination]. Port of the iOS `PushRouter.destination(for:)`.
