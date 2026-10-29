@@ -772,7 +772,33 @@ Plans:
   3. The app draws edge-to-edge, and no content is hidden behind the system bars, display cutouts or the keyboard.
   4. A TalkBack user can log in, book a session, join a call and send a chat message.
 
-**Plans:** TBD
+**Plans:** 17 plans in 4 waves
+
+Plans:
+**Wave 1**
+- [ ] 15-01-PLAN.md — State standard: `RefreshFailedSnackbarEffect`, `ErrorState(heading, body, retryLabel)`, shared strings, D-05 tracer on My Bookings
+- [ ] 15-02-PLAN.md — Portrait lock, `contentMaxWidth()` (600 dp), cutout at the navigation root and pill, `InsetsTestSupport`
+- [ ] 15-03-PLAN.md — Reschedule decline dialog to a sheet (R7) and the D-17 insets rules in `check-design-rules.sh` with a self-test
+- [ ] 15-04-PLAN.md — `ValidatedField` name and `AsyncSaveButton` busy state, D-14 substitute decision (checkpoint), `A11yAudit`, palette contrast test
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 15-05-PLAN.md — SC-4 flow 1: Login TalkBack and IME, Set New Password code out of saved state, recovery screens
+- [ ] 15-06-PLAN.md — Signup restoration end to end, verification code out of saved state, signup width caps
+- [ ] 15-07-PLAN.md — SC-4 flow 2: Book Session / Book Now semantics, slot announcements, topic picker ErrorState, booking IME
+- [ ] 15-08-PLAN.md — SC-4 flow 3: call layer reading order and focus, pill first, no auto-join on restore, short windows
+- [ ] 15-09-PLAN.md — D-11 call resume marker and routing, resume note and D-05 on Upcoming Details and expert Summary
+- [ ] 15-10-PLAN.md — SC-4 flow 4: composer and bubble semantics, D-10 draft restoration, composer IME
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 15-11-PLAN.md — Chat D-05 (Conversations, thread), conversation rows, blocked banner, Report sheet restoration and IME
+- [ ] 15-12-PLAN.md — Client tier: Notifications and Explore D-05, client detail screens state audit, width caps
+- [ ] 15-13-PLAN.md — Expert lists D-05 (Dashboard, Bookings, Requests, Topics, Availability), Availability snackbar insets
+- [ ] 15-14-PLAN.md — Expert detail and forms: Request Decision sheets restoration, Booking Confirmed focus, Topic Editor states
+- [ ] 15-15-PLAN.md — Settings forms SavedStateHandle (profile, expert, tax, delete) without secrets, settings IME
+- [ ] 15-16-PLAN.md — Settings tier: Payouts, Activity, Help D-05, Payment Methods and Account Security audit, Farewell focus
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 15-17-PLAN.md — `15-DEVICE-CHECKLIST.md` (absorbs Phases 3-14 deferred checks), STATE superseded marks, phase gate
 **UI hint**: yes
 
 ### Phase 16: Cross-Platform QA
