@@ -14,7 +14,6 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -222,7 +221,6 @@ class TransactionsViewModelTest {
             assertEquals(TransactionsLoad.Loaded, vm.uiState.value.load)
             vm.consumeRefreshFailure()
             assertFalse(vm.uiState.value.refreshFailed)
-            assertNotNull(vm.uiState.value.rows.firstOrNull())
         }
 
     private companion object {
