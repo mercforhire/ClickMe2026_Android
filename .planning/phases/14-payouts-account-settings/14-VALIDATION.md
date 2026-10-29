@@ -3,9 +3,9 @@ phase: "14"
 slug: "payouts-account-settings"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-10-28"
 ---
 
@@ -42,22 +42,22 @@ Task IDs bound at planning (2026-10-29). Commands are `JAVA_HOME="/Applications/
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 14-01 T1-T3 | 14-01 | 1 | PROF-02..05, PAYOUT-01, PAYOUT-03, PAYOUT-04 | T-14-01..T-14-03 | DTO toString redacts password, token, TIN, dob; DELETE carries its body; strict tax body | unit (MockWebServer) | `--tests '*AccountApiTest' --tests '*ProfileHelpApiTest' --tests '*PayoutsTaxApiTest' --tests '*ExpertFinancialApiTest'` plus `:app:assembleDevDebug` | ❌ W0 | ⬜ pending |
-| 14-02 T1-T3 | 14-02 | 1 | PAYOUT-02, PROF-03, PROF-04 | T-14-04..T-14-07 | Only two exact clickme URIs act; no query or extras read; single browsable component | unit (Robolectric intent + PackageManager) | `--tests '*ConnectReturnIntentTest' --tests '*ConnectReturnManifestTest' --tests '*CallDialogsTest'` | ❌ W0 / ✅ extend | ⬜ pending |
-| 14-03 T1-T3 | 14-03 | 1 | PROF-01 | T-14-08, T-14-09 | No dead rows; self-view hides Book Session | Compose (Robolectric) + unit | `--tests '*ClientProfileHome*' --tests '*ExpertProfileHomeScreenTest' --tests '*ExpertProfileScreenTest'` | ❌ W0 / ✅ extend | ⬜ pending |
-| 14-04 T1-T2 | 14-04 | 2 | PROF-03 | T-14-10..T-14-12 | Passwords memory only, wiped on success; guard before send | unit + Compose | `--tests '*AccountSecurityViewModelTest' --tests '*AccountSecurityScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-05 T1-T3 | 14-05 | 2 | PROF-04 | T-14-13..T-14-17 | One DELETE per confirmation; token never stored; Farewell survives forced logout | unit + Compose | `--tests '*DeleteAccountViewModelTest' --tests '*DeleteAccountScreenTest' --tests '*AccountDeletionFarewellTest'` | ❌ W0 | ⬜ pending |
-| 14-06 T1-T2 | 14-06 | 2 | PROF-05 | T-14-18, T-14-19 | Support reachable in every state; no crash without a mail app | unit + Compose | `--tests '*HelpViewModelTest' --tests '*HelpScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-07 T1-T3 | 14-07 | 2 | PROF-02 | T-14-20..T-14-22 | Saved only after a 200; no email key; pending edit flushed on Back | unit (virtual time) + Compose | `--tests '*ProfileAutoSaveTest' --tests '*ClientProfileSettingsViewModelTest' --tests '*ClientProfileSettingsScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-08 T1-T3 | 14-08 | 2 | PAYOUT-01, PAYOUT-02 | T-14-23..T-14-25 | https-only Account Link; URL one-shot; no false "eligible" | unit + Compose | `--tests '*PayoutsLogicTest' --tests '*PayoutsViewModelTest' --tests '*PayoutsScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-09 T1-T3 | 14-09 | 2 | PAYOUT-03 | T-14-26, T-14-27 | Minor units only on transactions; null-net breakdown regression | unit + Compose | `--tests '*EarningsTransactionRowTest' --tests '*EarningsUnitsRegressionTest' --tests '*TransactionsViewModelTest' --tests '*TransactionsScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-10 T1-T2 | 14-10 | 3 | PAYOUT-02, PAYOUT-03, PAYOUT-04 | T-14-28..T-14-30 | Return only re-fetches; refresh re-mints only for its own link | unit + Compose | `--tests '*PayoutsViewModelTest' --tests '*PayoutsScreenTest' --tests '*PayoutsLogicTest'` | ✅ extend | ⬜ pending |
-| 14-11 T1-T2 | 14-11 | 2 | PAYOUT-04 | T-14-31..T-14-33 | TIN never stored or pre-filled; saved:false is a prompt | unit + Compose | `--tests '*ExpertTaxProfileViewModelTest' --tests '*ExpertTaxProfileScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-12 T1-T3 | 14-12 | 3 | PROF-02 | T-14-34, T-14-35 | Upload only after a confirmed crop; picker URI read once | unit + Compose | `--tests '*ProfileAvatarControllerTest' --tests '*ClientProfileSettingsViewModelTest' --tests '*ClientProfileSettingsScreenTest'` | ❌ W0 / ✅ extend | ⬜ pending |
-| 14-13 T1-T3 | 14-13 | 4 | PROF-02 | T-14-36, T-14-37 | Meeting link http(s) only, never blank | unit + Compose | `--tests '*ExpertProfileSettingsViewModelTest' --tests '*ExpertProfileSettingsScreenTest'` | ❌ W0 | ⬜ pending |
-| 14-14 T1-T2 | 14-14 | 5 | PROF-01..05, PAYOUT-01, PAYOUT-04 | T-14-38, T-14-39 | Debug UI only when the gate is on; no booking from Expert mode | unit + Compose + lint | `--tests '*SettingsEntriesTest' --tests '*HomeShellsTest' --tests '*ExpertNavigationTest'` plus `:app:lintDevDebug` | ❌ W0 / ✅ extend | ⬜ pending |
-| 14-15 T1-T2 | 14-15 | 5 | PAYOUT-01, PAYOUT-02, PROF-03 | T-14-40..T-14-42 | No switch to Expert for a client-only account from a push | unit + Compose | `--tests '*ExpertDashboardScreenTest' --tests '*PushRouterTest' --tests '*PushDestinationResolverTest' --tests '*NotificationDestinationTest' --tests '*NotificationsViewModelTest'` | ✅ extend | ⬜ pending |
-| 14-16 T1 | 14-16 | 6 | all | T-14-43 | No Phase 14 logging; R8 keeps the keys and adapters | full gate | `testDevDebugUnitTest testProdDebugUnitTest ktlintCheck assembleDevDebug assembleProdDebug :spikes:stripe:assembleDebug`, then `lintDevDebug lintProdDebug`, then `assembleProdRelease` (each with `-Dorg.gradle.jvmargs=-Xmx4g -Pkotlin.daemon.jvmargs=-Xmx3g`), design rules | n/a | ⬜ pending |
+| 14-01 T1-T3 | 14-01 | 1 | PROF-02..05, PAYOUT-01, PAYOUT-03, PAYOUT-04 | T-14-01..T-14-03 | DTO toString redacts password, token, TIN, dob; DELETE carries its body; strict tax body | unit (MockWebServer) | `--tests '*AccountApiTest' --tests '*ProfileHelpApiTest' --tests '*PayoutsTaxApiTest' --tests '*ExpertFinancialApiTest'` plus `:app:assembleDevDebug` | ❌ W0 | ✅ green |
+| 14-02 T1-T3 | 14-02 | 1 | PAYOUT-02, PROF-03, PROF-04 | T-14-04..T-14-07 | Only two exact clickme URIs act; no query or extras read; single browsable component | unit (Robolectric intent + PackageManager) | `--tests '*ConnectReturnIntentTest' --tests '*ConnectReturnManifestTest' --tests '*CallDialogsTest'` | ❌ W0 / ✅ extend | ✅ green |
+| 14-03 T1-T3 | 14-03 | 1 | PROF-01 | T-14-08, T-14-09 | No dead rows; self-view hides Book Session | Compose (Robolectric) + unit | `--tests '*ClientProfileHome*' --tests '*ExpertProfileHomeScreenTest' --tests '*ExpertProfileScreenTest'` | ❌ W0 / ✅ extend | ✅ green |
+| 14-04 T1-T2 | 14-04 | 2 | PROF-03 | T-14-10..T-14-12 | Passwords memory only, wiped on success; guard before send | unit + Compose | `--tests '*AccountSecurityViewModelTest' --tests '*AccountSecurityScreenTest'` | ❌ W0 | ✅ green |
+| 14-05 T1-T3 | 14-05 | 2 | PROF-04 | T-14-13..T-14-17 | One DELETE per confirmation; token never stored; Farewell survives forced logout | unit + Compose | `--tests '*DeleteAccountViewModelTest' --tests '*DeleteAccountScreenTest' --tests '*AccountDeletionFarewellTest'` | ❌ W0 | ✅ green |
+| 14-06 T1-T2 | 14-06 | 2 | PROF-05 | T-14-18, T-14-19 | Support reachable in every state; no crash without a mail app | unit + Compose | `--tests '*HelpViewModelTest' --tests '*HelpScreenTest'` | ❌ W0 | ✅ green |
+| 14-07 T1-T3 | 14-07 | 2 | PROF-02 | T-14-20..T-14-22 | Saved only after a 200; no email key; pending edit flushed on Back | unit (virtual time) + Compose | `--tests '*ProfileAutoSaveTest' --tests '*ClientProfileSettingsViewModelTest' --tests '*ClientProfileSettingsScreenTest'` | ❌ W0 | ✅ green |
+| 14-08 T1-T3 | 14-08 | 2 | PAYOUT-01, PAYOUT-02 | T-14-23..T-14-25 | https-only Account Link; URL one-shot; no false "eligible" | unit + Compose | `--tests '*PayoutsLogicTest' --tests '*PayoutsViewModelTest' --tests '*PayoutsScreenTest'` | ❌ W0 | ✅ green |
+| 14-09 T1-T3 | 14-09 | 2 | PAYOUT-03 | T-14-26, T-14-27 | Minor units only on transactions; null-net breakdown regression | unit + Compose | `--tests '*EarningsTransactionRowTest' --tests '*EarningsUnitsRegressionTest' --tests '*TransactionsViewModelTest' --tests '*TransactionsScreenTest'` | ❌ W0 | ✅ green |
+| 14-10 T1-T2 | 14-10 | 3 | PAYOUT-02, PAYOUT-03, PAYOUT-04 | T-14-28..T-14-30 | Return only re-fetches; refresh re-mints only for its own link | unit + Compose | `--tests '*PayoutsViewModelTest' --tests '*PayoutsScreenTest' --tests '*PayoutsLogicTest'` | ✅ extend | ✅ green |
+| 14-11 T1-T2 | 14-11 | 2 | PAYOUT-04 | T-14-31..T-14-33 | TIN never stored or pre-filled; saved:false is a prompt | unit + Compose | `--tests '*ExpertTaxProfileViewModelTest' --tests '*ExpertTaxProfileScreenTest'` | ❌ W0 | ✅ green |
+| 14-12 T1-T3 | 14-12 | 3 | PROF-02 | T-14-34, T-14-35 | Upload only after a confirmed crop; picker URI read once | unit + Compose | `--tests '*ProfileAvatarControllerTest' --tests '*ClientProfileSettingsViewModelTest' --tests '*ClientProfileSettingsScreenTest'` | ❌ W0 / ✅ extend | ✅ green |
+| 14-13 T1-T3 | 14-13 | 4 | PROF-02 | T-14-36, T-14-37 | Meeting link http(s) only, never blank | unit + Compose | `--tests '*ExpertProfileSettingsViewModelTest' --tests '*ExpertProfileSettingsScreenTest'` | ❌ W0 | ✅ green |
+| 14-14 T1-T2 | 14-14 | 5 | PROF-01..05, PAYOUT-01, PAYOUT-04 | T-14-38, T-14-39 | Debug UI only when the gate is on; no booking from Expert mode | unit + Compose + lint | `--tests '*SettingsEntriesTest' --tests '*HomeShellsTest' --tests '*ExpertNavigationTest'` plus `:app:lintDevDebug` | ❌ W0 / ✅ extend | ✅ green |
+| 14-15 T1-T2 | 14-15 | 5 | PAYOUT-01, PAYOUT-02, PROF-03 | T-14-40..T-14-42 | No switch to Expert for a client-only account from a push | unit + Compose | `--tests '*ExpertDashboardScreenTest' --tests '*PushRouterTest' --tests '*PushDestinationResolverTest' --tests '*NotificationDestinationTest' --tests '*NotificationsViewModelTest'` | ✅ extend | ✅ green |
+| 14-16 T1 | 14-16 | 6 | all | T-14-43 | No Phase 14 logging; R8 keeps the keys and adapters | full gate | `testDevDebugUnitTest testProdDebugUnitTest ktlintCheck assembleDevDebug assembleProdDebug :spikes:stripe:assembleDebug`, then `lintDevDebug lintProdDebug`, then `assembleProdRelease` (each with `-Dorg.gradle.jvmargs=-Xmx4g -Pkotlin.daemon.jvmargs=-Xmx3g`), design rules | n/a | ✅ green (3969 tests per flavor, lint, R8 and design rules green; R8 `packageScope` excludes the app package, so no keep rules were needed) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -65,9 +65,9 @@ Task IDs bound at planning (2026-10-29). Commands are `JAVA_HOME="/Applications/
 
 ## Wave 0 Requirements
 
-- [ ] `app/src/test/.../testing/FakeClickMeApi.kt` — nine new endpoint handlers (14-01)
-- [ ] `app/src/test/.../testing/SettingsFixtures.kt` — payload builders for the Phase 14 endpoints (14-01)
-- [ ] Wire tests `AccountApiTest`, `ProfileHelpApiTest`, `PayoutsTaxApiTest` (14-01), including the DELETE-with-body request check (RESEARCH A3)
+- [x] `app/src/test/.../testing/FakeClickMeApi.kt` — nine new endpoint handlers (14-01)
+- [x] `app/src/test/.../testing/SettingsFixtures.kt` — payload builders for the Phase 14 endpoints (14-01)
+- [x] Wire tests `AccountApiTest`, `ProfileHelpApiTest`, `PayoutsTaxApiTest` (14-01), including the DELETE-with-body request check (RESEARCH A3)
 - Framework install: none (JUnit, Robolectric, Compose ui-test and MockWebServer are already on the test classpath).
 
 ---
@@ -86,11 +86,11 @@ Task IDs bound at planning (2026-10-29). Commands are `JAVA_HOME="/Applications/
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 14s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency: one filtered Gradle run per task (the 14s target in the template does not apply to Gradle; see Sampling Rate)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** {pending / approved YYYY-MM-DD}
+**Approval:** approved 2026-10-29 (14-16 gate: 3969 tests per flavor, 0 failures; ktlint, lint, R8 assembleProdRelease and design rules green)

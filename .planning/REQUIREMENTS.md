@@ -166,7 +166,7 @@ From the PRD's Write Review (Week 6).
 From the PRD's Payouts, minimal (Week 7; EXPERT-EARNINGS-BREAKDOWN.md, EXPERT-EARNINGS-TRANSACTIONS.md).
 
 - [ ] **PAYOUT-01**: Expert can see their payout balance and Stripe Connect status.
-- [ ] **PAYOUT-02**: Expert can complete Stripe Connect onboarding in a Chrome Custom Tab opened on the hosted Account Link. The `clickme://connect/return` deep link re-fetches the status, and `clickme://connect/refresh` calls `refreshConnectLink`.
+- [ ] **PAYOUT-02**: Expert can complete Stripe Connect onboarding in a Chrome Custom Tab opened on the hosted Account Link. The `clickme://connect/return` deep link re-fetches the status, and `clickme://connect/refresh` calls `refreshConnectLink`. (Phase 14: the Custom Tab return is device-unverified; ON_RESUME reload is the backstop.)
 - [ ] **PAYOUT-03**: Expert sees a short recent-earnings list that headlines `net_amount`. Because `net_amount` can be null, `fee_source` is checked first. Transactions are read as cents and `earnings_breakdown` as dollars.
 - [ ] **PAYOUT-04**: Expert can view and save their Tax & Payout Info (legal name, address, date of birth, optional TIN and financial account) from the expert hub and from Payouts. A `saved: false, tin_required` answer asks for the TIN instead of failing, and the TIN is never stored or shown back. (Added at Phase 14 planning by user decision, CONTEXT D-08.)
 
@@ -177,7 +177,7 @@ From the PRD's Profile hubs and settings (Week 7).
 - [ ] **PROF-01**: User can open the client and expert profile hubs.
 - [ ] **PROF-02**: User can edit their profile and change their avatar with the system photo picker.
 - [ ] **PROF-03**: User can change their password from Account Security.
-- [ ] **PROF-04**: User can delete their account from inside the app. This is a Play Store requirement and is never cut.
+- [ ] **PROF-04**: User can delete their account from inside the app. This is a Play Store requirement and is never cut. (Phase 14: in-app two-form flow with a root Farewell; the Play web deletion link is a Phase 17 item.)
 - [ ] **PROF-05**: User can open Help/FAQ, which includes a `mailto:` support contact link.
 
 ### Polish
