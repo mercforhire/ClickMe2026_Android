@@ -1,0 +1,1 @@
+No external API integration: the task gates the existing paid booking flow on the client, adds one route for an existing push channel, and adds local dev build config and a runbook. The detector fired on the env var name STRIPE_CONNECT_WEBHOOK_SECRET in the runbook instructions. No new API, SDK, endpoint or webhook is integrated.
