@@ -102,6 +102,7 @@ class ClientProfileSettingsViewModel
                 baseline = EmptySnapshot,
                 persist = { old, new -> persist(old, new) },
                 onFailure = ::onSaveFailed,
+                sendsNothing = { old, new -> buildProfilePatch(old, new) == null },
             )
 
         private var seeded = false

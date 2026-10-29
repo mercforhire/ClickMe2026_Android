@@ -28,7 +28,8 @@ const val SAVED_HOLD_MS = 2_000L
  * It saves a snapshot of type [S] by calling [persist] with the last successfully saved snapshot and the newest one.
  * Rules:
  * - Every [onEdited] restarts a [AUTO_SAVE_DEBOUNCE_MS] timer; a burst of edits gives one save of the final value.
- * - A snapshot equal to the saved baseline is never persisted.
+ * - A snapshot equal to the saved baseline is never persisted, nor is one that [sendsNothing] says would produce no
+ *   request (for example a whitespace-only edit): it becomes the baseline silently, with no Saving/Saved flash.
  * - The baseline moves only after [persist] returns, so a failure keeps it and [retry] re-sends the newest snapshot.
  * - Saves are serialized by a mutex: two PATCHes never overlap, and an edit that lands mid-save is saved after it.
  * - [ApiException] sets [AutoSaveStatus.Error] and calls [onFailure]; cancellation always propagates.
@@ -39,6 +40,7 @@ class AutoSaver<S : Any>(
     baseline: S,
     private val persist: suspend (old: S, new: S) -> Unit,
     private val onFailure: (ApiException) -> Unit,
+    private val sendsNothing: (old: S, new: S) -> Boolean = { _, _ -> false },
 ) {
     private val _status = MutableStateFlow(AutoSaveStatus.Idle)
     val status: StateFlow<AutoSaveStatus> = _status.asStateFlow()
@@ -97,6 +99,11 @@ class AutoSaver<S : Any>(
             val old = saved
             val new = latest
             if (new == old) {
+                if (_status.value == AutoSaveStatus.Error) _status.value = AutoSaveStatus.Idle
+                return
+            }
+            if (sendsNothing(old, new)) {
+                saved = new
                 if (_status.value == AutoSaveStatus.Error) _status.value = AutoSaveStatus.Idle
                 return
             }

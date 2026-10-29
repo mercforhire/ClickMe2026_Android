@@ -123,6 +123,21 @@ class ClientProfileSettingsViewModelTest {
         }
 
     @Test
+    fun whitespaceOnlyEditSendsNothingAndShowsNoSavedFlash() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "Ana ")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
+        }
+
+    @Test
     fun burstOfEditsSendsOnePatchWithTheFinalValue() =
         runTest(main.testDispatcher) {
             val h = signedIn()

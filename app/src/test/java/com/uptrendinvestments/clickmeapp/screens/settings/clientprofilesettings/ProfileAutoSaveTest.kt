@@ -38,6 +38,7 @@ class ProfileAutoSaveTest {
     private class Harness(
         test: TestScope,
         val persistDelayMs: Long = 0L,
+        sendsNothing: (String, String) -> Boolean = { _, _ -> false },
     ) {
         val mainJob = Job()
         val mainScope = CoroutineScope(mainJob + StandardTestDispatcher(test.testScheduler))
@@ -64,6 +65,7 @@ class ProfileAutoSaveTest {
                     }
                 },
                 onFailure = { failures += it },
+                sendsNothing = sendsNothing,
             )
     }
 
@@ -111,6 +113,25 @@ class ProfileAutoSaveTest {
             runCurrent()
             assertTrue(h.calls.isEmpty())
             assertEquals(AutoSaveStatus.Idle, h.saver.status.value)
+            h.mainJob.cancel()
+        }
+
+    @Test
+    fun editThatSendsNothingTakesTheBaselineWithoutASaveFlash() =
+        runTest {
+            val h = Harness(this, sendsNothing = { old, new -> old.trim() == new.trim() })
+            h.saver.onEdited("a ")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertTrue(h.calls.isEmpty())
+            assertEquals(AutoSaveStatus.Idle, h.saver.status.value)
+
+            // The baseline moved, so the next real change is diffed against the whitespace edit.
+            h.saver.onEdited("b")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+            assertEquals(listOf("a " to "b"), h.calls)
             h.mainJob.cancel()
         }
 
