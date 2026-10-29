@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -16,9 +17,12 @@ import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_BALANCE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_CONTINUE_TAG
@@ -28,8 +32,10 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.connectStatus
+import com.uptrendinvestments.clickmeapp.testing.earningsTransaction
 import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.testing.payoutSummary
+import com.uptrendinvestments.clickmeapp.testing.transactionsPage
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.Money
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,8 +43,10 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -71,6 +79,8 @@ class PayoutsScreenTest {
         summary: PayoutSummaryData? = payoutSummary(),
         bookings: List<ExpertBookingItem> = emptyList(),
         hardFail: Boolean = false,
+        rows: List<EarningsTransactionItem> = emptyList(),
+        hasMore: Boolean = false,
     ): Fixture {
         val h = SignupTestHarness(this, tmp, main.testDispatcher)
         h.signIn()
@@ -83,15 +93,38 @@ class PayoutsScreenTest {
             summary ?: throw h.api.httpError(400, """{"status":"error","code":"NO_PAYOUT_METHOD","message":"Set up"}""")
         }
         h.api.expertBookingsHandler = { ExpertBookingsPayload(bookings = bookings) }
-        val vm = PayoutsViewModel(ExpertFinancialRepository(h.api), ExpertBookingsRepository(h.api), guard)
+        h.api.earningsTransactionsHandler = { _, _ -> transactionsPage(rows, hasMore = hasMore) }
+        val vm =
+            PayoutsViewModel(
+                ExpertFinancialRepository(h.api),
+                ExpertBookingsRepository(h.api),
+                guard,
+                ExpertLaunchRequest(),
+            )
         return Fixture(vm, h.api)
     }
 
-    private fun setContent(f: Fixture) {
+    private val activityOrigins = mutableListOf<SettingsOrigin>()
+    private val taxOrigins = mutableListOf<SettingsOrigin>()
+
+    private fun setContent(
+        f: Fixture,
+        origin: SettingsOrigin = SettingsOrigin.Dashboard,
+    ) {
         rule.setContent {
-            ClickMeTheme { PayoutsScreen(onBack = {}, viewModel = f.vm) }
+            ClickMeTheme {
+                PayoutsScreen(
+                    origin = origin,
+                    onBack = {},
+                    onOpenActivity = { activityOrigins += it },
+                    onOpenTaxProfile = { taxOrigins += it },
+                    viewModel = f.vm,
+                )
+            }
         }
     }
+
+    private fun ledger(count: Int) = (1..count).map { earningsTransaction("e$it") }
 
     @Test
     fun heroShowsMinorUnitAmounts() =
@@ -240,5 +273,134 @@ class PayoutsScreenTest {
             rule.onNodeWithText("Couldn't load payouts").assertExists()
             rule.onNodeWithText("Down").assertExists()
             rule.onNodeWithText("Retry").assertExists()
+        }
+
+    @Test
+    fun recentActivityPreview() =
+        runTest(main.testDispatcher) {
+            val f = fixture(rows = ledger(7))
+            setContent(f, SettingsOrigin.Dashboard)
+
+            rule.onNodeWithText("Recent activity").performScrollTo().assertExists()
+            rule.onAllNodesWithTag(EARNINGS_ROW_TAG).assertCountEquals(5)
+            rule.onNodeWithTag(PAYOUTS_SEE_ALL_TAG).performScrollTo().assertExists()
+            rule.onNodeWithText("See all activity").assertExists()
+            rule.onNodeWithTag(PAYOUTS_SEE_ALL_TAG).performClick()
+
+            assertEquals(listOf(SettingsOrigin.Dashboard), activityOrigins)
+        }
+
+    @Test
+    fun seeAllHiddenAtExactlyFiveRows() =
+        runTest(main.testDispatcher) {
+            val five = fixture(rows = ledger(5))
+            setContent(five)
+            rule.onNodeWithText("Recent activity").performScrollTo().assertExists()
+            rule.onAllNodesWithTag(EARNINGS_ROW_TAG).assertCountEquals(5)
+            rule.onAllNodesWithTag(PAYOUTS_SEE_ALL_TAG).assertCountEquals(0)
+        }
+
+    @Test
+    fun seeAllShownWhenServerHasMore() =
+        runTest(main.testDispatcher) {
+            val f = fixture(rows = ledger(2), hasMore = true)
+            setContent(f)
+            rule.onNodeWithTag(PAYOUTS_SEE_ALL_TAG).performScrollTo().assertExists()
+        }
+
+    @Test
+    fun noRowsNoSection() =
+        runTest(main.testDispatcher) {
+            val f = fixture()
+            setContent(f)
+            rule.onNodeWithText("Available balance").assertExists()
+            rule.onAllNodesWithText("Recent activity").assertCountEquals(0)
+            rule.onAllNodesWithTag(PAYOUTS_SEE_ALL_TAG).assertCountEquals(0)
+        }
+
+    @Test
+    fun taxRowInSetupState() =
+        runTest(main.testDispatcher) {
+            val setup = fixture(status = connectStatus(chargesEnabled = false, currentlyDue = listOf("x")))
+            setContent(setup, SettingsOrigin.Profile)
+            rule.onNodeWithTag(PAYOUTS_TAX_ROW_TAG).performScrollTo().assertExists()
+            rule.onNodeWithText("Tax & Payout Info").assertExists()
+            rule.onNodeWithTag(PAYOUTS_TAX_ROW_TAG).performClick()
+            assertEquals(listOf(SettingsOrigin.Profile), taxOrigins)
+        }
+
+    @Test
+    fun taxRowOnHold() =
+        runTest(main.testDispatcher) {
+            val empty = payoutSummary(available = 0L, pending = 0L)
+            val hold = fixture(summary = empty, bookings = listOf(expertBookingItem("b1")))
+            setContent(hold)
+            rule.onNodeWithText("Payment on hold").assertExists()
+            rule.onNodeWithTag(PAYOUTS_TAX_ROW_TAG).performScrollTo().assertExists()
+        }
+
+    @Test
+    fun taxRowOnReady() =
+        runTest(main.testDispatcher) {
+            val ready = fixture(summary = payoutSummary(available = 0L, pending = 0L))
+            setContent(ready)
+            rule.onNodeWithText("You're ready to receive payouts").assertExists()
+            rule.onNodeWithTag(PAYOUTS_TAX_ROW_TAG).performScrollTo().assertExists()
+        }
+
+    @Test
+    fun taxRowOnLoadedTapsWithOrigin() =
+        runTest(main.testDispatcher) {
+            val f = fixture(rows = ledger(2))
+            setContent(f, SettingsOrigin.Dashboard)
+            rule.onNodeWithTag(PAYOUTS_TAX_ROW_TAG).performScrollTo().performClick()
+            assertEquals(listOf(SettingsOrigin.Dashboard), taxOrigins)
+            assertTrue(activityOrigins.isEmpty())
+        }
+
+    @Test
+    fun noTaxRowInFailed() =
+        runTest(main.testDispatcher) {
+            val failed = fixture(hardFail = true)
+            setContent(failed)
+            rule.onNodeWithText("Couldn't load payouts").assertExists()
+            rule.onAllNodesWithTag(PAYOUTS_TAX_ROW_TAG).assertCountEquals(0)
+        }
+
+    @Test
+    fun noTaxRowInLoading() {
+        rule.setContent {
+            ClickMeTheme {
+                PayoutsScreenContent(
+                    state = PayoutsUiState(),
+                    origin = SettingsOrigin.Profile,
+                    onBack = {},
+                    onRetry = {},
+                    onRefresh = {},
+                    onRefreshFailureShown = {},
+                    onStartPayoutSetup = {},
+                    onOnboardingUrl = {},
+                    onDismissOnboardingError = {},
+                    onOpenActivity = {},
+                    onOpenTaxProfile = {},
+                )
+            }
+        }
+        rule.onAllNodesWithTag(PAYOUTS_TAX_ROW_TAG).assertCountEquals(0)
+        assertFalse(taxOrigins.isNotEmpty())
+    }
+
+    @Test
+    fun setupStateHasNoActivitySection() =
+        runTest(main.testDispatcher) {
+            val f =
+                fixture(
+                    status = connectStatus(chargesEnabled = false, currentlyDue = listOf("x")),
+                    rows = ledger(3),
+                )
+            setContent(f)
+            rule.onNodeWithText("Complete payout setup").assertExists()
+            rule.onAllNodesWithText("Recent activity").assertCountEquals(0)
+            rule.onAllNodesWithTag(EARNINGS_ROW_TAG).assertCountEquals(0)
         }
 }

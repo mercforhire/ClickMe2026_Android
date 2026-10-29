@@ -34,6 +34,11 @@
     <string name="payouts_ready_title">You\'re ready to receive payouts</string>
     <string name="payouts_ready_body">Once you complete a paid session, your earnings will appear here and pay out on the schedule below.</string>
 
+    <!-- Recent activity and tax entry -->
+    <string name="payouts_recent_activity">Recent activity</string>
+    <string name="payouts_see_all">See all activity</string>
+    <string name="payouts_tax_row">Tax &amp; Payout Info</string>
+
     <!-- Errors -->
     <string name="payouts_error_title">Couldn\'t load payouts</string>
     <string name="payouts_setup_error_title">Couldn\'t open payout setup</string>

@@ -6,9 +6,13 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ConnectReturn
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.PayoutOnboarding
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.isAllowedOnboardingUrl
@@ -24,6 +28,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,7 +47,9 @@ sealed interface PayoutsLoad {
 /**
  * State of the Payouts screen. [content] is null until a load has answered. [isRefreshing] drives the pull indicator
  * and [refreshFailed] the one-shot snackbar. [onboardingUrl] is the single-use Stripe link, held in memory only until
- * the screen opens it; [onboardingError] is the error dialog for a failed mint.
+ * the screen opens it; [onboardingError] is the error dialog for a failed mint. [recentRows] is the first ledger page
+ * for the Recent activity preview and [hasMoreActivity] says the server has more rows; both stay empty when the
+ * ledger fetch fails, which never fails the screen.
  */
 data class PayoutsUiState(
     val load: PayoutsLoad = PayoutsLoad.Loading,
@@ -54,6 +61,8 @@ data class PayoutsUiState(
     val isMintingLink: Boolean = false,
     val onboardingUrl: String? = null,
     val onboardingError: FieldError? = null,
+    val recentRows: List<EarningsTransactionItem> = emptyList(),
+    val hasMoreActivity: Boolean = false,
 )
 
 /**
@@ -74,6 +83,7 @@ class PayoutsViewModel
         private val financial: ExpertFinancialRepository,
         private val bookings: ExpertBookingsRepository,
         private val callGuard: CallGuard,
+        private val launchRequest: ExpertLaunchRequest,
     ) : ViewModel() {
         private enum class LoadMode {
             /** Shows the skeleton and a failure message. */
@@ -92,6 +102,7 @@ class PayoutsViewModel
             val summaryWas400: Boolean,
             val summaryError: ApiException?,
             val heldCount: Int,
+            val ledger: EarningsTransactionsData?,
         )
 
         private val _uiState = MutableStateFlow(PayoutsUiState())
@@ -100,12 +111,33 @@ class PayoutsViewModel
         private var loadJob: Job? = null
         private var loadIsCurrent = false
 
-        /** This screen handed a link to the browser in this session; the Connect return handling reads it. */
-        @Suppress("unused")
+        /** This screen handed a link to the browser in this session; only then may a refresh deep link re-mint one. */
         private var openedOnboarding = false
 
         init {
+            // A return posted before this screen existed is covered by the fresh load below and must never open a
+            // tab by itself (T-14-28).
+            launchRequest.connectReturn.consume()
             startLoad(LoadMode.Loud)
+            // A return posted while this screen lives (the Custom Tab closed) is consumed once.
+            viewModelScope.launch {
+                launchRequest.connectReturn.pending.filterNotNull().collect {
+                    launchRequest.connectReturn.consume()?.let(::onConnectReturn)
+                }
+            }
+        }
+
+        /**
+         * The Stripe return deep link (D-09). It only triggers calls: [ConnectReturn.Done] re-fetches the status
+         * (never assuming success, T-14-29) and [ConnectReturn.LinkExpired] re-mints a link only when this screen
+         * opened one, otherwise it just reloads (T-14-28).
+         */
+        private fun onConnectReturn(value: ConnectReturn) {
+            val reload = if (_uiState.value.load is PayoutsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud
+            when (value) {
+                ConnectReturn.Done -> startLoad(reload)
+                ConnectReturn.LinkExpired -> if (openedOnboarding) reopenOnboarding() else startLoad(reload)
+            }
         }
 
         fun retry() = startLoad(LoadMode.Loud)
@@ -137,15 +169,21 @@ class PayoutsViewModel
          * a host), is opened once by the screen and is never logged, saved or cached (T-11-44, T-14-23, T-14-24).
          */
         fun startPayoutSetup() {
+            val content = _uiState.value.content as? PayoutsContent.SetupRequired ?: return
+            mintLink(refresh = content.useRefreshLink)
+        }
+
+        /** The onboarding link expired while the user was in the browser: mint a refresh link and reopen once. */
+        private fun reopenOnboarding() = mintLink(refresh = true)
+
+        private fun mintLink(refresh: Boolean) {
             val current = _uiState.value
-            val content = current.content as? PayoutsContent.SetupRequired
-            val busy = current.isMintingLink || current.onboardingUrl != null
-            if (busy || content == null) return
+            if (current.isMintingLink || current.onboardingUrl != null) return
             if (!callGuard.attempt(RestrictedAction.SetUpPayouts)) return
             _uiState.update { it.copy(isMintingLink = true) }
             viewModelScope.launch {
                 try {
-                    val url = financial.onboardingLink(refresh = content.useRefreshLink)
+                    val url = financial.onboardingLink(refresh = refresh)
                     _uiState.update {
                         if (isAllowedOnboardingUrl(url)) {
                             openedOnboarding = true
@@ -210,6 +248,8 @@ class PayoutsViewModel
                         summary = snapshot.summary,
                         onboarding = onboarding,
                         isRefreshing = false,
+                        recentRows = snapshot.ledger?.transactions ?: keptRows(state, mode),
+                        hasMoreActivity = hasMore(snapshot.ledger, state, mode),
                     )
                 mode == LoadMode.Loud ->
                     state.copy(
@@ -219,6 +259,22 @@ class PayoutsViewModel
                 mode == LoadMode.Pull -> state.copy(refreshFailed = true, isRefreshing = false)
                 else -> state.copy(isRefreshing = false)
             }
+        }
+
+        /** A reload that lost only the ledger keeps the rows already shown; a first load shows none. */
+        private fun keptRows(
+            state: PayoutsUiState,
+            mode: LoadMode,
+        ) = if (mode == LoadMode.Loud) emptyList() else state.recentRows
+
+        private fun hasMore(
+            ledger: EarningsTransactionsData?,
+            state: PayoutsUiState,
+            mode: LoadMode,
+        ) = if (ledger != null) {
+            ledger.pagination?.hasMoreOrDerived == true
+        } else {
+            mode != LoadMode.Loud && state.hasMoreActivity
         }
 
         private suspend fun fetch(): Snapshot =
@@ -247,6 +303,14 @@ class PayoutsViewModel
                             0
                         }
                     }
+                val ledger =
+                    async {
+                        try {
+                            financial.transactions(page = 1, limit = TRANSACTIONS_PAGE_SIZE)
+                        } catch (_: ApiException) {
+                            null
+                        }
+                    }
                 val (summaryData, summaryError) = summary.await()
                 Snapshot(
                     status = status.await(),
@@ -254,6 +318,7 @@ class PayoutsViewModel
                     summaryWas400 = (summaryError as? ApiException.Http)?.status == HTTP_BAD_REQUEST,
                     summaryError = summaryError,
                     heldCount = held.await(),
+                    ledger = ledger.await(),
                 )
             }
 

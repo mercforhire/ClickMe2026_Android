@@ -19,7 +19,8 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 
 /**
  * Section title row with an optional text action (underlined, onSurface: text links are not accent) at least 48 dp
- * tall. The action renders only when both [actionLabel] and [onAction] are provided.
+ * tall. The action renders only when both [actionLabel] and [onAction] are provided. [actionModifier] is applied to
+ * the action button (for example a test tag).
  */
 @Composable
 fun SectionHeader(
@@ -27,6 +28,7 @@ fun SectionHeader(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    actionModifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -39,7 +41,7 @@ fun SectionHeader(
             color = MaterialTheme.colorScheme.onSurface,
         )
         if (actionLabel != null && onAction != null) {
-            TextButton(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp)) {
+            TextButton(onClick = onAction, modifier = actionModifier.heightIn(min = 48.dp)) {
                 Text(
                     text = actionLabel,
                     style = MaterialTheme.typography.labelLarge,

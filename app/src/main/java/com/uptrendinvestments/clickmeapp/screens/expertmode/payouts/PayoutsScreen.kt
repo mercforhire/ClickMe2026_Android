@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -39,9 +41,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.ProfileMenuRow
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
+import com.uptrendinvestments.clickmeapp.components.SectionHeader
 import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutBalanceHero
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutEligiblePill
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutMetaCard
@@ -55,13 +61,24 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
 
+/** Test tag of the "See all activity" action in the Recent activity header. */
+const val PAYOUTS_SEE_ALL_TAG = "payouts_see_all"
+
+/** Test tag of the Tax & Payout Info row. */
+const val PAYOUTS_TAX_ROW_TAG = "payouts_tax_row"
+
 /**
- * Hilt-aware expert Payouts screen (PAYOUT-01). [onBack] pops it. The view model reloads quietly whenever the screen
- * is shown again, which also picks up a Stripe setup finished in the browser.
+ * Hilt-aware expert Payouts screen (PAYOUT-01..03). [onBack] pops it. [origin] is where the user came from and is
+ * handed back to [onOpenActivity] and [onOpenTaxProfile] so the screens they open can return to the same shell. The
+ * view model reloads quietly whenever the screen is shown again, which also picks up a Stripe setup finished in the
+ * browser.
  */
 @Composable
 fun PayoutsScreen(
+    origin: SettingsOrigin,
     onBack: () -> Unit,
+    onOpenActivity: (SettingsOrigin) -> Unit,
+    onOpenTaxProfile: (SettingsOrigin) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PayoutsViewModel = hiltViewModel(),
 ) {
@@ -74,6 +91,7 @@ fun PayoutsScreen(
     LaunchedEffect(Unit) { viewModel.onScreenShown() }
     PayoutsScreenContent(
         state = state,
+        origin = origin,
         onBack = onBack,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
@@ -81,6 +99,8 @@ fun PayoutsScreen(
         onStartPayoutSetup = viewModel::startPayoutSetup,
         onOnboardingUrl = viewModel::consumeOnboardingUrl,
         onDismissOnboardingError = viewModel::dismissOnboardingError,
+        onOpenActivity = onOpenActivity,
+        onOpenTaxProfile = onOpenTaxProfile,
         modifier = modifier,
     )
 }
@@ -90,6 +110,7 @@ fun PayoutsScreen(
 @Composable
 fun PayoutsScreenContent(
     state: PayoutsUiState,
+    origin: SettingsOrigin,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
@@ -97,6 +118,8 @@ fun PayoutsScreenContent(
     onStartPayoutSetup: () -> Unit,
     onOnboardingUrl: () -> Unit,
     onDismissOnboardingError: () -> Unit,
+    onOpenActivity: (SettingsOrigin) -> Unit,
+    onOpenTaxProfile: (SettingsOrigin) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -176,10 +199,10 @@ fun PayoutsScreenContent(
                     ) {
                         SectionAppear {
                             PayoutsBody(
-                                content = state.content,
-                                summary = state.summary,
-                                isMinting = state.isMintingLink,
+                                state = state,
                                 onStartPayoutSetup = onStartPayoutSetup,
+                                onOpenActivity = { onOpenActivity(origin) },
+                                onOpenTaxProfile = { onOpenTaxProfile(origin) },
                             )
                         }
                         Spacer(Modifier.fillMaxWidth().height(Spacing.xl))
@@ -190,18 +213,41 @@ fun PayoutsScreenContent(
 }
 
 /**
- * The cards for [content]: setup shows only the setup card; hold and ready show their status card then the meta card;
- * a balance shows the hero, the Eligible pill when applicable, the meta card and the schedule note.
+ * The cards for the current content: setup shows only the setup card; hold and ready show their status card then the
+ * meta card; a balance shows the hero, the Eligible pill when applicable, the meta card and the schedule note. Recent
+ * activity follows (never in setup) and the Tax & Payout Info row is always last.
  */
 @Composable
 private fun PayoutsBody(
-    content: PayoutsContent?,
+    state: PayoutsUiState,
+    onStartPayoutSetup: () -> Unit,
+    onOpenActivity: () -> Unit,
+    onOpenTaxProfile: () -> Unit,
+) {
+    val content = state.content
+    if (content == null) return
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+        PayoutsCards(content, state.summary, state.isMintingLink, onStartPayoutSetup)
+        if (content !is PayoutsContent.SetupRequired) {
+            RecentActivity(state.recentRows, state.hasMoreActivity, onOpenActivity)
+        }
+        ProfileMenuRow(
+            title = stringResource(R.string.payouts_tax_row),
+            icon = Icons.Outlined.Description,
+            onClick = onOpenTaxProfile,
+            modifier = Modifier.testTag(PAYOUTS_TAX_ROW_TAG),
+        )
+    }
+}
+
+@Composable
+private fun PayoutsCards(
+    content: PayoutsContent,
     summary: PayoutSummaryData?,
     isMinting: Boolean,
     onStartPayoutSetup: () -> Unit,
 ) {
     when (content) {
-        null -> Unit
         is PayoutsContent.SetupRequired ->
             PayoutStatusCard(PayoutStatusVariant.Setup, onSetUp = onStartPayoutSetup, isMinting = isMinting)
         is PayoutsContent.OnHold ->
@@ -222,6 +268,26 @@ private fun PayoutsBody(
                     color = MaterialTheme.extras.onSurfaceMuted,
                 )
             }
+    }
+}
+
+/** The latest earnings (PAYOUT-03): [previewRows] as the shared ledger row, or nothing when there are no rows. */
+@Composable
+private fun RecentActivity(
+    rows: List<EarningsTransactionItem>,
+    hasMore: Boolean,
+    onSeeAll: () -> Unit,
+) {
+    if (rows.isEmpty()) return
+    val seeAll = shouldShowSeeAll(rows, hasMore)
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionHeader(
+            title = stringResource(R.string.payouts_recent_activity),
+            actionLabel = if (seeAll) stringResource(R.string.payouts_see_all) else null,
+            onAction = if (seeAll) onSeeAll else null,
+            actionModifier = Modifier.testTag(PAYOUTS_SEE_ALL_TAG),
+        )
+        previewRows(rows).forEach { EarningsTransactionRow(item = it) }
     }
 }
 
