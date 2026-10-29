@@ -61,13 +61,10 @@ class HelpViewModel
             retry()
         }
 
-        fun refresh() {}
-
-        fun consumeRefreshFailure() {}
-
+        /** First load and Retry: the screen shows the skeleton, and a failure the error state. */
         fun retry() {
             loadJob?.cancel()
-            _uiState.update { it.copy(load = HelpLoad.Loading) }
+            _uiState.update { it.copy(load = HelpLoad.Loading, isRefreshing = false) }
             loadJob =
                 viewModelScope.launch {
                     try {
@@ -77,5 +74,31 @@ class HelpViewModel
                         _uiState.update { it.copy(load = HelpLoad.Failed(e.toSectionMessage())) }
                     }
                 }
+        }
+
+        /**
+         * Pull-to-refresh: reloads quietly and keeps the list when it fails, flagging the failure for a snackbar.
+         * With nothing loaded yet there is no list to keep, so it is a [retry].
+         */
+        fun refresh() {
+            if (_uiState.value.load !is HelpLoad.Loaded) {
+                retry()
+                return
+            }
+            loadJob?.cancel()
+            _uiState.update { it.copy(isRefreshing = true) }
+            loadJob =
+                viewModelScope.launch {
+                    try {
+                        val categories = buildHelpSections(repository.faqs())
+                        _uiState.update { it.copy(load = HelpLoad.Loaded(categories), isRefreshing = false) }
+                    } catch (e: ApiException) {
+                        _uiState.update { it.copy(isRefreshing = false, refreshFailed = true) }
+                    }
+                }
+        }
+
+        fun consumeRefreshFailure() {
+            _uiState.update { it.copy(refreshFailed = false) }
         }
     }
