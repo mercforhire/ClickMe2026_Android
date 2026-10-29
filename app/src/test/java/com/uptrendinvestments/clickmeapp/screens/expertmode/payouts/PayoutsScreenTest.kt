@@ -10,16 +10,19 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_BALANCE_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_CONTINUE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.connectStatus
+import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.testing.payoutSummary
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.Money
@@ -57,14 +60,20 @@ class PayoutsScreenTest {
     private suspend fun TestScope.fixture(
         status: ConnectStatusData? = connectStatus(),
         summary: PayoutSummaryData? = payoutSummary(),
+        bookings: List<ExpertBookingItem> = emptyList(),
+        hardFail: Boolean = false,
     ): Fixture {
         val h = SignupTestHarness(this, tmp, main.testDispatcher)
         h.signIn()
-        h.api.connectStatusHandler = { status ?: throw h.api.httpError(404, """{"status":"error","message":"None"}""") }
+        h.api.connectStatusHandler = {
+            if (hardFail) throw h.api.httpError(500, """{"status":"error","message":"Down"}""")
+            status ?: throw h.api.httpError(404, """{"status":"error","message":"None"}""")
+        }
         h.api.payoutSummaryHandler = {
+            if (hardFail) throw h.api.httpError(500, """{"status":"error","message":"Down"}""")
             summary ?: throw h.api.httpError(400, """{"status":"error","code":"NO_PAYOUT_METHOD","message":"Set up"}""")
         }
-        h.api.expertBookingsHandler = { ExpertBookingsPayload() }
+        h.api.expertBookingsHandler = { ExpertBookingsPayload(bookings = bookings) }
         val vm = PayoutsViewModel(ExpertFinancialRepository(h.api), ExpertBookingsRepository(h.api), guard)
         return Fixture(vm, h.api)
     }
@@ -101,5 +110,86 @@ class PayoutsScreenTest {
             rule.onNodeWithText("Bank Transfer").assertExists()
             rule.onAllNodesWithText("Withdraw", substring = true, ignoreCase = true).assertCountEquals(0)
             rule.onAllNodesWithText("Cash out", substring = true, ignoreCase = true).assertCountEquals(0)
+        }
+
+    @Test
+    fun setupShowsOnlyTheSetupCard() =
+        runTest(main.testDispatcher) {
+            val f = fixture(status = connectStatus(chargesEnabled = false, currentlyDue = listOf("external_account")))
+            setContent(f)
+
+            rule.onNodeWithText("Complete payout setup").assertExists()
+            rule
+                .onNodeWithText("Verify your identity and connect a bank account to start receiving your earnings.")
+                .assertExists()
+            rule.onNodeWithTag(PAYOUTS_CONTINUE_TAG).assertExists()
+            rule.onNodeWithText("Set up payouts").assertExists()
+            rule.onAllNodesWithText("Available balance").assertCountEquals(0)
+            rule.onAllNodesWithText("Next payout").assertCountEquals(0)
+            rule.onAllNodesWithText("Eligible for next payout").assertCountEquals(0)
+        }
+
+    @Test
+    fun holdAndReadyCards() =
+        runTest(main.testDispatcher) {
+            val empty = payoutSummary(available = 0L, pending = 0L)
+            val one = fixture(summary = empty, bookings = listOf(expertBookingItem("b1")))
+            setContent(one)
+            rule.onNodeWithText("Payment on hold").assertExists()
+            rule.onNodeWithText("1 upcoming session. You'll be paid once your session completes.").assertExists()
+            rule.onNodeWithText("Next payout").assertExists()
+            rule.onNodeWithText("Payout method").assertExists()
+            rule.onAllNodesWithText("Your available balance", substring = true).assertCountEquals(0)
+        }
+
+    @Test
+    fun holdPluralCard() =
+        runTest(main.testDispatcher) {
+            val empty = payoutSummary(available = 0L, pending = 0L)
+            val three = fixture(summary = empty, bookings = (1..3).map { expertBookingItem("b$it") })
+            setContent(three)
+            rule.onNodeWithText("3 upcoming sessions. You'll be paid once your sessions complete.").assertExists()
+        }
+
+    @Test
+    fun readyCard() =
+        runTest(main.testDispatcher) {
+            val f = fixture(summary = payoutSummary(available = 0L, pending = 0L))
+            setContent(f)
+            rule.onNodeWithText("You're ready to receive payouts").assertExists()
+            rule.onNodeWithText("Next payout").assertExists()
+            rule.onAllNodesWithText("Payment on hold").assertCountEquals(0)
+        }
+
+    @Test
+    fun negativeBalanceAndManualSchedule() =
+        runTest(main.testDispatcher) {
+            val f = fixture(summary = payoutSummary(available = -500L, pending = 0L, payoutMethod = null))
+            setContent(f)
+
+            rule.onNodeWithText(Money.format(-500L, "CAD")).assertExists()
+            rule.onAllNodesWithText("Eligible for next payout").assertCountEquals(0)
+            rule.onNodeWithText("Manual schedule").performScrollTo().assertExists()
+            rule.onNodeWithText("—").assertExists()
+        }
+
+    @Test
+    fun eligiblePillShowsForPositiveBalance() =
+        runTest(main.testDispatcher) {
+            val f = fixture(summary = payoutSummary(available = 100L))
+            setContent(f)
+
+            rule.onNodeWithText("Eligible for next payout").assertExists()
+        }
+
+    @Test
+    fun failedShowsRetry() =
+        runTest(main.testDispatcher) {
+            val f = fixture(hardFail = true)
+            setContent(f)
+
+            rule.onNodeWithText("Couldn't load payouts").assertExists()
+            rule.onNodeWithText("Down").assertExists()
+            rule.onNodeWithText("Retry").assertExists()
         }
 }

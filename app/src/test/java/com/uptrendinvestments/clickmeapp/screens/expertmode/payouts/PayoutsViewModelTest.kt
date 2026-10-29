@@ -5,6 +5,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
@@ -66,6 +67,45 @@ class PayoutsViewModelTest {
             assertEquals(1, h.api.connectStatusCalls)
             assertEquals(1, h.api.payoutSummaryCalls)
             assertEquals(1, h.api.expertBookingsCalls)
+        }
+
+    private fun SignupTestHarness.noAccount() {
+        api.connectStatusHandler = { throw api.httpError(404, """{"status":"error","message":"No account"}""") }
+        api.payoutSummaryHandler =
+            { throw api.httpError(400, """{"status":"error","code":"NO_PAYOUT_METHOD","message":"Set up payouts"}""") }
+    }
+
+    @Test
+    fun noAccountIsSetupWithOnboardLink() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.noAccount()
+            val vm = vm(h)
+            runCurrent()
+            assertEquals(PayoutsContent.SetupRequired(useRefreshLink = false), vm.uiState.value.content)
+
+            val due = listOf("external_account")
+            h.api.connectStatusHandler = { connectStatus(chargesEnabled = false, currentlyDue = due) }
+            vm.retry()
+            runCurrent()
+            assertEquals(PayoutsContent.SetupRequired(useRefreshLink = true), vm.uiState.value.content)
+        }
+
+    @Test
+    fun bothFailHardIsFailed() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.api.connectStatusHandler = { throw h.api.httpError(500, """{"status":"error","message":"Down"}""") }
+            h.api.payoutSummaryHandler = { throw h.api.httpError(500, """{"status":"error","message":"Down"}""") }
+            val vm = vm(h)
+            runCurrent()
+            assertEquals(PayoutsLoad.Failed(FieldError.Text("Down")), vm.uiState.value.load)
+
+            h.onboardedWithEarnings()
+            vm.retry()
+            runCurrent()
+            assertEquals(PayoutsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(2, h.api.payoutSummaryCalls)
         }
 
     @Test
