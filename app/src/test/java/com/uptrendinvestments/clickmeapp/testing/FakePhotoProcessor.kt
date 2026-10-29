@@ -28,6 +28,9 @@ class FakePhotoProcessor : PhotoProcessor {
     /** Thrown by every [cropToJpeg] until set back to null. */
     var cropError: Throwable? = null
 
+    /** Thrown by every [croppedPreview] until set back to null. */
+    var previewError: Throwable? = null
+
     /** What the working copy decodes to in [loadSource]. */
     var sourceBitmap: ImageBitmap? = null
 
@@ -100,8 +103,10 @@ class FakePhotoProcessor : PhotoProcessor {
         storedCrop = cropBytes
     }
 
-    override suspend fun croppedPreview(): ImageBitmap? =
-        if (storedCrop != null) previewBitmap ?: defaultPreview else null
+    override suspend fun croppedPreview(): ImageBitmap? {
+        previewError?.let { throw it }
+        return if (storedCrop != null) previewBitmap ?: defaultPreview else null
+    }
 
     override suspend fun croppedJpeg(): ByteArray? = storedCrop
 

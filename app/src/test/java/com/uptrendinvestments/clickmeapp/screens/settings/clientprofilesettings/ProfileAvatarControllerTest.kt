@@ -195,6 +195,25 @@ class ProfileAvatarControllerTest {
         }
 
     @Test
+    fun workingFileFailureDuringUploadShowsDialogInsteadOfCrashing() =
+        runTest(main.testDispatcher) {
+            val s = setup()
+            s.pickAndOpenCrop(this)
+            s.h.photo.givenCrop()
+            s.h.photo.previewError = java.io.IOException("disk")
+
+            s.controller.onReturnedFromCrop()
+            runCurrent()
+
+            val state = s.controller.state.value
+            assertEquals(FieldError.Res(R.string.signup_photo_open_error_body), state.error)
+            assertEquals(R.string.signup_photo_open_error_title, state.errorTitleRes)
+            assertFalse(state.isUploading)
+            assertEquals(0, s.h.api.uploadAvatarCalls)
+            assertEquals(1, s.h.photo.clearCalls)
+        }
+
+    @Test
     fun uploadFailureWithoutServerMessageUsesConnectionCopy() =
         runTest(main.testDispatcher) {
             val s = setup()

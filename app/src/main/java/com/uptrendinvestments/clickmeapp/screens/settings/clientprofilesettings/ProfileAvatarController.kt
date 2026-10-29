@@ -98,14 +98,19 @@ class ProfileAvatarController
             _state.update { it.copy(error = null, errorTitleRes = null) }
         }
 
+        /**
+         * Runs on the application scope, which has no exception handler: anything thrown here would kill the process.
+         * So every failure, including the I/O errors of the working files, ends in the error dialog.
+         */
+        @Suppress("TooGenericExceptionCaught")
         private suspend fun uploadStoredCrop() {
-            val bytes = photoProcessor.croppedJpeg()
-            if (bytes == null) {
-                photoProcessor.clearWorkingFiles()
-                return
-            }
-            _state.update { it.copy(isUploading = true, preview = null, error = null, errorTitleRes = null) }
             try {
+                val bytes = photoProcessor.croppedJpeg()
+                if (bytes == null) {
+                    photoProcessor.clearWorkingFiles()
+                    return
+                }
+                _state.update { it.copy(isUploading = true, preview = null, error = null, errorTitleRes = null) }
                 _state.update { it.copy(preview = photoProcessor.croppedPreview()) }
                 repository.uploadAvatar(bytes)
                 photoProcessor.clearWorkingFiles()
@@ -115,10 +120,30 @@ class ProfileAvatarController
                     // The upload succeeded; the hub card and top bar catch up on the next profile refresh.
                 }
             } catch (e: ApiException) {
-                photoProcessor.clearWorkingFiles()
+                clearWorkingFilesQuietly()
                 _state.update { it.copy(error = e.toSaveDialogError(), errorTitleRes = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // IOException from the working files (read, decode or delete).
+                clearWorkingFilesQuietly()
+                _state.update {
+                    it.copy(
+                        error = FieldError.Res(R.string.signup_photo_open_error_body),
+                        errorTitleRes = R.string.signup_photo_open_error_title,
+                    )
+                }
             } finally {
                 _state.update { it.copy(isUploading = false, preview = null) }
+            }
+        }
+
+        @Suppress("TooGenericExceptionCaught")
+        private suspend fun clearWorkingFilesQuietly() {
+            try {
+                photoProcessor.clearWorkingFiles()
+            } catch (_: Exception) {
+                // Best effort: the files are scratch space and are replaced by the next pick.
             }
         }
     }
