@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Account Security (PROF-03). iOS copy unless noted; see 14-UI-SPEC Screen 3. -->
+    <string name="account_security_title">Account Security</string>
+    <string name="account_security_change_password">Change Password</string>
+    <string name="account_security_rule">Your new password must be at least 8 characters long and include numbers.</string>
+    <string name="account_security_current">Current Password</string>
+    <string name="account_security_new">New Password</string>
+    <string name="account_security_confirm">Confirm New Password</string>
+    <string name="account_security_current_hint">Enter your current password</string>
+    <string name="account_security_new_hint">Enter your new password</string>
+    <string name="account_security_confirm_hint">Confirm your new password</string>
+    <string name="account_security_update">Update Password</string>
+
+    <!-- Local validation, in the iOS order -->
+    <string name="account_security_error_current_empty">Please enter your current password.</string>
+    <string name="account_security_error_new_empty">Please enter a new password.</string>
+    <string name="account_security_error_new_short">Password must be at least 8 characters.</string>
+    <string name="account_security_error_new_no_number">Password must include a number.</string>
+    <string name="account_security_error_new_same">New password must be different from your current password.</string>
+    <string name="account_security_error_confirm_empty">Please confirm your new password.</string>
+    <string name="account_security_error_confirm_mismatch">Passwords do not match.</string>
+
+    <!-- Server outcomes -->
+    <string name="account_security_wrong_current">Current password is incorrect.</string>
+    <string name="account_security_too_many">Too many attempts. Please try again in a moment.</string>
+    <string name="account_security_failed_title">Couldn\'t update password</string>
+    <string name="account_security_failed_body">Couldn\'t update your password. Please try again.</string>
+    <string name="account_security_success_title">Password updated</string>
+    <string name="account_security_success_body">Your password has been changed.</string>
+    <string name="account_security_got_it">Got it</string>
+
+    <!-- Delete Account entry card -->
+    <string name="account_security_delete_title">Delete Account</string>
+    <string name="account_security_delete_body">Once you delete your account, there is no going back. Please be certain.</string>
+    <string name="account_security_delete_button">Delete Account</string>
+</resources>
