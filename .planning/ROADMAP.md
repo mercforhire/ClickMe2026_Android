@@ -726,7 +726,7 @@ Plans:
   4. Any user can delete their account from the app and is then logged out, and Help/FAQ opens a `mailto:` support link. (Week 7 checkpoint, user-confirmed)
 
 **Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings). Phase 10 hand-off: replace the Phase 10 Availability placeholder row in the expert Profile; reuse `ExpertiseEditorSheet` in expert settings. Phase 11 hand-off: replace the Profile Settings and Payouts handlers in `ExpertToolsGrid` (and the inert earnings card tap), and route `clickme://connect/return|refresh` into a Dashboard reload through `ExpertLaunchRequest.dashboard`. Phase 13 hand-off: retarget the `PHASE-14` markers in `screens/push/PushDestination.kt` and `PushDestinationResolver.kt` (payout, KYC and account pushes open the notifications list until then).
-**Plans:** 12/16 plans executed in 6 waves
+**Plans:** 13/16 plans executed in 6 waves
 
 Plans:
 **Wave 1**
@@ -748,7 +748,7 @@ Plans:
 - [x] 14-12-PLAN.md — Profile Settings avatar (photo picker and crop), languages and country editors
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 14-13-PLAN.md — Expert Settings: shared fields, meeting link, expertise section
+- [x] 14-13-PLAN.md — Expert Settings: shared fields, meeting link, expertise section
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 14-14-PLAN.md — Shell wiring: hubs as Profile roots, settings, payouts and tax entries, expert-shell Expert Profile entry
@@ -823,7 +823,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
-| 14. Payouts & Account Settings | 12/16 | In Progress | - |
+| 14. Payouts & Account Settings | 13/16 | In Progress | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
