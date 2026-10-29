@@ -9,6 +9,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ConnectReturn
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.PayoutOnboarding
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.isAllowedOnboardingUrl
@@ -24,6 +26,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -74,6 +77,7 @@ class PayoutsViewModel
         private val financial: ExpertFinancialRepository,
         private val bookings: ExpertBookingsRepository,
         private val callGuard: CallGuard,
+        private val launchRequest: ExpertLaunchRequest,
     ) : ViewModel() {
         private enum class LoadMode {
             /** Shows the skeleton and a failure message. */
@@ -100,12 +104,33 @@ class PayoutsViewModel
         private var loadJob: Job? = null
         private var loadIsCurrent = false
 
-        /** This screen handed a link to the browser in this session; the Connect return handling reads it. */
-        @Suppress("unused")
+        /** This screen handed a link to the browser in this session; only then may a refresh deep link re-mint one. */
         private var openedOnboarding = false
 
         init {
+            // A return posted before this screen existed is covered by the fresh load below and must never open a
+            // tab by itself (T-14-28).
+            launchRequest.connectReturn.consume()
             startLoad(LoadMode.Loud)
+            // A return posted while this screen lives (the Custom Tab closed) is consumed once.
+            viewModelScope.launch {
+                launchRequest.connectReturn.pending.filterNotNull().collect {
+                    launchRequest.connectReturn.consume()?.let(::onConnectReturn)
+                }
+            }
+        }
+
+        /**
+         * The Stripe return deep link (D-09). It only triggers calls: [ConnectReturn.Done] re-fetches the status
+         * (never assuming success, T-14-29) and [ConnectReturn.LinkExpired] re-mints a link only when this screen
+         * opened one, otherwise it just reloads (T-14-28).
+         */
+        private fun onConnectReturn(value: ConnectReturn) {
+            val reload = if (_uiState.value.load is PayoutsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud
+            when (value) {
+                ConnectReturn.Done -> startLoad(reload)
+                ConnectReturn.LinkExpired -> if (openedOnboarding) reopenOnboarding() else startLoad(reload)
+            }
         }
 
         fun retry() = startLoad(LoadMode.Loud)
@@ -137,15 +162,21 @@ class PayoutsViewModel
          * a host), is opened once by the screen and is never logged, saved or cached (T-11-44, T-14-23, T-14-24).
          */
         fun startPayoutSetup() {
+            val content = _uiState.value.content as? PayoutsContent.SetupRequired ?: return
+            mintLink(refresh = content.useRefreshLink)
+        }
+
+        /** The onboarding link expired while the user was in the browser: mint a refresh link and reopen once. */
+        private fun reopenOnboarding() = mintLink(refresh = true)
+
+        private fun mintLink(refresh: Boolean) {
             val current = _uiState.value
-            val content = current.content as? PayoutsContent.SetupRequired
-            val busy = current.isMintingLink || current.onboardingUrl != null
-            if (busy || content == null) return
+            if (current.isMintingLink || current.onboardingUrl != null) return
             if (!callGuard.attempt(RestrictedAction.SetUpPayouts)) return
             _uiState.update { it.copy(isMintingLink = true) }
             viewModelScope.launch {
                 try {
-                    val url = financial.onboardingLink(refresh = content.useRefreshLink)
+                    val url = financial.onboardingLink(refresh = refresh)
                     _uiState.update {
                         if (isAllowedOnboardingUrl(url)) {
                             openedOnboarding = true
