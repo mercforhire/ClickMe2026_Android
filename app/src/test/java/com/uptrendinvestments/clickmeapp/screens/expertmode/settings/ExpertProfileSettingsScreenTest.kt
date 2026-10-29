@@ -88,7 +88,7 @@ class ExpertProfileSettingsScreenTest {
         setContent(readyState())
 
         rule.onNodeWithText("Expert Settings").assertIsDisplayed()
-        rule.onNodeWithText("Skype / Zoom Meeting Link").assertIsDisplayed()
+        rule.onNodeWithText("Skype / Zoom Meeting Link").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("https://zoom.us/j/1").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag(AUTO_SAVE_STATUS_TAG).assertIsDisplayed()
     }

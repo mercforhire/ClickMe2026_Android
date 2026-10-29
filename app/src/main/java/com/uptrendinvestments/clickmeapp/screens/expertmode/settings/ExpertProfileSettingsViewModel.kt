@@ -13,7 +13,6 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
-import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageSheetState
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaver
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AvatarUiState
@@ -27,12 +26,15 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.fieldMessages
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.toSaveDialogError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.with
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageCatalog
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageSheetState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -74,6 +76,10 @@ data class ExpertProfileSettingsUiState(
     val countrySheetOpen: Boolean = false,
     val countryQuery: String = "",
 ) {
+    /** The alpha-3 code of the chosen country, blank when none. */
+    val selectedCountryCode: String
+        get() = snapshot?.profile?.countryCode.orEmpty()
+
     /** The static country list narrowed by [countryQuery], ignoring case. */
     val visibleCountries: List<Country>
         get() = Countries.all.filter { it.name.contains(countryQuery.trim(), ignoreCase = true) }
@@ -128,9 +134,23 @@ class ExpertProfileSettingsViewModel
         private var savedMeetingUrl = ""
         private var loadJob: Job? = null
 
+        /** The language catalogue, fetched once per ViewModel. */
+        private var catalog: LanguageCatalog = LanguageCatalog.Loading
+        private var catalogJob: Job? = null
+
         init {
             viewModelScope.launch {
                 saver.status.collect { status -> _uiState.update { it.copy(status = status) } }
+            }
+            viewModelScope.launch {
+                avatarController.state.collect { avatar -> _uiState.update { it.copy(avatar = avatar) } }
+            }
+            viewModelScope.launch {
+                // After an upload the controller refreshes the cached profile; the first value is the one already
+                // cached, which the expert profile load supersedes.
+                userManager.profile.drop(1).collect { profile ->
+                    profile?.personalDetails?.avatarUrl?.let { url -> _uiState.update { it.copy(avatarUrl = url) } }
+                }
             }
             load()
         }
@@ -217,44 +237,132 @@ class ExpertProfileSettingsViewModel
             saver.onEdited(next)
         }
 
-        // ---- RED stubs (replaced by the GREEN commit) ----
+        // ---- avatar ----
 
-        fun openProfessionalSheet() = Unit
+        /** The system photo picker returned [uri]; the controller imports it and asks for the crop screen. */
+        fun onPhotoPicked(uri: Uri) = avatarController.onPicked(uri, viewModelScope)
 
+        /** The screen pushed the crop route. */
+        fun avatarCropOpened() = avatarController.onCropOpened()
+
+        fun dismissAvatarError() = avatarController.dismissError()
+
+        /** Called on every resume: uploads a confirmed crop (or cleans up after a cancelled one). */
+        fun onScreenShown() = avatarController.onReturnedFromCrop()
+
+        // ---- country ----
+
+        fun openCountry() = _uiState.update { it.copy(countrySheetOpen = true, countryQuery = "") }
+
+        fun onCountryQuery(value: String) = _uiState.update { it.copy(countryQuery = value) }
+
+        /** Applies [code] (normalized to alpha-3), closes the sheet and schedules the save. */
+        fun selectCountry(code: String) {
+            val current = _uiState.value.snapshot ?: return
+            val next = current.copy(profile = current.profile.copy(countryCode = Countries.normalize(code).orEmpty()))
+            _uiState.update { it.copy(snapshot = next, countrySheetOpen = false, countryQuery = "") }
+            saver.onEdited(next)
+        }
+
+        fun dismissCountry() = _uiState.update { it.copy(countrySheetOpen = false, countryQuery = "") }
+
+        // ---- spoken languages ----
+
+        /** Opens the language sheet with the catalogue entries the expert has as the working selection. */
+        fun openLanguages() {
+            val profile = _uiState.value.snapshot?.profile ?: return
+            val selection =
+                profile.languages.mapNotNull { language ->
+                    language.id?.takeIf { it.isNotBlank() }?.let { LanguageItem(it, language.label) }
+                }
+            _uiState.update { it.copy(languageSheet = LanguageSheetState(selection = selection, catalog = catalog)) }
+            // Reopening after a failure retries; a loaded catalogue is never fetched again.
+            if (catalog !is LanguageCatalog.Loaded && catalogJob?.isActive != true) loadCatalog()
+        }
+
+        fun onLanguageQuery(value: String) =
+            _uiState.update { state -> state.copy(languageSheet = state.languageSheet?.copy(query = value)) }
+
+        /** Adds [item] to the working selection, or removes it when already selected (tap order is kept). */
+        fun toggleLanguage(item: LanguageItem) =
+            _uiState.update { state ->
+                val sheet = state.languageSheet ?: return@update state
+                val selection =
+                    if (sheet.selection.any { it.id == item.id }) {
+                        sheet.selection.filterNot { it.id == item.id }
+                    } else {
+                        sheet.selection + item
+                    }
+                state.copy(languageSheet = sheet.copy(selection = selection))
+            }
+
+        /**
+         * "Done": the selection (in tap order) followed by the custom languages the catalogue cannot express, which
+         * are kept as they are. Closes the sheet and schedules the save.
+         */
+        fun applyLanguages() {
+            val sheet = _uiState.value.languageSheet ?: return
+            val current = _uiState.value.snapshot ?: return
+            val customs = current.profile.languages.filter { it.id.isNullOrBlank() }
+            val languages = sheet.selection.map { ProfileLanguage(it.id, it.label) } + customs
+            val next = current.copy(profile = current.profile.copy(languages = languages))
+            _uiState.update { it.copy(snapshot = next, languageSheet = null) }
+            saver.onEdited(next)
+        }
+
+        /** Cancel (or dismissing the sheet): nothing is applied or saved. */
+        fun dismissLanguages() = _uiState.update { it.copy(languageSheet = null) }
+
+        fun retryLanguages() {
+            if (catalogJob?.isActive == true) return
+            loadCatalog()
+        }
+
+        private fun loadCatalog() {
+            setCatalog(LanguageCatalog.Loading)
+            catalogJob =
+                viewModelScope.launch {
+                    try {
+                        setCatalog(LanguageCatalog.Loaded(profileRepository.languages()))
+                    } catch (_: ApiException) {
+                        setCatalog(LanguageCatalog.Failed)
+                    }
+                }
+        }
+
+        private fun setCatalog(value: LanguageCatalog) {
+            catalog = value
+            _uiState.update { state -> state.copy(languageSheet = state.languageSheet?.copy(catalog = value)) }
+        }
+
+        // ---- professional details ----
+
+        fun openProfessionalSheet() = _uiState.update { it.copy(professionalSheetOpen = true) }
+
+        /** "Update details": applies the sheet's working copy, closes the sheet and schedules the save. */
         fun applyProfessional(
             jobTitle: String,
             company: String,
-        ) = Unit
+        ) {
+            val current = _uiState.value.snapshot ?: return
+            val profile =
+                current.profile.copy(
+                    jobTitle = jobTitle.take(ProfileTextFieldId.JobTitle.maxLength),
+                    company = company.take(ProfileTextFieldId.Company.maxLength),
+                )
+            val next = current.copy(profile = profile)
+            _uiState.update {
+                it.copy(
+                    snapshot = next,
+                    professionalSheetOpen = false,
+                    fieldErrors = it.fieldErrors - ProfileTextFieldId.JobTitle - ProfileTextFieldId.Company,
+                )
+            }
+            saver.onEdited(next)
+        }
 
-        fun discardProfessional() = Unit
-
-        fun openCountry() = Unit
-
-        fun onCountryQuery(value: String) = Unit
-
-        fun selectCountry(code: String) = Unit
-
-        fun dismissCountry() = Unit
-
-        fun openLanguages() = Unit
-
-        fun onLanguageQuery(value: String) = Unit
-
-        fun toggleLanguage(item: LanguageItem) = Unit
-
-        fun applyLanguages() = Unit
-
-        fun dismissLanguages() = Unit
-
-        fun retryLanguages() = Unit
-
-        fun onPhotoPicked(uri: Uri) = Unit
-
-        fun avatarCropOpened() = Unit
-
-        fun dismissAvatarError() = Unit
-
-        fun onScreenShown() = Unit
+        /** "Discard changes" (or dismissing the sheet): closes it; nothing is applied or saved. */
+        fun discardProfessional() = _uiState.update { it.copy(professionalSheetOpen = false) }
 
         /** The status icon's tap: re-sends the newest snapshot. */
         fun retrySave() = saver.retry()

@@ -195,7 +195,8 @@ class ExpertProfileSettingsViewModelTest {
 
             assertEquals(0, h.api.updateExpertMeetingUrlCalls)
             assertEquals(0, h.api.updateUserProfileCalls)
-            assertEquals("https://zoom.us/j/1", vm.uiState.value.snapshot?.meetingUrl)
+            val kept = vm.uiState.value.snapshot
+            assertEquals("https://zoom.us/j/1", kept?.meetingUrl)
         }
 
     @Test
@@ -304,7 +305,8 @@ class ExpertProfileSettingsViewModelTest {
             vm.openCountry()
             assertTrue(vm.uiState.value.countrySheetOpen)
             vm.onCountryQuery("united st")
-            assertEquals(listOf("USA"), vm.uiState.value.visibleCountries.map { it.code })
+            val visible = vm.uiState.value.visibleCountries
+            assertEquals(listOf("USA"), visible.map { it.code })
             vm.selectCountry("USA")
             assertFalse(vm.uiState.value.countrySheetOpen)
             advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
