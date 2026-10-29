@@ -28,8 +28,8 @@
     <string name="payouts_setup_busy_a11y">Opening secure setup</string>
     <string name="payouts_hold_title">Payment on hold</string>
     <plurals name="payouts_hold_body">
-        <item quantity="one">%d upcoming session. You\'ll be paid once your session completes.</item>
-        <item quantity="other">%d upcoming sessions. You\'ll be paid once your sessions complete.</item>
+        <item quantity="one">%1$d upcoming session. You\'ll be paid once your session completes.</item>
+        <item quantity="other">%1$d upcoming sessions. You\'ll be paid once your sessions complete.</item>
     </plurals>
     <string name="payouts_ready_title">You\'re ready to receive payouts</string>
     <string name="payouts_ready_body">Once you complete a paid session, your earnings will appear here and pay out on the schedule below.</string>
