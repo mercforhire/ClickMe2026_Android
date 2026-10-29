@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Profile Settings (client and expert), auto-save. Reused, not duplicated: a11y_back, login_error_network,
+         login_error_unknown. -->
+    <string name="profile_settings_title">Profile Settings</string>
+    <string name="profile_settings_loading">Loading profile</string>
+
+    <!-- Field labels -->
+    <string name="profile_settings_email_label">Email</string>
+    <string name="profile_settings_first_name_label">First Name</string>
+    <string name="profile_settings_last_name_label">Last Name</string>
+    <string name="profile_settings_bio_label">Bio</string>
+    <string name="profile_settings_bio_placeholder">Tell people about yourself</string>
+    <string name="profile_settings_job_title_label">Job Title</string>
+    <string name="profile_settings_company_label">Company</string>
+    <string name="profile_settings_city_label">City</string>
+    <string name="profile_settings_state_label">State/Province</string>
+    <string name="profile_settings_empty_value">—</string>
+    <string name="profile_settings_read_only_a11y">%1$s, %2$s, read only</string>
+    <string name="profile_settings_counter">%1$d/%2$d</string>
+
+    <!-- Auto-save status (app bar) -->
+    <string name="profile_settings_status_saving">Saving</string>
+    <string name="profile_settings_status_saved">Changes saved</string>
+    <string name="profile_settings_status_error">Couldn\'t save changes. Tap to retry.</string>
+    <string name="profile_settings_save_error_title">Couldn\'t save changes</string>
+    <string name="profile_settings_got_it">Got it</string>
+
+    <!-- Professional details card and sheet -->
+    <string name="profile_settings_professional_title">Professional Details</string>
+    <string name="profile_settings_professional_edit_a11y">Edit professional details</string>
+    <string name="profile_settings_sheet_title">Edit Professional Details</string>
+    <string name="profile_settings_update_details">Update details</string>
+    <string name="profile_settings_discard_details">Discard changes</string>
+</resources>
