@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.earningsTransaction
 import com.uptrendinvestments.clickmeapp.testing.transactionsPage
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -161,6 +162,41 @@ class TransactionsViewModelTest {
             assertEquals(listOf(1 to 20, 2 to 20, 2 to 20), api.earningsTransactionsQueries)
             assertNull(vm.uiState.value.pageError)
             assertEquals(25, vm.uiState.value.rows.size)
+        }
+
+    @Test
+    fun retryPageDuringRefreshIsIgnored() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            api.earningsTransactionsHandler = { _, _ -> throw api.httpError(500, SERVER_DOWN) }
+            vm.onRowVisible(19)
+            runCurrent()
+            assertEquals(FieldError.Text("Down"), vm.uiState.value.pageError)
+
+            val gate = CompletableDeferred<Unit>()
+            api.earningsTransactionsHandler = { page, _ ->
+                gate.await()
+                if (page == 1) {
+                    transactionsPage(rows(0, TRANSACTIONS_PAGE_SIZE), page = 1, hasMore = true)
+                } else {
+                    transactionsPage(rows(TRANSACTIONS_PAGE_SIZE, 5), page = page, hasMore = false)
+                }
+            }
+            vm.refresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.isRefreshing)
+
+            vm.retryPage()
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+
+            // Only the refresh asked the server for a page; no stale page-2 request ran next to it.
+            assertEquals(listOf(1 to 20, 2 to 20, 1 to 20), api.earningsTransactionsQueries)
+            assertEquals(TRANSACTIONS_PAGE_SIZE, vm.uiState.value.rows.size)
+            assertNull(vm.uiState.value.pageError)
         }
 
     @Test

@@ -105,10 +105,13 @@ class TransactionsViewModel
             loadNextPage()
         }
 
-        /** Requests the page that failed again. */
+        /**
+         * Requests the page that failed again. Ignored while a refresh runs: the refresh restarts the list at page 2,
+         * and a stale page request landing after it would skip a page.
+         */
         fun retryPage() {
             val state = _uiState.value
-            if (state.isPaging || state.pageError == null) return
+            if (state.isPaging || state.isRefreshing || state.pageError == null) return
             loadNextPage()
         }
 
