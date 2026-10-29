@@ -16,7 +16,8 @@ private const val HTTP_NOT_FOUND = 404
  * expert's main failure (the database exclusion constraint on the 30-minute session buffer).
  *
  * Branches on [ErrorCode] and then the HTTP status; the message text is never parsed. Server text is only wrapped in
- * [FieldError.Text], which renders as plain text. Every code that means "the booking changed under you" reloads.
+ * [FieldError.Text], which renders as plain text. Every code that means "the booking changed under you" reloads,
+ * including [ErrorCode.RescheduleTooFarAhead].
  */
 fun ApiException.toExpertRescheduleFailure(): RescheduleFailure =
     when (this) {
@@ -35,6 +36,14 @@ fun ApiException.toExpertRescheduleFailure(): RescheduleFailure =
                 ErrorCode.ClientUnavailable,
                 ErrorCode.RescheduleOutsideAuthWindow,
                 -> RescheduleFailure.Show(serverTextOrUnknown(), reload = true)
+                // Backend 261028-uph: the client's proposal is beyond the 6-day paid cap, so the expert should ask
+                // for a nearer time. Own row: the grouped row above would fall back to the generic unknown copy.
+                ErrorCode.RescheduleTooFarAhead ->
+                    RescheduleFailure.Show(
+                        userMessage?.let { FieldError.Text(it) }
+                            ?: FieldError.Res(R.string.reschedule_error_too_far_ahead),
+                        reload = true,
+                    )
                 ErrorCode.NotFound -> notFound()
                 else ->
                     when (status) {

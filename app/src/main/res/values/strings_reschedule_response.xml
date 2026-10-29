@@ -38,6 +38,8 @@
     <string name="reschedule_error_not_found">This booking could not be found.</string>
     <!-- Android-only: used when RESCHEDULE_OUTSIDE_AUTH_WINDOW carries no server message. -->
     <string name="reschedule_error_outside_window">This new time can\'t be accepted with your current payment. You can cancel and book the new time instead.</string>
+    <!-- Android-only: used when RESCHEDULE_TOO_FAR_AHEAD carries no server message (backend 261028-uph). Client and expert accept. -->
+    <string name="reschedule_error_too_far_ahead">Paid sessions can be rescheduled up to 6 days ahead. Ask for a time within the next 6 days.</string>
     <!-- Expert viewer of the same card (Phase 11, D-18). -->
     <string name="reschedule_expert_title_by_client">Client proposed a new time</string>
     <string name="reschedule_expert_title_by_you">You proposed a new time</string>

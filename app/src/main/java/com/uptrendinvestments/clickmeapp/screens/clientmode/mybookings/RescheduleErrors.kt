@@ -48,7 +48,8 @@ internal fun ApiException.Http.serverTextOrUnknown(): FieldError =
 
 /**
  * Error mapping for the accept and decline reschedule calls, per backend RESCHEDULE-PAYMENT-CONVERSION.md section 3
- * and the Phase 8 RESEARCH error taxonomy (which overrides the UI-SPEC table). Branches on [ErrorCode] and the
+ * and the Phase 8 RESEARCH error taxonomy (which overrides the UI-SPEC table). The 261028-uph rows follow
+ * STRIPE-INTEGRATION.md section 6. Branches on [ErrorCode] and the
  * HTTP status only; the message text is never parsed for logic. Server text is only ever wrapped in
  * [FieldError.Text], which is rendered as plain text (T-06-13).
  */
@@ -68,6 +69,14 @@ fun ApiException.toRescheduleFailure(): RescheduleFailure =
                     RescheduleFailure.Show(
                         userMessage?.let { FieldError.Text(it) }
                             ?: FieldError.Res(R.string.reschedule_error_outside_window),
+                        reload = true,
+                    )
+                // Backend 261028-uph: the server message is display-ready (STRIPE-INTEGRATION.md section 6).
+                // Reload because the proposal stays pending.
+                ErrorCode.RescheduleTooFarAhead ->
+                    RescheduleFailure.Show(
+                        userMessage?.let { FieldError.Text(it) }
+                            ?: FieldError.Res(R.string.reschedule_error_too_far_ahead),
                         reload = true,
                     )
                 ErrorCode.InvalidPaymentMethod -> RescheduleFailure.Show(serverTextOrUnknown())

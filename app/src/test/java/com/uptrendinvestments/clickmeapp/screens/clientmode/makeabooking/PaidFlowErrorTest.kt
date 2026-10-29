@@ -6,6 +6,7 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.IOException
 
@@ -271,5 +272,18 @@ class PaidFlowErrorTest {
             PaidFailure.Show(res(R.string.make_a_booking_error_paid_window)),
             createIntent(http(422, ErrorCode.LongLeadRequiresSavedCard)),
         )
+    }
+
+    @Test
+    fun long_lead_not_available_maps_to_the_paid_window_error_in_both_phases() {
+        val expected = PaidFailure.Show(res(R.string.make_a_booking_error_paid_window))
+        assertEquals(expected, createIntent(http(422, ErrorCode.LongLeadNotAvailable)))
+        assertEquals(expected, confirm(http(422, ErrorCode.LongLeadNotAvailable)))
+        val shown = confirm(http(422, ErrorCode.LongLeadNotAvailable)) as PaidFailure.Show
+        assertNull(shown.paymentReference)
+        assertFalse(shown.newAttemptId)
+        assertFalse(shown.clearSlotAndReload)
+        assertFalse(shown.resetMeetingType)
+        assertFalse(shown.outcomeUnknown)
     }
 }

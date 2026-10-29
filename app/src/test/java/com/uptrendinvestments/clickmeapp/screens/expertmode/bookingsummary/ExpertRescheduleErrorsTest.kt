@@ -61,6 +61,24 @@ class ExpertRescheduleErrorsTest {
     }
 
     @Test
+    fun tooFarAheadShowsTheServerMessageAndReloads() {
+        val message =
+            "Paid sessions can be rescheduled up to 6 days ahead. Please choose a time within the next 6 days."
+        assertEquals(
+            RescheduleFailure.Show(FieldError.Text(message), reload = true),
+            http(422, ErrorCode.RescheduleTooFarAhead, message).toExpertRescheduleFailure(),
+        )
+    }
+
+    @Test
+    fun tooFarAheadWithoutAMessageUsesTheAndroidCopyAndReloads() {
+        assertEquals(
+            RescheduleFailure.Show(res(R.string.reschedule_error_too_far_ahead), reload = true),
+            http(422, ErrorCode.RescheduleTooFarAhead).toExpertRescheduleFailure(),
+        )
+    }
+
+    @Test
     fun clientUnavailableShowsTheServerMessageAndReloads() {
         assertEquals(
             RescheduleFailure.Show(FieldError.Text("x"), reload = true),

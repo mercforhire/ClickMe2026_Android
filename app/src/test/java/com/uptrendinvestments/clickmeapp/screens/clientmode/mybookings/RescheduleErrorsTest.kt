@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
+import com.uptrendinvestments.clickmeapp.network.ApiErrorParser
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import org.junit.Assert.assertEquals
@@ -70,6 +71,24 @@ class RescheduleErrorsTest {
         assertEquals(
             RescheduleFailure.Show(res(R.string.reschedule_error_outside_window), reload = true),
             http(422, ErrorCode.RescheduleOutsideAuthWindow).toRescheduleFailure(),
+        )
+    }
+
+    @Test
+    fun too_far_ahead_from_the_backend_body_shows_the_server_message_and_reloads() {
+        val message =
+            "Paid sessions can be rescheduled up to 6 days ahead. Please choose a time within the next 6 days."
+        val body = """{"status":"error","code":"RESCHEDULE_TOO_FAR_AHEAD","message":"$message"}"""
+        val failure = ApiErrorParser.httpError(422, body).toRescheduleFailure()
+        assertEquals(RescheduleFailure.Show(FieldError.Text(message), reload = true), failure)
+        assertFalse((failure as RescheduleFailure.Show).pop)
+    }
+
+    @Test
+    fun too_far_ahead_without_a_message_uses_the_android_copy() {
+        assertEquals(
+            RescheduleFailure.Show(res(R.string.reschedule_error_too_far_ahead), reload = true),
+            http(422, ErrorCode.RescheduleTooFarAhead).toRescheduleFailure(),
         )
     }
 
