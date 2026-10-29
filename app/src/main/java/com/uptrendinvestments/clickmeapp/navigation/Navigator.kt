@@ -213,6 +213,29 @@ class Navigator(
         state.topLevelRoute = tab
     }
 
+    /**
+     * Shows a screen that is already open, whichever tab holds it: the first stack (selected tab first, then the
+     * others in tab order) with an entry accepted by [matches] is cut back to its topmost such entry and its tab is
+     * selected. Nothing is pushed. Returns false, leaving the state untouched, when no stack holds a match.
+     *
+     * [openRouted] de-duplicates by key equality, so it cannot see a screen whose key differs only in a hint such as
+     * the origin tab (Payouts opened from the Profile hub, then a payout push for the Dashboard). Calling this first
+     * keeps one instance of such a screen alive.
+     */
+    fun openExisting(matches: (NavKey) -> Boolean): Boolean {
+        val tabs = listOf(state.topLevelRoute) + state.backStacks.keys.filter { it != state.topLevelRoute }
+        for (tab in tabs) {
+            val stack = state.backStacks[tab] ?: continue
+            val index = stack.indexOfLast(matches)
+            if (index < 0) continue
+            while (stack.size > index + 1) stack.removeAt(stack.lastIndex)
+            state.lastTransition = if (tab == state.topLevelRoute) NavTransition.Pop else NavTransition.TabSwitch
+            state.topLevelRoute = tab
+            return true
+        }
+        return false
+    }
+
     private fun currentStack() =
         state.backStacks[state.topLevelRoute] ?: error("Stack for ${state.topLevelRoute} not found")
 }

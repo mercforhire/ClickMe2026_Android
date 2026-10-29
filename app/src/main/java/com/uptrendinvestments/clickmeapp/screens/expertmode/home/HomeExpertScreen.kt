@@ -238,7 +238,13 @@ fun HomeExpertShell(
         if (pendingShellRoute?.mode == AppMode.Expert) {
             onConsumeShellRoute()?.let { route ->
                 val routable = route.tab in state.backStacks && route.keys.isNotEmpty()
-                if (routable) navigator.openRouted(route.tab, route.keys)
+                if (routable) {
+                    // The hub and the push open Payouts under different origin keys, so key equality cannot tell they
+                    // are the same screen. Reuse an open one (a second instance would double the reloads and split the
+                    // Stripe return between two ViewModels).
+                    val payoutsOpen = route.keys.last() is PayoutsKey && navigator.openExisting { it is PayoutsKey }
+                    if (!payoutsOpen) navigator.openRouted(route.tab, route.keys)
+                }
             }
         }
     }

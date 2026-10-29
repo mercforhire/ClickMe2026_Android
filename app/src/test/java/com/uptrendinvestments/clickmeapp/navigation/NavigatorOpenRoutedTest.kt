@@ -118,6 +118,44 @@ class NavigatorOpenRoutedTest {
     }
 
     @Test
+    fun openExistingSelectsTheTabHoldingAMatchAndCutsBackToIt() {
+        val nav =
+            navigator(
+                RtDashboard,
+                listOf(RtDashboard, RtBookings),
+                selected = RtDashboard,
+                stacks = mapOf(RtBookings to listOf(u1, c1)),
+            )
+
+        val found = nav.openExisting { it == u1 }
+
+        assertEquals(true, found)
+        assertEquals(listOf<NavKey>(RtBookings, u1), nav.stack(RtBookings))
+        assertEquals(RtBookings, nav.state.topLevelRoute)
+        assertEquals(NavTransition.TabSwitch, nav.state.lastTransition)
+    }
+
+    @Test
+    fun openExistingInTheSelectedTabIsAPop() {
+        val nav = navigator(RtDashboard, listOf(RtDashboard, RtBookings), stacks = mapOf(RtDashboard to listOf(u1, c1)))
+
+        assertEquals(true, nav.openExisting { it == u1 })
+
+        assertEquals(listOf<NavKey>(RtDashboard, u1), nav.stack(RtDashboard))
+        assertEquals(NavTransition.Pop, nav.state.lastTransition)
+    }
+
+    @Test
+    fun openExistingWithoutAMatchLeavesTheStateUntouched() {
+        val nav = navigator(RtDashboard, listOf(RtDashboard, RtBookings), stacks = mapOf(RtBookings to listOf(c1)))
+
+        assertEquals(false, nav.openExisting { it == u1 })
+
+        assertEquals(listOf<NavKey>(RtBookings, c1), nav.stack(RtBookings))
+        assertEquals(RtDashboard, nav.state.topLevelRoute)
+    }
+
+    @Test
     fun requestChainKeepsBackOrder() {
         val decision = RtDetail("RD1")
         val nav = navigator(RtDashboard, listOf(RtDashboard, RtBookings))

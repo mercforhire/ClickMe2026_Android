@@ -25,6 +25,7 @@ import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
@@ -1224,6 +1225,25 @@ class HomeShellsTest {
         composeRule.onNodeWithText("incoming-stub").assertDoesNotExist()
         composeRule.onNode(tab("Dashboard")).assertIsSelected()
         composeRule.onNodeWithText("Nothing here yet.").assertExists()
+    }
+
+    @Test
+    fun payoutsPushReusesPayoutsOpenedFromTheHub() {
+        val routes = ShellRouteRequest()
+        setExpert(showDebug = false, hubStandIns = true, shellRoutes = routes)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Payouts & Earnings").performScrollTo().performClick()
+        composeRule.onNodeWithText("stand-in payouts:Profile").assertExists()
+
+        routes.post(ShellRoute(AppMode.Expert, DashboardRoot, listOf(PayoutsKey(SettingsOrigin.Dashboard))))
+        composeRule.waitForIdle()
+
+        // The open instance is shown; no second Payouts was stacked on the Dashboard tab.
+        composeRule.onNodeWithText("stand-in payouts:Profile").assertExists()
+        composeRule.onNodeWithText("stand-in payouts:Dashboard").assertDoesNotExist()
+        assertNull(routes.pending.value)
+        pressSystemBack()
+        composeRule.onNode(tab("Profile")).assertIsSelected()
     }
 
     @Test
