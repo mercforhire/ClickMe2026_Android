@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
+import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutBalanceHero
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutEligiblePill
@@ -46,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.Pay
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutStatusCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutStatusVariant
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutsSkeleton
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -75,7 +78,9 @@ fun PayoutsScreen(
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
         onRefreshFailureShown = viewModel::consumeRefreshFailure,
-        onStartPayoutSetup = {},
+        onStartPayoutSetup = viewModel::startPayoutSetup,
+        onOnboardingUrl = viewModel::consumeOnboardingUrl,
+        onDismissOnboardingError = viewModel::dismissOnboardingError,
         modifier = modifier,
     )
 }
@@ -90,11 +95,32 @@ fun PayoutsScreenContent(
     onRefresh: () -> Unit,
     onRefreshFailureShown: () -> Unit,
     onStartPayoutSetup: () -> Unit,
+    onOnboardingUrl: () -> Unit,
+    onDismissOnboardingError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.payouts_refresh_failed)
+    val linkFailedMessage = stringResource(R.string.payouts_link_failed)
+    val openTab =
+        rememberCustomTabLauncher {
+            scope.launch { snackbarHostState.showSnackbar(linkFailedMessage, duration = SnackbarDuration.Short) }
+        }
+    // T-14-24: the single-use Stripe link is read once, cleared from the state right away, then opened.
+    LaunchedEffect(state.onboardingUrl) {
+        val url = state.onboardingUrl ?: return@LaunchedEffect
+        onOnboardingUrl()
+        openTab(Uri.parse(url))
+    }
+    state.onboardingError?.let { error ->
+        AuthErrorDialog(
+            title = stringResource(R.string.payouts_setup_error_title),
+            message = error.asString(),
+            onDismiss = onDismissOnboardingError,
+            confirmLabel = stringResource(R.string.payouts_got_it),
+        )
+    }
     LaunchedEffect(state.refreshFailed) {
         if (state.refreshFailed) {
             // Launched on the composition scope so consuming the flag does not cancel the Snackbar.

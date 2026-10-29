@@ -4,13 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.PayoutOnboarding
+import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.isAllowedOnboardingUrl
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.resolvePayoutOnboarding
+import com.uptrendinvestments.clickmeapp.screens.expertmode.toExpertDialogError
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository.Companion.TYPE_UPCOMING
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -70,7 +73,7 @@ class PayoutsViewModel
     constructor(
         private val financial: ExpertFinancialRepository,
         private val bookings: ExpertBookingsRepository,
-        @Suppress("unused") private val callGuard: CallGuard,
+        private val callGuard: CallGuard,
     ) : ViewModel() {
         private enum class LoadMode {
             /** Shows the skeleton and a failure message. */
@@ -97,6 +100,10 @@ class PayoutsViewModel
         private var loadJob: Job? = null
         private var loadIsCurrent = false
 
+        /** This screen handed a link to the browser in this session; the Connect return handling reads it. */
+        @Suppress("unused")
+        private var openedOnboarding = false
+
         init {
             startLoad(LoadMode.Loud)
         }
@@ -121,6 +128,47 @@ class PayoutsViewModel
 
         fun consumeRefreshFailure() {
             _uiState.update { it.copy(refreshFailed = false) }
+        }
+
+        /**
+         * Starts Stripe Connect onboarding (PAYOUT-02, D-09): runs the call guard, then mints a fresh single-use link,
+         * a refresh link when an account already exists and the first onboarding link otherwise. Repeat taps while a
+         * link is minting or waiting to be opened are ignored. The URL must pass [isAllowedOnboardingUrl] (https with
+         * a host), is opened once by the screen and is never logged, saved or cached (T-11-44, T-14-23, T-14-24).
+         */
+        fun startPayoutSetup() {
+            val current = _uiState.value
+            val content = current.content as? PayoutsContent.SetupRequired
+            val busy = current.isMintingLink || current.onboardingUrl != null
+            if (busy || content == null) return
+            if (!callGuard.attempt(RestrictedAction.SetUpPayouts)) return
+            _uiState.update { it.copy(isMintingLink = true) }
+            viewModelScope.launch {
+                try {
+                    val url = financial.onboardingLink(refresh = content.useRefreshLink)
+                    _uiState.update {
+                        if (isAllowedOnboardingUrl(url)) {
+                            openedOnboarding = true
+                            it.copy(onboardingUrl = url)
+                        } else {
+                            it.copy(onboardingError = FieldError.Res(R.string.expert_error_generic))
+                        }
+                    }
+                } catch (e: ApiException) {
+                    _uiState.update { it.copy(onboardingError = e.toExpertDialogError()) }
+                } finally {
+                    _uiState.update { it.copy(isMintingLink = false) }
+                }
+            }
+        }
+
+        /** The screen took the one-shot onboarding URL; it is dropped so it can never be opened twice. */
+        fun consumeOnboardingUrl() {
+            _uiState.update { it.copy(onboardingUrl = null) }
+        }
+
+        fun dismissOnboardingError() {
+            _uiState.update { it.copy(onboardingError = null) }
         }
 
         private fun startLoad(mode: LoadMode) {

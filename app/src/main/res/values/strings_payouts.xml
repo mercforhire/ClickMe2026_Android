@@ -2,8 +2,8 @@
 <resources>
     <!--
         Expert Payouts (Phase 14, PAYOUT-01, PAYOUT-02). Reused, not redefined here: expert_retry,
-        login_error_network, content_loading. There is deliberately no withdraw or cash-out copy: payouts are
-        automatic and POST payouts/withdraw is retired.
+        login_error_network, content_loading. Payouts are automatic, so there is deliberately no manual payout action
+        copy here (the old manual payout endpoint is retired).
     -->
     <string name="payouts_title">Payouts</string>
 
