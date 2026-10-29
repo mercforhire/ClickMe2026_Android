@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,18 +25,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.EmptyState
+import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
+import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutBalanceHero
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutEligiblePill
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutMetaCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutStatusCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutStatusVariant
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PayoutsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
@@ -59,8 +72,10 @@ fun PayoutsScreen(
     PayoutsScreenContent(
         state = state,
         onBack = onBack,
+        onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
         onRefreshFailureShown = viewModel::consumeRefreshFailure,
+        onStartPayoutSetup = {},
         modifier = modifier,
     )
 }
@@ -71,8 +86,10 @@ fun PayoutsScreen(
 fun PayoutsScreenContent(
     state: PayoutsUiState,
     onBack: () -> Unit,
+    onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onRefreshFailureShown: () -> Unit,
+    onStartPayoutSetup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -91,9 +108,31 @@ fun PayoutsScreenContent(
         topBar = { AuthTopAppBar(title = stringResource(R.string.payouts_title), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        when (state.load) {
+        when (val load = state.load) {
             PayoutsLoad.Loading -> PayoutsSkeleton(modifier = Modifier.padding(innerPadding))
-            is PayoutsLoad.Failed -> Unit
+            is PayoutsLoad.Failed ->
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.padding(innerPadding),
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .semantics { liveRegion = LiveRegionMode.Polite },
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        EmptyState(
+                            icon = Icons.Outlined.ErrorOutline,
+                            heading = stringResource(R.string.payouts_error_title),
+                            body = load.message.asString(),
+                            action = EmptyStateAction(stringResource(R.string.expert_retry), onRetry),
+                        )
+                    }
+                }
             PayoutsLoad.Loaded ->
                 PullToRefreshBox(
                     isRefreshing = state.isRefreshing,
@@ -109,7 +148,14 @@ fun PayoutsScreenContent(
                                 .padding(top = Spacing.lg),
                         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                     ) {
-                        SectionAppear { PayoutsBody(state.content) }
+                        SectionAppear {
+                            PayoutsBody(
+                                content = state.content,
+                                summary = state.summary,
+                                isMinting = state.isMintingLink,
+                                onStartPayoutSetup = onStartPayoutSetup,
+                            )
+                        }
                         Spacer(Modifier.fillMaxWidth().height(Spacing.xl))
                     }
                 }
@@ -117,12 +163,32 @@ fun PayoutsScreenContent(
     }
 }
 
+/**
+ * The cards for [content]: setup shows only the setup card; hold and ready show their status card then the meta card;
+ * a balance shows the hero, the Eligible pill when applicable, the meta card and the schedule note.
+ */
 @Composable
-private fun PayoutsBody(content: PayoutsContent?) {
+private fun PayoutsBody(
+    content: PayoutsContent?,
+    summary: PayoutSummaryData?,
+    isMinting: Boolean,
+    onStartPayoutSetup: () -> Unit,
+) {
     when (content) {
+        null -> Unit
+        is PayoutsContent.SetupRequired ->
+            PayoutStatusCard(PayoutStatusVariant.Setup, onSetUp = onStartPayoutSetup, isMinting = isMinting)
+        is PayoutsContent.OnHold ->
+            StatusThenMeta(PayoutStatusVariant.Hold(content.heldCount), summary)
+        PayoutsContent.ReadyNoEarnings -> StatusThenMeta(PayoutStatusVariant.Ready, summary)
         is PayoutsContent.Loaded ->
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 PayoutBalanceHero(summary = content.summary)
+                if (content.eligible) {
+                    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        PayoutEligiblePill()
+                    }
+                }
                 PayoutMetaCard(summary = content.summary)
                 Text(
                     text = stringResource(R.string.payouts_schedule_note),
@@ -130,6 +196,16 @@ private fun PayoutsBody(content: PayoutsContent?) {
                     color = MaterialTheme.extras.onSurfaceMuted,
                 )
             }
-        else -> Unit
+    }
+}
+
+@Composable
+private fun StatusThenMeta(
+    variant: PayoutStatusVariant,
+    summary: PayoutSummaryData?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+        PayoutStatusCard(variant, onSetUp = {}, isMinting = false)
+        PayoutMetaCard(summary = summary)
     }
 }
