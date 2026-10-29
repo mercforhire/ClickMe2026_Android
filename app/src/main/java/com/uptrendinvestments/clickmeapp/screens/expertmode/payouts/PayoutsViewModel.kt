@@ -198,9 +198,11 @@ class PayoutsViewModel
             viewModelScope.launch {
                 try {
                     val url = financial.onboardingLink(refresh = refresh)
+                    // The flag is set outside `update`: its lambda is a CAS loop that may run more than once.
+                    val allowed = isAllowedOnboardingUrl(url)
+                    if (allowed) openedOnboarding = true
                     _uiState.update {
-                        if (isAllowedOnboardingUrl(url)) {
-                            openedOnboarding = true
+                        if (allowed) {
                             it.copy(onboardingUrl = url)
                         } else {
                             it.copy(onboardingError = FieldError.Res(R.string.expert_error_generic))
