@@ -166,6 +166,7 @@ fun ProfileTextField(
     error: String? = null,
     maxLength: Int = Int.MAX_VALUE,
     keyboardOptions: KeyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+    placeholder: String = label,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -177,7 +178,7 @@ fun ProfileTextField(
         ValidatedField(
             value = value,
             onValueChange = { onValueChange(it.take(maxLength)) },
-            placeholder = label,
+            placeholder = placeholder,
             leadingIcon = icon,
             error = error,
             keyboardOptions = keyboardOptions,

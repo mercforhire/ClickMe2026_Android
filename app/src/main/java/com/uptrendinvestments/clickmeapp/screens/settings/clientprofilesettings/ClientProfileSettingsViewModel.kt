@@ -325,10 +325,10 @@ class ClientProfileSettingsViewModel
         }
     }
 
-private const val HTTP_UNPROCESSABLE = 422
+internal const val HTTP_UNPROCESSABLE = 422
 
 /** Server field name (`basic.first_name` or bare `first_name`) to the field it belongs to. */
-private fun fieldForServerName(name: String): ProfileTextFieldId? =
+internal fun fieldForServerName(name: String): ProfileTextFieldId? =
     when (name.substringAfterLast('.')) {
         "first_name" -> ProfileTextFieldId.FirstName
         "last_name" -> ProfileTextFieldId.LastName
@@ -340,12 +340,12 @@ private fun fieldForServerName(name: String): ProfileTextFieldId? =
         else -> null
     }
 
-private fun ApiException.Http.fieldMessages(): Map<ProfileTextFieldId, FieldError> =
+internal fun ApiException.Http.fieldMessages(): Map<ProfileTextFieldId, FieldError> =
     fieldErrors
         .mapNotNull { dto -> fieldForServerName(dto.field)?.let { it to FieldError.Text(dto.message) } }
         .toMap()
 
-private fun ProfileSnapshot.with(
+internal fun ProfileSnapshot.with(
     field: ProfileTextFieldId,
     value: String,
 ): ProfileSnapshot =
