@@ -217,7 +217,7 @@ private fun EarningsTransactionRowPreview() {
                             commissionAmount = 1125,
                             netAmount = 6375,
                             currency = "CAD",
-                            payoutStatus = "settled_direct",
+                            payoutStatus = "pending",
                             createdAt = Instant.parse("2026-07-30T10:00:00Z"),
                         ),
                 )
