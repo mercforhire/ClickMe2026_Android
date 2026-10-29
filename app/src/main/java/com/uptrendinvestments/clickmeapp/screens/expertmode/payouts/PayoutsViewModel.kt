@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
 import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
+import com.uptrendinvestments.clickmeapp.model.responses.hasMoreRows
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ConnectReturn
@@ -291,7 +292,7 @@ class PayoutsViewModel
             state: PayoutsUiState,
             mode: LoadMode,
         ) = if (ledger != null) {
-            ledger.pagination?.hasMoreOrDerived == true
+            ledger.hasMoreRows(TRANSACTIONS_PAGE_SIZE)
         } else {
             mode != LoadMode.Loud && state.hasMoreActivity
         }

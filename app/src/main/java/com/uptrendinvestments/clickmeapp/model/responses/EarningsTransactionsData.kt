@@ -12,6 +12,13 @@ data class EarningsTransactionsData(
 )
 
 /**
+ * Whether the server has more ledger rows after this page: the pagination flag, else the page counts; without a
+ * pagination block a full page ([pageSize] rows) means there may be more. The one rule shared by Payouts and Activity.
+ */
+fun EarningsTransactionsData.hasMoreRows(pageSize: Int): Boolean =
+    pagination?.hasMoreOrDerived ?: (transactions.size == pageSize)
+
+/**
  * One ledger row, ported from iOS `EarningsTransactionItem`. The three amounts are integer MINOR units: format them
  * with `Money.format` and never divide by 100 or use `formatMajor` (PAYOUT-03, RESEARCH Pitfall 6). A row whose
  * booking, topic or client cannot be resolved arrives with those fields null and must still be rendered.

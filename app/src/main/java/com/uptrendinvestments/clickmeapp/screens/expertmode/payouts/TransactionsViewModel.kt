@@ -3,7 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
-import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
+import com.uptrendinvestments.clickmeapp.model.responses.hasMoreRows
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
@@ -124,7 +124,7 @@ class TransactionsViewModel
                     try {
                         val data = financial.transactions(page = 1, limit = TRANSACTIONS_PAGE_SIZE)
                         val rows = data.transactions.distinctBy { it.id }
-                        hasMore = data.hasMorePages()
+                        hasMore = data.hasMoreRows(TRANSACTIONS_PAGE_SIZE)
                         nextPage = 2
                         val load = if (rows.isEmpty()) TransactionsLoad.Empty else TransactionsLoad.Loaded
                         _uiState.update {
@@ -149,7 +149,7 @@ class TransactionsViewModel
                 viewModelScope.launch {
                     try {
                         val data = financial.transactions(page = page, limit = TRANSACTIONS_PAGE_SIZE)
-                        hasMore = data.hasMorePages()
+                        hasMore = data.hasMoreRows(TRANSACTIONS_PAGE_SIZE)
                         nextPage = page + 1
                         _uiState.update { it.copy(rows = it.rows.appendNew(data.transactions), isPaging = false) }
                     } catch (e: ApiException) {
@@ -157,10 +157,6 @@ class TransactionsViewModel
                     }
                 }
         }
-
-        /** The server flag, else the page counts; without a pagination block a full page means there may be more. */
-        private fun EarningsTransactionsData.hasMorePages(): Boolean =
-            pagination?.hasMoreOrDerived ?: (transactions.size == TRANSACTIONS_PAGE_SIZE)
 
         /** Appends the rows of [next] whose id is not shown yet, after the existing rows and in server order. */
         private fun List<EarningsTransactionItem>.appendNew(
