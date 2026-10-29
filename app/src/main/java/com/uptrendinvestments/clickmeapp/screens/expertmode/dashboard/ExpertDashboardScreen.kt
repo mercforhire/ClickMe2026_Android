@@ -67,7 +67,8 @@ import java.time.ZoneId
  * Hilt-aware expert Dashboard tab root (EXP-05). Navigation is reported through callbacks so the route owns the
  * navigator: [onOpenRequests] opens Incoming Requests, [onOpenBookingsUpcoming] selects the Bookings tab on Upcoming
  * (the screen first posts the hand-off the Bookings tab consumes, D-12), [onOpenBooking] opens a booking Summary,
- * [onOpenAvailability] and [onOpenTopics] are the Expert Tools targets (D-11).
+ * [onOpenAvailability] and [onOpenTopics] are the Expert Tools targets (D-11); [onOpenPayouts] (the Payouts tool and the
+ * earnings card) and [onOpenProfileSettings] open the Phase 14 screens.
  */
 @Composable
 fun ExpertDashboardScreen(
@@ -79,6 +80,8 @@ fun ExpertDashboardScreen(
     onOpenAvailability: () -> Unit,
     onOpenTopics: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenPayouts: () -> Unit,
+    onOpenProfileSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertDashboardViewModel = hiltViewModel(),
 ) {
@@ -104,6 +107,8 @@ fun ExpertDashboardScreen(
         onOpenAvailability = onOpenAvailability,
         onOpenTopics = onOpenTopics,
         onOpenNotifications = onOpenNotifications,
+        onOpenPayouts = onOpenPayouts,
+        onOpenProfileSettings = onOpenProfileSettings,
         onJoin = viewModel::join,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
@@ -131,6 +136,8 @@ fun ExpertDashboardContent(
     onOpenBooking: (String) -> Unit,
     onOpenAvailability: () -> Unit,
     onOpenTopics: () -> Unit,
+    onOpenPayouts: () -> Unit,
+    onOpenProfileSettings: () -> Unit,
     onJoin: (ExpertBookingItem) -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
@@ -147,19 +154,14 @@ fun ExpertDashboardContent(
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
     val payoutOpenFailedMessage = stringResource(R.string.dashboard_payout_setup_error_title)
-    val profileComingSoon =
-        stringResource(R.string.dashboard_coming_soon, stringResource(ExpertTool.ProfileSettings.label))
-    val payoutsComingSoon = stringResource(R.string.dashboard_coming_soon, stringResource(ExpertTool.Payouts.label))
     val onToolClick: (ExpertTool) -> Unit = { tool ->
         when (tool) {
             ExpertTool.PendingRequests -> onOpenRequests()
             ExpertTool.Calendar -> onOpenBookingsUpcoming()
             ExpertTool.Availability -> onOpenAvailability()
             ExpertTool.Topics -> onOpenTopics()
-            ExpertTool.ProfileSettings ->
-                scope.launch { snackbarHostState.showSnackbar(profileComingSoon, duration = SnackbarDuration.Short) }
-            ExpertTool.Payouts ->
-                scope.launch { snackbarHostState.showSnackbar(payoutsComingSoon, duration = SnackbarDuration.Short) }
+            ExpertTool.ProfileSettings -> onOpenProfileSettings()
+            ExpertTool.Payouts -> onOpenPayouts()
         }
     }
     val openTab =
@@ -275,6 +277,7 @@ fun ExpertDashboardContent(
                             payoutSummary = state.payoutSummary,
                             isMinting = state.isMintingLink,
                             onStartPayoutSetup = onStartPayoutSetup,
+                            onOpenPayouts = onOpenPayouts,
                         )
                         ExpertToolsGrid(onToolClick = onToolClick)
                         Spacer(Modifier.fillMaxWidth().height(Spacing.xl))

@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard
 import androidx.compose.runtime.Composable
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
@@ -10,6 +11,8 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.Exper
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.TopicsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertProfileSettingsKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsKeyFor
 
 /**
@@ -35,5 +38,7 @@ fun ExpertDashboardRoute(
         onOpenAvailability = { navigator.navigate(AvailabilityKey(AvailabilityOrigin.Dashboard)) },
         onOpenTopics = { navigator.navigate(TopicsRoot) },
         onOpenNotifications = { navigator.navigate(notificationsKeyFor(AppMode.Expert)) },
+        onOpenPayouts = { navigator.navigate(PayoutsKey(SettingsOrigin.Dashboard)) },
+        onOpenProfileSettings = { navigator.navigate(ExpertProfileSettingsKey(SettingsOrigin.Dashboard)) },
     )
 }
