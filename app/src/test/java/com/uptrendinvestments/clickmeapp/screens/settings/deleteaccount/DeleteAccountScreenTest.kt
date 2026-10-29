@@ -180,6 +180,20 @@ class DeleteAccountScreenTest {
     }
 
     @Test
+    fun deletingSpinnerHasASpokenLabel() {
+        setContent(
+            DeleteAccountUiState(
+                step = DeleteStep.Reason,
+                reason = DeleteAccountReason.Other,
+                password = "pw1",
+                isDeleting = true,
+            ),
+        )
+
+        rule.onNodeWithContentDescription("Deleting account").assertExists()
+    }
+
+    @Test
     fun systemBackOnReasonReturnsToWarning() {
         setContent(DeleteAccountUiState(step = DeleteStep.Reason))
 

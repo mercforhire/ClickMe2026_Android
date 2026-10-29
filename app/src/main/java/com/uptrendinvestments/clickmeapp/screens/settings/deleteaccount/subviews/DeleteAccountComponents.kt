@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -330,8 +331,12 @@ fun DeleteAccountBottomBar(
                         enabled = canConfirm,
                     ) {
                         if (isDeleting) {
+                            val deletingText = stringResource(R.string.delete_account_deleting)
                             CircularProgressIndicator(
-                                modifier = Modifier.size(SpinnerSize),
+                                modifier =
+                                    Modifier
+                                        .size(SpinnerSize)
+                                        .semantics { contentDescription = deletingText },
                                 color = MaterialTheme.colorScheme.error,
                                 strokeWidth = SpinnerStroke,
                             )

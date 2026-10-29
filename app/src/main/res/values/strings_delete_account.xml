@@ -7,6 +7,8 @@
     <string name="delete_account_body">Deleting your account is permanent and cannot be undone. All your data, including bookings, profile information, and payment details, will be permanently removed.</string>
     <string name="delete_account_keep">Keep my account</string>
     <string name="delete_account_delete">Delete Account</string>
+    <!-- Spoken label for the spinner that replaces the button text while the request pair is in flight. -->
+    <string name="delete_account_deleting">Deleting account</string>
 
     <!-- Reason form. -->
     <string name="delete_account_help_us">Help us improve</string>
