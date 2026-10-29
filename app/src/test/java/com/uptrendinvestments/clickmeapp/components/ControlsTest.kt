@@ -4,13 +4,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -21,6 +25,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.buttons.AsyncSaveButton
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
@@ -28,10 +34,12 @@ import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButto
 import com.uptrendinvestments.clickmeapp.screens.debug.GalleryControlsSection
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class ControlsTest {
@@ -225,6 +233,96 @@ class ControlsTest {
         rule.onNodeWithText("Check your connection and try again.").assertIsDisplayed()
         rule.onNodeWithText("Retry connection").assertIsDisplayed().performClick()
         assertEquals(1, retries)
+    }
+
+    @Test
+    fun errorStateDefaultsUnchanged() {
+        rule.setContent { ClickMeTheme { ErrorState(onRetry = {}) } }
+        rule.onNodeWithText("Something went wrong").assertIsDisplayed()
+        rule.onNodeWithText("Check your connection and try again.").assertIsDisplayed()
+        rule.onNodeWithText("Retry connection").assertIsDisplayed()
+    }
+
+    @Test
+    fun errorStateNamedHeading() {
+        var retries = 0
+        rule.setContent {
+            ClickMeTheme {
+                ErrorState(
+                    onRetry = { retries++ },
+                    heading = "Couldn't load bookings",
+                    body = "Server says no",
+                    retryLabel = "Retry",
+                )
+            }
+        }
+        rule.onNodeWithText("Couldn't load bookings").assertIsDisplayed()
+        rule.onNodeWithText("Server says no").assertIsDisplayed()
+        rule.onNodeWithText("Retry").assertIsDisplayed().performClick()
+        assertEquals(1, retries)
+    }
+
+    @Test
+    fun emptyStateHeadingIsHeading() {
+        rule.setContent {
+            ClickMeTheme {
+                EmptyState(icon = Icons.Outlined.Info, heading = "No bookings yet", body = "Body copy")
+            }
+        }
+        rule
+            .onNode(hasText("No bookings yet") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            .assertExists()
+        rule
+            .onNode(hasText("Body copy") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun errorStateIsPoliteLiveRegion() {
+        rule.setContent {
+            ClickMeTheme {
+                ErrorState(
+                    onRetry = {},
+                    heading = "Couldn't load bookings",
+                    body = "Server says no",
+                    retryLabel = "Retry",
+                )
+            }
+        }
+        rule
+            .onNode(
+                SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite),
+                useUnmergedTree = true,
+            ).assert(hasAnyDescendant(hasText("Couldn't load bookings")))
+            .assert(hasAnyDescendant(hasText("Server says no")))
+    }
+
+    /**
+     * Robolectric measures text with a 1 px per character stand-in font, so a long string never reaches the 328 px
+     * line width. The heading therefore carries two line breaks: three lines prove nothing clamps it, and the layout
+     * input proves no max line count or ellipsis is set (UI Consideration "long-text: State headings and bodies").
+     */
+    @Test
+    @Config(qualifiers = "w360dp")
+    fun longHeadingWraps() {
+        val heading = "Couldn't load your bookings\nbecause something went wrong\non the server side"
+        rule.setContent {
+            ClickMeTheme {
+                EmptyState(icon = Icons.Outlined.Info, heading = heading, body = "Body copy")
+                ErrorState(onRetry = {}, heading = heading)
+            }
+        }
+        val results = mutableListOf<TextLayoutResult>()
+        rule.onAllNodes(hasText(heading)).fetchSemanticsNodes().forEach { node ->
+            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        }
+        assertEquals(2, results.size)
+        results.forEach {
+            assertTrue("expected a wrapped heading, got ${it.lineCount} lines", it.lineCount > 1)
+            assertEquals(Int.MAX_VALUE, it.layoutInput.maxLines)
+            assertEquals(TextOverflow.Clip, it.layoutInput.overflow)
+            assertTrue(it.layoutInput.softWrap)
+        }
     }
 
     // PlaceholderTabContent

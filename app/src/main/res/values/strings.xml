@@ -13,6 +13,7 @@
     <string name="error_state_heading">Something went wrong</string>
     <string name="error_state_body">Check your connection and try again.</string>
     <string name="error_state_retry">Retry connection</string>
+    <string name="common_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
     <string name="custom_tab_open_failed">Couldn\'t open the link. Try again in your browser.</string>
     <string name="save_button_saved_default">Saved!</string>
 
@@ -22,6 +23,7 @@
     <string name="a11y_back">Back</string>
     <string name="a11y_state_saving">Saving</string>
     <string name="a11y_state_saved">Saved</string>
+    <string name="a11y_in_progress">In progress</string>
 
     <string name="debug_design_system_gallery" translatable="false">Design system gallery</string>
 </resources>

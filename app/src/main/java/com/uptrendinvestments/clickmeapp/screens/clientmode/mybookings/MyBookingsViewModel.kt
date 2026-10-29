@@ -39,8 +39,10 @@ import javax.inject.Inject
  * run in parallel. Page 1 only is a known limit, logged in STATE by plan 08-15.
  *
  * Three refresh triggers (D-10): pull-to-refresh ([refresh], flags a failure for the snackbar); a quiet reload when
- * the screen or the Bookings tab is shown again ([onScreenShown]); and a quiet reload on any realtime
- * `booking.update`. Quiet reloads never show Loading and a failed one keeps the previous lists (D-11).
+ * the screen or the Bookings tab is shown again ([onScreenShown]); and a realtime reload on any `booking.update`.
+ * Neither reload shows Loading and a failed one keeps the previous lists (D-11). They differ on failure only
+ * (Phase 15 D-05): the tab-return reload stays silent, while the pull and the realtime reload flag the failure so the
+ * refresh-failed snackbar offers Retry.
  *
  * D-07 hand-off: the cancel flow posts a [BookingsLaunch] to [BookingsLaunchRequest]. It is consumed in `init` when
  * posted before this ViewModel exists, and on every later emission otherwise; either way it selects its tab, carries
@@ -79,6 +81,12 @@ class MyBookingsViewModel
 
             /** Pull-to-refresh: shows the refresh indicator and flags a failure. */
             Pull,
+
+            /**
+             * Refetch started by a realtime event (D-05): behaves like [Quiet] (no skeleton, no indicator, lists
+             * kept) but flags a failure so the refresh-failed snackbar offers Retry.
+             */
+            Realtime,
         }
 
         private val _uiState =
@@ -105,7 +113,9 @@ class MyBookingsViewModel
             // the in-flight load, so a burst of events ends with one latest-wins result (T-08-24).
             viewModelScope.launch {
                 realtime.events.filterIsInstance<RealtimeEvent.BookingUpdate>().collect {
-                    startLoad(if (_uiState.value.load is MyBookingsLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
+                    startLoad(
+                        if (_uiState.value.load is MyBookingsLoad.Loading) LoadMode.Loud else LoadMode.Realtime,
+                    )
                 }
             }
             // D-07: a launch posted before this ViewModel existed is applied now, before the first load, so the
@@ -209,7 +219,7 @@ class MyBookingsViewModel
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = MyBookingsLoad.Loading)
                     LoadMode.Pull -> it.copy(isRefreshing = true)
-                    LoadMode.Quiet -> it
+                    LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }
             loadJob =
@@ -224,7 +234,7 @@ class MyBookingsViewModel
                             when (mode) {
                                 LoadMode.Loud ->
                                     it.copy(load = MyBookingsLoad.Failed(e.toSectionMessage()), isRefreshing = false)
-                                LoadMode.Pull -> it.copy(refreshFailed = true, isRefreshing = false)
+                                LoadMode.Pull, LoadMode.Realtime -> it.copy(refreshFailed = true, isRefreshing = false)
                                 LoadMode.Quiet -> it.copy(isRefreshing = false)
                             }
                         }

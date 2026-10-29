@@ -420,6 +420,18 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    fun refreshFailureShowsRetryThatRefreshes() {
+        val calls = Callbacks()
+        show { Content(loaded(upcoming = listOf(bookingItem("b1")), refreshFailed = true), calls) }
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, calls.refreshes)
+        assertEquals(0, calls.retries)
+        assertEquals(1, rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
+    }
+
+    @Test
     fun content_neverOffersExcludedActions() {
         val upcoming = listOf(bookingItem("b1"), bookingItem("b3", status = STATUS_PENDING_APPROVAL))
         val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
