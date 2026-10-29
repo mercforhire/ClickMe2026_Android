@@ -72,7 +72,9 @@ data class PayoutsUiState(
  *
  * The first load shows the skeleton ([LoadMode.Loud]). A reload on resume is quiet: it never returns to the skeleton
  * and a failure is swallowed. A pull-to-refresh failure raises [PayoutsUiState.refreshFailed]. A reload that only lost
- * the payout summary keeps what is shown rather than replacing a real balance with "ready" or "on hold".
+ * the payout summary keeps what is shown rather than replacing a real balance with "ready" or "on hold". The first
+ * (skeleton) load has nothing to keep: as on iOS, an onboarded expert whose summary call failed sees "ready" or "on
+ * hold" there until the next reload brings the balance.
  *
  * Nothing is logged: the responses hold money and the onboarding link is single use.
  */
