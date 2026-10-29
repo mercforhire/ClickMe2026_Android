@@ -76,6 +76,9 @@ class AutoSaver<S : Any>(
     /**
      * Saves a pending edit now, on [flushScope] so leaving the screen cannot cancel it. A no-op when nothing differs
      * from the saved baseline.
+     *
+     * Known limitation: if this save fails, [onFailure] runs against a screen that is already gone, so the user is not
+     * told (no app-level channel for such messages exists yet). The edit stays unsaved until the screen is opened again.
      */
     fun flush() {
         debounceJob?.cancel()
