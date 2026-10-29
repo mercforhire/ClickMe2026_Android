@@ -34,11 +34,14 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingManagementEntries
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMethodsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientProfileHubActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -84,6 +87,7 @@ class HomeShellsTest {
         refreshStatus: String? = null,
         paymentMethods: Boolean = false,
         hubStandIns: Boolean = false,
+        versionLabel: String = "",
         chatLaunch: ChatLaunchRequest? = null,
         shellRoutes: ShellRouteRequest? = null,
     ) {
@@ -99,6 +103,14 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
+                    profileRoot = { navigator, debug ->
+                        ClientProfileHomeContent(
+                            card = ProfileHubCard(null, null, null),
+                            versionLabel = versionLabel,
+                            actions = clientProfileHubActions(navigator, { switched += it }, { logoutCount++ }),
+                            debugContent = debug,
+                        )
+                    },
                     detailEntries = { navigator ->
                         if (paymentMethods) fakePaymentMethodsEntry(navigator)
                         if (hubStandIns) clientHubStandIns()
@@ -342,7 +354,7 @@ class HomeShellsTest {
             composeRule.onNode(tab("Profile")).assertIsSelected()
             composeRule.onNodeWithText(screen).assertDoesNotExist()
         }
-        composeRule.onNodeWithContentDescription("Edit profile", substring = true).performClick()
+        composeRule.onNodeWithContentDescription("Edit profile", substring = true).performScrollTo().performClick()
         composeRule.onNodeWithText("stand-in client settings").assertExists()
         composeRule.onNode(tab("Profile")).assertDoesNotExist()
     }
@@ -369,12 +381,11 @@ class HomeShellsTest {
 
     @Test
     fun clientDebugAffordancesBelowFooter() {
-        setClient(showDebug = true, refreshStatus = "Token refresh OK")
+        setClient(showDebug = true, refreshStatus = "Token refresh OK", versionLabel = "Version 9.9 (9)")
         tapTab("Profile")
-        val footer = topOf("Version", substring = true)
-        val gallery = composeRule.onNodeWithText("Design system gallery").performScrollTo()
-        gallery.assertExists()
-        assertTrue(footer < topOf("Design system gallery"))
+        composeRule.onNodeWithText("Design system gallery").performScrollTo().assertExists()
+        // Measured after the scroll so both tops share one scroll offset.
+        assertTrue(topOf("Version", substring = true) < topOf("Design system gallery"))
         composeRule.onNodeWithText("Token refresh OK").assertExists()
         composeRule.onNodeWithText("Force token refresh").performScrollTo().performClick()
         assertEquals(1, refreshCount)
