@@ -772,15 +772,15 @@ Plans:
   3. The app draws edge-to-edge, and no content is hidden behind the system bars, display cutouts or the keyboard.
   4. A TalkBack user can log in, book a session, join a call and send a chat message.
 
-**Plans:** 20 plans in 4 waves
+**Plans:** 5/20 plans executed in 4 waves
 
 Plans:
 **Wave 1**
-- [ ] 15-01-PLAN.md — State standard: `RefreshFailedSnackbarEffect`, `ErrorState(heading, body, retryLabel)`, shared strings, D-05 tracer on My Bookings
-- [ ] 15-02-PLAN.md — Portrait lock, `contentMaxWidth()` (600 dp), cutout at the navigation root and pill, `InsetsTestSupport`
-- [ ] 15-03-PLAN.md — Reschedule decline dialog to a sheet (R7) and the D-17 insets rules in `check-design-rules.sh` with a self-test
-- [ ] 15-04-PLAN.md — `ValidatedField` name and `AsyncSaveButton` busy state, D-14 substitute decision (checkpoint, default logs the ATF suite for Phase 16), `A11yAudit`, palette contrast test
-- [ ] 15-09-PLAN.md — D-11 call resume marker: PII-free DataStore marker, app-start routing to the booking detail, never joins
+- [x] 15-01-PLAN.md — State standard: `RefreshFailedSnackbarEffect`, `ErrorState(heading, body, retryLabel)`, shared strings, D-05 tracer on My Bookings
+- [x] 15-02-PLAN.md — Portrait lock, `contentMaxWidth()` (600 dp), cutout at the navigation root and pill, `InsetsTestSupport`
+- [x] 15-03-PLAN.md — Reschedule decline dialog to a sheet (R7) and the D-17 insets rules in `check-design-rules.sh` with a self-test
+- [x] 15-04-PLAN.md — `ValidatedField` name and `AsyncSaveButton` busy state, D-14 substitute decision (checkpoint, default logs the ATF suite for Phase 16), `A11yAudit`, palette contrast test
+- [x] 15-09-PLAN.md — D-11 call resume marker: PII-free DataStore marker, app-start routing to the booking detail, never joins
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 15-05-PLAN.md — SC-4 flow 1: Login TalkBack and IME, Set New Password code out of saved state, recovery screens
@@ -802,6 +802,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 15-17-PLAN.md — `15-DEVICE-CHECKLIST.md` (absorbs Phases 3-14 deferred checks), STATE superseded marks, phase gate
+
 **UI hint**: yes
 
 ### Phase 16: Cross-Platform QA
@@ -853,7 +854,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
-| 15. Polish & Hardening | 0/TBD | Not started | - |
+| 15. Polish & Hardening | 5/20 | In Progress | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
 
