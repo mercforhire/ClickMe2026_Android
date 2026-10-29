@@ -21,8 +21,8 @@ import javax.inject.Singleton
  * shows the expert's base slots and the server re-checks the duration when the booking is requested.
  *
  * Three booking writes: the free request ([requestBooking]), the payment-intent call for short-lead paid
- * bookings ([paymentIntent], PAY-03; a 422 LONG_LEAD_REQUIRES_SAVED_CARD routes to [confirm] without a
- * PaymentIntent, PAY-04) and the server-side confirm ([confirm], Path A).
+ * bookings ([paymentIntent], PAY-03; a 422 LONG_LEAD_REQUIRES_SAVED_CARD is now shown as an error, quick
+ * 261028-to1) and the server-side confirm ([confirm], Path A).
  */
 @Singleton
 class BookingRepository

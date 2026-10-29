@@ -203,4 +203,48 @@ class MakeABookingUiStateTest {
         val s = state(selectedTopicId = "free", selectedSlotStart = futureStart, isSubmitting = true)
         assertNull(s.bookDisabledReason)
     }
+
+    // ---- quick 261028-to1: paid booking window ----
+
+    private val inWindow = now.plus(PAID_BOOKING_MAX_LEAD)
+    private val beyond = inWindow.plusSeconds(60)
+
+    private fun windowState(
+        topic: String?,
+        slot: Instant,
+    ) = state(
+        selectedTopicId = topic,
+        selectedSlotStart = slot,
+        paymentMethods = PaymentMethodsAvailability.Available,
+        availability =
+            AvailabilityState.Loaded(
+                mapOf(
+                    today to listOf(BookingTimeSlot(futureStart, null, true)),
+                    LocalDate.of(2026, 10, 22) to listOf(BookingTimeSlot(beyond, null, true)),
+                    LocalDate.of(2026, 10, 21) to listOf(BookingTimeSlot(inWindow, null, true)),
+                ),
+            ),
+    ).copy(selectedDate = LocalDate.of(2026, 10, 22))
+
+    @Test
+    fun latest_selectable_start_is_six_days_out_for_a_paid_topic_only() {
+        assertEquals(inWindow, state(selectedTopicId = "paid").latestSelectableStart)
+        assertNull(state(selectedTopicId = "free").latestSelectableStart)
+        assertNull(state().latestSelectableStart)
+    }
+
+    @Test
+    fun a_slot_beyond_the_window_disables_booking_for_a_paid_topic_but_not_a_free_one() {
+        assertEquals(BookDisabledReason.NoSlot, windowState("paid", beyond).bookDisabledReason)
+        assertNull(windowState("free", beyond).bookDisabledReason)
+    }
+
+    @Test
+    fun open_days_follow_the_paid_window() {
+        assertEquals(setOf(today, LocalDate.of(2026, 10, 21)), windowState("paid", beyond).openDays)
+        assertEquals(
+            setOf(today, LocalDate.of(2026, 10, 21), LocalDate.of(2026, 10, 22)),
+            windowState("free", beyond).openDays,
+        )
+    }
 }

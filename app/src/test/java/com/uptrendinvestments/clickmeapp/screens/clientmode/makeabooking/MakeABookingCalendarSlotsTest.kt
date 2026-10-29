@@ -13,14 +13,17 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingCalendarCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTimeSlotsCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.PAID_WINDOW_NOTE_TEST_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -188,6 +191,7 @@ class MakeABookingCalendarSlotsTest {
         selectedDateLoaded: Boolean = true,
         onSelectSlot: (Instant) -> Unit = {},
         onRetry: () -> Unit = {},
+        latestSelectableStart: Instant? = null,
     ) {
         rule.setContent {
             ClickMeTheme {
@@ -202,6 +206,7 @@ class MakeABookingCalendarSlotsTest {
                     selectedDateLoaded = selectedDateLoaded,
                     zone = zone,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    latestSelectableStart = latestSelectableStart,
                 )
             }
         }
@@ -312,5 +317,37 @@ class MakeABookingCalendarSlotsTest {
         rule.onNodeWithText("Check your connection and try again.").assertExists()
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retries)
+    }
+
+    // ---- quick 261028-to1: paid booking window ----
+
+    @Test
+    fun paidWindowNoteShowsAndChipsBeyondTheWindowAreNotEnabled() {
+        val inside = Instant.parse("2026-10-28T16:00:00Z")
+        val beyond = Instant.parse("2026-10-28T16:01:00Z")
+        val window =
+            AvailabilityState.Loaded(
+                mapOf(today to listOf(BookingTimeSlot(inside, null, true), BookingTimeSlot(beyond, null, true))),
+            )
+        setSlots(availability = window, latestSelectableStart = inside)
+
+        rule.onNodeWithTag(PAID_WINDOW_NOTE_TEST_TAG).assertExists()
+        rule.onNodeWithText("Paid sessions can be booked up to 6 days ahead.").assertExists()
+        rule.onNodeWithTag(slotChipTestTag(inside)).assertIsEnabled()
+        rule.onNodeWithTag(slotChipTestTag(beyond)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun noPaidWindowNoteWithoutALimit() {
+        setSlots(latestSelectableStart = null)
+        rule.onNodeWithTag(PAID_WINDOW_NOTE_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun paidWindowCopyNamesTheSixDays() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        listOf(R.string.make_a_booking_paid_window_note, R.string.make_a_booking_error_paid_window).forEach {
+            assertTrue(context.getString(it).contains("$PAID_BOOKING_MAX_LEAD_DAYS days"))
+        }
     }
 }
