@@ -111,7 +111,10 @@ class PayoutsViewModel
         private var loadJob: Job? = null
         private var loadIsCurrent = false
 
-        /** This screen handed a link to the browser in this session; only then may a refresh deep link re-mint one. */
+        /**
+         * This screen handed a link to the browser and it has not been used up: only then may a refresh deep link
+         * re-mint one. Cleared by a re-mint, by [ConnectReturn.Done] and once the account is onboarded.
+         */
         private var openedOnboarding = false
 
         init {
@@ -130,13 +133,24 @@ class PayoutsViewModel
         /**
          * The Stripe return deep link (D-09). It only triggers calls: [ConnectReturn.Done] re-fetches the status
          * (never assuming success, T-14-29) and [ConnectReturn.LinkExpired] re-mints a link only when this screen
-         * opened one, otherwise it just reloads (T-14-28).
+         * opened one that has not been re-minted yet and setup is still required, otherwise it just reloads (T-14-28).
          */
         private fun onConnectReturn(value: ConnectReturn) {
             val reload = if (_uiState.value.load is PayoutsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud
             when (value) {
-                ConnectReturn.Done -> startLoad(reload)
-                ConnectReturn.LinkExpired -> if (openedOnboarding) reopenOnboarding() else startLoad(reload)
+                ConnectReturn.Done -> {
+                    openedOnboarding = false
+                    startLoad(reload)
+                }
+                // One re-mint per link this screen opened, and only while setup is still required: a stray or hostile
+                // refresh deep link can never mint a link for an onboarded expert or a second one for the same tab.
+                ConnectReturn.LinkExpired ->
+                    if (openedOnboarding && _uiState.value.content is PayoutsContent.SetupRequired) {
+                        openedOnboarding = false
+                        reopenOnboarding()
+                    } else {
+                        startLoad(reload)
+                    }
             }
         }
 
@@ -224,6 +238,7 @@ class PayoutsViewModel
                     val snapshot = fetch()
                     val onboarding = resolvePayoutOnboarding(snapshot.status, snapshot.summary, snapshot.summaryWas400)
                     val content = selectPayoutsContent(onboarding, snapshot.summary, snapshot.heldCount)
+                    if (onboarding == PayoutOnboarding.Onboarded) openedOnboarding = false
                     val lostSummary = snapshot.summaryError != null && !snapshot.summaryWas400
                     _uiState.update { applyResult(it, mode, snapshot, onboarding, content, lostSummary) }
                 }

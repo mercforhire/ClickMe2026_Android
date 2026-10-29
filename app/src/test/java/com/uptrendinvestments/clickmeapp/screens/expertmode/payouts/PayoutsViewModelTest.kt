@@ -395,6 +395,81 @@ class PayoutsViewModelTest {
         }
 
     @Test
+    fun strayRefreshAfterDoneMintsNothing() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.ownLinkSetup()
+            val vm = vm(h)
+            runCurrent()
+            vm.startPayoutSetup()
+            runCurrent()
+            vm.consumeOnboardingUrl()
+            assertEquals(1, h.api.connectRefreshLinkCalls)
+
+            launch.connectReturn.post(ConnectReturn.Done)
+            runCurrent()
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+
+            assertEquals(1, h.api.connectRefreshLinkCalls)
+            assertNull(vm.uiState.value.onboardingUrl)
+        }
+
+    @Test
+    fun refreshWithNoOutstandingLinkAfterReMintsMintsNothing() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            val minted = h.ownLinkSetup()
+            val vm = vm(h)
+            runCurrent()
+            vm.startPayoutSetup()
+            runCurrent()
+            vm.consumeOnboardingUrl()
+
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+            assertEquals(2, minted())
+            vm.consumeOnboardingUrl()
+
+            // The re-minted link was opened (flag set again), so a further refresh may re-mint once more ...
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+            assertEquals(3, minted())
+            vm.consumeOnboardingUrl()
+            // ... but a refresh that arrives while no link is outstanding does not.
+            launch.connectReturn.post(ConnectReturn.Done)
+            runCurrent()
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+            assertEquals(3, minted())
+        }
+
+    @Test
+    fun refreshForAnOnboardedExpertMintsNothing() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.ownLinkSetup()
+            val vm = vm(h)
+            runCurrent()
+            vm.startPayoutSetup()
+            runCurrent()
+            vm.consumeOnboardingUrl()
+            assertEquals(1, h.api.connectRefreshLinkCalls)
+
+            // The account finishes onboarding in the browser; the next load sees it.
+            h.onboardedWithEarnings()
+            vm.refresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.content is PayoutsContent.Loaded)
+
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+
+            assertEquals(1, h.api.connectRefreshLinkCalls)
+            assertNull(vm.uiState.value.onboardingUrl)
+        }
+
+    @Test
     fun foreignRefreshOnlyReloads() =
         runTest(main.testDispatcher) {
             val h = harness()
