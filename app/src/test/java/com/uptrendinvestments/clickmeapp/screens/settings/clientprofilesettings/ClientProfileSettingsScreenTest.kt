@@ -70,6 +70,7 @@ class ClientProfileSettingsScreenTest {
     private val pickTaps = mutableListOf<Unit>()
     private val avatarDismissals = mutableListOf<Unit>()
     private val languageOpens = mutableListOf<Unit>()
+    private val countryOpens = mutableListOf<Unit>()
 
     private fun state(
         bio: String = "",
@@ -82,6 +83,7 @@ class ClientProfileSettingsScreenTest {
         avatar: AvatarUiState = AvatarUiState(),
         languages: List<UserProfileData.LanguageEntry> =
             listOf(UserProfileData.LanguageEntry(id = "en", label = "English")),
+        country: String? = "CAN",
     ) = ClientProfileSettingsUiState(
         avatar = avatar,
         snapshot =
@@ -91,6 +93,7 @@ class ClientProfileSettingsScreenTest {
                     city = "Toronto",
                     stateProvince = "ON",
                     languages = languages,
+                    country = country,
                     jobTitle = jobTitle,
                     company = company,
                 ),
@@ -122,6 +125,10 @@ class ClientProfileSettingsScreenTest {
                     onRetryLanguages = {},
                     onDismissLanguages = {},
                     onApplyLanguages = {},
+                    onOpenCountry = { countryOpens += Unit },
+                    onCountryQueryChange = {},
+                    onSelectCountry = {},
+                    onDismissCountry = {},
                 )
             }
         }
@@ -231,6 +238,44 @@ class ClientProfileSettingsScreenTest {
     }
 
     @Test
+    fun fieldOrderComplete() {
+        setContent(state())
+
+        val tops =
+            listOf(
+                "Change photo",
+                "Email",
+                "First Name",
+                "Last Name",
+                "Bio",
+                "Professional Details",
+                "City",
+                "State/Province",
+                "Country",
+                "Spoken Languages",
+            ).map { top(it) }
+        assertEquals(tops.sorted(), tops)
+        assertEquals(tops.distinct(), tops)
+    }
+
+    @Test
+    fun countryShowsItsNameAndOpensThePicker() {
+        setContent(state(country = "CAN"))
+
+        rule.onNodeWithText("Canada").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Select").assertDoesNotExist()
+        rule.onNodeWithText("Canada").performClick()
+        assertEquals(1, countryOpens.size)
+    }
+
+    @Test
+    fun unsetCountryShowsSelect() {
+        setContent(state(country = null))
+
+        rule.onNodeWithText("Select").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun editingAFieldReportsTheNewValue() {
         setContent(state())
 
@@ -263,6 +308,10 @@ class ClientProfileSettingsScreenTest {
                     onRetryLanguages = {},
                     onDismissLanguages = {},
                     onApplyLanguages = {},
+                    onOpenCountry = { countryOpens += Unit },
+                    onCountryQueryChange = {},
+                    onSelectCountry = {},
+                    onDismissCountry = {},
                 )
             }
         }

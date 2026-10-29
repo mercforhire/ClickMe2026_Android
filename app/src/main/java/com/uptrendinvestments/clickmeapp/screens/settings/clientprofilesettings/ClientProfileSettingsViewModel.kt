@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.constants.Countries
+import com.uptrendinvestments.clickmeapp.constants.Country
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
@@ -52,7 +54,13 @@ data class ClientProfileSettingsUiState(
     val avatarUrl: String? = null,
     val avatar: AvatarUiState = AvatarUiState(),
     val languageSheet: LanguageSheetState? = null,
-)
+    val countrySheetOpen: Boolean = false,
+    val countryQuery: String = "",
+) {
+    /** The static country list narrowed by [countryQuery], ignoring case. */
+    val visibleCountries: List<Country>
+        get() = Countries.all.filter { it.name.contains(countryQuery.trim(), ignoreCase = true) }
+}
 
 private val EmptySnapshot =
     ProfileSnapshot(
@@ -160,6 +168,16 @@ class ClientProfileSettingsViewModel
 
         /** Called on every resume: uploads a confirmed crop (or cleans up after a cancelled one). */
         fun onScreenShown() = avatarController.onReturnedFromCrop()
+
+        // ---- country ----
+
+        fun openCountry(): Unit = TODO()
+
+        fun onCountryQuery(value: String): Unit = TODO()
+
+        fun selectCountry(code: String): Unit = TODO()
+
+        fun dismissCountry(): Unit = TODO()
 
         // ---- spoken languages ----
 

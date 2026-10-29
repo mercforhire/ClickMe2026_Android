@@ -105,6 +105,10 @@ fun ClientProfileSettingsScreen(
         onRetryLanguages = viewModel::retryLanguages,
         onDismissLanguages = viewModel::dismissLanguages,
         onApplyLanguages = viewModel::applyLanguages,
+        onOpenCountry = viewModel::openCountry,
+        onCountryQueryChange = viewModel::onCountryQuery,
+        onSelectCountry = viewModel::selectCountry,
+        onDismissCountry = viewModel::dismissCountry,
         modifier = modifier,
     )
 }
@@ -128,6 +132,10 @@ fun ClientProfileSettingsContent(
     onRetryLanguages: () -> Unit,
     onDismissLanguages: () -> Unit,
     onApplyLanguages: () -> Unit,
+    onOpenCountry: () -> Unit,
+    onCountryQueryChange: (String) -> Unit,
+    onSelectCountry: (String) -> Unit,
+    onDismissCountry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(

@@ -533,4 +533,101 @@ class ClientProfileSettingsViewModelTest {
                     ?.visibleItems,
             )
         }
+
+    @Test
+    fun countrySelectionSavesAlpha3() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(city = "Toronto", stateProvince = "ON", country = "CA"))
+            val vm = viewModel(h)
+            runCurrent()
+            assertEquals(
+                "CAN",
+                vm.uiState.value.snapshot
+                    ?.countryCode,
+            )
+
+            vm.openCountry()
+            assertTrue(vm.uiState.value.countrySheetOpen)
+            vm.onCountryQuery("united st")
+            assertEquals(
+                listOf("USA"),
+                vm.uiState.value.visibleCountries
+                    .map { it.code },
+            )
+
+            vm.selectCountry("USA")
+            assertFalse(vm.uiState.value.countrySheetOpen)
+            assertEquals("", vm.uiState.value.countryQuery)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS - 1)
+            runCurrent()
+            assertEquals(0, h.api.updateUserProfileCalls)
+            advanceTimeBy(1)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(location = ProfileLocationBody("Toronto", "ON", "USA"))),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun unsetCountrySeedsEmptyAndSelectingSaves() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(country = null))
+            val vm = viewModel(h)
+            runCurrent()
+            assertEquals(
+                "",
+                vm.uiState.value.snapshot
+                    ?.countryCode,
+            )
+
+            vm.selectCountry("CAN")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "CAN",
+                h.api.updateUserProfileRequests
+                    .single()
+                    .location
+                    ?.countryCode,
+            )
+        }
+
+    @Test
+    fun dismissingTheCountrySheetSendsNothing() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openCountry()
+            vm.dismissCountry()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            assertFalse(vm.uiState.value.countrySheetOpen)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun legacyAlpha2CountryIsSentAsAlpha3WithOtherLocationEdits() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(country = "CA"))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.City, "Paris")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "CAN",
+                h.api.updateUserProfileRequests
+                    .single()
+                    .location
+                    ?.countryCode,
+            )
+        }
 }
