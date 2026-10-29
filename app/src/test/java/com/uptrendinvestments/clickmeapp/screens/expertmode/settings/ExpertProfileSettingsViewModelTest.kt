@@ -127,6 +127,47 @@ class ExpertProfileSettingsViewModelTest {
         }
 
     @Test
+    fun rejectedMeetingLinkDoesNotFailLaterAutoSaves() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+            h.api.updateExpertMeetingUrlHandler = {
+                throw h.api.httpError(
+                    422,
+                    """{"status":"error","errors":[{"field":"meeting_url","message":"Not a meeting link"}]}""",
+                )
+            }
+
+            vm.onMeetingUrlChange("https://bad.example.com/x")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(FieldError.Text("Not a meeting link"), vm.uiState.value.meetingUrlError)
+            assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(1, h.api.updateExpertMeetingUrlCalls)
+
+            // An unrelated edit saves cleanly and does not send the rejected link again.
+            vm.onFieldChange(ProfileTextFieldId.City, "Ottawa")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(1, h.api.updateUserProfileCalls)
+            assertEquals(1, h.api.updateExpertMeetingUrlCalls)
+            assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
+
+            // A different link is sent again.
+            h.api.updateExpertMeetingUrlHandler = { SuccessMessageResponse("ok") }
+            vm.onMeetingUrlChange("https://meet.example.com/ok")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(2, h.api.updateExpertMeetingUrlCalls)
+            assertNull(vm.uiState.value.meetingUrlError)
+        }
+
+    @Test
     fun sharedFieldsGoToUserProfile() =
         runTest(main.testDispatcher) {
             val h = signedIn()

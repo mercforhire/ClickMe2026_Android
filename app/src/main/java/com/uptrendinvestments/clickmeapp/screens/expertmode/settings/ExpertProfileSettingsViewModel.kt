@@ -134,7 +134,12 @@ class ExpertProfileSettingsViewModel
             )
 
         /** The link the server has; an invalid or blank typed value falls back to it so it never triggers a save. */
+        @Volatile
         private var savedMeetingUrl = ""
+
+        /** A link the server answered 422 for; it is not sent again until the user changes the link text. */
+        @Volatile
+        private var rejectedMeetingUrl: String? = null
         private var loadJob: Job? = null
 
         /** The language catalogue, fetched once per ViewModel. */
@@ -233,6 +238,7 @@ class ExpertProfileSettingsViewModel
         fun onMeetingUrlChange(value: String) {
             val current = _uiState.value.snapshot ?: return
             val trimmed = value.trim()
+            if (trimmed != rejectedMeetingUrl) rejectedMeetingUrl = null
             val valid = trimmed.isNotEmpty() && isAllowedMeetingUrl(trimmed)
             val next = current.copy(meetingUrl = if (valid) trimmed else savedMeetingUrl)
             val error =
@@ -400,10 +406,20 @@ class ExpertProfileSettingsViewModel
                 }
             }
             val link = new.meetingUrl
-            if (link != old.meetingUrl && link.isNotBlank() && isAllowedMeetingUrl(link)) {
-                repository.updateMeetingUrl(link)
+            // Compared with what the server has, not with the baseline: a rejected link stays in the snapshot but is
+            // never re-sent (it would fail every later auto-save), and a link that matches the server needs no call.
+            val shouldSend = link != savedMeetingUrl && link != rejectedMeetingUrl
+            if (shouldSend && link.isNotBlank() && isAllowedMeetingUrl(link)) {
+                try {
+                    repository.updateMeetingUrl(link)
+                    savedMeetingUrl = link
+                } catch (e: ApiException.Http) {
+                    val rejection = e.takeIf { it.status == HTTP_UNPROCESSABLE }?.meetingUrlRejection() ?: throw e
+                    // The other fields did save, so this is not a failed save: the message sits under the link field.
+                    rejectedMeetingUrl = link
+                    _uiState.update { it.copy(meetingUrlError = FieldError.Text(rejection)) }
+                }
             }
-            savedMeetingUrl = link
         }
 
         /** A 422 that names a field shows its message under that field; anything else opens the dialog. */
@@ -425,6 +441,10 @@ class ExpertProfileSettingsViewModel
     }
 
 private const val MEETING_URL_FIELD = "meeting_url"
+
+/** The server's message for the `meeting_url` field of a 422, or null when the response names no such field. */
+private fun ApiException.Http.meetingUrlRejection(): String? =
+    fieldErrors.lastOrNull { it.field.substringAfterLast('.') == MEETING_URL_FIELD }?.message
 
 /** The load error body: the server's own text, else "Check your connection and try again." */
 private fun ApiException.toLoadMessage(): FieldError =
