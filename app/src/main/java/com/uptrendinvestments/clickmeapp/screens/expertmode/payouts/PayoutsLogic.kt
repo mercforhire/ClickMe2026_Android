@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.PayoutOnboarding
@@ -98,3 +99,15 @@ fun nextPayoutDateText(
             null
         }
     }
+
+/** How many ledger rows the Payouts "Recent activity" preview shows (iOS `previewRows`). */
+const val PREVIEW_ROW_COUNT = 5
+
+/** The first [PREVIEW_ROW_COUNT] rows of the ledger, in server order (newest first). */
+fun previewRows(rows: List<EarningsTransactionItem>): List<EarningsTransactionItem> = rows.take(PREVIEW_ROW_COUNT)
+
+/** "See all activity" shows when the server has more rows or the first page held more than the preview shows. */
+fun shouldShowSeeAll(
+    rows: List<EarningsTransactionItem>,
+    hasMore: Boolean,
+): Boolean = hasMore || rows.size > PREVIEW_ROW_COUNT

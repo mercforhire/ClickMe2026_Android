@@ -6,6 +6,8 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionItem
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.PayoutSummaryData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
@@ -45,7 +47,9 @@ sealed interface PayoutsLoad {
 /**
  * State of the Payouts screen. [content] is null until a load has answered. [isRefreshing] drives the pull indicator
  * and [refreshFailed] the one-shot snackbar. [onboardingUrl] is the single-use Stripe link, held in memory only until
- * the screen opens it; [onboardingError] is the error dialog for a failed mint.
+ * the screen opens it; [onboardingError] is the error dialog for a failed mint. [recentRows] is the first ledger page
+ * for the Recent activity preview and [hasMoreActivity] says the server has more rows; both stay empty when the
+ * ledger fetch fails, which never fails the screen.
  */
 data class PayoutsUiState(
     val load: PayoutsLoad = PayoutsLoad.Loading,
@@ -57,6 +61,8 @@ data class PayoutsUiState(
     val isMintingLink: Boolean = false,
     val onboardingUrl: String? = null,
     val onboardingError: FieldError? = null,
+    val recentRows: List<EarningsTransactionItem> = emptyList(),
+    val hasMoreActivity: Boolean = false,
 )
 
 /**
@@ -96,6 +102,7 @@ class PayoutsViewModel
             val summaryWas400: Boolean,
             val summaryError: ApiException?,
             val heldCount: Int,
+            val ledger: EarningsTransactionsData?,
         )
 
         private val _uiState = MutableStateFlow(PayoutsUiState())
@@ -241,6 +248,8 @@ class PayoutsViewModel
                         summary = snapshot.summary,
                         onboarding = onboarding,
                         isRefreshing = false,
+                        recentRows = snapshot.ledger?.transactions ?: keptRows(state, mode),
+                        hasMoreActivity = hasMore(snapshot.ledger, state, mode),
                     )
                 mode == LoadMode.Loud ->
                     state.copy(
@@ -250,6 +259,22 @@ class PayoutsViewModel
                 mode == LoadMode.Pull -> state.copy(refreshFailed = true, isRefreshing = false)
                 else -> state.copy(isRefreshing = false)
             }
+        }
+
+        /** A reload that lost only the ledger keeps the rows already shown; a first load shows none. */
+        private fun keptRows(
+            state: PayoutsUiState,
+            mode: LoadMode,
+        ) = if (mode == LoadMode.Loud) emptyList() else state.recentRows
+
+        private fun hasMore(
+            ledger: EarningsTransactionsData?,
+            state: PayoutsUiState,
+            mode: LoadMode,
+        ) = if (ledger != null) {
+            ledger.pagination?.hasMoreOrDerived == true
+        } else {
+            mode != LoadMode.Loud && state.hasMoreActivity
         }
 
         private suspend fun fetch(): Snapshot =
@@ -278,6 +303,14 @@ class PayoutsViewModel
                             0
                         }
                     }
+                val ledger =
+                    async {
+                        try {
+                            financial.transactions(page = 1, limit = TRANSACTIONS_PAGE_SIZE)
+                        } catch (_: ApiException) {
+                            null
+                        }
+                    }
                 val (summaryData, summaryError) = summary.await()
                 Snapshot(
                     status = status.await(),
@@ -285,6 +318,7 @@ class PayoutsViewModel
                     summaryWas400 = (summaryError as? ApiException.Http)?.status == HTTP_BAD_REQUEST,
                     summaryError = summaryError,
                     heldCount = held.await(),
+                    ledger = ledger.await(),
                 )
             }
 
