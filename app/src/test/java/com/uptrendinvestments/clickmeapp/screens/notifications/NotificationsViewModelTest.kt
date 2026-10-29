@@ -21,7 +21,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -271,7 +270,7 @@ class NotificationsViewModelTest {
             val rows = (vm.uiState.value.load as NotificationsLoad.Loaded).sections.flatMap { it.rows }
 
             vm.onRowTapped(rows.single { it.id == "p" })
-            assertNull(launchRequest.destination.pending.value)
+            assertEquals(PushDestination.Payouts, launchRequest.destination.pending.value)
 
             vm.onRowTapped(rows.single { it.id == "a" })
             assertEquals(

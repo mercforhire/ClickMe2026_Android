@@ -2,18 +2,23 @@ package com.uptrendinvestments.clickmeapp.screens.push
 
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.CANCELLABLE_BOOKING_STATUSES
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsKeyFor
 import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsRootFor
+import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
@@ -69,7 +74,10 @@ class PushDestinationResolver
          *   the current mode. Reviews never open a review screen directly (D-07).
          * - Chat: the current mode's Chats tab, never a switch and never gated by a call (D-09).
          * - Incoming requests: Request Decision when the request is still in the pending list, else the list (D-08).
-         * - Notifications list, Payouts, KYC and Account Security: the current mode's list (D-10, D-11).
+         * - Payouts and KYC: Payouts on the Expert Dashboard stack (a switch to Expert, so a client-only account or a
+         *   call in Client mode gets the current list instead, Phase 14).
+         * - Account Security: the current mode's Profile tab with Account Security open, never a switch.
+         * - Notifications list: the current mode's list (D-10, D-11).
          *
          * A route in the other mode is honoured only when [allowSwitch] says so (no call, expert role for Expert);
          * otherwise the current mode's notifications list opens. This resolver only decides: the caller (13-11)
@@ -101,12 +109,25 @@ class PushDestinationResolver
                         resolveIncomingRequest(destination.requestId)
                     }
 
-                    // PHASE-14: Payouts, KycOnboarding and AccountSecurity get real routes in Phase 14 (D-10).
                     is PushDestination.Payouts,
                     is PushDestination.KycOnboarding,
-                    is PushDestination.AccountSecurity,
-                    is PushDestination.NotificationsList,
                     -> {
+                        ResolvedPush(
+                            AppMode.Expert,
+                            PushRoute.Shell(
+                                ShellRoute(AppMode.Expert, DashboardRoot, listOf(PayoutsKey(SettingsOrigin.Dashboard))),
+                            ),
+                        )
+                    }
+
+                    is PushDestination.AccountSecurity -> {
+                        // Account Security lives under the Profile tab of whichever mode is showing; no switch.
+                        val mode = context.currentMode
+                        val profileRoot = if (mode == AppMode.Expert) ExpertProfileRoot else ClientProfileRoot
+                        return shell(mode, profileRoot, AccountSecurityKey)
+                    }
+
+                    is PushDestination.NotificationsList -> {
                         return notificationsList(context)
                     }
                 }

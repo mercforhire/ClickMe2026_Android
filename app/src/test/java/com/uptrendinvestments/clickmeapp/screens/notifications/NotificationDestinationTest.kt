@@ -63,14 +63,17 @@ class NotificationDestinationTest {
     }
 
     @Test
-    fun payoutRowsAreInertUntilPhase14() {
-        assertNull(destination("payout", "paid", mapOf("payout_id" to NOTIF_BOOKING_ID)))
-        assertNull(destination("payout", "kyc_action", null))
+    fun payoutRowsRouteToPayouts() {
+        assertEquals(
+            PushDestination.Payouts,
+            destination("payout", "paid", mapOf("payout_id" to NOTIF_BOOKING_ID)),
+        )
+        assertEquals(PushDestination.KycOnboarding, destination("payout", "kyc_action", null))
     }
 
     @Test
-    fun accountRowsAreInertUntilPhase14() {
-        assertNull(destination("account", "password_changed", null))
+    fun accountRowsRouteToSecurity() {
+        assertEquals(PushDestination.AccountSecurity, destination("account", "password_changed", null))
     }
 
     @Test
