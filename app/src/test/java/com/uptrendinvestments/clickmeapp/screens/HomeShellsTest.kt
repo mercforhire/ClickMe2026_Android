@@ -34,11 +34,14 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingManagementEntries
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMethodsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientProfileHubActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -49,7 +52,10 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile.TaxProfileKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsKey
 import com.uptrendinvestments.clickmeapp.screens.notifications.NotificationsOrigin
@@ -57,6 +63,9 @@ import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsKeyF
 import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsRootFor
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
+import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -80,6 +89,8 @@ class HomeShellsTest {
         showDebug: Boolean,
         refreshStatus: String? = null,
         paymentMethods: Boolean = false,
+        hubStandIns: Boolean = false,
+        versionLabel: String = "",
         chatLaunch: ChatLaunchRequest? = null,
         shellRoutes: ShellRouteRequest? = null,
     ) {
@@ -95,8 +106,17 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
+                    profileRoot = { navigator, debug ->
+                        ClientProfileHomeContent(
+                            card = ProfileHubCard(null, null, null),
+                            versionLabel = versionLabel,
+                            actions = clientProfileHubActions(navigator, { switched += it }, { logoutCount++ }),
+                            debugContent = debug,
+                        )
+                    },
                     detailEntries = { navigator ->
                         if (paymentMethods) fakePaymentMethodsEntry(navigator)
+                        if (hubStandIns) clientHubStandIns()
                         fakeChatThreadEntry()
                         pushStandIns()
                     },
@@ -112,6 +132,7 @@ class HomeShellsTest {
     private fun setExpert(
         showDebug: Boolean,
         refreshStatus: String? = null,
+        hubStandIns: Boolean = false,
         chatLaunch: ChatLaunchRequest? = null,
         shellRoutes: ShellRouteRequest? = null,
     ) {
@@ -127,7 +148,8 @@ class HomeShellsTest {
                     onLogout = { logoutCount++ },
                     onDebugForceRefresh = { refreshCount++ },
                     debugRefreshStatus = refreshStatus,
-                    detailEntries = {
+                    detailEntries = { navigator ->
+                        if (hubStandIns) expertHubStandIns(navigator)
                         fakeChatThreadEntry()
                         pushStandIns()
                     },
@@ -143,8 +165,11 @@ class HomeShellsTest {
     // Tab names also appear as TopAppBar titles and empty-state headings, so match the bar item.
     private fun tab(label: String) = hasText(label) and isSelectable()
 
-    private fun topOf(text: String): Float {
-        val node = composeRule.onNodeWithText(text).fetchSemanticsNode()
+    private fun topOf(
+        text: String,
+        substring: Boolean = false,
+    ): Float {
+        val node = composeRule.onNodeWithText(text, substring = substring).fetchSemanticsNode()
         return node.positionInRoot.y
     }
 
@@ -308,31 +333,138 @@ class HomeShellsTest {
     }
 
     @Test
-    fun clientProfileShowsLogOutInReleaseAndInvokesCallback() {
+    fun clientProfileTabIsTheHub() {
         setClient(showDebug = false)
         tapTab("Profile")
+        listOf("Security & Password", "Payment", "FAQ & Help", "Privacy", "Log out").forEach {
+            composeRule.onNodeWithText(it).assertExists()
+        }
+        composeRule.onNodeWithText("Payment Methods").assertDoesNotExist()
         composeRule.onNodeWithText("Force token refresh").assertDoesNotExist()
-        composeRule.onNodeWithText("Log out").performClick()
+    }
+
+    @Test
+    fun clientHubRowsNavigate() {
+        setClient(showDebug = false, paymentMethods = true, hubStandIns = true)
+        listOf(
+            "Security & Password" to "stand-in security",
+            "FAQ & Help" to "stand-in help",
+            "Payment" to "fake payment methods",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+        }
+        composeRule.onNodeWithContentDescription("Edit profile", substring = true).performScrollTo().performClick()
+        composeRule.onNodeWithText("stand-in client settings").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+    }
+
+    @Test
+    fun clientLogOutGoesThroughDialog() {
+        setClient(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Log out").performScrollTo().performClick()
+        composeRule.onNodeWithText("Stay logged in").performClick()
+        assertEquals(0, logoutCount)
+        composeRule.onNodeWithText("Log out").performScrollTo().performClick()
+        composeRule.onNodeWithText("Log Out").performClick()
         assertEquals(1, logoutCount)
     }
 
     @Test
-    fun expertProfileShowsLogOutInReleaseAndInvokesCallback() {
-        setExpert(showDebug = false)
+    fun clientModeCardSwitches() {
+        setClient(showDebug = false)
         tapTab("Profile")
-        composeRule.onNodeWithText("Force token refresh").assertDoesNotExist()
-        composeRule.onNodeWithText("Log out").performClick()
-        assertEquals(1, logoutCount)
+        composeRule.onNodeWithText("Switch to Expert Mode").performClick()
+        assertEquals(listOf(AppMode.Expert), switched)
     }
 
     @Test
-    fun clientDebugProfileOffersForceRefreshAndShowsStatus() {
-        setClient(showDebug = true, refreshStatus = "Token refresh OK")
+    fun clientDebugAffordancesBelowFooter() {
+        setClient(showDebug = true, refreshStatus = "Token refresh OK", versionLabel = "Version 9.9 (9)")
         tapTab("Profile")
-        composeRule.onNodeWithText("Log out").assertExists()
+        composeRule.onNodeWithText("Design system gallery").performScrollTo().assertExists()
+        // Measured after the scroll so both tops share one scroll offset.
+        assertTrue(topOf("Version", substring = true) < topOf("Design system gallery"))
         composeRule.onNodeWithText("Token refresh OK").assertExists()
         composeRule.onNodeWithText("Force token refresh").performScrollTo().performClick()
         assertEquals(1, refreshCount)
+    }
+
+    @Test
+    fun expertProfileTabIsTheHub() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        listOf(
+            "Professional",
+            "Account",
+            "Support",
+            "View My Public Profile",
+            "Expertise & Topics",
+            "Availability",
+            "Payouts & Earnings",
+            "Tax & Payout Info",
+            "Security & Password",
+            "FAQ & Help",
+            "Log out",
+        ).forEach { composeRule.onNodeWithText(it).assertExists() }
+        composeRule.onNodeWithText("Payment").assertDoesNotExist()
+        composeRule.onNodeWithText("Force token refresh").assertDoesNotExist()
+    }
+
+    @Test
+    fun expertHubRowsNavigate() {
+        setExpert(showDebug = false, hubStandIns = true)
+        listOf(
+            "Payouts & Earnings" to "stand-in payouts:Profile",
+            "Tax & Payout Info" to "stand-in tax:Profile",
+            "Security & Password" to "stand-in security",
+            "FAQ & Help" to "stand-in help",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+        }
+        composeRule.onNodeWithContentDescription("Edit profile", substring = true).performScrollTo().performClick()
+        composeRule.onNodeWithText("stand-in expert settings:Profile").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+    }
+
+    @Test
+    fun expertiseAndTopicsSelectsTopicsTab() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Expertise & Topics").performScrollTo().performClick()
+        composeRule.onNode(tab("Topics")).assertIsSelected()
+    }
+
+    @Test
+    fun expertLogOutGoesThroughDialog() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Log out").performScrollTo().performClick()
+        composeRule.onNodeWithText("Stay logged in").performClick()
+        assertEquals(0, logoutCount)
+        composeRule.onNodeWithText("Log out").performScrollTo().performClick()
+        composeRule.onNodeWithText("Log Out").performClick()
+        assertEquals(1, logoutCount)
+    }
+
+    @Test
+    fun expertModeCardSwitches() {
+        setExpert(showDebug = false)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Switch to Client Mode").performClick()
+        assertEquals(listOf(AppMode.Client), switched)
     }
 
     @Test
@@ -376,6 +508,23 @@ class HomeShellsTest {
                 Button(onClick = onBack) { Text("pm back") }
             }
         }
+    }
+
+    /** Stand-ins for the client hub destinations, registered with the same hidden-bar metadata as the real ones. */
+    private fun EntryProviderScope<NavKey>.clientHubStandIns() {
+        entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in client settings") }
+        entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
+        entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+    }
+
+    /** Stand-ins for the expert hub destinations, registered with the same hidden-bar metadata as the real ones. */
+    private fun EntryProviderScope<NavKey>.expertHubStandIns(navigator: Navigator) {
+        entry<ExpertProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in expert settings:${it.origin}") }
+        entry<PayoutsKey>(metadata = BottomBar.hidden()) { Text("stand-in payouts:${it.origin}") }
+        entry<TaxProfileKey>(metadata = BottomBar.hidden()) { Text("stand-in tax:${it.origin}") }
+        entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
+        entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+        fakeAvailabilityEntry(navigator)
     }
 
     private var bookingEntered = 0
@@ -675,21 +824,21 @@ class HomeShellsTest {
     }
 
     @Test
-    fun profileShowsPaymentMethodsAboveLogOutAndOpensItWithoutTheBar() {
+    fun profilePaymentRowSitsAboveLogOutAndOpensPaymentMethodsWithoutTheBar() {
         setClient(showDebug = false, paymentMethods = true)
         tapTab("Profile")
-        val rowTop = topOf("Payment Methods")
+        val rowTop = topOf("Payment")
         val logOutTop = topOf("Log out")
-        assertTrue("Payment Methods ($rowTop) must be above Log out ($logOutTop)", rowTop < logOutTop)
+        assertTrue("Payment ($rowTop) must be above Log out ($logOutTop)", rowTop < logOutTop)
 
-        composeRule.onNodeWithText("Payment Methods").performScrollTo().performClick()
+        composeRule.onNodeWithText("Payment").performScrollTo().performClick()
 
         composeRule.onNodeWithText("fake payment methods").assertExists()
         composeRule.onNode(tab("Profile")).assertDoesNotExist()
         composeRule.onNodeWithText("pm back").performClick()
         composeRule.onNodeWithText("fake payment methods").assertDoesNotExist()
         composeRule.onNode(tab("Profile")).assertIsSelected()
-        composeRule.onNodeWithText("Payment Methods").assertExists()
+        composeRule.onNodeWithText("Payment").assertExists()
     }
 
     @Test
@@ -782,14 +931,14 @@ class HomeShellsTest {
     }
 
     @Test
-    fun expertProfileAvailabilityRowSitsAboveLogOutAndOpensAvailabilityWithoutTheBar() {
+    fun availabilityRowStillOpensAvailability() {
         setExpertWithSlots(topicsRoot = { Text("fake topics") }, detail = { fakeAvailabilityEntry(it) })
         tapTab("Profile")
         val row = composeRule.onNode(hasTestTag("profile_availability_row"))
         row.assertExists()
         composeRule.onNodeWithText("Availability").assertExists()
         assertTrue(topOf("Availability") < topOf("Log out"))
-        row.performClick()
+        row.performScrollTo().performClick()
         composeRule.onNodeWithText("availability-stub:Profile").assertExists()
         composeRule.onNode(tab("Profile")).assertDoesNotExist()
         composeRule.onNodeWithText("availability back").performClick()

@@ -5,14 +5,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +25,6 @@ import androidx.navigation3.runtime.entryProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.PlaceholderTabContent
-import com.uptrendinvestments.clickmeapp.components.ProfileMenuRow
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
@@ -58,6 +53,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.MyBookingsScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHubActions
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.profileHubVersionLabel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
@@ -70,6 +70,10 @@ import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsKeyF
 import com.uptrendinvestments.clickmeapp.screens.onboarding.OnboardingContent
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
+import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
+import com.uptrendinvestments.clickmeapp.screens.settings.clientSettingsEntries
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
@@ -123,6 +127,13 @@ fun HomeClientScreen(
                         mode = AppMode.Client,
                         avatarUrl = avatarUrl,
                         onOpenModeSwitch = { navigator.navigate(ModeSwitchKey) },
+                    )
+                },
+                profileRoot = { navigator, debug ->
+                    ClientProfileHomeScreen(
+                        actions = clientProfileHubActions(navigator, onSwitchMode, viewModel::logout),
+                        versionLabel = profileHubVersionLabel(),
+                        debugContent = debug,
                     )
                 },
                 detailEntries = { navigator ->
@@ -209,6 +220,7 @@ fun HomeClientScreen(
                     chatEntries(navigator, AppMode.Client)
                     notificationsEntries(navigator, AppMode.Client)
                     writeReviewEntries(navigator)
+                    clientSettingsEntries(navigator)
                 },
                 pendingChatThread = pendingChatThread,
                 onConsumeChatThread = chatLaunch::consumeThread,
@@ -246,10 +258,11 @@ private const val ONBOARDING_FADE_MS = 200
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Five slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * Six slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button),
  * [bookingsRoot] renders the Bookings tab root (default: the placeholder), [chatsRoot] renders the Chats tab root
- * (default: the placeholder), and [detailEntries] registers extra
+ * (default: the placeholder), [profileRoot] renders the Profile hub (default: the stateless hub with the real
+ * navigation actions; the shell hands it the debug affordances to show below the version footer), and [detailEntries] registers extra
  * routes pushed on top of a tab, such as the Expert Profile, the booking flow routes (see
  * [clientBookingFlowEntries]), the booking-management routes (see [clientBookingManagementEntries]) and Payment
  * Methods (see [clientPaymentMethodsEntry]). [pendingChatThread] / [onConsumeChatThread] are the chat hand-off: when a
@@ -274,6 +287,15 @@ fun HomeClientShell(
     },
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientBookingsRoot) },
     chatsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientChatsRoot) },
+    profileRoot: @Composable (navigator: Navigator, debugContent: @Composable () -> Unit) -> Unit =
+        { navigator, debugContent ->
+            ClientProfileHomeContent(
+                card = ProfileHubCard(name = null, email = null, avatarUrl = null),
+                versionLabel = "",
+                actions = clientProfileHubActions(navigator, onSwitchMode, onLogout),
+                debugContent = debugContent,
+            )
+        },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
     pendingChatThread: ChatThreadKey? = null,
     onConsumeChatThread: () -> ChatThreadKey? = { null },
@@ -282,6 +304,15 @@ fun HomeClientShell(
 ) {
     val state = rememberNavigationState(clientStartTab, clientTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
+    val debugContent: @Composable () -> Unit = {
+        if (showDebugAffordances) {
+            ClientProfileDebugAffordances(
+                onOpenGallery = { navigator.navigate(DesignSystemGalleryKey) },
+                onDebugForceRefresh = onDebugForceRefresh,
+                debugRefreshStatus = debugRefreshStatus,
+            )
+        }
+    }
 
     // A Message tap, or the in-call Chat control, posts a thread. Consume the slot so it applies exactly once.
     LaunchedEffect(pendingChatThread) {
@@ -312,37 +343,7 @@ fun HomeClientShell(
                 entry<SearchRoot> { ClientTabRoot(SearchRoot) }
                 entry<ClientBookingsRoot> { bookingsRoot(navigator) }
                 entry<ClientChatsRoot> { chatsRoot(navigator) }
-                entry<ClientProfileRoot> {
-                    ClientTabRoot(
-                        key = ClientProfileRoot,
-                        footer = {
-                            // Throwaway entry point, replaced by the Phase 14 Profile hub (D-04).
-                            ProfileMenuRow(
-                                title = stringResource(R.string.payment_methods_title),
-                                icon = Icons.Outlined.CreditCard,
-                                onClick = { navigator.navigate(PaymentMethodsKey) },
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md),
-                            )
-                            Spacer(Modifier.height(Spacing.lg))
-                            OutlinedButton(onClick = onLogout) {
-                                Text(stringResource(R.string.profile_log_out))
-                            }
-                            Spacer(Modifier.height(Spacing.sm))
-                            if (showDebugAffordances) {
-                                OutlinedButton(onClick = { navigator.navigate(DesignSystemGalleryKey) }) {
-                                    Text(stringResource(R.string.debug_design_system_gallery))
-                                }
-                                Spacer(Modifier.height(Spacing.sm))
-                                OutlinedButton(onClick = onDebugForceRefresh) {
-                                    Text(stringResource(R.string.debug_force_token_refresh))
-                                }
-                                if (debugRefreshStatus != null) {
-                                    Text(debugRefreshStatus)
-                                }
-                            }
-                        },
-                    )
-                }
+                entry<ClientProfileRoot> { profileRoot(navigator, debugContent) }
                 entry<ModeSwitchKey>(metadata = BottomBar.hidden()) {
                     ModeSwitchScreen(
                         currentMode = AppMode.Client,
@@ -356,6 +357,41 @@ fun HomeClientShell(
                 detailEntries(navigator)
             },
     )
+}
+
+/** Maps the client hub's callbacks to destinations (PROF-01); shared by the Hilt hub and the shell default. */
+internal fun clientProfileHubActions(
+    navigator: Navigator,
+    onSwitchMode: (AppMode) -> Unit,
+    onLogout: () -> Unit,
+): ClientProfileHubActions =
+    ClientProfileHubActions(
+        onEditProfile = { navigator.navigate(ClientProfileSettingsKey) },
+        onSwitchToExpert = { onSwitchMode(AppMode.Expert) },
+        onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
+        onOpenPayment = { navigator.navigate(PaymentMethodsKey) },
+        onOpenHelp = { navigator.navigate(HelpKey) },
+        onLogOut = onLogout,
+    )
+
+/** Debug-only rows below the hub's version footer; the shell renders them only when the debug gate is on. */
+@Composable
+private fun ClientProfileDebugAffordances(
+    onOpenGallery: () -> Unit,
+    onDebugForceRefresh: () -> Unit,
+    debugRefreshStatus: String?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        OutlinedButton(onClick = onOpenGallery) {
+            Text(stringResource(R.string.debug_design_system_gallery))
+        }
+        OutlinedButton(onClick = onDebugForceRefresh) {
+            Text(stringResource(R.string.debug_force_token_refresh))
+        }
+        if (debugRefreshStatus != null) {
+            Text(debugRefreshStatus)
+        }
+    }
 }
 
 @Composable

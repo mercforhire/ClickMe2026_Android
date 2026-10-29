@@ -1,13 +1,9 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.home
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +11,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,17 +20,22 @@ import androidx.navigation3.runtime.entryProvider
 import com.uptrendinvestments.clickmeapp.BuildConfig
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.PlaceholderTabContent
-import com.uptrendinvestments.clickmeapp.components.ProfileMenuRow
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.HomeTabScaffold
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.navigation.rememberNavigationState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.chatEntries
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.chat.conversations.ConversationsRoute
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.profileHubVersionLabel
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -53,7 +53,13 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.Topics
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.expertStartTab
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.expertTabs
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.incomingRequestsEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.profile.ExpertProfileHomeContent
+import com.uptrendinvestments.clickmeapp.screens.expertmode.profile.ExpertProfileHomeScreen
+import com.uptrendinvestments.clickmeapp.screens.expertmode.profile.ExpertProfileHubActions
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.requestDecisionEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile.TaxProfileKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.TopicEditorScreen
@@ -62,6 +68,9 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.Exp
 import com.uptrendinvestments.clickmeapp.screens.notifications.notificationsEntries
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
+import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
+import com.uptrendinvestments.clickmeapp.screens.settings.expertSettingsEntries
+import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -115,6 +124,14 @@ fun HomeExpertScreen(
                 onOpenModeSwitch = { navigator.navigate(ModeSwitchKey) },
             )
         },
+        profileRoot = { navigator, debug ->
+            ExpertProfileHomeScreen(
+                actions = expertProfileHubActions(navigator, onSwitchMode, viewModel::logout),
+                onOpenPublicProfile = { navigator.navigate(it) },
+                versionLabel = profileHubVersionLabel(),
+                debugContent = debug,
+            )
+        },
         detailEntries = { navigator ->
             entry<TopicEditorKey>(metadata = BottomBar.hidden()) { key ->
                 TopicEditorScreen(
@@ -135,6 +152,8 @@ fun HomeExpertScreen(
             expertCancelEntries(navigator)
             chatEntries(navigator, AppMode.Expert)
             notificationsEntries(navigator, AppMode.Expert)
+            expertProfileEntry(navigator)
+            expertSettingsEntries(navigator)
         },
         pendingChatThread = pendingChatThread,
         onConsumeChatThread = chatLaunch::consumeThread,
@@ -147,10 +166,12 @@ fun HomeExpertScreen(
  * The expert 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Six slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * Seven slots let [HomeExpertScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [topicsRoot], [dashboardRoot], [bookingsRoot] and [chatsRoot] render the Topics, Dashboard, Bookings and Chats
  * tab roots (defaults:
- * the placeholders, so Robolectric can render the shell with no Hilt graph) and [detailEntries] registers extra
+ * the placeholders, so Robolectric can render the shell with no Hilt graph), [profileRoot] renders the Profile hub
+ * (default: the stateless hub with the real navigation actions; the shell hands it the debug affordances to show
+ * below the version footer) and [detailEntries] registers extra
  * routes pushed on top of a tab, such as the Topic Editor and Availability. [pendingChatThread] /
  * [onConsumeChatThread] are the chat hand-off: when a thread key is pending the shell consumes it and opens it on the
  * Chats tab ([Navigator.openChatThread]). [pendingShellRoute] / [onConsumeShellRoute] are the push route hand-off: a
@@ -174,6 +195,18 @@ fun HomeExpertShell(
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(ExpertBookingsRoot) },
     topicsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(TopicsRoot) },
     chatsRoot: @Composable (navigator: Navigator) -> Unit = { ExpertTabRoot(ExpertChatsRoot) },
+    profileRoot: @Composable (navigator: Navigator, debugContent: @Composable () -> Unit) -> Unit =
+        { navigator, debugContent ->
+            // The no-op "View My Public Profile" exists only for the Hilt-free shell tests; production passes the
+            // Hilt hub, which builds the self-view key from the signed-in user.
+            ExpertProfileHomeContent(
+                card = ProfileHubCard(name = null, email = null, avatarUrl = null),
+                versionLabel = "",
+                actions = expertProfileHubActions(navigator, onSwitchMode, onLogout),
+                onViewPublicProfile = {},
+                debugContent = debugContent,
+            )
+        },
     detailEntries: EntryProviderScope<NavKey>.(navigator: Navigator) -> Unit = {},
     pendingChatThread: ChatThreadKey? = null,
     onConsumeChatThread: () -> ChatThreadKey? = { null },
@@ -182,6 +215,15 @@ fun HomeExpertShell(
 ) {
     val state = rememberNavigationState(expertStartTab, expertTabs.map { it.key }.toSet())
     val navigator = remember(state) { Navigator(state) }
+    val debugContent: @Composable () -> Unit = {
+        if (showDebugAffordances) {
+            ExpertProfileDebugAffordances(
+                onOpenGallery = { navigator.navigate(DesignSystemGalleryKey) },
+                onDebugForceRefresh = onDebugForceRefresh,
+                debugRefreshStatus = debugRefreshStatus,
+            )
+        }
+    }
 
     // A Message tap, or the in-call Chat control, posts a thread. Consume the slot so it applies exactly once.
     LaunchedEffect(pendingChatThread) {
@@ -212,41 +254,7 @@ fun HomeExpertShell(
                 entry<ExpertBookingsRoot> { bookingsRoot(navigator) }
                 entry<TopicsRoot> { topicsRoot(navigator) }
                 entry<ExpertChatsRoot> { chatsRoot(navigator) }
-                entry<ExpertProfileRoot> {
-                    ExpertTabRoot(
-                        key = ExpertProfileRoot,
-                        footer = {
-                            // Throwaway entry point, replaced by the Phase 14 Profile hub (D-01).
-                            ProfileMenuRow(
-                                title = stringResource(R.string.availability_title),
-                                icon = Icons.Outlined.CalendarMonth,
-                                onClick = { navigator.navigate(AvailabilityKey(AvailabilityOrigin.Profile)) },
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = Spacing.md)
-                                        .testTag("profile_availability_row"),
-                            )
-                            Spacer(Modifier.height(Spacing.lg))
-                            OutlinedButton(onClick = onLogout) {
-                                Text(stringResource(R.string.profile_log_out))
-                            }
-                            Spacer(Modifier.height(Spacing.sm))
-                            if (showDebugAffordances) {
-                                OutlinedButton(onClick = { navigator.navigate(DesignSystemGalleryKey) }) {
-                                    Text(stringResource(R.string.debug_design_system_gallery))
-                                }
-                                Spacer(Modifier.height(Spacing.sm))
-                                OutlinedButton(onClick = onDebugForceRefresh) {
-                                    Text(stringResource(R.string.debug_force_token_refresh))
-                                }
-                                if (debugRefreshStatus != null) {
-                                    Text(debugRefreshStatus)
-                                }
-                            }
-                        },
-                    )
-                }
+                entry<ExpertProfileRoot> { profileRoot(navigator, debugContent) }
                 entry<ModeSwitchKey>(metadata = BottomBar.hidden()) {
                     ModeSwitchScreen(
                         currentMode = AppMode.Expert,
@@ -260,6 +268,64 @@ fun HomeExpertShell(
                 detailEntries(navigator)
             },
     )
+}
+
+/** Maps the expert hub's callbacks to destinations (PROF-01, D-02); shared by the Hilt hub and the shell default. */
+internal fun expertProfileHubActions(
+    navigator: Navigator,
+    onSwitchMode: (AppMode) -> Unit,
+    onLogout: () -> Unit,
+): ExpertProfileHubActions =
+    ExpertProfileHubActions(
+        onEditProfile = { navigator.navigate(ExpertProfileSettingsKey(SettingsOrigin.Profile)) },
+        onSwitchToClient = { onSwitchMode(AppMode.Client) },
+        onOpenExpertise = { navigator.navigate(TopicsRoot) },
+        onOpenAvailability = { navigator.navigate(AvailabilityKey(AvailabilityOrigin.Profile)) },
+        onOpenPayouts = { navigator.navigate(PayoutsKey(SettingsOrigin.Profile)) },
+        onOpenTaxProfile = { navigator.navigate(TaxProfileKey(SettingsOrigin.Profile)) },
+        onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
+        onOpenHelp = { navigator.navigate(HelpKey) },
+        onLogOut = onLogout,
+    )
+
+/**
+ * The expert shell's own Expert Profile route: the "View My Public Profile" self-view and a chat-pushed peer profile
+ * (RESEARCH Pitfall 8). Book Session is never shown in Expert mode (no booking route is registered here, and an
+ * expert cannot book themselves), so the screen is told not to show it.
+ */
+internal fun EntryProviderScope<NavKey>.expertProfileEntry(navigator: Navigator) {
+    entry<ExpertProfileKey>(metadata = BottomBar.hidden()) { key ->
+        ExpertProfileScreen(
+            viewModel =
+                hiltViewModel<ExpertProfileViewModel, ExpertProfileViewModel.Factory>(
+                    creationCallback = { factory -> factory.create(key) },
+                ),
+            onBack = navigator::goBack,
+            onBook = {},
+            isSelfView = key.isSelfView,
+            showBookSession = false,
+        )
+    }
+}
+
+/** Debug-only rows below the hub's version footer; the shell renders them only when the debug gate is on. */
+@Composable
+private fun ExpertProfileDebugAffordances(
+    onOpenGallery: () -> Unit,
+    onDebugForceRefresh: () -> Unit,
+    debugRefreshStatus: String?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        OutlinedButton(onClick = onOpenGallery) {
+            Text(stringResource(R.string.debug_design_system_gallery))
+        }
+        OutlinedButton(onClick = onDebugForceRefresh) {
+            Text(stringResource(R.string.debug_force_token_refresh))
+        }
+        if (debugRefreshStatus != null) {
+            Text(debugRefreshStatus)
+        }
+    }
 }
 
 @Composable
