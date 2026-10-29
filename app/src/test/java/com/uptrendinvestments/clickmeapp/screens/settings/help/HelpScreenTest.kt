@@ -28,7 +28,10 @@ class HelpScreenTest {
                 id = "c1",
                 title = "Account",
                 order = 1,
-                articles = listOf(faqArticle(id = "a1", question = "How do I reset my password?", snippet = "Use Settings.")),
+                articles =
+                    listOf(
+                        faqArticle(id = "a1", question = "How do I reset my password?", snippet = "Use Settings."),
+                    ),
             ),
             faqCategory(
                 id = "c2",
@@ -59,7 +62,8 @@ class HelpScreenTest {
         }
     }
 
-    private fun stateDescription(value: String) = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
+    private fun stateDescription(value: String) =
+        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
 
     @Test
     fun categoriesStartCollapsedAndExpand() {
