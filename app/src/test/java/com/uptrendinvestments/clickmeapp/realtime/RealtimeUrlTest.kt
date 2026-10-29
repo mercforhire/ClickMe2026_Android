@@ -29,14 +29,21 @@ class RealtimeUrlTest {
     }
 
     @Test
+    fun `keeps the loopback hosts of the local test backend`() {
+        assertEquals("http://localhost:3000", socketUrl("http://localhost:3000/api/v1"))
+        assertEquals("http://127.0.0.1:3000", socketUrl("http://127.0.0.1:3000/api/v1/"))
+    }
+
+    @Test
     fun `drops the port when it is the scheme default`() {
         assertEquals("https://host", socketUrl("https://host:443/api/v1"))
     }
 
     @Test
-    fun `the build config base url stays https and has no api path`() {
+    fun `the build config base url is https unless it is the loopback test backend and has no api path`() {
         val url = socketUrl(BuildConfig.BASE_URL)
-        assertTrue(url.startsWith("https://"))
+        val host = java.net.URI(url).host
+        assertTrue(url.startsWith("https://") || host == "localhost" || host == "127.0.0.1")
         assertFalse(url.contains("/api"))
     }
 }

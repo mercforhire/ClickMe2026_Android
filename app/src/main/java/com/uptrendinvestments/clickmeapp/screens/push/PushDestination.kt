@@ -64,7 +64,8 @@ val PushDestination.landsOnNotificationsList: Boolean
  * Translates a [PushEvent] into a [PushDestination]. Port of the iOS `PushRouter.destination(for:)`.
  *
  * The audience of each booking and review destination comes from who the backend actually notifies (RESEARCH F-6):
- * booking confirmations, declines, expirations and refunds and review nudges go to the client; booking requests, review
+ * booking confirmations, declines, expirations, refunds and payment actions (a long-lead booking whose charge needs
+ * card verification) and review nudges go to the client; booking requests, review
  * received and payouts go to the expert; everything else, including all session pushes, is [PushAudience.Either] and
  * the resolver probes the booking (D-05).
  */
@@ -126,7 +127,7 @@ object PushRouter {
 
     private fun bookingAudience(subCategory: String?): PushAudience =
         when (subCategory) {
-            "confirmations", "declines", "expirations", "refunds" -> PushAudience.Client
+            "confirmations", "declines", "expirations", "refunds", "payment_actions" -> PushAudience.Client
             else -> PushAudience.Either
         }
 }

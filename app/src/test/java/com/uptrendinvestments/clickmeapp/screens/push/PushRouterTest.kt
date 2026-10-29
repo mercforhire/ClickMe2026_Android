@@ -56,6 +56,7 @@ class PushRouterTest {
         assertEquals(PushDestination.BookingDetail(b1, PushAudience.Client), route("booking", "expirations"))
         assertEquals(PushDestination.BookingDetail(b1, PushAudience.Client), route("booking", "refunds"))
         assertEquals(PushDestination.BookingDetail(b1, PushAudience.Client), route("booking", "confirmations"))
+        assertEquals(PushDestination.BookingDetail(b1, PushAudience.Client), route("booking", "payment_actions"))
         assertEquals(PushDestination.BookingDetail(b1, PushAudience.Either), route("booking", null))
         assertEquals(PushDestination.BookingDetail(b1, PushAudience.Either), route("session", "reminder"))
         assertEquals(PushDestination.BookingDetail(b1, PushAudience.Either), route("session", "no_show"))
@@ -71,7 +72,15 @@ class PushRouterTest {
     }
 
     @Test
+    fun aPaymentActionRequiredEventTypeOnlyPushRoutesToTheClientBookingDetail() {
+        val parsed = PushEvent.from(mapOf("booking_id" to b1, "event_type" to "PAYMENT_ACTION_REQUIRED"))
+        assertNotNull(parsed)
+        assertEquals(PushDestination.BookingDetail(b1, PushAudience.Client), PushRouter.destination(parsed!!))
+    }
+
+    @Test
     fun missingIdsGiveNull() {
+        assertNull(route("booking", "payment_actions", booking = null))
         assertNull(route("booking", "confirmations", booking = null))
         assertNull(route("session", "ended", booking = null))
         assertNull(route("review", "nudge", booking = null))

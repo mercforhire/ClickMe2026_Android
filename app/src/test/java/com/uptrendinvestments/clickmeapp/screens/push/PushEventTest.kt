@@ -23,6 +23,7 @@ class PushEventTest {
             "BOOKING_COMPLETED" to ("session" to "ended"),
             "REVIEW_SUBMITTED" to ("review" to "received"),
             "REFUND_ISSUED" to ("booking" to "refunds"),
+            "PAYMENT_ACTION_REQUIRED" to ("booking" to "payment_actions"),
             "PAYOUT_PAID" to ("payout" to "paid"),
             "PAYOUT_FAILED" to ("payout" to "failed"),
             "KYC_ACTION_REQUIRED" to ("payout" to "kyc_action"),
@@ -33,7 +34,7 @@ class PushEventTest {
 
     @Test
     fun eventTypeFallbackCoversIosAndBackendValues() {
-        assertEquals(18, fallbackTable.size)
+        assertEquals(19, fallbackTable.size)
         for ((eventType, expected) in fallbackTable) {
             for (variant in listOf(eventType, eventType.lowercase())) {
                 val event = PushEvent.from(mapOf("event_type" to variant))
@@ -41,6 +42,29 @@ class PushEventTest {
                 assertEquals(variant, expected.first, event!!.category)
                 assertEquals(variant, expected.second, event.subCategory)
             }
+        }
+    }
+
+    @Test
+    fun theBackendPaymentActionsPayloadParses() {
+        val full =
+            PushEvent.from(
+                mapOf(
+                    "category" to "booking",
+                    "sub_category" to "payment_actions",
+                    "booking_id" to b1,
+                    "event_type" to "PAYMENT_ACTION_REQUIRED",
+                ),
+            )!!
+        assertEquals("booking", full.category)
+        assertEquals("payment_actions", full.subCategory)
+        assertEquals(b1, full.bookingId)
+
+        listOf("PAYMENT_ACTION_REQUIRED", "payment_action_required").forEach { eventType ->
+            val fallback = PushEvent.from(mapOf("booking_id" to b1, "event_type" to eventType))!!
+            assertEquals("booking", fallback.category)
+            assertEquals("payment_actions", fallback.subCategory)
+            assertEquals(b1, fallback.bookingId)
         }
     }
 

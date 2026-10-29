@@ -1,3 +1,4 @@
+import java.net.URI
 import java.util.Properties
 
 plugins {
@@ -28,6 +29,40 @@ val keystoreProps =
         keystorePropsText.orNull?.let { load(it.reader()) }
     }
 
+// The production backend. The prod flavor always uses it and never reads local.properties.
+val productionBaseUrl = "https://clickme-backend-production.up.railway.app/api/v1"
+
+// Dev flavor only: `clickme.devBaseUrl` in the gitignored local.properties points the dev build at a local test
+// backend (see .planning/phases/07-payment-methods-paid-booking/07-LOCAL-STRIPE-TESTING.md). Read through
+// providers.fileContents like the keystore above. The value is a URL, not a secret.
+val localPropsText =
+    providers.fileContents(rootProject.layout.projectDirectory.file("local.properties")).asText
+val localProps =
+    Properties().apply {
+        localPropsText.orNull?.let { load(it.reader()) }
+    }
+val devBaseUrl: String =
+    localProps
+        .getProperty("clickme.devBaseUrl")
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?.also { override ->
+            // Rejects anything that could break out of the generated BuildConfig string literal.
+            if (!Regex("""^https?://[^\s"\\]+$""").matches(override)) {
+                throw GradleException(
+                    "clickme.devBaseUrl in local.properties must be an http(s) URL without spaces, quotes or backslashes",
+                )
+            }
+            logger.warn("The dev BASE_URL comes from clickme.devBaseUrl in local.properties: $override")
+            val host = URI(override).host
+            if (override.startsWith("http://") && host != "localhost" && host != "127.0.0.1") {
+                logger.warn(
+                    "clickme.devBaseUrl is http:// but the debug network security config allows cleartext only " +
+                        "to localhost and 127.0.0.1",
+                )
+            }
+        } ?: productionBaseUrl
+
 android {
     namespace = "com.uptrendinvestments.clickmeapp"
     compileSdk {
@@ -46,12 +81,14 @@ android {
 
     flavorDimensions += "env"
     productFlavors {
-        // Day-to-day flavor. The STRIPE_PUBLISHABLE_KEY below must be the publishable key of the same Stripe account
-        // and mode as the backend's secret key. The current pk_test_51Tha0r... value belongs to a different account
-        // (Phase 2 UAT tests 7-8); the swap is Phase 7 D-01/D-02 (plan 07-05).
+        // Day-to-day flavor. The STRIPE_PUBLISHABLE_KEY below (pk_test_51Tha0...) is the publishable key of Stripe
+        // sandbox account acct_1Tha0rHGu8AnfRoU, which the backend confirmed on 2026-10-28. It only works against a
+        // backend that runs that sandbox's secret key, that is the local test backend (clickme.devBaseUrl, see
+        // .planning/phases/07-payment-methods-paid-booking/07-LOCAL-STRIPE-TESTING.md). Against the default
+        // production BASE_URL, which has been live mode since 2026-10-17, Stripe calls from the dev flavor fail.
         create("dev") {
             dimension = "env"
-            buildConfigField("String", "BASE_URL", "\"https://clickme-backend-production.up.railway.app/api/v1\"")
+            buildConfigField("String", "BASE_URL", "\"$devBaseUrl\"")
             buildConfigField(
                 "String",
                 "STRIPE_PUBLISHABLE_KEY",
@@ -59,10 +96,11 @@ android {
             )
             buildConfigField("String", "AGORA_APP_ID", "\"483eaa4d11fb44b6acc91bf5ceae36c7\"")
         }
-        // The pk_live key below only works after the backend switches Stripe to live mode at launch (Phase 17 release item, D-05).
+        // The backend has been in Stripe live mode since the 2026-10-17 cutover (backend 261017-tm2), so the pk_live
+        // key below matches production.
         create("prod") {
             dimension = "env"
-            buildConfigField("String", "BASE_URL", "\"https://clickme-backend-production.up.railway.app/api/v1\"")
+            buildConfigField("String", "BASE_URL", "\"$productionBaseUrl\"")
             buildConfigField(
                 "String",
                 "STRIPE_PUBLISHABLE_KEY",

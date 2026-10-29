@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only (quick 261028-to1): cleartext HTTP to the local test backend over
+  `adb reverse tcp:3000 tcp:3000`, i.e. localhost and 127.0.0.1. Release has no config and keeps the
+  targetSdk default of no cleartext. No trust-anchors element: the platform default trust applies.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
