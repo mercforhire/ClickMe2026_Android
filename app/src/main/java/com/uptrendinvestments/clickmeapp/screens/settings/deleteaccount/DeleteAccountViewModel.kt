@@ -1,14 +1,15 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +61,7 @@ data class DeleteAccountUiState(
  * The DELETE is irreversible, so a single [DeleteAccountUiState.isDeleting] flag covers both calls and every entry
  * point returns early while it is set (T-14-13). On success it stays set: the root Farewell covers the screen
  * ([AccountDeletionState]) and nothing else runs. The password and the token live in memory or in a local variable
- * only (T-14-14).
+ * only (T-14-14). The request pair runs on the application scope so that leaving the screen cannot cancel it.
  */
 @HiltViewModel
 class DeleteAccountViewModel
@@ -69,6 +70,7 @@ class DeleteAccountViewModel
         private val repository: DeleteAccountRepository,
         private val callGuard: CallGuard,
         private val deletionState: AccountDeletionState,
+        @ApplicationScope private val appScope: CoroutineScope,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DeleteAccountUiState())
         val uiState: StateFlow<DeleteAccountUiState> = _uiState.asStateFlow()
@@ -112,7 +114,10 @@ class DeleteAccountViewModel
             val password = state.password
             val feedback = state.feedback.trim().ifEmpty { null }
             _uiState.update { it.copy(isDeleting = true, passwordError = null, dialog = null) }
-            viewModelScope.launch {
+            // The application scope on purpose: once the server revokes the sessions, a 401 elsewhere can log the user
+            // out and dispose this screen. That must not cancel the request pair or skip markDeleted() (the Farewell).
+            // onFailure only touches _uiState, which is safe on a cleared ViewModel.
+            appScope.launch {
                 var failedCall = FailedCall.RequestDeletion
                 try {
                     // A local on purpose: the token is never stored, saved or logged.

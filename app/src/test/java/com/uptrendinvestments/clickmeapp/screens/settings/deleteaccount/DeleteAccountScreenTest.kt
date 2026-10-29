@@ -24,6 +24,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
@@ -45,7 +46,12 @@ class DeleteAccountScreenTest {
     private val toWarning = mutableListOf<Unit>()
 
     private fun viewModel() =
-        DeleteAccountViewModel(DeleteAccountRepository(FakeClickMeApi()), guard, AccountDeletionState())
+        DeleteAccountViewModel(
+            DeleteAccountRepository(FakeClickMeApi()),
+            guard,
+            AccountDeletionState(),
+            CoroutineScope(main.testDispatcher),
+        )
 
     private fun setScreen(viewModel: DeleteAccountViewModel) {
         rule.setContent {

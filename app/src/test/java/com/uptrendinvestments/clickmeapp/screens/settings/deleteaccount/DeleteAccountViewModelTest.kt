@@ -12,6 +12,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -31,7 +32,7 @@ class DeleteAccountViewModelTest {
     private val guard = FakeCallGuard()
     private val deletionState = AccountDeletionState()
 
-    private fun viewModel() = DeleteAccountViewModel(DeleteAccountRepository(api), guard, deletionState)
+    private fun viewModel() = DeleteAccountViewModel(DeleteAccountRepository(api), guard, deletionState, CoroutineScope(main.testDispatcher))
 
     private fun stubSuccess() {
         var minted = 0
