@@ -51,14 +51,24 @@ fun resolvePayoutOnboarding(
         else -> PayoutOnboarding.Unknown
     }
 
+/** Hosts a Stripe Account Link may point at: `stripe.com` and its subdomains (`connect.stripe.com`, test mode too). */
+private const val STRIPE_HOST = "stripe.com"
+
 /**
- * A minted Stripe Account Link may only leave the app when it is an https URL with a host (RESEARCH A4). This is
- * stricter than the generic Custom Tab launcher, which also accepts http. Anything that does not parse is rejected.
+ * A minted Stripe Account Link may only leave the app when it is an https URL on a Stripe host with no user-info
+ * (RESEARCH A4). This is an allow-list, not a syntax check: a compromised backend or a TLS-intercepting proxy cannot
+ * send the expert to a look-alike page to enter identity and bank details. Stricter than the generic Custom Tab
+ * launcher, which also accepts http. Anything that does not parse is rejected; callers launch the exact string that
+ * passed this check.
  */
 fun isAllowedOnboardingUrl(url: String): Boolean =
     try {
         val uri = URI(url)
-        uri.scheme?.lowercase(Locale.ROOT) == "https" && !uri.host.isNullOrBlank()
+        val host = uri.host?.lowercase(Locale.ROOT)
+        uri.scheme?.lowercase(Locale.ROOT) == "https" &&
+            uri.userInfo == null &&
+            host != null &&
+            (host == STRIPE_HOST || host.endsWith(".$STRIPE_HOST"))
     } catch (_: URISyntaxException) {
         false
     }

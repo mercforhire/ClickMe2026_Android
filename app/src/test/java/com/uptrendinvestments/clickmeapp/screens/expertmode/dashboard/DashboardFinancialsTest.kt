@@ -73,6 +73,29 @@ class DashboardFinancialsTest {
     }
 
     @Test
+    fun stripeHostsAreAllowed() {
+        assertTrue(isAllowedOnboardingUrl("https://stripe.com/setup"))
+        assertTrue(isAllowedOnboardingUrl("https://CONNECT.Stripe.com/setup/x"))
+        assertTrue(isAllowedOnboardingUrl("https://a.b.stripe.com:443/setup/x"))
+    }
+
+    @Test
+    fun nonStripeHostsAreRejected() {
+        assertFalse(isAllowedOnboardingUrl("https://evil.example/setup/x"))
+        assertFalse(isAllowedOnboardingUrl("https://notstripe.com/setup/x"))
+        assertFalse(isAllowedOnboardingUrl("https://stripe.com.evil.example/setup/x"))
+        assertFalse(isAllowedOnboardingUrl("https://evil.example/stripe.com"))
+        assertFalse(isAllowedOnboardingUrl("https://evil.example/?u=connect.stripe.com"))
+    }
+
+    @Test
+    fun userInfoAndBackslashTricksAreRejected() {
+        assertFalse(isAllowedOnboardingUrl("https://connect.stripe.com@evil.example/setup"))
+        assertFalse(isAllowedOnboardingUrl("https://user@connect.stripe.com/setup"))
+        assertFalse(isAllowedOnboardingUrl("https://evil.example\\@connect.stripe.com/setup"))
+    }
+
+    @Test
     fun plainHttpIsRejected() {
         assertFalse(isAllowedOnboardingUrl("http://connect.stripe.com/setup/x"))
     }
