@@ -22,12 +22,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ClickMe"
         tools:ignore="UnusedAttribute">
+        <!-- iOS parity, CONTEXT D-01; ignored on sw600dp+ at targetSdk 37 (D-02) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.ClickMe.Splash"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            tools:ignore="LockedOrientationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
