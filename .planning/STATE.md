@@ -5,10 +5,10 @@ current_phase: 13
 current_phase_name: Push, Notifications & Internal Testing
 status: executing
 stopped_at: Phase 13 UI-SPEC approved
-last_updated: "2026-10-28T15:27:09.372Z"
+last_updated: "2026-10-29T01:52:54.656Z"
 last_activity: 2026-10-28
 last_activity_desc: Phase 13 execution started
-state_head: 1c9c187606c03a3bdbc76c63f8635978b6b8849d
+state_head: b2e3c4ddf2af456be440de31a8a339c4543ae29c
 progress:
   total_phases: 17
   completed_phases: 11
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 Phase: 13 (Push, Notifications & Internal Testing) — EXECUTING
 Plan: 1 of 18
 Status: Executing Phase 13
-Last activity: 2026-10-28 — Phase 13 execution started
+Last activity: 2026-10-28 - Completed quick task 261028-to1: block new long-lead paid bookings, payment_actions push routing, local Stripe test backend support
 
 Progress: [███████░░░] 65%
 
@@ -300,6 +300,7 @@ Recent decisions affecting current work:
 |---|-------------|------|--------|-----------|
 | 261027-v9i | Phase 12 UI review fixes: externalise read-receipt separator, switch chat icons to Outlined | 2026-10-27 | 8b7bf31 | [261027-v9i-phase-12-ui-review-fixes-externalise-rea](./quick/261027-v9i-phase-12-ui-review-fixes-externalise-rea/) |
 | 261027-vow | Switch all app back arrows to AutoMirrored.Outlined.ArrowBack per UI spec | 2026-10-27 | fea65c4 | [261027-vow-switch-all-app-back-arrows-to-automirror](./quick/261027-vow-switch-all-app-back-arrows-to-automirror/) |
+| 261028-to1 | Block new long-lead paid bookings (6-day paid window, 422 is an error), route booking/payment_actions push to the booking, dev BASE_URL override + debug localhost cleartext, local Stripe test runbook | 2026-10-28 | b2e3c4d | [261028-to1-block-new-long-lead-paid-bookings-route-](./quick/261028-to1-block-new-long-lead-paid-bookings-route-/) |
 
 ## Deferred Items
 
