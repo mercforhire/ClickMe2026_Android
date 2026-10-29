@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -81,6 +82,8 @@ fun DeleteAccountFarewell(
             modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface)
+                // Swallows touches so the route underneath (Login after a forced logout) is never tappable.
+                .pointerInput(Unit) {}
                 .testTag(DELETE_FAREWELL_TAG),
     ) {
         Column(
