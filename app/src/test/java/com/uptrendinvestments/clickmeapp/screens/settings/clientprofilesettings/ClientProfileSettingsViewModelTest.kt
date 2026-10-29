@@ -78,6 +78,27 @@ class ClientProfileSettingsViewModelTest {
         }
 
     @Test
+    fun failedFirstLoadShowsRetryStateThenSeedsOnRetry() =
+        runTest(main.testDispatcher) {
+            val h = SignupTestHarness(this, tmp, main.testDispatcher)
+            h.signIn()
+            runCurrent()
+            h.api.userProfileHandler = { throw IOException("offline") }
+            val vm = viewModel(h)
+            runCurrent()
+
+            assertTrue(vm.uiState.value.loadFailed)
+            assertNull(vm.uiState.value.snapshot)
+
+            h.api.userProfileHandler = { seeded }
+            vm.retryLoad()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.loadFailed)
+            assertEquals("Ana", vm.uiState.value.snapshot?.firstName)
+        }
+
+    @Test
     fun firstNameEditPatchesBasicGroupOnly() =
         runTest(main.testDispatcher) {
             val h = signedIn(after = userProfileData(firstName = "Anna", lastName = "Lee", bio = "Hi there"))

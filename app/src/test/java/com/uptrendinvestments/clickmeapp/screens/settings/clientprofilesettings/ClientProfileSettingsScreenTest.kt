@@ -105,6 +105,8 @@ class ClientProfileSettingsScreenTest {
         fieldErrors = fieldErrors,
     )
 
+    private val loadRetries = mutableListOf<Unit>()
+
     private fun setContent(state: ClientProfileSettingsUiState) {
         rule.setContent {
             ClickMeTheme {
@@ -113,6 +115,7 @@ class ClientProfileSettingsScreenTest {
                     onBack = { backs += Unit },
                     onFieldChange = { field, value -> changes += field to value },
                     onRetrySave = { retries += Unit },
+                    onRetryLoad = { loadRetries += Unit },
                     onDismissDialog = { dismissals += Unit },
                     onOpenProfessional = { opens += Unit },
                     onApplyProfessional = { jobTitle, company -> applied += jobTitle to company },
@@ -291,6 +294,15 @@ class ClientProfileSettingsScreenTest {
     }
 
     @Test
+    fun failedFirstLoadShowsRetryInsteadOfSpinner() {
+        setContent(ClientProfileSettingsUiState(loadFailed = true))
+
+        rule.onNodeWithText("Retry connection").performClick()
+
+        assertEquals(1, loadRetries.size)
+    }
+
+    @Test
     fun statusIconStates() {
         var status by mutableStateOf(AutoSaveStatus.Idle)
         rule.setContent {
@@ -300,6 +312,7 @@ class ClientProfileSettingsScreenTest {
                     onBack = {},
                     onFieldChange = { _, _ -> },
                     onRetrySave = { retries += Unit },
+                    onRetryLoad = { loadRetries += Unit },
                     onDismissDialog = {},
                     onOpenProfessional = {},
                     onApplyProfessional = { _, _ -> },

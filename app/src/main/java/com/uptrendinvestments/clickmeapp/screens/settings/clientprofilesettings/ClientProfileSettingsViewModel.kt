@@ -21,8 +21,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -41,11 +39,12 @@ enum class ProfileTextFieldId(
 }
 
 /**
- * [snapshot] is null until the profile has been read (the screen shows a spinner). [dialog] is the save-failure
- * message, [fieldErrors] the per-field messages from a 422.
+ * [snapshot] is null until the profile has been read (the screen shows a spinner, or a retry state when [loadFailed]).
+ * [dialog] is the save-failure message, [fieldErrors] the per-field messages from a 422.
  */
 data class ClientProfileSettingsUiState(
     val snapshot: ProfileSnapshot? = null,
+    val loadFailed: Boolean = false,
     val email: String = "",
     val status: AutoSaveStatus = AutoSaveStatus.Idle,
     val fieldErrors: Map<ProfileTextFieldId, FieldError> = emptyMap(),
@@ -121,6 +120,8 @@ class ClientProfileSettingsViewModel
                 userManager.profile.collect { profile ->
                     if (profile != null) {
                         _uiState.update { it.copy(avatarUrl = profile.personalDetails.avatarUrl) }
+                        // Also covers a profile that arrives after a failed first load (a later refresh elsewhere).
+                        seed(profile)
                     }
                 }
             }
@@ -128,15 +129,31 @@ class ClientProfileSettingsViewModel
             if (cached != null) {
                 seed(cached)
             } else {
+                loadProfile()
+            }
+        }
+
+        private var loadJob: Job? = null
+
+        /** Refreshes the profile once; a failure with nothing cached shows the retry state instead of a spinner. */
+        private fun loadProfile() {
+            _uiState.update { it.copy(loadFailed = false) }
+            loadJob =
                 viewModelScope.launch {
                     try {
                         userManager.refreshProfile()
                     } catch (_: ApiException) {
-                        // The screen keeps its spinner; there is nothing to edit without a profile.
+                        // Handled below: there is nothing to edit without a profile.
                     }
-                    seed(userManager.profile.filterNotNull().first())
+                    val profile = userManager.profile.value
+                    if (profile != null) seed(profile) else _uiState.update { it.copy(loadFailed = true) }
                 }
-            }
+        }
+
+        /** The retry state's action: runs the first-load refresh again. */
+        fun retryLoad() {
+            if (seeded || loadJob?.isActive == true) return
+            loadProfile()
         }
 
         private fun seed(profile: UserProfileData) {
@@ -149,7 +166,9 @@ class ClientProfileSettingsViewModel
                     it.copy(countryCode = Countries.normalize(it.countryCode).orEmpty())
                 }
             saver.rebase(snapshot)
-            _uiState.update { it.copy(snapshot = snapshot, email = profile.personalDetails.email.orEmpty()) }
+            _uiState.update {
+                it.copy(snapshot = snapshot, loadFailed = false, email = profile.personalDetails.email.orEmpty())
+            }
         }
 
         /** Applies [value] (cut to the field's maximum) and schedules the save. */

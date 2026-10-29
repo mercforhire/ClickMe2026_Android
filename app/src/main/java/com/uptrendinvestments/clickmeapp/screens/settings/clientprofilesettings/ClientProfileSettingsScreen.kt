@@ -32,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
@@ -93,6 +94,7 @@ fun ClientProfileSettingsScreen(
         onBack = leave,
         onFieldChange = viewModel::onFieldChange,
         onRetrySave = viewModel::retrySave,
+        onRetryLoad = viewModel::retryLoad,
         onDismissDialog = viewModel::dismissDialog,
         onOpenProfessional = viewModel::openProfessionalSheet,
         onApplyProfessional = viewModel::applyProfessional,
@@ -122,6 +124,7 @@ fun ClientProfileSettingsContent(
     onBack: () -> Unit,
     onFieldChange: (ProfileTextFieldId, String) -> Unit,
     onRetrySave: () -> Unit,
+    onRetryLoad: () -> Unit,
     onDismissDialog: () -> Unit,
     onOpenProfessional: () -> Unit,
     onApplyProfessional: (jobTitle: String, company: String) -> Unit,
@@ -152,7 +155,14 @@ fun ClientProfileSettingsContent(
         },
     ) { inner ->
         val snapshot = state.snapshot
-        if (snapshot == null) {
+        if (snapshot == null && state.loadFailed) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(inner),
+                contentAlignment = Alignment.Center,
+            ) {
+                ErrorState(onRetry = onRetryLoad)
+            }
+        } else if (snapshot == null) {
             val loading = stringResource(R.string.profile_settings_loading)
             Box(
                 modifier = Modifier.fillMaxSize().padding(inner),
