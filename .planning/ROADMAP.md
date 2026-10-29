@@ -841,3 +841,12 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 - [ ] 02-15: Device end-to-end on devDebug plus the signed R8 prodRelease cold start. Needs the upload keystore (02-05 Task 2).
 - [ ] 02-16: Release smoke and the Play internal-track upload that registers the package (REL-03). It is the same work as Phase 13 release checklist steps 3-5.
 - [ ] FND-14: 5+ minute backgrounded Agora audio, run from the Phase 9 deferred list (02-12 was superseded).
+
+### Phase 999.2: Pause Account (BACKLOG)
+
+**Goal:** Let a user pause their account (hide the profile and services) instead of deleting it, once the backend ships the endpoint requested in `phases/14-payouts-account-settings/14-BACKEND-REQUEST.md`.
+**Source phase:** 14
+**Deferred at:** 2026-10-29 by CONTEXT D-06 (Phase 14 delivers no Pause card; the iOS card is inert)
+**Target:** after the backend answers
+**Plans:**
+- [ ] Pause card on the delete flow against the new endpoint (never inert)
