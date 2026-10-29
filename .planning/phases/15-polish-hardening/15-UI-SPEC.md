@@ -1,7 +1,8 @@
 ---
 phase: 15
 slug: polish-hardening
-status: draft
+status: approved
+reviewed_at: 2026-10-29
 shadcn_initialized: false
 preset: none
 created: 2026-10-29
@@ -363,9 +364,9 @@ All new strings go in `res/values/strings.xml` (shared) or the owning screen's `
 
 ## UI Considerations
 
-> Authored by the researcher from the sections above; the interactive probe was not run during authoring (non-interactive session). Empty-state and error-state copy lives in the Copywriting Contract and is referenced, not repeated. Rows are per archetype or per surface class, because the phase's subject is a standard rather than one screen.
+> Authored by the researcher from the sections above. Post-verification the ui-consideration probe ran over 10 surfaces (archetypes A–F, snackbar, call layer, chat, large-screen layout, booking calendar): 47 applicable categories, 3 unclassified (detail screens, snackbar, large-screen layout; kinds confirmed by the orchestrator as content+error, zero-one-many and overflow, all covered by rows below). Gaps the probe raised that the original rows did not cover were added at the end of the table (`--auto` convention, non-interactive session). Empty-state and error-state copy lives in the Copywriting Contract and is referenced, not repeated. Rows are per archetype or per surface class, because the phase's subject is a standard rather than one screen.
 
-Applicable state considerations resolved: 25 covered, 5 backstop, 5 unresolved.
+Applicable state considerations resolved: 30 covered, 6 backstop, 5 unresolved.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -404,6 +405,12 @@ Applicable state considerations resolved: 25 covered, 5 backstop, 5 unresolved.
 | restoration | Scroll position | ⚠ unresolved — planner must treat as assumption | Best effort per D-12; not guaranteed where data loads asynchronously |
 | restoration | Large-screen resize with a call or booking in progress | ⚠ unresolved — planner must treat as assumption | Verified only on a resizable emulator; no device available for foldables |
 | platform | Orientation lock on large screens | ⚠ unresolved — planner must treat as assumption | At targetSdk 37 the system ignores the lock on sw600dp+; the UI must be usable when it rotates (D-02) |
+| empty | Chat thread with no messages yet | ✅ covered | Thread shows its shipped empty copy (Phase 12) with the composer still active and focusable; no Retry |
+| long-text | Chat bubbles and conversation rows | ✅ covered | Bubbles wrap with no max lines inside their own max width; conversation row last-message preview truncates to one line with an ellipsis while the TalkBack node still reads the full text |
+| long-text | Call layer peer name | ✅ covered | Peer name wraps to at most 2 lines with ellipsis; Mute, Speaker and End call never move off screen (Large screens rule for heights under 480 dp) |
+| zero-one-many | Booking slots for a chosen day | ✅ covered | 0 slots: slots card shows "No times this day" (announced, Flow 2); 1 or many: slot cells in time order, the card scrolls inside the form, Book Now stays reachable |
+| empty | Booking calendar month with no availability | ✅ covered | Every day cell reads "No availability"; Previous/Next month stay enabled so the user can move on; Book Now stays disabled with its reason |
+| populated | Detail screens after a successful Retry | 🧪 backstop | { statement: "After Retry succeeds on a Detail screen, the real layout replaces the ErrorState with SectionAppear and TalkBack focus moves to the app bar title, not to a removed node", verification: backstop } |
 
 ---
 
@@ -466,12 +473,12 @@ Open items for the user at UAT: A1 (ErrorState defaults), A2 (snackbar duration)
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: PASS (FLAG: bare "Retry", accepted under E1)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-10-29
