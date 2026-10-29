@@ -79,7 +79,8 @@ class ClientProfileSettingsViewModelTest {
                 listOf(UpdateUserProfileRequest(basic = ProfileBasicBody("Anna", "Lee", "Hi there"))),
                 h.api.updateUserProfileRequests,
             )
-            assertEquals("Anna", h.userManager.profile.value?.personalDetails?.firstName)
+            val cached = h.userManager.profile.value
+            assertEquals("Anna", cached?.personalDetails?.firstName)
             assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
         }
 
@@ -99,6 +100,7 @@ class ClientProfileSettingsViewModelTest {
             runCurrent()
 
             assertEquals(1, h.api.updateUserProfileCalls)
-            assertEquals("Anna", h.api.updateUserProfileRequests.single().basic?.firstName)
+            val sent = h.api.updateUserProfileRequests.single()
+            assertEquals("Anna", sent.basic?.firstName)
         }
 }
