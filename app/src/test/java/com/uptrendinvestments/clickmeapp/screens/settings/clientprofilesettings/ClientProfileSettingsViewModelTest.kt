@@ -4,11 +4,15 @@ package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileBasicBody
+import com.uptrendinvestments.clickmeapp.model.requests.ProfileLanguagesBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileLocationBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileProfessionalBody
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
+import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageCatalog
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.userProfileData
@@ -51,7 +55,12 @@ class ClientProfileSettingsViewModelTest {
     }
 
     private fun TestScope.viewModel(h: SignupTestHarness) =
-        ClientProfileSettingsViewModel(ProfileSettingsRepository(h.api), h.userManager, backgroundScope)
+        ClientProfileSettingsViewModel(
+            ProfileSettingsRepository(h.api),
+            h.userManager,
+            ProfileAvatarController(h.photo, ProfileSettingsRepository(h.api), h.userManager, backgroundScope),
+            backgroundScope,
+        )
 
     @Test
     fun seedsFromTheCachedProfile() =
@@ -344,5 +353,281 @@ class ClientProfileSettingsViewModelTest {
             assertEquals("Old", state.snapshot?.jobTitle)
             assertEquals("Co", state.snapshot?.company)
             assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    private val mixedLanguages =
+        userProfileData(
+            languages =
+                listOf(
+                    UserProfileData.LanguageEntry(id = "en", label = "English"),
+                    UserProfileData.LanguageEntry(id = null, label = "Klingon"),
+                ),
+        )
+
+    private val catalogue =
+        LanguagesPayload(
+            listOf(LanguageItem("en", "English"), LanguageItem("fr", "French"), LanguageItem("de", "German")),
+        )
+
+    @Test
+    fun languagesSheetLoadsCatalogOnOpen() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            val opened = vm.uiState.value.languageSheet
+            assertEquals(LanguageCatalog.Loading, opened?.catalog)
+            assertEquals(listOf(LanguageItem("en", "English")), opened?.selection)
+
+            runCurrent()
+            val loaded = vm.uiState.value.languageSheet
+            assertEquals(LanguageCatalog.Loaded(catalogue.languages), loaded?.catalog)
+        }
+
+    @Test
+    fun languagesFailureShowsFailedAndRetryRefetches() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
+            h.api.languagesHandler = { throw IOException("offline") }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            assertEquals(
+                LanguageCatalog.Failed,
+                vm.uiState.value.languageSheet
+                    ?.catalog,
+            )
+
+            h.api.languagesHandler = { catalogue }
+            vm.retryLanguages()
+            runCurrent()
+            assertEquals(
+                LanguageCatalog.Loaded(catalogue.languages),
+                vm.uiState.value.languageSheet
+                    ?.catalog,
+            )
+        }
+
+    @Test
+    fun catalogIsLoadedOncePerViewModel() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
+            var calls = 0
+            h.api.languagesHandler = {
+                calls++
+                catalogue
+            }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.dismissLanguages()
+            vm.openLanguages()
+            runCurrent()
+
+            assertEquals(1, calls)
+            assertEquals(
+                LanguageCatalog.Loaded(catalogue.languages),
+                vm.uiState.value.languageSheet
+                    ?.catalog,
+            )
+        }
+
+    @Test
+    fun doneSavesIdsAndKeepsCustoms() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("fr", "French"))
+            assertEquals(0, h.api.updateUserProfileCalls)
+            vm.applyLanguages()
+            assertNull(vm.uiState.value.languageSheet)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS - 1)
+            runCurrent()
+            assertEquals(0, h.api.updateUserProfileCalls)
+            advanceTimeBy(1)
+            runCurrent()
+
+            assertEquals(
+                listOf(
+                    UpdateUserProfileRequest(
+                        languages = ProfileLanguagesBody(listOf("en", "fr"), listOf("Klingon")),
+                    ),
+                ),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun dismissingTheLanguageSheetSendsNothing() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("fr", "French"))
+            vm.dismissLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            assertNull(vm.uiState.value.languageSheet)
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(
+                2,
+                vm.uiState.value.snapshot
+                    ?.languages
+                    ?.size,
+            )
+        }
+
+    @Test
+    fun removingAllSendsEmptyLists() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData())
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("en", "English"))
+            vm.applyLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(languages = ProfileLanguagesBody(emptyList(), emptyList()))),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun languageQueryFiltersTheSheet() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.onLanguageQuery("fre")
+
+            assertEquals(
+                listOf(LanguageItem("fr", "French")),
+                vm.uiState.value.languageSheet
+                    ?.visibleItems,
+            )
+        }
+
+    @Test
+    fun countrySelectionSavesAlpha3() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(city = "Toronto", stateProvince = "ON", country = "CA"))
+            val vm = viewModel(h)
+            runCurrent()
+            assertEquals(
+                "CAN",
+                vm.uiState.value.snapshot
+                    ?.countryCode,
+            )
+
+            vm.openCountry()
+            assertTrue(vm.uiState.value.countrySheetOpen)
+            vm.onCountryQuery("united st")
+            assertEquals(
+                listOf("USA"),
+                vm.uiState.value.visibleCountries
+                    .map { it.code },
+            )
+
+            vm.selectCountry("USA")
+            assertFalse(vm.uiState.value.countrySheetOpen)
+            assertEquals("", vm.uiState.value.countryQuery)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS - 1)
+            runCurrent()
+            assertEquals(0, h.api.updateUserProfileCalls)
+            advanceTimeBy(1)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(location = ProfileLocationBody("Toronto", "ON", "USA"))),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun unsetCountrySeedsEmptyAndSelectingSaves() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(country = null))
+            val vm = viewModel(h)
+            runCurrent()
+            assertEquals(
+                "",
+                vm.uiState.value.snapshot
+                    ?.countryCode,
+            )
+
+            vm.selectCountry("CAN")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "CAN",
+                h.api.updateUserProfileRequests
+                    .single()
+                    .location
+                    ?.countryCode,
+            )
+        }
+
+    @Test
+    fun dismissingTheCountrySheetSendsNothing() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openCountry()
+            vm.dismissCountry()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            assertFalse(vm.uiState.value.countrySheetOpen)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun legacyAlpha2CountryIsSentAsAlpha3WithOtherLocationEdits() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(country = "CA"))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.City, "Paris")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "CAN",
+                h.api.updateUserProfileRequests
+                    .single()
+                    .location
+                    ?.countryCode,
+            )
         }
 }

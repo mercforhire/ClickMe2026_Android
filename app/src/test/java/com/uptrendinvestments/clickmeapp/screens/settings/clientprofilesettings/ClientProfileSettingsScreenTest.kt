@@ -23,10 +23,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_COMPANY_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_JOB_TITLE_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_PROGRESS_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_BIO_COUNTER_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsBody
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -63,6 +67,10 @@ class ClientProfileSettingsScreenTest {
     private val opens = mutableListOf<Unit>()
     private val applied = mutableListOf<Pair<String, String>>()
     private val discards = mutableListOf<Unit>()
+    private val pickTaps = mutableListOf<Unit>()
+    private val avatarDismissals = mutableListOf<Unit>()
+    private val languageOpens = mutableListOf<Unit>()
+    private val countryOpens = mutableListOf<Unit>()
 
     private fun state(
         bio: String = "",
@@ -72,13 +80,20 @@ class ClientProfileSettingsScreenTest {
         jobTitle: String? = null,
         company: String? = null,
         sheetOpen: Boolean = false,
+        avatar: AvatarUiState = AvatarUiState(),
+        languages: List<UserProfileData.LanguageEntry> =
+            listOf(UserProfileData.LanguageEntry(id = "en", label = "English")),
+        country: String? = "CAN",
     ) = ClientProfileSettingsUiState(
+        avatar = avatar,
         snapshot =
             ProfileSnapshot.from(
                 userProfileData(
                     bio = bio,
                     city = "Toronto",
                     stateProvince = "ON",
+                    languages = languages,
+                    country = country,
                     jobTitle = jobTitle,
                     company = company,
                 ),
@@ -102,6 +117,18 @@ class ClientProfileSettingsScreenTest {
                     onOpenProfessional = { opens += Unit },
                     onApplyProfessional = { jobTitle, company -> applied += jobTitle to company },
                     onDiscardProfessional = { discards += Unit },
+                    onChangePhoto = { pickTaps += Unit },
+                    onDismissAvatarError = { avatarDismissals += Unit },
+                    onOpenLanguages = { languageOpens += Unit },
+                    onLanguageQueryChange = {},
+                    onToggleLanguage = {},
+                    onRetryLanguages = {},
+                    onDismissLanguages = {},
+                    onApplyLanguages = {},
+                    onOpenCountry = { countryOpens += Unit },
+                    onCountryQueryChange = {},
+                    onSelectCountry = {},
+                    onDismissCountry = {},
                 )
             }
         }
@@ -124,6 +151,132 @@ class ClientProfileSettingsScreenTest {
         assertEquals(tops.sorted(), tops)
         assertEquals(tops.distinct(), tops)
         rule.onNodeWithText("Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun avatarSectionAndChangePhoto() {
+        setContent(state())
+
+        rule.onNodeWithTag(PROFILE_AVATAR_TAG).assertIsDisplayed()
+        rule.onNodeWithText("Change photo").assertIsDisplayed()
+        rule.onNodeWithTag(PROFILE_AVATAR_PROGRESS_TAG).assertDoesNotExist()
+
+        rule.onNodeWithText("Change photo").performClick()
+        rule.onNodeWithTag(PROFILE_AVATAR_TAG).performClick()
+        assertEquals(2, pickTaps.size)
+    }
+
+    @Test
+    fun uploadingShowsAProgressNodeOverTheAvatar() {
+        setContent(state(avatar = AvatarUiState(isUploading = true)))
+
+        rule.onNodeWithTag(PROFILE_AVATAR_PROGRESS_TAG).assertIsDisplayed()
+        rule.onNodeWithContentDescription("Uploading photo").assertExists()
+    }
+
+    @Test
+    fun avatarErrorShowsTheUploadTitleAndMessage() {
+        setContent(state(avatar = AvatarUiState(error = FieldError.Text("Too big"))))
+
+        rule.onNodeWithText("Couldn't upload avatar").assertIsDisplayed()
+        rule.onNodeWithText("Too big").assertIsDisplayed()
+        rule.onNodeWithText("Got it").performClick()
+        assertEquals(1, avatarDismissals.size)
+    }
+
+    @Test
+    fun importErrorUsesTheOpenPhotoTitle() {
+        setContent(
+            state(
+                avatar =
+                    AvatarUiState(
+                        error = FieldError.Res(R.string.signup_photo_open_error_body),
+                        errorTitleRes = R.string.signup_photo_open_error_title,
+                    ),
+            ),
+        )
+
+        rule.onNodeWithText("Couldn't open photo").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't upload avatar").assertDoesNotExist()
+    }
+
+    @Test
+    fun languageChipsAndEmptyHint() {
+        setContent(
+            state(
+                languages =
+                    listOf(
+                        UserProfileData.LanguageEntry(id = "en", label = "English"),
+                        UserProfileData.LanguageEntry(id = null, label = "Klingon"),
+                    ),
+            ),
+        )
+
+        rule.onNodeWithText("Spoken Languages").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("English").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Klingon").assertIsDisplayed()
+        rule.onNodeWithText("Add the languages you speak").assertDoesNotExist()
+        rule.onNodeWithText("Edit languages").performScrollTo().performClick()
+        assertEquals(1, languageOpens.size)
+    }
+
+    @Test
+    fun noLanguagesShowsTheEmptyHint() {
+        setContent(state(languages = emptyList()))
+
+        rule.onNodeWithText("Add the languages you speak").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Edit languages").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun manyLanguagesWrapInsteadOfClipping() {
+        val many = List(12) { UserProfileData.LanguageEntry(id = "l$it", label = "Language number $it") }
+        setContent(state(languages = many))
+
+        rule.onNodeWithText("Language number 11").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Edit languages").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun fieldOrderComplete() {
+        setContent(state())
+
+        val emailTop =
+            rule
+                .onNodeWithContentDescription("Email, ana@example.com, read only")
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val tops =
+            listOf(top("Change photo"), emailTop) +
+                listOf(
+                    "First Name",
+                    "Last Name",
+                    "Bio",
+                    "Professional Details",
+                    "City",
+                    "State/Province",
+                    "Country",
+                    "Spoken Languages",
+                ).map { top(it) }
+        assertEquals(tops.sorted(), tops)
+        assertEquals(tops.distinct(), tops)
+    }
+
+    @Test
+    fun countryShowsItsNameAndOpensThePicker() {
+        setContent(state(country = "CAN"))
+
+        rule.onNodeWithText("Canada").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Select").assertDoesNotExist()
+        rule.onNodeWithText("Canada").performClick()
+        assertEquals(1, countryOpens.size)
+    }
+
+    @Test
+    fun unsetCountryShowsSelect() {
+        setContent(state(country = null))
+
+        rule.onNodeWithText("Select").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -151,6 +304,18 @@ class ClientProfileSettingsScreenTest {
                     onOpenProfessional = {},
                     onApplyProfessional = { _, _ -> },
                     onDiscardProfessional = {},
+                    onChangePhoto = {},
+                    onDismissAvatarError = {},
+                    onOpenLanguages = {},
+                    onLanguageQueryChange = {},
+                    onToggleLanguage = {},
+                    onRetryLanguages = {},
+                    onDismissLanguages = {},
+                    onApplyLanguages = {},
+                    onOpenCountry = { countryOpens += Unit },
+                    onCountryQueryChange = {},
+                    onSelectCountry = {},
+                    onDismissCountry = {},
                 )
             }
         }
@@ -305,10 +470,20 @@ class ClientProfileSettingsScreenTest {
             runCurrent()
             h.userManager.refreshProfile()
             h.api.updateUserProfileHandler = { seeded }
-            val vm = ClientProfileSettingsViewModel(ProfileSettingsRepository(h.api), h.userManager, backgroundScope)
+            val vm =
+                ClientProfileSettingsViewModel(
+                    ProfileSettingsRepository(h.api),
+                    h.userManager,
+                    ProfileAvatarController(h.photo, ProfileSettingsRepository(h.api), h.userManager, backgroundScope),
+                    backgroundScope,
+                )
             runCurrent()
 
-            rule.setContent { ClickMeTheme { ClientProfileSettingsScreen(viewModel = vm, onBack = { backs += Unit }) } }
+            rule.setContent {
+                ClickMeTheme {
+                    ClientProfileSettingsScreen(viewModel = vm, onBack = { backs += Unit }, onOpenCrop = {})
+                }
+            }
             rule
                 .onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(PROFILE_FIELD_TAG_PREFIX + "LastName")))
                 .performTextReplacement("Leeson")

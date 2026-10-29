@@ -1,6 +1,9 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -24,17 +28,25 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AutoSaveStatusIcon
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheet
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileAvatarSection
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileBioField
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileCountryField
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileLanguagesField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileProfessionalCard
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileReadOnlyField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileTextField
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /** Test tag on the Profile Settings scroll column. */
@@ -52,9 +64,24 @@ const val PROFILE_FIELD_TAG_PREFIX = "profile_field_"
 fun ClientProfileSettingsScreen(
     viewModel: ClientProfileSettingsViewModel,
     onBack: () -> Unit,
+    onOpenCrop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val latestOnOpenCrop by rememberUpdatedState(onOpenCrop)
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let(viewModel::onPhotoPicked)
+        }
+    val openCrop = state.avatar.openCrop
+    LaunchedEffect(openCrop) {
+        if (openCrop) {
+            viewModel.avatarCropOpened()
+            latestOnOpenCrop()
+        }
+    }
+    // Runs on every resume, so a crop confirmed (or cancelled) on the crop screen is handled on the way back.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
     val latestOnBack by rememberUpdatedState(onBack)
     val leave = {
         viewModel.flushPendingSave()
@@ -70,6 +97,20 @@ fun ClientProfileSettingsScreen(
         onOpenProfessional = viewModel::openProfessionalSheet,
         onApplyProfessional = viewModel::applyProfessional,
         onDiscardProfessional = viewModel::discardProfessional,
+        onChangePhoto = {
+            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        },
+        onDismissAvatarError = viewModel::dismissAvatarError,
+        onOpenLanguages = viewModel::openLanguages,
+        onLanguageQueryChange = viewModel::onLanguageQuery,
+        onToggleLanguage = viewModel::toggleLanguage,
+        onRetryLanguages = viewModel::retryLanguages,
+        onDismissLanguages = viewModel::dismissLanguages,
+        onApplyLanguages = viewModel::applyLanguages,
+        onOpenCountry = viewModel::openCountry,
+        onCountryQueryChange = viewModel::onCountryQuery,
+        onSelectCountry = viewModel::selectCountry,
+        onDismissCountry = viewModel::dismissCountry,
         modifier = modifier,
     )
 }
@@ -85,6 +126,18 @@ fun ClientProfileSettingsContent(
     onOpenProfessional: () -> Unit,
     onApplyProfessional: (jobTitle: String, company: String) -> Unit,
     onDiscardProfessional: () -> Unit,
+    onChangePhoto: () -> Unit,
+    onDismissAvatarError: () -> Unit,
+    onOpenLanguages: () -> Unit,
+    onLanguageQueryChange: (String) -> Unit,
+    onToggleLanguage: (LanguageItem) -> Unit,
+    onRetryLanguages: () -> Unit,
+    onDismissLanguages: () -> Unit,
+    onApplyLanguages: () -> Unit,
+    onOpenCountry: () -> Unit,
+    onCountryQueryChange: (String) -> Unit,
+    onSelectCountry: (String) -> Unit,
+    onDismissCountry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -118,6 +171,11 @@ fun ClientProfileSettingsContent(
                         .padding(horizontal = Spacing.md, vertical = Spacing.md)
                         .testTag(PROFILE_SETTINGS_LIST_TAG),
             ) {
+                ProfileAvatarSection(
+                    avatarUrl = state.avatarUrl,
+                    avatar = state.avatar,
+                    onChangePhoto = onChangePhoto,
+                )
                 if (state.email.isNotEmpty()) {
                     ProfileReadOnlyField(
                         label = stringResource(R.string.profile_settings_email_label),
@@ -171,8 +229,32 @@ fun ClientProfileSettingsContent(
                     error = state.fieldErrors[ProfileTextFieldId.StateProvince]?.asString(),
                     maxLength = LOCATION_MAX,
                 )
+                ProfileCountryField(countryCode = snapshot.countryCode, onClick = onOpenCountry)
+                ProfileLanguagesField(languages = snapshot.languages, onEdit = onOpenLanguages)
             }
         }
+    }
+
+    if (state.countrySheetOpen) {
+        CountryPickerSheet(
+            countries = state.visibleCountries,
+            selectedCode = state.snapshot?.countryCode.orEmpty(),
+            query = state.countryQuery,
+            onQueryChange = onCountryQueryChange,
+            onSelect = onSelectCountry,
+            onDismiss = onDismissCountry,
+        )
+    }
+
+    state.languageSheet?.let { sheet ->
+        LanguageSelectionSheet(
+            state = sheet,
+            onQueryChange = onLanguageQueryChange,
+            onToggle = onToggleLanguage,
+            onRetry = onRetryLanguages,
+            onCancel = onDismissLanguages,
+            onDone = onApplyLanguages,
+        )
     }
 
     val sheetSnapshot = state.snapshot
@@ -182,6 +264,15 @@ fun ClientProfileSettingsContent(
             company = sheetSnapshot.company,
             onUpdate = onApplyProfessional,
             onDiscard = onDiscardProfessional,
+        )
+    }
+
+    state.avatar.error?.let { message ->
+        AuthErrorDialog(
+            message = message.asString(),
+            onDismiss = onDismissAvatarError,
+            title = stringResource(state.avatar.errorTitleRes ?: R.string.profile_settings_avatar_error_title),
+            confirmLabel = stringResource(R.string.profile_settings_got_it),
         )
     }
 
