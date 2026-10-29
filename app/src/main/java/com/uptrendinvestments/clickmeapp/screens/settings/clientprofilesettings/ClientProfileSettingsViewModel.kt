@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.toDialogError
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageSheetState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +49,7 @@ data class ClientProfileSettingsUiState(
     val professionalSheetOpen: Boolean = false,
     val avatarUrl: String? = null,
     val avatar: AvatarUiState = AvatarUiState(),
+    val languageSheet: LanguageSheetState? = null,
 )
 
 private val EmptySnapshot =
@@ -151,6 +154,18 @@ class ClientProfileSettingsViewModel
 
         /** Called on every resume: uploads a confirmed crop (or cleans up after a cancelled one). */
         fun onScreenShown() = avatarController.onReturnedFromCrop()
+
+        fun openLanguages(): Unit = TODO()
+
+        fun onLanguageQuery(value: String): Unit = TODO()
+
+        fun toggleLanguage(item: LanguageItem): Unit = TODO()
+
+        fun applyLanguages(): Unit = TODO()
+
+        fun dismissLanguages(): Unit = TODO()
+
+        fun retryLanguages(): Unit = TODO()
 
         fun openProfessionalSheet() = _uiState.update { it.copy(professionalSheetOpen = true) }
 

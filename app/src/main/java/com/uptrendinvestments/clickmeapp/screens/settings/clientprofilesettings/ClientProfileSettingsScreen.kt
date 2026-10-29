@@ -32,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
@@ -96,6 +97,12 @@ fun ClientProfileSettingsScreen(
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
         onDismissAvatarError = viewModel::dismissAvatarError,
+        onOpenLanguages = viewModel::openLanguages,
+        onLanguageQueryChange = viewModel::onLanguageQuery,
+        onToggleLanguage = viewModel::toggleLanguage,
+        onRetryLanguages = viewModel::retryLanguages,
+        onDismissLanguages = viewModel::dismissLanguages,
+        onApplyLanguages = viewModel::applyLanguages,
         modifier = modifier,
     )
 }
@@ -113,6 +120,12 @@ fun ClientProfileSettingsContent(
     onDiscardProfessional: () -> Unit,
     onChangePhoto: () -> Unit,
     onDismissAvatarError: () -> Unit,
+    onOpenLanguages: () -> Unit,
+    onLanguageQueryChange: (String) -> Unit,
+    onToggleLanguage: (LanguageItem) -> Unit,
+    onRetryLanguages: () -> Unit,
+    onDismissLanguages: () -> Unit,
+    onApplyLanguages: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(

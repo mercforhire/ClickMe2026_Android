@@ -24,6 +24,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_COMPANY_TAG
@@ -68,6 +69,7 @@ class ClientProfileSettingsScreenTest {
     private val discards = mutableListOf<Unit>()
     private val pickTaps = mutableListOf<Unit>()
     private val avatarDismissals = mutableListOf<Unit>()
+    private val languageOpens = mutableListOf<Unit>()
 
     private fun state(
         bio: String = "",
@@ -78,6 +80,8 @@ class ClientProfileSettingsScreenTest {
         company: String? = null,
         sheetOpen: Boolean = false,
         avatar: AvatarUiState = AvatarUiState(),
+        languages: List<UserProfileData.LanguageEntry> =
+            listOf(UserProfileData.LanguageEntry(id = "en", label = "English")),
     ) = ClientProfileSettingsUiState(
         avatar = avatar,
         snapshot =
@@ -86,6 +90,7 @@ class ClientProfileSettingsScreenTest {
                     bio = bio,
                     city = "Toronto",
                     stateProvince = "ON",
+                    languages = languages,
                     jobTitle = jobTitle,
                     company = company,
                 ),
@@ -111,6 +116,12 @@ class ClientProfileSettingsScreenTest {
                     onDiscardProfessional = { discards += Unit },
                     onChangePhoto = { pickTaps += Unit },
                     onDismissAvatarError = { avatarDismissals += Unit },
+                    onOpenLanguages = { languageOpens += Unit },
+                    onLanguageQueryChange = {},
+                    onToggleLanguage = {},
+                    onRetryLanguages = {},
+                    onDismissLanguages = {},
+                    onApplyLanguages = {},
                 )
             }
         }
@@ -183,6 +194,43 @@ class ClientProfileSettingsScreenTest {
     }
 
     @Test
+    fun languageChipsAndEmptyHint() {
+        setContent(
+            state(
+                languages =
+                    listOf(
+                        UserProfileData.LanguageEntry(id = "en", label = "English"),
+                        UserProfileData.LanguageEntry(id = null, label = "Klingon"),
+                    ),
+            ),
+        )
+
+        rule.onNodeWithText("Spoken Languages").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("English").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Klingon").assertIsDisplayed()
+        rule.onNodeWithText("Add the languages you speak").assertDoesNotExist()
+        rule.onNodeWithText("Edit languages").performScrollTo().performClick()
+        assertEquals(1, languageOpens.size)
+    }
+
+    @Test
+    fun noLanguagesShowsTheEmptyHint() {
+        setContent(state(languages = emptyList()))
+
+        rule.onNodeWithText("Add the languages you speak").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Edit languages").assertIsDisplayed()
+    }
+
+    @Test
+    fun manyLanguagesWrapInsteadOfClipping() {
+        val many = List(12) { UserProfileData.LanguageEntry(id = "l$it", label = "Language number $it") }
+        setContent(state(languages = many))
+
+        rule.onNodeWithText("Language number 11").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Edit languages").assertIsDisplayed()
+    }
+
+    @Test
     fun editingAFieldReportsTheNewValue() {
         setContent(state())
 
@@ -209,6 +257,12 @@ class ClientProfileSettingsScreenTest {
                     onDiscardProfessional = {},
                     onChangePhoto = {},
                     onDismissAvatarError = {},
+                    onOpenLanguages = {},
+                    onLanguageQueryChange = {},
+                    onToggleLanguage = {},
+                    onRetryLanguages = {},
+                    onDismissLanguages = {},
+                    onApplyLanguages = {},
                 )
             }
         }
