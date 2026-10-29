@@ -65,7 +65,10 @@ class ClientProfileHomeScreenTest {
         }
     }
 
-    private fun yOf(text: String): Float = rule.onNodeWithText(text).fetchSemanticsNode().positionInRoot.y
+    private fun yOf(text: String): Float {
+        val node = rule.onNodeWithText(text).fetchSemanticsNode()
+        return node.positionInRoot.y
+    }
 
     @Test
     fun rowsInOrder() {
