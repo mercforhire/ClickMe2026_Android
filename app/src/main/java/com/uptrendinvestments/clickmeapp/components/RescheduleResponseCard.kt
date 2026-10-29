@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +68,10 @@ const val RESCHEDULE_CARD_TAG = "reschedule_card"
 const val RESCHEDULE_ACCEPT_TAG = "reschedule_accept"
 const val RESCHEDULE_DECLINE_TAG = "reschedule_decline"
 const val RESCHEDULE_DECLINE_REASON_TAG = "reschedule_decline_reason"
+const val RESCHEDULE_DECLINE_SHEET_TAG = "reschedule_decline_sheet"
+
+/** Saves the decline reason as plain text; a restored value passes the same cap as typing (D-12, T-15-05). */
+internal val DeclineReasonSaver: Saver<String, String> = Saver(save = { it }, restore = { it })
 
 /** Who is looking at the card: the client (Phase 8) or the expert (Phase 11, D-18). */
 enum class RescheduleViewer { Client, Expert }
