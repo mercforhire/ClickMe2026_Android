@@ -4,17 +4,21 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.DECLINE_REASON_MAX_CHARS
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleSubmitting
@@ -80,6 +84,16 @@ class RescheduleResponseCardTest {
 
     private fun inDialog(text: String) = hasText(text) and hasAnyAncestor(isDialog())
 
+    private fun inSheet(text: String) = hasText(text) and hasAnyAncestor(hasTestTag(RESCHEDULE_DECLINE_SHEET_TAG))
+
+    private fun reasonText(): String? =
+        rule
+            .onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG)
+            .fetchSemanticsNode()
+            .config
+            .getOrNull(SemanticsProperties.EditableText)
+            ?.text
+
     private fun dialogContains(text: String) = hasText(text, substring = true) and hasAnyAncestor(isDialog())
 
     @Test
@@ -143,24 +157,24 @@ class RescheduleResponseCardTest {
     }
 
     @Test
-    fun declineDialogPassesTypedReason() {
+    fun declineSheetPassesTypedReason() {
         val reasons = mutableListOf<String>()
         setCard(proposal(), onDecline = { reasons += it })
         rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
         rule.onNodeWithText("Decline reschedule").assertExists()
         rule.onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG).performTextInput("Busy")
         rule.onNodeWithText("4/500").assertExists()
-        rule.onNode(inDialog("Decline")).performClick()
+        rule.onNode(inSheet("Decline")).performClick()
         assertEquals(listOf("Busy"), reasons)
         rule.onNodeWithText("Decline reschedule").assertDoesNotExist()
     }
 
     @Test
-    fun declineDialogKeepDoesNotCallOnDecline() {
+    fun declineSheetKeepDoesNotCallOnDecline() {
         val reasons = mutableListOf<String>()
         setCard(proposal(), onDecline = { reasons += it })
         rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
-        rule.onNode(inDialog("Keep")).performClick()
+        rule.onNode(inSheet("Keep")).performClick()
         assertEquals(emptyList<String>(), reasons)
         rule.onNodeWithText("Decline reschedule").assertDoesNotExist()
     }
@@ -179,6 +193,60 @@ class RescheduleResponseCardTest {
                 ?.text
                 ?.length
         assertEquals(500, length)
+    }
+
+    @Test
+    fun declineOpensSheetNotDialog() {
+        setCard(proposal())
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_SHEET_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_SHEET_TAG).assertExists()
+        rule.onNode(inSheet("Decline reschedule")).assertExists()
+        // The title lives only inside the sheet: no AlertDialog carries a second copy (UI-SPEC R7).
+        rule.onAllNodes(hasText("Decline reschedule")).assertCountEquals(1)
+    }
+
+    @Test
+    fun declineSheetRestoresReason() {
+        val restorer = StateRestorationTester(rule)
+        restorer.setContent {
+            ClickMeTheme {
+                RescheduleResponseCard(
+                    proposal = proposal(),
+                    submitting = RescheduleSubmitting.None,
+                    onAccept = {},
+                    onDecline = {},
+                    zone = toronto,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG).performTextInput("Can't make it")
+
+        restorer.emulateSavedInstanceStateRestore()
+
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_SHEET_TAG).assertExists()
+        assertEquals("Can't make it", reasonText())
+    }
+
+    @Test
+    fun restoredReasonIsCapped() {
+        val restored = DeclineReasonSaver.restore("a".repeat(DECLINE_REASON_MAX_CHARS + 100))
+        assertEquals(DECLINE_REASON_MAX_CHARS, restored?.length)
+        assertEquals("short", DeclineReasonSaver.restore("short"))
+    }
+
+    @Test
+    fun keepCloseDoesNotDecline() {
+        val reasons = mutableListOf<String>()
+        setCard(proposal(), onDecline = { reasons += it })
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG).performTextInput("Busy")
+        rule.onNode(inSheet("Keep")).performClick()
+        assertEquals(emptyList<String>(), reasons)
+        rule.onNodeWithTag(RESCHEDULE_DECLINE_SHEET_TAG).assertDoesNotExist()
     }
 
     @Test
@@ -252,11 +320,11 @@ class RescheduleResponseCardTest {
     }
 
     @Test
-    fun expertViewer_declineDialog_keepLabel() {
+    fun expertViewer_declineSheet_keepLabel() {
         val reasons = mutableListOf<String>()
         setCard(proposal(initiatedByExpert = false), onDecline = { reasons += it }, viewer = RescheduleViewer.Expert)
         rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
-        rule.onNode(inDialog("Keep session as-is")).assertExists()
+        rule.onNode(inSheet("Keep session as-is")).assertExists()
         rule.onNodeWithTag(RESCHEDULE_DECLINE_REASON_TAG).performTextInput("a".repeat(600))
         val length =
             rule
@@ -267,7 +335,7 @@ class RescheduleResponseCardTest {
                 ?.text
                 ?.length
         assertEquals(500, length)
-        rule.onNode(inDialog("Decline")).performClick()
+        rule.onNode(inSheet("Decline")).performClick()
         assertEquals(listOf("a".repeat(500)), reasons)
     }
 
