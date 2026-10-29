@@ -190,11 +190,11 @@ class ChatThreadScreenTest {
     }
 
     @Test
-    fun sentStatusLineExposesTimeOnly() {
+    fun sentStatusLineExposesTimeAndSent() {
         show(loaded(listOf(own("m1", "On it", Delivery.Sent))))
         val time = formatSlotTime(Instant.parse("2026-10-27T09:01:00Z"), zone, timeFormat)
 
-        rule.onNode(hasText("On it") and hasContentDescription(time)).assertIsDisplayed()
+        rule.onNode(hasText("On it") and hasContentDescription("$time, Sent")).assertIsDisplayed()
         rule.onAllNodesWithText("Read", useUnmergedTree = true).assertCountEquals(0)
     }
 

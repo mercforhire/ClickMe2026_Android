@@ -33,10 +33,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -59,7 +61,9 @@ private const val FAILED_BORDER_ALPHA = 0.5f
 /**
  * One chat message bubble (UI-SPEC surface 2): own messages on the end in `primary`, incoming on the start in
  * `surfaceContainerHigh` with the peer avatar at the end of a run. Text is selectable and plain (no link detection,
- * T-12-27). The row is one merged node read as "{You|name}, {text}, {time or Sending}", with "{time}, Read" for read ones.
+ * T-12-27). The row is one merged node read as "{You|name}: {text}", then the time and, on my messages, the status
+ * ("Sent", "Read", "Failed to send"; UI-SPEC Flow 4). [announceStatus] makes that node a polite live region: the
+ * caller sets it only on the newest message of mine, so a Sent to Read change is spoken once.
  */
 @Composable
 fun MessageBubble(
@@ -71,6 +75,7 @@ fun MessageBubble(
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
     onDelete: () -> Unit = {},
+    announceStatus: Boolean = false,
 ) {
     val failed = message.mine && message.delivery == Delivery.Failed
     var menuOpen by remember { mutableStateOf(false) }
@@ -82,6 +87,8 @@ fun MessageBubble(
         } else {
             peerName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.chat_thread_title_fallback)
         }
+    val failedStatus = stringResource(R.string.chat_failed_status_a11y)
+    val spoken = stringResource(R.string.chat_thread_bubble_a11y, speaker, message.text)
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val bubbleMax = bubbleMaxWidth(maxWidth, message.mine)
         Row(
@@ -113,7 +120,8 @@ fun MessageBubble(
                                 Modifier
                             },
                         ).semantics(mergeDescendants = true) {
-                            contentDescription = speaker
+                            contentDescription = if (failed) "$spoken, $failedStatus" else spoken
+                            if (announceStatus) liveRegion = LiveRegionMode.Polite
                             if (failed) {
                                 customActions =
                                     listOf(
@@ -195,7 +203,8 @@ private fun BubbleBody(message: ThreadItem.Message) {
 
 /**
  * The line under a bubble: the time, "Sending…" while sending, and the chat_thread_read_separator plus Read (Read in
- * `primary`, 150 ms fade) on my read messages. TalkBack reads the time/Read row as chat_thread_read_status_a11y.
+ * `primary`, 150 ms fade) on my read messages. TalkBack reads the row as one phrase: "{time}, Read" on my read
+ * messages, "{time}, Sent" on my other sent ones and the bare time on theirs.
  */
 @Composable
 fun MessageStatusLine(
@@ -224,7 +233,11 @@ fun MessageStatusLine(
         } else {
             val showRead = message.mine && message.delivery == Delivery.Read
             val statusDescription =
-                if (showRead) stringResource(R.string.chat_thread_read_status_a11y, timeText) else timeText
+                when {
+                    showRead -> stringResource(R.string.chat_thread_read_status_a11y, timeText)
+                    message.mine -> stringResource(R.string.chat_thread_sent_status_a11y, timeText)
+                    else -> timeText
+                }
             Row(
                 modifier = Modifier.clearAndSetSemantics { contentDescription = statusDescription },
                 verticalAlignment = Alignment.CenterVertically,

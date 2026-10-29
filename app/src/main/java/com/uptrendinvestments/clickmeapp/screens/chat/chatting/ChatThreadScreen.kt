@@ -326,6 +326,9 @@ private fun ThreadList(
     modifier: Modifier = Modifier,
 ) {
     val rows = remember(state.items, zone) { buildThreadRows(state.items, zone).asReversed() }
+    // Only the newest message of mine speaks its status changes ("Sent", then "Read"); older ones stay silent.
+    val newestOwnKey =
+        remember(state.items) { state.items.lastOrNull { it is ThreadItem.Message && it.mine }?.key }
     val today = LocalDate.now(zone)
     val todayLabel = stringResource(R.string.chat_thread_today)
     val yesterdayLabel = stringResource(R.string.chat_thread_yesterday)
@@ -358,6 +361,7 @@ private fun ThreadList(
                                 zone = zone,
                                 locale = locale,
                                 timeFormat = timeFormat,
+                                newestOwnKey = newestOwnKey,
                                 onOpenBooking = onOpenBooking,
                                 onRetryMessage = onRetryMessage,
                                 onDeleteMessage = onDeleteMessage,
@@ -409,6 +413,7 @@ private fun EntryContent(
     zone: ZoneId,
     locale: Locale,
     timeFormat: DateFormat,
+    newestOwnKey: String?,
     onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
     onRetryMessage: (clientMsgId: String) -> Unit,
     onDeleteMessage: (clientMsgId: String) -> Unit,
@@ -423,6 +428,7 @@ private fun EntryContent(
                 timeText = formatSlotTime(item.createdAt, zone, timeFormat),
                 onRetry = { item.clientMsgId?.let(onRetryMessage) },
                 onDelete = { item.clientMsgId?.let(onDeleteMessage) },
+                announceStatus = item.key == newestOwnKey,
             )
         is ThreadItem.SystemEvent ->
             SystemEventRow(
