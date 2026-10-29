@@ -1,6 +1,6 @@
 # Phase 7: Stripe questions for the backend agent
 
-**Written:** 2026-10-28 · **Status:** sent? (update when sent and answered) · **STATE.md entry:** "[Phase 7] Stripe key and mode"
+**Written:** 2026-10-28 · **Status:** answered 2026-10-28 (backend HEAD `2a7cf19`); backend fixes pending · **STATE.md entry:** "[Phase 7] Stripe key and mode"
 
 ## Findings (2026-10-28)
 
@@ -47,9 +47,67 @@ User constraint (2026-10-28): no new Supabase project and no new Railway environ
 >
 > **4. `POST /bookings/:id/recover-payment`.** `RESCHEDULE-PAYMENT-CONVERSION.md` says SCA failures in the long-lead sweep get a 6-hour recovery window through this endpoint. Neither the iOS nor the Android app calls it. Is it required for launch? What should trigger it in the app: a push, a booking status, a chat message?
 
-## Answers
+## Answers (backend, 2026-10-28, HEAD `2a7cf19`)
 
-_(paste the backend agent's reply here)_
+### 1. Local test-mode backend against prod Supabase: not safe as is; workable with one small change
+
+- **Cron jobs can't be disabled today.** `src/app.js:245-305` starts all 12 jobs on every boot. Worst case: a local `sk_test` server runs the long-lead T-24h charge job on a live booking. The job marks it attempted, the Stripe call fails on the live connected account, and the recovery-window job cancels the real booking 6 hours later. **Fix (backend):** a `DISABLE_CRONS=true` env flag that skips all job starts.
+- **Prod's jobs won't ignore test rows.** No row records its Stripe mode. Prod jobs (on `sk_live`) pick up test bookings and fail with "No such payment_intent". No money moves, but job results can't be trusted.
+  - Testable locally: payment-intent → confirm (short-lead, saved card, 3DS), SetupIntent and saved cards, Connect onboarding, expert accept/decline, cancels by either side.
+  - **Not testable:** expiry void, completion capture, long-lead T-24h charge, `recover-payment`, auth-expiry capture, fee reconciliation.
+- **Accounts:** only `uat.*@clickme.test`, never real ones. `profiles.stripe_customer_id` and `payout_accounts` hold one ID per user, so a test ID would overwrite a live one. The backend will check that `create-hero-connect.js` works with `sk_test`.
+  - **Side effect:** while the uat expert has a test Connect account with charges enabled, prod shows that expert as bookable. Real users who try to book would get a payment error (no money moves). Keep testing windows short.
+- **Cleanup:** **do NOT run `live-cutover-cleanup.js`.** It isn't limited to test rows and would wipe the live account (leonchn84) and every live customer. The backend will write a new cleanup script limited to the uat accounts.
+- **Webhooks:** `stripe listen --forward-to localhost:3000/webhooks/stripe --forward-connect-to localhost:3000/webhooks/stripe-connect`. The paths are at the root, not under `/api/v1`. Set both `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET` to the one `whsec_` it prints.
+- **Local env:**
+  - `STRIPE_SECRET_KEY`: a dashboard `sk_test_`, not the CLI's restricted key (it expires 2026-11-07).
+  - The two webhook secrets above.
+  - Prod `CONNECT_ONBOARD_RETURN_URL` and `CONNECT_ONBOARD_REFRESH_URL` are fine; they only 302 to `clickme://`.
+  - `DISABLE_CRONS=true`.
+  - A local `REDIS_URL` (`redis-server` is installed).
+- **Key pairing confirmed:** `pk_test_51Tha0rH…` pairs with sandbox `acct_1Tha0rHGu8AnfRoU`.
+- **Isolated alternative:** a local Supabase stack (`supabase start`) would make the job-driven flows testable too. It needs Docker, which isn't installed, and the 109 migrations haven't been replayed from scratch.
+- **Release smoke test:** still worth doing. The only way to get a live bookable expert is a real live onboarding with KYC, and there's no plan for one yet.
+
+### 2. Saved-card 3DS: confirmed broken, reproduced in the `51Tha0` sandbox
+
+Tested with `pm_card_authenticationRequired`:
+- Off-session confirm gives `authentication_required`, and the PaymentIntent goes to `requires_payment_method` with `next_action: null`.
+- Retrying with the same idempotency key replays the cached 402.
+- An on-session server confirm gives `requires_action` with a `use_stripe_sdk` next action.
+
+**Backend recommends (b).** At `/bookings/confirm` the customer is present, so the backend confirms on-session. If the result is `requires_action`, it returns the existing 402 `{client_secret, stripe_account}`. **The client contract doesn't change:** `handleNextAction`, then retry confirm. The retry already skips the Stripe call when the PaymentIntent is `requires_capture` (`booking.controller.js:703`).
+
+### 3. Retry after a decline: fixed on the backend; clients keep `booking_attempt_id`
+
+- Same key and same card replays the 402. Same key and a different card gets `idempotency_error`, which the backend reports as `INTENT_EXPIRED`.
+- **Fix:** drop the confirm idempotency key. The PaymentIntent status check and the one-booking-per-PaymentIntent database rule already prevent a double charge. (`latest_charge` stays null after `authentication_required`, so a smarter key isn't possible.)
+- **Clients must not rotate the ID**; rotating leaves orphaned PaymentIntents behind.
+
+### 4. `recover-payment`: needed for launch if long-lead paid bookings are allowed; nothing triggers it today
+
+- When the T-24h charge needs SCA, the job leaves the booking scheduled and sends no push. `GET /client/bookings` still shows it as held, so the app gets no signal. The endpoint also has the §2 dead end: it returns the secret of a PaymentIntent with no next action.
+- **Proposed backend work:**
+  - On SCA, send a push with a new booking sub-category, plus an in-app notification row.
+  - Add a `payment_action_required` flag (with a deadline) to client booking reads.
+  - Make `recover-payment` confirm on-session before returning the secret.
+- **App side:** open the booking from either signal, call `recover-payment`, then `handleNextAction`.
+- Without it, these bookings are auto-cancelled 6 hours later with no warning. **The alternative** is to block long-lead paid bookings until it's built.
+
+### 5. Further bug (iOS too): a new card needing 3DS on the short-lead path creates an unpaid booking
+
+The server confirm leaves the PaymentIntent in `requires_action`. The code doesn't check the result (`booking.controller.js:793`), saves the booking as `requires_capture` and returns 201. The §2 fix covers this path too.
+
+## Impact on Android (checked 2026-10-28)
+
+- **§2:** no Android code change needed. `PaidFlowError.kt:141-146` turns the 402 `{client_secret, stripe_account}` into `StartChallenge`. `PaidFlowStripeHost` runs `PaymentLauncher` with `stripeAccountId` and `handleNextActionForPaymentIntent`, then retries confirm with the same attempt ID. Once the backend ships (b), 07-REVIEW CR-01 is resolved by the backend. Keep the device check with `4000 0027 6000 3184`.
+- **§3:** matches the current Android behaviour (D-15 keeps `booking_attempt_id`). 07-REVIEW WR-01 is resolved by the backend fix; no Android change needed.
+- **§5:** Android always confirms with a saved `pm_` (`MakeABookingViewModel.kt:584`, cards go through SetupIntent first), so it takes Path 1, not the new-card Path 3. It's an iOS and backend issue.
+- **§4:** a new cross-platform requirement, if long-lead paid bookings stay in launch scope. **User decision needed.** Android work: `PushRouter` mapping for the new sub-category, the `payment_action_required` flag and deadline in the client booking models and UI, and a `recover-payment` call plus `PaymentLauncher` challenge (reusing the PAY-05 host).
+- **§1:** blocked on the backend shipping `DISABLE_CRONS` and the uat-scoped cleanup script. The Android work (configurable dev `BASE_URL`, debug cleartext, socket host) can be done now.
+  - Test scope locally: Phase 7 SC-1..SC-4, 02-UAT tests 7–8 (FND-13), the paid parts of Phase 8 cancel and Phase 11 accept/decline.
+  - Untestable locally (job-driven): Phase 8 completion/void, long-lead T-24h charge.
+  - Never run `live-cutover-cleanup.js`.
 
 ## Android follow-ups (once answered)
 
