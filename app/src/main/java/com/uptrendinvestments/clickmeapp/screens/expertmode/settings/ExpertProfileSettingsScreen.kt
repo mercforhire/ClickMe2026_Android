@@ -4,16 +4,22 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,30 +30,44 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.ExpertTagChip
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.subviews.ExpertiseEditorSheet
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
@@ -67,6 +87,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import java.util.UUID
 
 /** Test tag on the Expert Settings scroll column. */
 const val EXPERT_SETTINGS_LIST_TAG = "expert_settings_list"
@@ -173,8 +194,18 @@ fun ExpertProfileSettingsContent(
     actions: ExpertSettingsActions,
     modifier: Modifier = Modifier,
     expertiseSheet: @Composable (onDismiss: () -> Unit, onSaved: (List<ExpertiseTagItem>) -> Unit) -> Unit =
-        { _, _ -> },
+        { onDismiss, onSaved ->
+            // The slot is only composed while the sheet is open, so this id is new for every opening and survives
+            // rotation (rememberSaveable), giving each opening its own ViewModel that re-seeds from the server.
+            val session = rememberSaveable { UUID.randomUUID().toString() }
+            ExpertiseEditorSheet(
+                onDismiss = onDismiss,
+                onSaved = onSaved,
+                viewModel = hiltViewModel(key = "expertise_editor_$session"),
+            )
+        },
 ) {
+    var showExpertiseSheet by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -189,7 +220,14 @@ fun ExpertProfileSettingsContent(
         val snapshot = state.snapshot
         val load = state.load
         when {
-            snapshot != null -> ExpertSettingsFields(state, snapshot, actions, Modifier.padding(inner))
+            snapshot != null ->
+                ExpertSettingsFields(
+                    state = state,
+                    snapshot = snapshot,
+                    actions = actions,
+                    onEditExpertise = { showExpertiseSheet = true },
+                    modifier = Modifier.padding(inner),
+                )
             load is ExpertSettingsLoad.Failed ->
                 Box(
                     modifier = Modifier.fillMaxSize().padding(inner),
@@ -204,6 +242,16 @@ fun ExpertProfileSettingsContent(
                 }
             else -> ExpertSettingsSkeleton(Modifier.padding(inner))
         }
+    }
+
+    if (showExpertiseSheet) {
+        expertiseSheet(
+            { showExpertiseSheet = false },
+            { tags ->
+                actions.onExpertiseSaved(tags)
+                showExpertiseSheet = false
+            },
+        )
     }
 
     if (state.countrySheetOpen) {
@@ -263,6 +311,7 @@ private fun ExpertSettingsFields(
     state: ExpertProfileSettingsUiState,
     snapshot: ExpertSettingsSnapshot,
     actions: ExpertSettingsActions,
+    onEditExpertise: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val profile = snapshot.profile
@@ -325,6 +374,7 @@ private fun ExpertSettingsFields(
             keyboardOptions = MeetingUrlKeyboard,
             placeholder = stringResource(R.string.expert_settings_meeting_placeholder),
         )
+        ExpertiseSection(tags = state.expertiseTags, onEdit = onEditExpertise)
         ProfileTextField(
             label = stringResource(R.string.profile_settings_city_label),
             value = profile.city,
@@ -347,6 +397,59 @@ private fun ExpertSettingsFields(
         ProfileLanguagesField(languages = profile.languages, onEdit = actions.onOpenLanguages)
     }
 }
+
+/** Expertise: the profile tags as read-only chips that wrap, and the button that opens the Edit Expertise sheet. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExpertiseSection(
+    tags: List<String>,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(bottom = Spacing.md)) {
+        Text(
+            text = stringResource(R.string.expert_settings_expertise),
+            modifier = Modifier.semantics { heading() },
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (tags.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.padding(top = Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                tags.forEach { label -> ExpertTagChip(label = label) }
+            }
+        }
+        PressScaleButton(
+            onClick = onEdit,
+            modifier =
+                Modifier
+                    .padding(top = Spacing.md)
+                    .fillMaxWidth()
+                    .heightIn(min = EditExpertiseMinHeight)
+                    .border(BorderStroke(OutlineWidth, MaterialTheme.colorScheme.outline), CircleShape),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Psychology,
+                contentDescription = null,
+                modifier = Modifier.size(EditExpertiseIconSize),
+            )
+            Spacer(Modifier.width(Spacing.sm))
+            Text(text = stringResource(R.string.expert_settings_edit_expertise))
+        }
+    }
+}
+
+private val EditExpertiseMinHeight = 56.dp
+private val EditExpertiseIconSize = 24.dp
+private val OutlineWidth = 1.dp
 
 private val SkeletonAvatarSize = 96.dp
 private val SkeletonFieldHeight = 56.dp

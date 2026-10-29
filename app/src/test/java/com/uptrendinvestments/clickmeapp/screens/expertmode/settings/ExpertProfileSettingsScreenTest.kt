@@ -225,7 +225,10 @@ class ExpertProfileSettingsScreenTest {
             ClickMeTheme {
                 ExpertProfileSettingsContent(
                     state = state,
-                    actions = ExpertSettingsActions(onExpertiseSaved = { state = state.copy(expertiseTags = it.map { t -> t.label }) }),
+                    actions =
+                        ExpertSettingsActions(
+                            onExpertiseSaved = { tags -> state = state.copy(expertiseTags = tags.map { it.label }) },
+                        ),
                     expertiseSheet = { _, onSaved ->
                         SideEffect { opened++ }
                         saved = onSaved
@@ -241,7 +244,13 @@ class ExpertProfileSettingsScreenTest {
         assertEquals(1, opened)
 
         rule.runOnIdle {
-            saved(listOf(ExpertiseTagItem("a", "Alpha"), ExpertiseTagItem("b", "Beta"), ExpertiseTagItem("c", "Gamma")))
+            saved(
+                listOf(
+                    ExpertiseTagItem("a", "Alpha"),
+                    ExpertiseTagItem("b", "Beta"),
+                    ExpertiseTagItem("c", "Gamma"),
+                ),
+            )
         }
 
         rule.onNodeWithText("fake expertise sheet").assertDoesNotExist()

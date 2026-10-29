@@ -209,6 +209,7 @@ class ExpertProfileSettingsViewModel
                     meetingUrlError = null,
                     email = personal?.email.orEmpty(),
                     avatarUrl = profile.avatarUrl,
+                    expertiseTags = profile.expertiseTags.orEmpty().map { tag -> tag.label },
                 )
             }
         }
@@ -241,7 +242,8 @@ class ExpertProfileSettingsViewModel
         }
 
         /** The Edit Expertise sheet saved [tags] on its own; only the chips change, nothing is auto-saved. */
-        fun onExpertiseSaved(tags: List<ExpertiseTagItem>) = Unit
+        fun onExpertiseSaved(tags: List<ExpertiseTagItem>) =
+            _uiState.update { it.copy(expertiseTags = tags.map { tag -> tag.label }) }
 
         // ---- avatar ----
 
