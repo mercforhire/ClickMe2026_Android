@@ -88,7 +88,8 @@ fun DeleteAccountContent(
         topBar = {
             AuthTopAppBar(
                 title = stringResource(R.string.delete_account_title),
-                onBack = onBack,
+                // Same as system Back: the Reason step steps back to the warning, the warning leaves the flow.
+                onBack = if (state.step == DeleteStep.Reason) onBackToWarning else onBack,
                 backEnabled = !state.isDeleting,
             )
         },

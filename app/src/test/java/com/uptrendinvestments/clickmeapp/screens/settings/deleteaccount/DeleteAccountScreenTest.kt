@@ -180,6 +180,26 @@ class DeleteAccountScreenTest {
     }
 
     @Test
+    fun appBarArrowOnReasonReturnsToWarningLikeSystemBack() {
+        setContent(DeleteAccountUiState(step = DeleteStep.Reason))
+
+        rule.onNodeWithContentDescription("Back").performClick()
+
+        assertEquals(1, toWarning.size)
+        assertEquals(0, backs.size)
+    }
+
+    @Test
+    fun appBarArrowOnWarningLeavesTheFlow() {
+        setContent(DeleteAccountUiState())
+
+        rule.onNodeWithContentDescription("Back").performClick()
+
+        assertEquals(1, backs.size)
+        assertEquals(0, toWarning.size)
+    }
+
+    @Test
     fun deletingSpinnerHasASpokenLabel() {
         setContent(
             DeleteAccountUiState(
