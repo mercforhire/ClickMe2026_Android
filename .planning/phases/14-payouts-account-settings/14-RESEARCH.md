@@ -332,15 +332,19 @@ GET: {tin_on_file, legal_name, address|null, dob, financial_account_identifier} 
 | A8 | "Payment on hold" held-count uses expert upcoming bookings with status pending_approval/confirmed/pending_reschedule/in_progress (iOS `fetchUpcomingHeldCount`); Android status strings must be mapped from `ExpertBookingsPayload` | Payouts states | Wrong card (hold vs ready); low impact, best-effort by design |
 | A9 | Tax address read-back: iOS writes `region`; backend docs example uses `province`. Android should write `region` + `postal_code` (iOS parity) and read `region` falling back to `province` | Finding 10 | Cross-platform prefill mismatch only |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Did the backend answer `14-BACKEND-REQUEST.md`?**
    - Known: the file is marked "not sent yet" and the Answers section is empty.
    - Unclear: Pause Account endpoint, tax-profile gating, whether non-CA experts exist.
    - Recommendation: planner re-reads the file at plan time. Default per D-06: hide the Pause card, add a backlog item; implement tax profile ungated.
+   - RESOLVED (planning, 2026-10-29): re-read at plan time, still no answers. No Pause card is rendered anywhere (14-03 hubs, 14-05 delete flow; D-06), and 14-16 adds backlog item "Phase 999.2: Pause Account" and logs the unsent request in STATE. The tax profile is built ungated (14-11 Assumptions; 14-08 adds no tax state), with country defaulting to CA (14-11). The gating and non-CA questions stay open as 14-16 backend notes.
 2. **Can an expert clear the Skype/Zoom link?** iOS cannot (empty is omitted). Recommendation: ship parity; log a backend question.
+   - RESOLVED (planning, 2026-10-29): iOS parity. A blank link is never sent and a non-http(s) link is rejected inline (14-13 Task 1-2; prohibition and T-14-37), so an expert cannot clear it; 14-16 logs the backend question in STATE "[Backend notes, Phase 14]".
 3. **Does the hub need an "Availability" or "Expertise & Topics" distinct destination?** `AvailabilityKey(AvailabilityOrigin.Profile)` already exists and is used by the throwaway row; "Expertise & Topics" on iOS opens `TopicsSetupView`; Android's Topics tab is `TopicsRoot`. Recommendation: the row selects the Topics tab (`navigator.navigate(TopicsRoot)`, same as the Dashboard tool does).
+   - RESOLVED (planning, 2026-10-29): no new destinations. Expertise & Topics selects the Topics tab via `navigator.navigate(TopicsRoot)` and Availability opens `AvailabilityKey(AvailabilityOrigin.Profile)` (14-03 hub actions and Assumptions; 14-14 `expertProfileHubActions` and its `expertiseAndTopicsSelectsTopicsTab` / `availabilityRowStillOpensAvailability` tests).
 4. **Client hub "Profile settings" entry:** on iOS it is the user-card edit tap, not a list row. Recommendation: keep it as the card's edit action plus make the whole card tappable.
+   - RESOLVED (planning, 2026-10-29): the whole user card is one `Role.Button` with the decorative Edit icon and opens settings (14-03 `ProfileHubUserCard`, Assumptions); 14-14 maps `onEditProfile` to `ClientProfileSettingsKey` (client) and `ExpertProfileSettingsKey(SettingsOrigin.Profile)` (expert). There is no separate "Profile settings" list row.
 
 ## Environment Availability
 

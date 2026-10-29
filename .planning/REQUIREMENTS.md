@@ -168,6 +168,7 @@ From the PRD's Payouts, minimal (Week 7; EXPERT-EARNINGS-BREAKDOWN.md, EXPERT-EA
 - [ ] **PAYOUT-01**: Expert can see their payout balance and Stripe Connect status.
 - [ ] **PAYOUT-02**: Expert can complete Stripe Connect onboarding in a Chrome Custom Tab opened on the hosted Account Link. The `clickme://connect/return` deep link re-fetches the status, and `clickme://connect/refresh` calls `refreshConnectLink`.
 - [ ] **PAYOUT-03**: Expert sees a short recent-earnings list that headlines `net_amount`. Because `net_amount` can be null, `fee_source` is checked first. Transactions are read as cents and `earnings_breakdown` as dollars.
+- [ ] **PAYOUT-04**: Expert can view and save their Tax & Payout Info (legal name, address, date of birth, optional TIN and financial account) from the expert hub and from Payouts. A `saved: false, tin_required` answer asks for the TIN instead of failing, and the TIN is never stored or shown back. (Added at Phase 14 planning by user decision, CONTEXT D-08.)
 
 ### Profile & Settings
 
@@ -335,6 +336,7 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | PAYOUT-01 | Phase 14 | Pending |
 | PAYOUT-02 | Phase 14 | Pending |
 | PAYOUT-03 | Phase 14 | Pending |
+| PAYOUT-04 | Phase 14 | Pending |
 | PROF-01 | Phase 14 | Pending |
 | PROF-02 | Phase 14 | Pending |
 | PROF-03 | Phase 14 | Pending |
@@ -357,8 +359,8 @@ Which phase covers each requirement. Filled in during roadmap creation.
 
 **Coverage:**
 
-- v1 requirements: 99 total
-- Mapped to phases: 99
+- v1 requirements: 100 total (PAYOUT-04 added at Phase 14 planning, CONTEXT D-08)
+- Mapped to phases: 100
 - Unmapped: 0
 
 ---

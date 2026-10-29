@@ -717,7 +717,7 @@ Plans:
 **Goal:** Experts can get paid through Stripe Connect, and any user can manage or delete their account.
 **Target week:** Week 7 (Nov 30–Dec 6)
 **Depends on:** Phase 13
-**Requirements:** PAYOUT-01, PAYOUT-02, PAYOUT-03, PROF-01, PROF-02, PROF-03, PROF-04, PROF-05
+**Requirements:** PAYOUT-01, PAYOUT-02, PAYOUT-03, PAYOUT-04, PROF-01, PROF-02, PROF-03, PROF-04, PROF-05
 **Success Criteria** (what must be TRUE):
 
   1. An Android expert completes Stripe Connect onboarding in a Custom Tab. Returning through `clickme://connect/return` refreshes the status, and an expired link recovers through `clickme://connect/refresh`. The expert sees their balance and Connect status. (Week 7 checkpoint, user-confirmed)
@@ -726,7 +726,37 @@ Plans:
   4. Any user can delete their account from the app and is then logged out, and Help/FAQ opens a `mailto:` support link. (Week 7 checkpoint, user-confirmed)
 
 **Planning notes:** If the schedule slips, payouts are cut #1: keep only the onboarding link (PAYOUT-02). Account deletion is never cut. Phase 9 hand-off (D-13): guard change password, delete account and payouts with `CallGuard.attempt(RestrictedAction.*)` (new entries plus `call_action_*` strings). Phase 10 hand-off: replace the Phase 10 Availability placeholder row in the expert Profile; reuse `ExpertiseEditorSheet` in expert settings. Phase 11 hand-off: replace the Profile Settings and Payouts handlers in `ExpertToolsGrid` (and the inert earnings card tap), and route `clickme://connect/return|refresh` into a Dashboard reload through `ExpertLaunchRequest.dashboard`. Phase 13 hand-off: retarget the `PHASE-14` markers in `screens/push/PushDestination.kt` and `PushDestinationResolver.kt` (payout, KYC and account pushes open the notifications list until then).
-**Plans:** TBD
+**Plans:** 16 plans in 6 waves
+
+Plans:
+**Wave 1**
+- [ ] 14-01-PLAN.md — Network contract: nine endpoints (account deletion with a DELETE body, password, profile, meeting link, FAQ, earnings ledger, tax profile), DTOs, fakes and fixtures
+- [ ] 14-02-PLAN.md — `clickme://connect/return|refresh` trampoline and manifest filter, `ConnectReturn` slot, `RestrictedAction` ChangePassword/DeleteAccount, `SettingsOrigin`
+- [ ] 14-03-PLAN.md — Client and expert profile hubs (only working rows, log-out dialog, version footer) and the public-profile self-view
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 14-04-PLAN.md — Account Security: change password with iOS validation and error mapping, guarded Delete Account entry
+- [ ] 14-05-PLAN.md — Delete Account (never cut): Warning and Reason forms, both calls once, root Farewell that survives the session teardown
+- [ ] 14-06-PLAN.md — Help/FAQ from `GET help/faqs` and the mailto support row
+- [ ] 14-07-PLAN.md — Client Profile Settings with debounced auto-save, status icon, flush on Back, professional details sheet
+- [ ] 14-08-PLAN.md — Payouts: balance and Connect status state machine, meta card, Set up payouts in a Custom Tab
+- [ ] 14-09-PLAN.md — Earnings ledger: shared transaction row, paged Activity list, cents-versus-dollars regression test
+- [ ] 14-11-PLAN.md — Tax & Payout Info (PAYOUT-04, D-08) with the iOS TIN handling and a date picker
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 14-10-PLAN.md — Payouts return/refresh deep-link handling, recent activity with See all, Tax & Payout Info row
+- [ ] 14-12-PLAN.md — Profile Settings avatar (photo picker and crop), languages and country editors
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 14-13-PLAN.md — Expert Settings: shared fields, meeting link, expertise section
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 14-14-PLAN.md — Shell wiring: hubs as Profile roots, settings, payouts and tax entries, expert-shell Expert Profile entry
+- [ ] 14-15-PLAN.md — Hand-offs: Dashboard tools and earnings card, payout/KYC/account push routes
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 14-16-PLAN.md — Phase gate: sweeps, full build with lint and R8, validation sign-off, STATE and backlog updates
+
 **UI hint**: yes
 
 ### Phase 15: Polish & Hardening
@@ -793,7 +823,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 11. Expert Requests & Bookings | 18/18 | Complete    | 2026-10-27 |
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
-| 14. Payouts & Account Settings | 0/TBD | Not started | - |
+| 14. Payouts & Account Settings | 0/16 | Planned | - |
 | 15. Polish & Hardening | 0/TBD | Not started | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
