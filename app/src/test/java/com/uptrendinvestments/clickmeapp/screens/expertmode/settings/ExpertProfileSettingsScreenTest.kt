@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileSnapshot
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
@@ -50,7 +51,7 @@ class ExpertProfileSettingsScreenTest {
 
         rule.onNodeWithText("Expert Settings").assertIsDisplayed()
         rule.onNodeWithText("Skype / Zoom Meeting Link").assertIsDisplayed()
-        rule.onNodeWithText("https://zoom.us/j/1").assertIsDisplayed()
+        rule.onNodeWithText("https://zoom.us/j/1").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag(AUTO_SAVE_STATUS_TAG).assertIsDisplayed()
     }
 }

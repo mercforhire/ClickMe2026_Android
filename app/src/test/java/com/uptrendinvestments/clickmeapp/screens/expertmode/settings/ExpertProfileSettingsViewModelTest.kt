@@ -84,7 +84,8 @@ class ExpertProfileSettingsViewModelTest {
             assertEquals("https://zoom.us/j/1", state.snapshot?.meetingUrl)
             assertEquals("https://zoom.us/j/1", state.meetingUrlText)
             assertEquals("ana@example.com", state.email)
-            assertEquals(1, state.snapshot?.profile?.languages?.size)
+            val languages = state.snapshot?.profile?.languages
+            assertEquals(1, languages?.size)
             assertEquals(1, h.api.expertProfileCalls)
         }
 
