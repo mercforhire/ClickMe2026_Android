@@ -125,15 +125,22 @@ fun ValidatedField(
             disabledPlaceholderColor = extras.onSurfaceMuted.copy(alpha = DISABLED_ALPHA),
         )
 
+    // A caller-chosen capitalization (names, cities) is honored; an unspecified one means "none", as for emails.
+    val capitalization =
+        if (isSecure || keyboardOptions.capitalization == KeyboardCapitalization.Unspecified) {
+            KeyboardCapitalization.None
+        } else {
+            keyboardOptions.capitalization
+        }
     val effectiveKeyboardOptions =
         if (isSecure) {
             keyboardOptions.copy(
-                capitalization = KeyboardCapitalization.None,
+                capitalization = capitalization,
                 autoCorrectEnabled = false,
                 keyboardType = KeyboardType.Password,
             )
         } else {
-            keyboardOptions.copy(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false)
+            keyboardOptions.copy(capitalization = capitalization, autoCorrectEnabled = false)
         }
     val visualTransformation =
         if (isSecure && !revealed) PasswordVisualTransformation() else VisualTransformation.None
