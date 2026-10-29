@@ -13,6 +13,10 @@ import kotlinx.serialization.Serializable
  *
  * [origin] is [StackOrigin.Chats] when a chat thread pushed it; it only keeps the key distinct from the same
  * profile on the Explore stack and is ignored by the screen.
+ *
+ * [isSelfView] is true when the expert opened their own public profile from the expert Profile hub (Phase 14 D-02):
+ * the screen then hides Book Session, which would end in `422 CANNOT_BOOK_SELF`. It is defaulted so back stacks
+ * saved before this field existed still decode.
  */
 @Serializable
 data class ExpertProfileKey(
@@ -24,4 +28,5 @@ data class ExpertProfileKey(
     val reviewCount: Int? = null,
     val tags: List<String> = emptyList(),
     val origin: StackOrigin = StackOrigin.Default,
+    val isSelfView: Boolean = false,
 ) : NavKey
