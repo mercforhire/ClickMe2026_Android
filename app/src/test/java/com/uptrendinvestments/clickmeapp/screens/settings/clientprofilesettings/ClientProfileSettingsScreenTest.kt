@@ -25,11 +25,11 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
-import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_PROGRESS_TAG
-import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_COMPANY_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_JOB_TITLE_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_PROGRESS_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_BIO_COUNTER_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsBody
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -363,10 +363,20 @@ class ClientProfileSettingsScreenTest {
             runCurrent()
             h.userManager.refreshProfile()
             h.api.updateUserProfileHandler = { seeded }
-            val vm = ClientProfileSettingsViewModel(ProfileSettingsRepository(h.api), h.userManager, backgroundScope)
+            val vm =
+                ClientProfileSettingsViewModel(
+                    ProfileSettingsRepository(h.api),
+                    h.userManager,
+                    ProfileAvatarController(h.photo, ProfileSettingsRepository(h.api), h.userManager, backgroundScope),
+                    backgroundScope,
+                )
             runCurrent()
 
-            rule.setContent { ClickMeTheme { ClientProfileSettingsScreen(viewModel = vm, onBack = { backs += Unit }) } }
+            rule.setContent {
+                ClickMeTheme {
+                    ClientProfileSettingsScreen(viewModel = vm, onBack = { backs += Unit }, onOpenCrop = {})
+                }
+            }
             rule
                 .onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(PROFILE_FIELD_TAG_PREFIX + "LastName")))
                 .performTextReplacement("Leeson")

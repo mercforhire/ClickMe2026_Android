@@ -51,7 +51,12 @@ class ClientProfileSettingsViewModelTest {
     }
 
     private fun TestScope.viewModel(h: SignupTestHarness) =
-        ClientProfileSettingsViewModel(ProfileSettingsRepository(h.api), h.userManager, backgroundScope)
+        ClientProfileSettingsViewModel(
+            ProfileSettingsRepository(h.api),
+            h.userManager,
+            ProfileAvatarController(h.photo, ProfileSettingsRepository(h.api), h.userManager, backgroundScope),
+            backgroundScope,
+        )
 
     @Test
     fun seedsFromTheCachedProfile() =

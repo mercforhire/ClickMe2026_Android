@@ -1,6 +1,9 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -24,6 +28,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
@@ -53,9 +59,24 @@ const val PROFILE_FIELD_TAG_PREFIX = "profile_field_"
 fun ClientProfileSettingsScreen(
     viewModel: ClientProfileSettingsViewModel,
     onBack: () -> Unit,
+    onOpenCrop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val latestOnOpenCrop by rememberUpdatedState(onOpenCrop)
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let(viewModel::onPhotoPicked)
+        }
+    val openCrop = state.avatar.openCrop
+    LaunchedEffect(openCrop) {
+        if (openCrop) {
+            viewModel.avatarCropOpened()
+            latestOnOpenCrop()
+        }
+    }
+    // Runs on every resume, so a crop confirmed (or cancelled) on the crop screen is handled on the way back.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenShown() }
     val latestOnBack by rememberUpdatedState(onBack)
     val leave = {
         viewModel.flushPendingSave()
@@ -71,8 +92,10 @@ fun ClientProfileSettingsScreen(
         onOpenProfessional = viewModel::openProfessionalSheet,
         onApplyProfessional = viewModel::applyProfessional,
         onDiscardProfessional = viewModel::discardProfessional,
-        onChangePhoto = {},
-        onDismissAvatarError = {},
+        onChangePhoto = {
+            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        },
+        onDismissAvatarError = viewModel::dismissAvatarError,
         modifier = modifier,
     )
 }
@@ -192,6 +215,15 @@ fun ClientProfileSettingsContent(
             company = sheetSnapshot.company,
             onUpdate = onApplyProfessional,
             onDiscard = onDiscardProfessional,
+        )
+    }
+
+    state.avatar.error?.let { message ->
+        AuthErrorDialog(
+            message = message.asString(),
+            onDismiss = onDismissAvatarError,
+            title = stringResource(state.avatar.errorTitleRes ?: R.string.profile_settings_avatar_error_title),
+            confirmLabel = stringResource(R.string.profile_settings_got_it),
         )
     }
 

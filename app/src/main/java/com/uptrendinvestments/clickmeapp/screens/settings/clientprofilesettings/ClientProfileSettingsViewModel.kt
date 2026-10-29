@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
@@ -75,6 +76,7 @@ class ClientProfileSettingsViewModel
     constructor(
         private val repository: ProfileSettingsRepository,
         private val userManager: UserManager,
+        private val avatarController: ProfileAvatarController,
         @ApplicationScope appScope: CoroutineScope,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ClientProfileSettingsUiState())
@@ -94,6 +96,16 @@ class ClientProfileSettingsViewModel
         init {
             viewModelScope.launch {
                 saver.status.collect { status -> _uiState.update { it.copy(status = status) } }
+            }
+            viewModelScope.launch {
+                avatarController.state.collect { avatar -> _uiState.update { it.copy(avatar = avatar) } }
+            }
+            viewModelScope.launch {
+                userManager.profile.collect { profile ->
+                    if (profile != null) {
+                        _uiState.update { it.copy(avatarUrl = profile.personalDetails.avatarUrl) }
+                    }
+                }
             }
             val cached = userManager.profile.value
             if (cached != null) {
@@ -128,6 +140,17 @@ class ClientProfileSettingsViewModel
             _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field) }
             saver.onEdited(next)
         }
+
+        /** The system photo picker returned [uri]; the controller imports it and asks for the crop screen. */
+        fun onPhotoPicked(uri: Uri) = avatarController.onPicked(uri, viewModelScope)
+
+        /** The screen pushed the crop route. */
+        fun avatarCropOpened() = avatarController.onCropOpened()
+
+        fun dismissAvatarError() = avatarController.dismissError()
+
+        /** Called on every resume: uploads a confirmed crop (or cleans up after a cancelled one). */
+        fun onScreenShown() = avatarController.onReturnedFromCrop()
 
         fun openProfessionalSheet() = _uiState.update { it.copy(professionalSheetOpen = true) }
 
