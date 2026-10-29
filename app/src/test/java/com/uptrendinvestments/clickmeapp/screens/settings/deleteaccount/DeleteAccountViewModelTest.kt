@@ -32,7 +32,8 @@ class DeleteAccountViewModelTest {
     private val guard = FakeCallGuard()
     private val deletionState = AccountDeletionState()
 
-    private fun viewModel() = DeleteAccountViewModel(DeleteAccountRepository(api), guard, deletionState, CoroutineScope(main.testDispatcher))
+    private fun viewModel() =
+        DeleteAccountViewModel(DeleteAccountRepository(api), guard, deletionState, CoroutineScope(main.testDispatcher))
 
     private fun stubSuccess() {
         var minted = 0

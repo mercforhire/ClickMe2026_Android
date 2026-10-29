@@ -95,7 +95,11 @@ class ClientProfileSettingsViewModelTest {
             runCurrent()
 
             assertFalse(vm.uiState.value.loadFailed)
-            assertEquals("Ana", vm.uiState.value.snapshot?.firstName)
+            assertEquals(
+                "Ana",
+                vm.uiState.value.snapshot
+                    ?.firstName,
+            )
         }
 
     @Test

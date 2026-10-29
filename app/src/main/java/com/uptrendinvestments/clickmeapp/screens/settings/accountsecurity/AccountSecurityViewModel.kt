@@ -205,7 +205,9 @@ class AccountSecurityViewModel
             // The last message for a field wins, like iOS.
             for (fieldError in e.fieldErrors) {
                 when (fieldError.field) {
-                    "current_password" -> errors = errors + (PasswordField.Current to FieldError.Text(fieldError.message))
+                    "current_password" ->
+                        errors =
+                            errors + (PasswordField.Current to FieldError.Text(fieldError.message))
                     "new_password" -> errors = errors + (PasswordField.New to FieldError.Text(fieldError.message))
                     else -> unmatched = fieldError.message
                 }
