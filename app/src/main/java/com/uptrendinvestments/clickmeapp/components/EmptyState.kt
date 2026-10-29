@@ -18,6 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,6 +59,7 @@ fun EmptyState(
         Spacer(Modifier.height(Spacing.xl))
         Text(
             text = heading,
+            modifier = Modifier.semantics { heading() },
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -74,18 +79,29 @@ fun EmptyState(
     }
 }
 
-/** Shared "Something went wrong" pattern with a retry action (used from Phase 15 onwards). */
+/**
+ * Shared first-load error pattern with a retry action (CONTEXT D-04).
+ *
+ * With no arguments it renders the generic "Something went wrong" copy. Converted screens pass a [heading] that names
+ * the failed object ("Couldn't load bookings"), a [body] from the failure's `toSectionMessage()` and
+ * `retryLabel = stringResource(R.string.section_retry)`. Heading and body are one polite live region so TalkBack
+ * announces the error once when it appears (UI-SPEC Accessibility Contract, Global rule 6). Text wraps; there is no
+ * max line count.
+ */
 @Composable
 fun ErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    heading: String = stringResource(R.string.error_state_heading),
+    body: String = stringResource(R.string.error_state_body),
+    retryLabel: String = stringResource(R.string.error_state_retry),
 ) {
     EmptyState(
         icon = Icons.Outlined.CloudOff,
-        heading = stringResource(R.string.error_state_heading),
-        body = stringResource(R.string.error_state_body),
-        modifier = modifier,
-        action = EmptyStateAction(stringResource(R.string.error_state_retry), onRetry),
+        heading = heading,
+        body = body,
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        action = EmptyStateAction(retryLabel, onRetry),
     )
 }
 
