@@ -5,12 +5,14 @@ package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -22,7 +24,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_COMPANY_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_JOB_TITLE_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_BIO_COUNTER_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheetContent
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.userProfileData
@@ -32,6 +37,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -53,14 +59,30 @@ class ClientProfileSettingsScreenTest {
     private val retries = mutableListOf<Unit>()
     private val dismissals = mutableListOf<Unit>()
     private val backs = mutableListOf<Unit>()
+    private val opens = mutableListOf<Unit>()
+    private val applied = mutableListOf<Pair<String, String>>()
+    private val discards = mutableListOf<Unit>()
 
     private fun state(
         bio: String = "",
         status: AutoSaveStatus = AutoSaveStatus.Idle,
         dialog: FieldError? = null,
         fieldErrors: Map<ProfileTextFieldId, FieldError> = emptyMap(),
+        jobTitle: String? = null,
+        company: String? = null,
+        sheetOpen: Boolean = false,
     ) = ClientProfileSettingsUiState(
-        snapshot = ProfileSnapshot.from(userProfileData(bio = bio, city = "Toronto", stateProvince = "ON")),
+        snapshot =
+            ProfileSnapshot.from(
+                userProfileData(
+                    bio = bio,
+                    city = "Toronto",
+                    stateProvince = "ON",
+                    jobTitle = jobTitle,
+                    company = company,
+                ),
+            ),
+        professionalSheetOpen = sheetOpen,
         email = "ana@example.com",
         status = status,
         dialog = dialog,
@@ -76,6 +98,9 @@ class ClientProfileSettingsScreenTest {
                     onFieldChange = { field, value -> changes += field to value },
                     onRetrySave = { retries += Unit },
                     onDismissDialog = { dismissals += Unit },
+                    onOpenProfessional = { opens += Unit },
+                    onApplyProfessional = { jobTitle, company -> applied += jobTitle to company },
+                    onDiscardProfessional = { discards += Unit },
                 )
             }
         }
@@ -122,6 +147,9 @@ class ClientProfileSettingsScreenTest {
                     onFieldChange = { _, _ -> },
                     onRetrySave = { retries += Unit },
                     onDismissDialog = {},
+                    onOpenProfessional = {},
+                    onApplyProfessional = { _, _ -> },
+                    onDiscardProfessional = {},
                 )
             }
         }
@@ -182,6 +210,88 @@ class ClientProfileSettingsScreenTest {
         rule.onNodeWithContentDescription("Back").performClick()
 
         assertEquals(1, backs.size)
+    }
+
+    @Test
+    fun cardShowsDashForEmpty() {
+        setContent(state())
+
+        val card =
+            rule.onNode(
+                SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button) and hasText("Professional Details"),
+            )
+        card.assertExists()
+        rule.onAllNodesWithText("—").assertCountEquals(2)
+        rule.onNodeWithText("Job Title").assertExists()
+        rule.onNodeWithText("Company").assertExists()
+        card.performClick()
+        assertEquals(1, opens.size)
+    }
+
+    @Test
+    fun cardShowsValuesAndSitsBetweenBioAndCity() {
+        setContent(state(jobTitle = "Coach", company = "Acme"))
+
+        rule.onNodeWithText("Coach").assertExists()
+        rule.onNodeWithText("Acme").assertExists()
+        assertTrue(top("Bio") < top("Professional Details"))
+        assertTrue(top("Professional Details") < top("City"))
+    }
+
+    @Test
+    fun sheetShowsWhenOpen() {
+        setContent(state(jobTitle = "Coach", company = "Acme", sheetOpen = true))
+
+        rule.onNodeWithText("Edit Professional Details").assertExists()
+        rule.onNodeWithText("Update details").assertExists()
+        rule.onNodeWithText("Discard changes").assertExists()
+    }
+
+    @Test
+    fun sheetUpdateAppliesTheTypedValues() {
+        rule.setContent {
+            ClickMeTheme {
+                ProfessionalDetailsSheetContent(
+                    jobTitle = "",
+                    company = "",
+                    onUpdate = { jobTitle, company -> applied += jobTitle to company },
+                    onDiscard = { discards += Unit },
+                )
+            }
+        }
+
+        rule
+            .onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(PROFESSIONAL_JOB_TITLE_TAG)))
+            .performTextReplacement("Coach")
+        rule
+            .onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(PROFESSIONAL_COMPANY_TAG)))
+            .performTextReplacement("Acme")
+        rule.onNodeWithText("Update details").performClick()
+
+        assertEquals(listOf("Coach" to "Acme"), applied)
+        assertEquals(0, discards.size)
+    }
+
+    @Test
+    fun sheetDiscardAppliesNothing() {
+        rule.setContent {
+            ClickMeTheme {
+                ProfessionalDetailsSheetContent(
+                    jobTitle = "Old",
+                    company = "Co",
+                    onUpdate = { jobTitle, company -> applied += jobTitle to company },
+                    onDiscard = { discards += Unit },
+                )
+            }
+        }
+
+        rule
+            .onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(PROFESSIONAL_JOB_TITLE_TAG)))
+            .performTextReplacement("Changed")
+        rule.onNodeWithText("Discard changes").performClick()
+
+        assertEquals(1, discards.size)
+        assertTrue(applied.isEmpty())
     }
 
     @Test

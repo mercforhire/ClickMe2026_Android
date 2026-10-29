@@ -65,6 +65,9 @@ fun ClientProfileSettingsScreen(
         onFieldChange = viewModel::onFieldChange,
         onRetrySave = viewModel::retrySave,
         onDismissDialog = viewModel::dismissDialog,
+        onOpenProfessional = viewModel::openProfessionalSheet,
+        onApplyProfessional = viewModel::applyProfessional,
+        onDiscardProfessional = viewModel::discardProfessional,
         modifier = modifier,
     )
 }
@@ -77,6 +80,9 @@ fun ClientProfileSettingsContent(
     onFieldChange: (ProfileTextFieldId, String) -> Unit,
     onRetrySave: () -> Unit,
     onDismissDialog: () -> Unit,
+    onOpenProfessional: () -> Unit,
+    onApplyProfessional: (jobTitle: String, company: String) -> Unit,
+    onDiscardProfessional: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(

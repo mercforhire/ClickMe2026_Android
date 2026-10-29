@@ -65,6 +65,10 @@ const val PROFILE_BIO_FIELD_TAG = "profile_settings_bio"
 /** Test tag on the bio character counter. */
 const val PROFILE_BIO_COUNTER_TAG = "profile_settings_bio_counter"
 
+/** Test tags on the sheet's Job Title and Company fields. */
+const val PROFESSIONAL_JOB_TITLE_TAG = "profile_professional_job_title"
+const val PROFESSIONAL_COMPANY_TAG = "profile_professional_company"
+
 private val StatusSlotSize = 48.dp
 private val StatusGlyphSize = 24.dp
 private val StatusSpinnerStroke = 2.dp
@@ -289,6 +293,25 @@ fun ProfileBioField(
         }
     }
 }
+
+/** Professional Details card (stub, implemented in the GREEN step). */
+@Composable
+fun ProfileProfessionalCard(
+    jobTitle: String,
+    company: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) = Unit
+
+/** Body of the Professional Details sheet (stub, implemented in the GREEN step). */
+@Composable
+fun ProfessionalDetailsSheetContent(
+    jobTitle: String,
+    company: String,
+    onUpdate: (jobTitle: String, company: String) -> Unit,
+    onDiscard: () -> Unit,
+    modifier: Modifier = Modifier,
+) = Unit
 
 @Preview(name = "ProfileFields")
 @Composable

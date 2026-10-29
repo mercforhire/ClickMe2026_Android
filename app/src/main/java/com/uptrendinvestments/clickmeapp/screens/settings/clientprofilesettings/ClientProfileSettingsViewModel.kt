@@ -127,6 +127,15 @@ class ClientProfileSettingsViewModel
             saver.onEdited(next)
         }
 
+        fun openProfessionalSheet() = Unit
+
+        fun applyProfessional(
+            jobTitle: String,
+            company: String,
+        ) = Unit
+
+        fun discardProfessional() = Unit
+
         /** The status icon's tap: re-sends the newest snapshot. */
         fun retrySave() = saver.retry()
 

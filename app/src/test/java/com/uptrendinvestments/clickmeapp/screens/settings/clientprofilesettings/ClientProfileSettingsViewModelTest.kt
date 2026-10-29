@@ -5,6 +5,7 @@ package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileBasicBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileLocationBody
+import com.uptrendinvestments.clickmeapp.model.requests.ProfileProfessionalBody
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -17,7 +18,9 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -282,5 +285,64 @@ class ClientProfileSettingsViewModelTest {
 
             val sent = h.api.updateUserProfileRequests.single()
             assertEquals("Leeson", sent.basic?.lastName)
+        }
+
+    @Test
+    fun updateDetailsAppliesAndSaves() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openProfessionalSheet()
+            assertTrue(vm.uiState.value.professionalSheetOpen)
+            vm.applyProfessional("Coach", "Acme")
+
+            val state = vm.uiState.value
+            assertFalse(state.professionalSheetOpen)
+            assertEquals("Coach", state.snapshot?.jobTitle)
+            assertEquals("Acme", state.snapshot?.company)
+            assertEquals(0, h.api.updateUserProfileCalls)
+
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(professional = ProfileProfessionalBody("Coach", "Acme"))),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun applyProfessionalClampsToTheLimit() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.applyProfessional("t".repeat(250), "c".repeat(250))
+
+            val snapshot = vm.uiState.value.snapshot
+            assertEquals(200, snapshot?.jobTitle?.length)
+            assertEquals(200, snapshot?.company?.length)
+        }
+
+    @Test
+    fun discardChangesLeavesValues() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(profile = userProfileData(jobTitle = "Old", company = "Co"))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openProfessionalSheet()
+            vm.discardProfessional()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertFalse(state.professionalSheetOpen)
+            assertEquals("Old", state.snapshot?.jobTitle)
+            assertEquals("Co", state.snapshot?.company)
+            assertEquals(0, h.api.updateUserProfileCalls)
         }
 }
