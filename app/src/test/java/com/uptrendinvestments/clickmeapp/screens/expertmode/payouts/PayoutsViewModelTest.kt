@@ -6,6 +6,8 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ConnectReturn
+import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFinancialRepository
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -35,6 +37,7 @@ class PayoutsViewModelTest {
     val tmp = TemporaryFolder()
 
     private val guard = FakeCallGuard()
+    private val launch = ExpertLaunchRequest()
 
     private suspend fun TestScope.harness(): SignupTestHarness {
         val h = SignupTestHarness(this, tmp, main.testDispatcher)
@@ -44,7 +47,7 @@ class PayoutsViewModelTest {
     }
 
     private fun vm(h: SignupTestHarness) =
-        PayoutsViewModel(ExpertFinancialRepository(h.api), ExpertBookingsRepository(h.api), guard)
+        PayoutsViewModel(ExpertFinancialRepository(h.api), ExpertBookingsRepository(h.api), guard, launch)
 
     private fun SignupTestHarness.onboardedWithEarnings() {
         api.connectStatusHandler = { connectStatus() }
@@ -312,5 +315,135 @@ class PayoutsViewModelTest {
             vm.consumeRefreshFailure()
             assertFalse(vm.uiState.value.refreshFailed)
             assertNull(vm.uiState.value.onboardingUrl)
+        }
+
+    private fun SignupTestHarness.ownLinkSetup(): () -> Int {
+        incompleteAccount()
+        var minted = 0
+        api.connectRefreshLinkHandler = { ConnectLinkData("https://connect.stripe.com/setup/${++minted}") }
+        return { minted }
+    }
+
+    @Test
+    fun returnReloadsQuietly() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.incompleteAccount()
+            val vm = vm(h)
+            runCurrent()
+            assertTrue(vm.uiState.value.content is PayoutsContent.SetupRequired)
+            assertEquals(1, h.api.connectStatusCalls)
+            assertEquals(1, h.api.payoutSummaryCalls)
+
+            val gate = CompletableDeferred<Unit>()
+            h.api.connectStatusHandler = {
+                gate.await()
+                connectStatus()
+            }
+            h.api.payoutSummaryHandler = { payoutSummary(available = 12_500L) }
+            launch.connectReturn.post(ConnectReturn.Done)
+            runCurrent()
+            assertEquals(PayoutsLoad.Loaded, vm.uiState.value.load)
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(2, h.api.connectStatusCalls)
+            assertEquals(2, h.api.payoutSummaryCalls)
+            assertTrue(vm.uiState.value.content is PayoutsContent.Loaded)
+            assertNull(launch.connectReturn.pending.value)
+        }
+
+    @Test
+    fun returnNeverAssumesSuccess() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.incompleteAccount()
+            val vm = vm(h)
+            runCurrent()
+
+            launch.connectReturn.post(ConnectReturn.Done)
+            runCurrent()
+
+            assertEquals(2, h.api.connectStatusCalls)
+            assertEquals(PayoutsContent.SetupRequired(useRefreshLink = true), vm.uiState.value.content)
+        }
+
+    @Test
+    fun refreshAfterOwnLinkReopens() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            val minted = h.ownLinkSetup()
+            val vm = vm(h)
+            runCurrent()
+            vm.startPayoutSetup()
+            runCurrent()
+            assertEquals("https://connect.stripe.com/setup/1", vm.uiState.value.onboardingUrl)
+            vm.consumeOnboardingUrl()
+
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+
+            assertEquals(2, minted())
+            assertEquals(2, h.api.connectRefreshLinkCalls)
+            assertEquals(0, h.api.connectOnboardCalls)
+            assertEquals(listOf(RestrictedAction.SetUpPayouts, RestrictedAction.SetUpPayouts), guard.attempts)
+            assertEquals("https://connect.stripe.com/setup/2", vm.uiState.value.onboardingUrl)
+            assertFalse(vm.uiState.value.isMintingLink)
+        }
+
+    @Test
+    fun foreignRefreshOnlyReloads() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.ownLinkSetup()
+            val vm = vm(h)
+            runCurrent()
+
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+
+            assertEquals(0, h.api.connectRefreshLinkCalls + h.api.connectOnboardCalls)
+            assertTrue(guard.attempts.isEmpty())
+            assertEquals(2, h.api.connectStatusCalls)
+            assertNull(vm.uiState.value.onboardingUrl)
+            assertEquals(PayoutsLoad.Loaded, vm.uiState.value.load)
+        }
+
+    @Test
+    fun stalePendingIsDropped() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.ownLinkSetup()
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            val vm = vm(h)
+            runCurrent()
+
+            assertNull(launch.connectReturn.pending.value)
+            assertEquals(1, h.api.connectStatusCalls)
+            assertEquals(1, h.api.payoutSummaryCalls)
+            assertEquals(0, h.api.connectRefreshLinkCalls + h.api.connectOnboardCalls)
+            assertNull(vm.uiState.value.onboardingUrl)
+        }
+
+    @Test
+    fun blockedGuardOnRefreshDoesNothing() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.ownLinkSetup()
+            val vm = vm(h)
+            runCurrent()
+            vm.startPayoutSetup()
+            runCurrent()
+            vm.consumeOnboardingUrl()
+            assertEquals(1, h.api.connectRefreshLinkCalls)
+
+            guard.blocked = true
+            launch.connectReturn.post(ConnectReturn.LinkExpired)
+            runCurrent()
+
+            assertEquals(1, h.api.connectRefreshLinkCalls)
+            assertEquals(2, guard.attempts.size)
+            assertNull(vm.uiState.value.onboardingUrl)
+            assertFalse(vm.uiState.value.isMintingLink)
         }
 }
