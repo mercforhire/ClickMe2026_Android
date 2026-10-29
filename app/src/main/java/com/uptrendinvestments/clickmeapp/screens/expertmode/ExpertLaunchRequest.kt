@@ -38,6 +38,15 @@ data class IncomingRequestsLaunch(
 /** "Reload the Dashboard" after Back to Home (D-05). */
 data object DashboardLaunch
 
+/** What a clickme connect return or refresh deep link asks the Payouts screens to do. It never carries state. */
+sealed interface ConnectReturn {
+    /** The Stripe page returned; re-fetch the status, never assume success (backend doc 3.1). */
+    data object Done : ConnectReturn
+
+    /** The single-use Account Link expired; mint a refresh link. */
+    data object LinkExpired : ConnectReturn
+}
+
 /**
  * One-shot hand-offs from a finishing expert flow to the screen that must react (a decline, Back to Home, a finished
  * cancel).
@@ -55,4 +64,7 @@ class ExpertLaunchRequest
         val incomingRequests = OneShotSlot<IncomingRequestsLaunch>()
         val dashboard = OneShotSlot<DashboardLaunch>()
         val bookings = OneShotSlot<BookingsLaunch>()
+
+        /** Posted by the deep-link trampoline together with [dashboard]; Payouts consumes it. */
+        val connectReturn = OneShotSlot<ConnectReturn>()
     }
