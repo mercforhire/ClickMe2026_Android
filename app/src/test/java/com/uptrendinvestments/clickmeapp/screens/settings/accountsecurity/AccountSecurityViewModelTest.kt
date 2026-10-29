@@ -105,9 +105,18 @@ class AccountSecurityViewModelTest {
     @Test
     fun validationOrder() {
         assertRejectedLocally(PasswordField.Current, R.string.account_security_error_current_empty, current = "")
-        assertRejectedLocally(PasswordField.New, R.string.account_security_error_new_empty, new = "")
-        assertRejectedLocally(PasswordField.New, R.string.account_security_error_new_short, new = "abc1")
-        assertRejectedLocally(PasswordField.New, R.string.account_security_error_new_no_number, new = "abcdefgh")
+        assertRejectedLocally(
+            PasswordField.New,
+            R.string.account_security_error_new_short,
+            new = "abc1",
+            confirm = "abc1",
+        )
+        assertRejectedLocally(
+            PasswordField.New,
+            R.string.account_security_error_new_no_number,
+            new = "abcdefgh",
+            confirm = "abcdefgh",
+        )
         assertRejectedLocally(
             PasswordField.New,
             R.string.account_security_error_new_same,
@@ -124,10 +133,29 @@ class AccountSecurityViewModelTest {
     }
 
     @Test
+    fun emptyFormReportsEveryFieldInOnePass() =
+        runTest(main.testDispatcher) {
+            val vm = vm()
+
+            vm.submit()
+            runCurrent()
+
+            assertEquals(
+                mapOf(
+                    PasswordField.Current to FieldError.Res(R.string.account_security_error_current_empty),
+                    PasswordField.New to FieldError.Res(R.string.account_security_error_new_empty),
+                    PasswordField.Confirm to FieldError.Res(R.string.account_security_error_confirm_empty),
+                ),
+                vm.uiState.value.fieldErrors,
+            )
+            assertEquals(0, api.updatePasswordCalls)
+        }
+
+    @Test
     fun editingAFieldClearsOnlyItsOwnError() =
         runTest(main.testDispatcher) {
             val vm = vm()
-            vm.fill(current = "", new = "abc1", confirm = "")
+            vm.fill(current = "", new = "new2pass", confirm = "new2pass")
             vm.submit()
             assertEquals(setOf(PasswordField.Current), vm.uiState.value.fieldErrors.keys)
 
@@ -185,7 +213,7 @@ class AccountSecurityViewModelTest {
         }
 
     @Test
-    fun validationEnvelopeWithUnknownFieldOpensGenericDialog() =
+    fun validationEnvelopeWithUnknownFieldShowsItsMessageInTheDialog() =
         runTest(main.testDispatcher) {
             api.updatePasswordHandler = {
                 throw api.httpError(
@@ -199,7 +227,48 @@ class AccountSecurityViewModelTest {
             runCurrent()
 
             assertEquals(emptyMap<PasswordField, FieldError>(), vm.uiState.value.fieldErrors)
-            assertEquals(failureDialog, vm.uiState.value.dialog)
+            assertEquals(
+                AccountSecurityDialog.Error(R.string.account_security_failed_title, FieldError.Text("Nope")),
+                vm.uiState.value.dialog,
+            )
+        }
+
+    @Test
+    fun validationEnvelopeKeepsMatchedFieldsAndDialogsTheRest() =
+        runTest(main.testDispatcher) {
+            api.updatePasswordHandler = {
+                throw api.httpError(
+                    422,
+                    """{"status":"error","errors":[""" +
+                        """{"field":"new_password","message":"Too weak"},""" +
+                        """{"field":"something_else","message":"Nope"}]}""",
+                )
+            }
+            val vm = vm()
+            vm.fill()
+            vm.submit()
+            runCurrent()
+
+            assertEquals(FieldError.Text("Too weak"), vm.fieldError(PasswordField.New))
+            assertEquals(
+                AccountSecurityDialog.Error(R.string.account_security_failed_title, FieldError.Text("Nope")),
+                vm.uiState.value.dialog,
+            )
+        }
+
+    @Test
+    fun validationWithoutEnvelopeUsesTheServerMessage() =
+        runTest(main.testDispatcher) {
+            api.updatePasswordHandler = { throw api.httpError(422, """{"status":"error","message":"Bad entries"}""") }
+            val vm = vm()
+            vm.fill()
+            vm.submit()
+            runCurrent()
+
+            assertEquals(
+                AccountSecurityDialog.Error(R.string.account_security_failed_title, FieldError.Text("Bad entries")),
+                vm.uiState.value.dialog,
+            )
         }
 
     private val failureDialog =

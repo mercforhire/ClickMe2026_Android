@@ -55,24 +55,35 @@ private const val MIN_PASSWORD_LENGTH = 8
 private val DIGIT = Regex("[0-9]")
 
 /**
- * Local validation in the iOS order (`AccountSecurityViewModel.validate`). Returns the first failing field and its
- * message resource, or null when the form may be sent.
+ * Local validation like iOS `AccountSecurityViewModel.validate`: three independent checks, so every failing field is
+ * reported in one pass (current empty; new empty, short, no number or same as current; confirm empty or different).
+ * Returns the message resource per failing field, empty when the form may be sent.
  */
 fun validateChangePassword(
     current: String,
     new: String,
     confirm: String,
-): Pair<PasswordField, Int>? =
-    when {
-        current.isEmpty() -> PasswordField.Current to R.string.account_security_error_current_empty
-        new.isEmpty() -> PasswordField.New to R.string.account_security_error_new_empty
-        new.length < MIN_PASSWORD_LENGTH -> PasswordField.New to R.string.account_security_error_new_short
-        !DIGIT.containsMatchIn(new) -> PasswordField.New to R.string.account_security_error_new_no_number
-        new == current -> PasswordField.New to R.string.account_security_error_new_same
-        confirm.isEmpty() -> PasswordField.Confirm to R.string.account_security_error_confirm_empty
-        confirm != new -> PasswordField.Confirm to R.string.account_security_error_confirm_mismatch
-        else -> null
-    }
+): Map<PasswordField, Int> {
+    val errors = LinkedHashMap<PasswordField, Int>()
+    if (current.isEmpty()) errors[PasswordField.Current] = R.string.account_security_error_current_empty
+    val newError =
+        when {
+            new.isEmpty() -> R.string.account_security_error_new_empty
+            new.length < MIN_PASSWORD_LENGTH -> R.string.account_security_error_new_short
+            !DIGIT.containsMatchIn(new) -> R.string.account_security_error_new_no_number
+            new == current -> R.string.account_security_error_new_same
+            else -> null
+        }
+    if (newError != null) errors[PasswordField.New] = newError
+    val confirmError =
+        when {
+            confirm.isEmpty() -> R.string.account_security_error_confirm_empty
+            confirm != new -> R.string.account_security_error_confirm_mismatch
+            else -> null
+        }
+    if (confirmError != null) errors[PasswordField.Confirm] = confirmError
+    return errors
+}
 
 /**
  * Port of iOS `AccountSecurityViewModel`: validate on tap, send `PATCH user/password`, wipe the form on success.
@@ -112,9 +123,9 @@ class AccountSecurityViewModel
             val form = _uiState.value
             if (form.saveState != SaveState.Idle) return
 
-            val failure = validateChangePassword(form.current, form.new, form.confirm)
-            if (failure != null) {
-                _uiState.update { it.copy(fieldErrors = mapOf(failure.first to FieldError.Res(failure.second))) }
+            val failures = validateChangePassword(form.current, form.new, form.confirm)
+            if (failures.isNotEmpty()) {
+                _uiState.update { state -> state.copy(fieldErrors = failures.mapValues { FieldError.Res(it.value) }) }
                 return
             }
             if (!callGuard.attempt(RestrictedAction.ChangePassword)) return
@@ -163,7 +174,11 @@ class AccountSecurityViewModel
                     }
                 }
             }
-            showFailure(FieldError.Res(R.string.account_security_failed_body))
+            // The server's own text when it sent one (iOS `decodeStandardMessage`), otherwise the generic body.
+            val serverMessage = (e as? ApiException.Http)?.userMessage
+            showFailure(
+                serverMessage?.let { FieldError.Text(it) } ?: FieldError.Res(R.string.account_security_failed_body),
+            )
         }
 
         private fun setFieldError(
@@ -179,21 +194,24 @@ class AccountSecurityViewModel
             }
         }
 
-        /** Places `current_password` and `new_password` errors on their fields; false when none matched. */
+        /**
+         * Places `current_password` and `new_password` errors on their fields and opens the dialog with the last
+         * message for any other field, like iOS (`apiError`). False when the envelope held no entries.
+         */
         private fun mapFieldErrors(e: ApiException.Http): Boolean {
+            if (e.fieldErrors.isEmpty()) return false
             var errors = emptyMap<PasswordField, FieldError>()
+            var unmatched: String? = null
             // The last message for a field wins, like iOS.
             for (fieldError in e.fieldErrors) {
-                val field =
-                    when (fieldError.field) {
-                        "current_password" -> PasswordField.Current
-                        "new_password" -> PasswordField.New
-                        else -> continue
-                    }
-                errors = errors + (field to FieldError.Text(fieldError.message))
+                when (fieldError.field) {
+                    "current_password" -> errors = errors + (PasswordField.Current to FieldError.Text(fieldError.message))
+                    "new_password" -> errors = errors + (PasswordField.New to FieldError.Text(fieldError.message))
+                    else -> unmatched = fieldError.message
+                }
             }
-            if (errors.isEmpty()) return false
             _uiState.update { it.copy(fieldErrors = errors) }
+            unmatched?.let { showFailure(FieldError.Text(it)) }
             return true
         }
 
