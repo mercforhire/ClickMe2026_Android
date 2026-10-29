@@ -63,7 +63,7 @@ class EarningsTransactionRowTest {
 
         rule
             .onNodeWithTag(EARNINGS_ROW_TAG)
-            .assertContentDescriptionEquals("—, —, Jul 30, 2026, Settled, $amount")
+            .assertContentDescriptionEquals("unavailable, unavailable, Jul 30, 2026, Settled, $amount")
         rule.onNodeWithText("— · Jul 30, 2026").assertExists()
     }
 
@@ -74,7 +74,7 @@ class EarningsTransactionRowTest {
 
         rule
             .onNodeWithTag(EARNINGS_ROW_TAG)
-            .assertContentDescriptionEquals("—, —, Jul 30, 2026, Settled, $amount")
+            .assertContentDescriptionEquals("unavailable, unavailable, Jul 30, 2026, Settled, $amount")
     }
 
     @Test

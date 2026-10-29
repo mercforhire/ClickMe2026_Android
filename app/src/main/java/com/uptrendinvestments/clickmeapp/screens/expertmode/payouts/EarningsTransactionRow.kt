@@ -115,16 +115,19 @@ fun EarningsTransactionRow(
     locale: Locale = LocalConfiguration.current.locales[0],
 ) {
     val none = stringResource(R.string.payouts_activity_none)
-    val topic = item.topicTitle?.takeIf { it.isNotBlank() } ?: none
-    val client = item.clientName?.takeIf { it.isNotBlank() } ?: none
+    val noneSpoken = stringResource(R.string.payouts_activity_none_a11y)
+    val topicText = item.topicTitle?.takeIf { it.isNotBlank() }
+    val clientText = item.clientName?.takeIf { it.isNotBlank() }
+    val topic = topicText ?: none
+    val client = clientText ?: none
     val date = earningsRowDate(item, zone, locale)
     val status = earningsStatusOf(item.payoutStatus)
     val amount = Money.format(item.netAmount, item.currency, locale)
     val a11y =
         stringResource(
             R.string.payouts_activity_row_a11y,
-            topic,
-            client,
+            topicText ?: noneSpoken,
+            clientText ?: noneSpoken,
             date,
             stringResource(status.label),
             amount,

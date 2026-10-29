@@ -313,7 +313,7 @@ class ExpertDashboardScreenTest {
             rule.onNodeWithText("This week").assertExists()
             rule.onNodeWithText(net).assertExists()
             rule.onNodeWithText("3 sessions").assertExists()
-            rule.onNodeWithContentDescription("$net this week · 3 sessions").assertExists()
+            rule.onNodeWithContentDescription("$net this week, 3 sessions").assertExists()
             // The gross amount is never shown in place of the net.
             rule.onNodeWithText(Money.format(13_750, "CAD")).assertDoesNotExist()
         }
@@ -503,7 +503,7 @@ class ExpertDashboardScreenTest {
                     it.config.getOrNull(SemanticsActions.OnClick)?.label == "Open payouts"
                 },
             )
-            rule.onNodeWithContentDescription("$net this week · 3 sessions").assertExists()
+            rule.onNodeWithContentDescription("$net this week, 3 sessions").assertExists()
             card.performScrollTo().performClick()
 
             assertEquals(listOf("payouts"), calls)

@@ -23,4 +23,6 @@
     <!-- "{topic}, {client}, {date}, {status}, {amount}" -->
     <string name="payouts_activity_row_a11y" translatable="false">%1$s, %2$s, %3$s, %4$s, %5$s</string>
     <string name="payouts_activity_none" translatable="false">—</string>
+    <!-- Spoken in place of the display-only dash for a missing topic or client. -->
+    <string name="payouts_activity_none_a11y" translatable="false">unavailable</string>
 </resources>

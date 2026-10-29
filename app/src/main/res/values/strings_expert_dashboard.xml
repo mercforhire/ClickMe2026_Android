@@ -37,7 +37,7 @@
         <item quantity="one">1 session</item>
         <item quantity="other">%1$d sessions</item>
     </plurals>
-    <string name="dashboard_earnings_a11y">%1$s this week · %2$s</string>
+    <string name="dashboard_earnings_a11y">%1$s this week, %2$s</string>
     <string name="dashboard_available_payout">Available payout</string>
     <string name="dashboard_next_payout">Next payout on %1$s</string>
     <string name="dashboard_payout_manual">Payouts are on manual schedule</string>
