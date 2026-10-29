@@ -304,6 +304,82 @@ class MyBookingsViewModelTest {
             assertFalse(vm.uiState.value.isRefreshing)
         }
 
+    // Phase 15 D-05: realtime refetch failures flag the refresh-failed snackbar, tab-return reloads stay silent.
+
+    @Test
+    fun realtimeFailureWithRowsFlagsRefreshFailed() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            api.clientBookingsHandler = { throw IOException("offline") }
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "cancelled"))
+            runCurrent()
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(expectedLists(), vm.uiState.value.lists)
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+        }
+
+    @Test
+    fun quietTabReturnFailureIsSilent() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            api.clientBookingsHandler = { throw IOException("offline") }
+            vm.onScreenShown()
+            runCurrent()
+            assertFalse(vm.uiState.value.refreshFailed)
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(expectedLists(), vm.uiState.value.lists)
+        }
+
+    @Test
+    fun realtimeDuringLoadingStaysLoud() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.clientBookingsHandler = {
+                gate.await()
+                throw IOException("offline")
+            }
+            val vm = vm()
+            runCurrent()
+            assertEquals(MyBookingsLoad.Loading, vm.uiState.value.load)
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "confirmed"))
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(vm.uiState.value.load is MyBookingsLoad.Failed)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun retryDuringRealtimeIsLatestWins() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            val gates = listOf(CompletableDeferred<Unit>(), CompletableDeferred())
+            var phase = 0
+            val fresh = listOf(bookingItem(id = "u2", start = Instant.parse("2026-10-25T18:00:00Z")))
+            api.clientBookingsHandler = { type ->
+                gates[phase].await()
+                payload(if (type == "upcoming") fresh else emptyList())
+            }
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "confirmed"))
+            runCurrent()
+            phase = 1
+            vm.refresh()
+            runCurrent()
+            gates[1].complete(Unit)
+            runCurrent()
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(expectedLists(fresh, emptyList()), vm.uiState.value.lists)
+            assertFalse(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+        }
+
     @Test
     fun aSuspendedQuietReloadIsCoalescedUntilTheScreenWasHidden() =
         runTest(main.testDispatcher) {
