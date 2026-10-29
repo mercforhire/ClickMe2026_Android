@@ -1,6 +1,6 @@
 # Phase 7: Stripe questions for the backend agent
 
-**Written:** 2026-10-28 · **Status:** answered 2026-10-28 (backend HEAD `2a7cf19`); backend fixes pending · **STATE.md entry:** "[Phase 7] Stripe key and mode"
+**Written:** 2026-10-28 · **Status:** answered 2026-10-28 (backend HEAD `2a7cf19`); the backend fixes shipped in backend quick 261028-snh (deployed `d9df858`); Android follow-up quick 261028-to1 · **STATE.md entry:** "[Phase 7] Stripe key and mode"
 
 ## Findings (2026-10-28)
 
@@ -109,8 +109,20 @@ The server confirm leaves the PaymentIntent in `requires_action`. The code doesn
   - Untestable locally (job-driven): Phase 8 completion/void, long-lead T-24h charge.
   - Never run `live-cutover-cleanup.js`.
 
+## Decision (user, 2026-10-28): block new long-lead paid bookings for launch (option B)
+
+- **Android behavior (quick 261028-to1):**
+  - For a paid topic only slots starting at most 6 days after now are selectable, with a short note on the time slots card.
+  - A `422 LONG_LEAD_REQUIRES_SAVED_CARD` is shown as an error and resets the paid flow. The confirm-without-payment-intent path is removed.
+  - The `booking` / `payment_actions` push (and `event_type` `PAYMENT_ACTION_REQUIRED`) routes to the client booking detail.
+  - No recover-payment call or UI, and no `payment_action_required` fields in the booking models.
+- **Accepted gap:** reschedule conversion. `RESCHEDULE-PAYMENT-CONVERSION.md` §1 forbids gating the reschedule picker, so an accepted reschedule that converts a booking to long-lead can still hit the SCA auto-cancel.
+- **iOS follow-up:** iOS still creates long-lead paid bookings and handles neither the `payment_actions` push nor `recover-payment`. It should adopt the same 6-day gate or build recovery.
+- **Backend follow-ups:** an optional server-side long-lead gate for launch, and a sandbox Connect account for a uat expert (`create-hero-connect.js` covers the demo expert only).
+- **Runbook:** `07-LOCAL-STRIPE-TESTING.md`.
+
 ## Android follow-ups (once answered)
 
-- **If option 1 is cleared:** make the dev `BASE_URL` configurable and add the debug cleartext config. Optionally add the 07-REVIEW WR-08 publishable-key guard. Then run 02-UAT tests 7–8 (closes FND-13), the Phase 7 SC-1..SC-5 checks, and the paid parts of Phases 8, 9 and 11.
+- **Option 1 is cleared and done by quick 261028-to1** (configurable dev `BASE_URL` and debug cleartext config). Still to do: optionally add the 07-REVIEW WR-08 publishable-key guard, then the device runs: 02-UAT tests 7–8 (closes FND-13), the Phase 7 SC-1..SC-5 checks, and the paid parts of Phases 8, 9 and 11, following `07-LOCAL-STRIPE-TESTING.md`.
 - **If 3DS fix (a) or (b) is chosen:** update `PaidFlowStripeHost.kt` and `MakeABookingViewModel.kt` to match, and log the same change as an iOS follow-up.
-- **If `recover-payment` is required for launch:** add a requirement and plan it (probably Phase 14 or 15), on both platforms.
+- **`recover-payment` is not required for launch under option B** (new long-lead paid bookings are blocked). If long-lead returns, add a requirement and plan it (probably Phase 14 or 15), on both platforms.

@@ -94,7 +94,7 @@ From the PRD's Payment Methods and Make a Booking paid paths (Week 3).
 - [ ] **PAY-01**: Client can view saved cards in Payment Methods, set a default card and delete a card.
 - [ ] **PAY-02**: Client can add a card through a SetupIntent and Stripe PaymentSheet in setup mode.
 - [ ] **PAY-03**: Client can book a short-lead paid slot. The sequence is `payment-intent` (with a `booking_attempt_id` UUID that is reused on retry), then setup-intent, then PaymentSheet `FlowController`, then `confirm`.
-- [ ] **PAY-04**: Client can book a long-lead paid slot. On `422 LONG_LEAD_REQUIRES_SAVED_CARD`, the booking confirms with the saved card, or the client is sent to Payment Methods if they have no card.
+- [ ] **PAY-04**: Amended 2026-10-28 (quick 261028-to1): long-lead paid booking is descoped for launch. For a paid topic only slots starting at most 6 days after now are selectable (the backend long-lead threshold), and the form says paid sessions can be booked up to 6 days ahead. A `422 LONG_LEAD_REQUIRES_SAVED_CARD` from payment-intent is shown as an error and the paid flow resets; nothing is confirmed without a payment intent. The long-lead SCA recovery flow (`payment_action_required`, `recover-payment`) is not built; only the `payment_actions` push is routed to the booking detail. Was: client can book a long-lead paid slot; on `422 LONG_LEAD_REQUIRES_SAVED_CARD` the booking confirms with the saved card, or the client is sent to Payment Methods if they have no card.
 - [ ] **PAY-05**: Client can complete a 3DS payment. On `402 PAYMENT_REQUIRES_ACTION`, the app runs `PaymentLauncher` with `stripeAccountId`, then retries confirm.
 - [ ] **PAY-06**: Each of the ~15 error codes handled by iOS `handlePaidFlowError` shows the matching message or next action.
 - [ ] **PAY-07**: Prices and charges display correctly. Amounts are in minor units everywhere except `payment-intent` amounts, and JPY has no decimal places.
@@ -247,6 +247,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Porting `NotificationQuietHoursCard` | Nothing in iOS uses it |
 | Pixel parity with iOS | The iOS design is adapted to Material 3 |
 | Porting all ~114 endpoints up front | API groups are ported one feature at a time |
+| Long-lead paid bookings (more than 6 days out) and the SCA recovery flow | Descoped for launch by the user decision of 2026-10-28 (quick 261028-to1); see PAY-04 |
 
 ## Traceability
 
@@ -295,7 +296,7 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | PAY-01 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | PAY-02 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | PAY-03 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| PAY-04 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-04 | Phase 7 | Pending (amended by 261028-to1: long-lead descoped for launch; device checks via 07-LOCAL-STRIPE-TESTING.md) |
 | PAY-05 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | PAY-06 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
 | PAY-07 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
@@ -362,4 +363,4 @@ Which phase covers each requirement. Filled in during roadmap creation.
 
 ---
 *Requirements defined: 2026-10-19*
-*Last updated: 2026-10-19 after roadmap creation (17 phases)*
+*Last updated: 2026-10-28 after quick 261028-to1 (PAY-04 amended: long-lead paid bookings descoped for launch)*
