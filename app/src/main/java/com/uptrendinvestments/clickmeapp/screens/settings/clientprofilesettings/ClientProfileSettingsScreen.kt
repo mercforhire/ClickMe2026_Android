@@ -31,6 +31,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AutoSaveStatusIcon
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfessionalDetailsSheet
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileAvatarSection
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileBioField
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileProfessionalCard
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.ProfileReadOnlyField
@@ -70,6 +71,8 @@ fun ClientProfileSettingsScreen(
         onOpenProfessional = viewModel::openProfessionalSheet,
         onApplyProfessional = viewModel::applyProfessional,
         onDiscardProfessional = viewModel::discardProfessional,
+        onChangePhoto = {},
+        onDismissAvatarError = {},
         modifier = modifier,
     )
 }
@@ -85,6 +88,8 @@ fun ClientProfileSettingsContent(
     onOpenProfessional: () -> Unit,
     onApplyProfessional: (jobTitle: String, company: String) -> Unit,
     onDiscardProfessional: () -> Unit,
+    onChangePhoto: () -> Unit,
+    onDismissAvatarError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -118,6 +123,11 @@ fun ClientProfileSettingsContent(
                         .padding(horizontal = Spacing.md, vertical = Spacing.md)
                         .testTag(PROFILE_SETTINGS_LIST_TAG),
             ) {
+                ProfileAvatarSection(
+                    avatarUrl = state.avatarUrl,
+                    avatar = state.avatar,
+                    onChangePhoto = onChangePhoto,
+                )
                 if (state.email.isNotEmpty()) {
                     ProfileReadOnlyField(
                         label = stringResource(R.string.profile_settings_email_label),

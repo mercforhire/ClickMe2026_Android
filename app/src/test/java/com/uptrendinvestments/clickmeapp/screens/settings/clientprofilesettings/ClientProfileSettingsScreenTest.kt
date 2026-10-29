@@ -23,7 +23,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_PROGRESS_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFILE_AVATAR_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.AUTO_SAVE_STATUS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_COMPANY_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.subviews.PROFESSIONAL_JOB_TITLE_TAG
@@ -63,6 +66,8 @@ class ClientProfileSettingsScreenTest {
     private val opens = mutableListOf<Unit>()
     private val applied = mutableListOf<Pair<String, String>>()
     private val discards = mutableListOf<Unit>()
+    private val pickTaps = mutableListOf<Unit>()
+    private val avatarDismissals = mutableListOf<Unit>()
 
     private fun state(
         bio: String = "",
@@ -72,7 +77,9 @@ class ClientProfileSettingsScreenTest {
         jobTitle: String? = null,
         company: String? = null,
         sheetOpen: Boolean = false,
+        avatar: AvatarUiState = AvatarUiState(),
     ) = ClientProfileSettingsUiState(
+        avatar = avatar,
         snapshot =
             ProfileSnapshot.from(
                 userProfileData(
@@ -102,6 +109,8 @@ class ClientProfileSettingsScreenTest {
                     onOpenProfessional = { opens += Unit },
                     onApplyProfessional = { jobTitle, company -> applied += jobTitle to company },
                     onDiscardProfessional = { discards += Unit },
+                    onChangePhoto = { pickTaps += Unit },
+                    onDismissAvatarError = { avatarDismissals += Unit },
                 )
             }
         }
@@ -124,6 +133,53 @@ class ClientProfileSettingsScreenTest {
         assertEquals(tops.sorted(), tops)
         assertEquals(tops.distinct(), tops)
         rule.onNodeWithText("Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun avatarSectionAndChangePhoto() {
+        setContent(state())
+
+        rule.onNodeWithTag(PROFILE_AVATAR_TAG).assertIsDisplayed()
+        rule.onNodeWithText("Change photo").assertIsDisplayed()
+        rule.onNodeWithTag(PROFILE_AVATAR_PROGRESS_TAG).assertDoesNotExist()
+
+        rule.onNodeWithText("Change photo").performClick()
+        rule.onNodeWithTag(PROFILE_AVATAR_TAG).performClick()
+        assertEquals(2, pickTaps.size)
+    }
+
+    @Test
+    fun uploadingShowsAProgressNodeOverTheAvatar() {
+        setContent(state(avatar = AvatarUiState(isUploading = true)))
+
+        rule.onNodeWithTag(PROFILE_AVATAR_PROGRESS_TAG).assertIsDisplayed()
+        rule.onNodeWithContentDescription("Uploading photo").assertExists()
+    }
+
+    @Test
+    fun avatarErrorShowsTheUploadTitleAndMessage() {
+        setContent(state(avatar = AvatarUiState(error = FieldError.Text("Too big"))))
+
+        rule.onNodeWithText("Couldn't upload avatar").assertIsDisplayed()
+        rule.onNodeWithText("Too big").assertIsDisplayed()
+        rule.onNodeWithText("Got it").performClick()
+        assertEquals(1, avatarDismissals.size)
+    }
+
+    @Test
+    fun importErrorUsesTheOpenPhotoTitle() {
+        setContent(
+            state(
+                avatar =
+                    AvatarUiState(
+                        error = FieldError.Res(R.string.signup_photo_open_error_body),
+                        errorTitleRes = R.string.signup_photo_open_error_title,
+                    ),
+            ),
+        )
+
+        rule.onNodeWithText("Couldn't open photo").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't upload avatar").assertDoesNotExist()
     }
 
     @Test
@@ -151,6 +207,8 @@ class ClientProfileSettingsScreenTest {
                     onOpenProfessional = {},
                     onApplyProfessional = { _, _ -> },
                     onDiscardProfessional = {},
+                    onChangePhoto = {},
+                    onDismissAvatarError = {},
                 )
             }
         }

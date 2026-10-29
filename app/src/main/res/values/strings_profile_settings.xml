@@ -32,4 +32,17 @@
     <string name="profile_settings_sheet_title">Edit Professional Details</string>
     <string name="profile_settings_update_details">Update details</string>
     <string name="profile_settings_discard_details">Discard changes</string>
+
+    <!-- Avatar block -->
+    <string name="profile_settings_change_photo">Change photo</string>
+    <string name="profile_settings_avatar_a11y">Profile photo. Double tap to change.</string>
+    <string name="profile_settings_avatar_uploading">Uploading photo</string>
+    <string name="profile_settings_avatar_error_title">Couldn\'t upload avatar</string>
+
+    <!-- Spoken languages and country -->
+    <string name="profile_settings_languages_title">Spoken Languages</string>
+    <string name="profile_settings_languages_edit">Edit languages</string>
+    <string name="profile_settings_languages_empty">Add the languages you speak</string>
+    <string name="profile_settings_country_label">Country</string>
+    <string name="profile_settings_country_select">Select</string>
 </resources>

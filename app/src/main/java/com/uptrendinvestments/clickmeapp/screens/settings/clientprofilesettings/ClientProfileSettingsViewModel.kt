@@ -44,6 +44,8 @@ data class ClientProfileSettingsUiState(
     val fieldErrors: Map<ProfileTextFieldId, FieldError> = emptyMap(),
     val dialog: FieldError? = null,
     val professionalSheetOpen: Boolean = false,
+    val avatarUrl: String? = null,
+    val avatar: AvatarUiState = AvatarUiState(),
 )
 
 private val EmptySnapshot =
