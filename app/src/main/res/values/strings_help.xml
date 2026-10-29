@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phase 14 UI-SPEC Copywriting Contract: Help / FAQ. Also uses: content_loading, section_retry,
+         login_error_network. -->
+    <string name="help_title">Help</string>
+    <string name="help_faq_section">Frequently Asked Questions</string>
+    <string name="help_contact_section">Contact Us</string>
+    <string name="help_email_us">Email Us</string>
+    <string name="help_error_title">Couldn\'t load help</string>
+    <string name="help_expanded">Expanded</string>
+    <string name="help_collapsed">Collapsed</string>
+    <string name="help_no_mail_app">No email app found. Write to %1$s from any mail app.</string>
+    <string name="help_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
+</resources>
