@@ -33,19 +33,19 @@ findings:
     title: "Edits flushed on leave that then fail are lost silently"
   - id: IN-A01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Delete Account button shows a bare spinner with no accessible label while deleting"
   - id: IN-A02
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Top-bar back arrow and system Back behave differently on the Reason step"
   - id: IN-A03
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Text clamping with `String.take` can split a surrogate pair"
   - id: IN-A04
     severity: info
-    disposition: open
+    disposition: fixed
     title: "\"Saved\" check flashes even when `buildProfilePatch` returns null and nothing was sent"
   - id: WR-B01
     severity: warning
@@ -65,19 +65,19 @@ findings:
     title: "One rejected meeting link makes every later auto-save report failure"
   - id: IN-B01
     severity: info
-    disposition: open
+    disposition: skipped
     title: "Clearing the meeting link looks like it worked but does nothing"
   - id: IN-B02
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Side effect inside a `MutableStateFlow.update` lambda"
   - id: IN-B03
     severity: info
-    disposition: open
+    disposition: fixed
     title: "First load shows \"Ready\" or \"On hold\" when the payout summary call failed"
   - id: IN-B04
     severity: info
-    disposition: open
+    disposition: fixed
     title: "\"See all\" derivation differs between Payouts and the Activity list"
   - id: WR-C01
     severity: warning
@@ -85,27 +85,27 @@ findings:
     title: "A Payouts push opened while Payouts is already open from the Profile hub stacks a second Payouts instance"
   - id: IN-C01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Leftover string `profile_log_out` is now unused"
   - id: IN-C02
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Self-view still shows two action-button skeleton pills, then they collapse"
   - id: IN-C03
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Hub scaffold sets `scrolledContainerColor` without a scroll behavior, so it never takes effect"
   - id: IN-C04
     severity: info
-    disposition: open
+    disposition: fixed
     title: "A few Phase 14 strings read poorly under TalkBack"
   - id: IN-C05
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Plural item uses non-positional `%d`"
-open: 13
+open: 0
 total: 25
-recorded: 2026-10-29T17:41:10.126Z
+recorded: 2026-10-29T17:53:39.418Z
 ---
 
 # Phase 14: Code Review Disposition
@@ -119,23 +119,23 @@ recorded: 2026-10-29T17:41:10.126Z
 | WR-A05 | warning | fixed | 14-REVIEW-FIX.md |
 | WR-A06 | warning | fixed | 14-REVIEW-FIX.md |
 | WR-A07 | warning | skipped | 14-REVIEW-FIX.md |
-| IN-A01 | info | open | - |
-| IN-A02 | info | open | - |
-| IN-A03 | info | open | - |
-| IN-A04 | info | open | - |
+| IN-A01 | info | fixed | 14-REVIEW-FIX.md |
+| IN-A02 | info | fixed | 14-REVIEW-FIX.md |
+| IN-A03 | info | fixed | 14-REVIEW-FIX.md |
+| IN-A04 | info | fixed | 14-REVIEW-FIX.md |
 | WR-B01 | warning | fixed | 14-REVIEW-FIX.md |
 | WR-B02 | warning | fixed | 14-REVIEW-FIX.md |
 | WR-B03 | warning | fixed | 14-REVIEW-FIX.md |
 | WR-B04 | warning | fixed | 14-REVIEW-FIX.md |
-| IN-B01 | info | open | - |
-| IN-B02 | info | open | - |
-| IN-B03 | info | open | - |
-| IN-B04 | info | open | - |
+| IN-B01 | info | skipped | 14-REVIEW-FIX.md |
+| IN-B02 | info | fixed | 14-REVIEW-FIX.md |
+| IN-B03 | info | fixed | 14-REVIEW-FIX.md |
+| IN-B04 | info | fixed | 14-REVIEW-FIX.md |
 | WR-C01 | warning | fixed | 14-REVIEW-FIX.md |
-| IN-C01 | info | open | - |
-| IN-C02 | info | open | - |
-| IN-C03 | info | open | - |
-| IN-C04 | info | open | - |
-| IN-C05 | info | open | - |
+| IN-C01 | info | fixed | 14-REVIEW-FIX.md |
+| IN-C02 | info | fixed | 14-REVIEW-FIX.md |
+| IN-C03 | info | fixed | 14-REVIEW-FIX.md |
+| IN-C04 | info | fixed | 14-REVIEW-FIX.md |
+| IN-C05 | info | fixed | 14-REVIEW-FIX.md |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
