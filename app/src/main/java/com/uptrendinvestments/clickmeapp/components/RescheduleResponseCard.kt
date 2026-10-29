@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -19,13 +20,16 @@ import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +75,8 @@ const val RESCHEDULE_DECLINE_REASON_TAG = "reschedule_decline_reason"
 const val RESCHEDULE_DECLINE_SHEET_TAG = "reschedule_decline_sheet"
 
 /** Saves the decline reason as plain text; a restored value passes the same cap as typing (D-12, T-15-05). */
-internal val DeclineReasonSaver: Saver<String, String> = Saver(save = { it }, restore = { it })
+internal val DeclineReasonSaver: Saver<String, String> =
+    Saver(save = { it }, restore = { capNotes(it, DECLINE_REASON_MAX_CHARS) })
 
 /** Who is looking at the card: the client (Phase 8) or the expert (Phase 11, D-18). */
 enum class RescheduleViewer { Client, Expert }
@@ -82,7 +87,7 @@ private const val LARGE_FONT_SCALE = 1.5f
 
 /**
  * The reschedule response card shared by Upcoming Booking Details and Booking Summary (D-01), and by the expert
- * Booking Summary (D-18). It is stateless apart from its two confirm dialogs: the owner passes the proposal, the
+ * Booking Summary (D-18). It is stateless apart from its confirm dialog and decline sheet: the owner passes the proposal, the
  * in-flight state and the callbacks.
  *
  * For the [RescheduleViewer.Client] viewer an expert-initiated proposal shows Decline and Accept, each behind a confirm
@@ -105,7 +110,7 @@ fun RescheduleResponseCard(
 ) {
     var showAccept by rememberSaveable { mutableStateOf(false) }
     var showDecline by rememberSaveable { mutableStateOf(false) }
-    var declineText by rememberSaveable { mutableStateOf("") }
+    var declineText by rememberSaveable(stateSaver = DeclineReasonSaver) { mutableStateOf("") }
     // The viewer responds to the other party's proposal and only watches their own.
     val actionable = proposal.isActionableFor(viewer)
 
@@ -146,7 +151,7 @@ fun RescheduleResponseCard(
         )
     }
     if (showDecline) {
-        DeclineDialog(
+        DeclineSheet(
             viewer = viewer,
             reason = declineText,
             onReasonChange = { declineText = capNotes(it, DECLINE_REASON_MAX_CHARS) },
@@ -439,75 +444,87 @@ private fun AcceptDialog(
     )
 }
 
+/**
+ * The decline-reason sheet. A text field never sits in a dialog window, which does not follow the IME rules
+ * (UI-SPEC R7), so this is a `ModalBottomSheet` whose scrollable body is lifted above the keyboard (R6). The reason and
+ * the open state live in the caller's saveable state, so both survive recreation and process death (D-12).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeclineDialog(
+private fun DeclineSheet(
     viewer: RescheduleViewer,
     reason: String,
     onReasonChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = MaterialTheme.shapes.extraLarge,
-        title = {
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = Spacing.md, end = Spacing.md, bottom = Spacing.md)
+                    .testTag(RESCHEDULE_DECLINE_SHEET_TAG),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
             Text(
                 text = stringResource(R.string.reschedule_decline_dialog_title),
                 style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() },
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            Text(
+                text = stringResource(R.string.reschedule_decline_dialog_message),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = reason,
+                onValueChange = onReasonChange,
+                label = { Text(stringResource(R.string.reschedule_decline_reason_label)) },
+                maxLines = 4,
+                modifier = Modifier.fillMaxWidth().testTag(RESCHEDULE_DECLINE_REASON_TAG),
+            )
+            Text(
+                text = stringResource(R.string.reschedule_decline_reason_counter, reason.length),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.extras.onSurfaceMuted,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.reschedule_decline_dialog_message),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = onReasonChange,
-                    label = { Text(stringResource(R.string.reschedule_decline_reason_label)) },
-                    maxLines = 4,
-                    modifier = Modifier.fillMaxWidth().testTag(RESCHEDULE_DECLINE_REASON_TAG),
-                )
-                Text(
-                    text = stringResource(R.string.reschedule_decline_reason_counter, reason.length),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.extras.onSurfaceMuted,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text =
+                            stringResource(
+                                when (viewer) {
+                                    RescheduleViewer.Client -> R.string.reschedule_decline_keep
+                                    RescheduleViewer.Expert -> R.string.reschedule_expert_decline_keep
+                                },
+                            ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                TextButton(onClick = onConfirm) {
+                    Text(
+                        text = stringResource(R.string.reschedule_decline),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text =
-                        stringResource(
-                            when (viewer) {
-                                RescheduleViewer.Client -> R.string.reschedule_decline_keep
-                                RescheduleViewer.Expert -> R.string.reschedule_expert_decline_keep
-                            },
-                        ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = stringResource(R.string.reschedule_decline),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        },
-    )
+        }
+    }
 }
 
 /**

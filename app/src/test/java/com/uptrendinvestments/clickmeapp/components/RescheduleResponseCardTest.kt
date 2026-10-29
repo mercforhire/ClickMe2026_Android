@@ -4,10 +4,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -202,8 +202,8 @@ class RescheduleResponseCardTest {
         rule.onNodeWithTag(RESCHEDULE_DECLINE_TAG).performClick()
         rule.onNodeWithTag(RESCHEDULE_DECLINE_SHEET_TAG).assertExists()
         rule.onNode(inSheet("Decline reschedule")).assertExists()
-        // No AlertDialog window carries the title: the sheet is the only container (UI-SPEC R7).
-        rule.onAllNodes(hasText("Decline reschedule") and hasAnyAncestor(isDialog())).assertCountEquals(0)
+        // The title lives only inside the sheet: no AlertDialog carries a second copy (UI-SPEC R7).
+        rule.onAllNodes(hasText("Decline reschedule")).assertCountEquals(1)
     }
 
     @Test
