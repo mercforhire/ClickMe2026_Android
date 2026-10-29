@@ -20,6 +20,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
@@ -50,6 +51,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -76,12 +78,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsDat
 import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
+import com.uptrendinvestments.clickmeapp.model.responses.SaveTaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
+import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import okhttp3.MultipartBody
@@ -106,8 +110,10 @@ import retrofit2.http.Query
  * request, client booking detail). Phase 7 adds the payment group (saved cards, setup and payment intents,
  * booking confirm). Phase 8 adds the client booking actions (cancel, accept and decline a reschedule).
  * Phase 9 adds the call group (join, confirm connection, end). Phase 10 adds expert topics (create, update, delete),
- * the expert's own weekly availability and the profile-tags update. Other API groups arrive with their features
- * (ROADMAP Phase 2 planning note).
+ * the expert's own weekly availability and the profile-tags update. Phase 14 adds nine endpoints: the profile
+ * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
+ * earnings transactions ledger and the expert tax profile (get and save). Other API groups arrive with their
+ * features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
  * wrapped by `apiCall` at the repository layer, which maps failures to `ApiException`.
@@ -626,4 +632,27 @@ interface ClickMeApi {
     /** Ports iOS ClickMeAPI+Help getFaqs: categories with their featured articles. */
     @GET(ApiRequestUrls.HELP_FAQS)
     suspend fun getFaqs(): SuccessDataResponse<FaqsPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+ExpertEarnings getEarningsTransactions. Amounts are MINOR units. The server clamps `limit`
+     * to 1..100 and a garbage `page` to 1.
+     */
+    @GET(ApiRequestUrls.EXPERT_EARNINGS_TRANSACTIONS)
+    suspend fun getEarningsTransactions(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<EarningsTransactionsData>
+
+    /** Ports iOS ClickMeAPI+TaxProfile getTaxProfile. The TIN is never returned, only `tin_on_file`. */
+    @GET(ApiRequestUrls.EXPERT_TAX_PROFILE)
+    suspend fun getTaxProfile(): SuccessDataResponse<TaxProfileData>
+
+    /**
+     * Ports iOS ClickMeAPI+TaxProfile saveTaxProfile. The backend schema is `.strict()`. A first save without a TIN
+     * answers `saved=false, tin_required=true` and writes nothing.
+     */
+    @POST(ApiRequestUrls.EXPERT_TAX_PROFILE)
+    suspend fun saveTaxProfile(
+        @Body body: SaveTaxProfileRequest,
+    ): SuccessDataResponse<SaveTaxProfileData>
 }

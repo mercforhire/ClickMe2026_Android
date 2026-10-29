@@ -59,6 +59,15 @@ class PayoutsTaxApiTest {
     private val page =
         """{"total_count":2,"total_pages":1,"current_page":1,"has_more":false}"""
 
+    private val address =
+        TaxAddressBody(
+            line1 = "1 Main",
+            city = "Toronto",
+            region = "ON",
+            postalCode = "M5V",
+            country = "CA",
+        )
+
     @Test
     fun transactionsSendPageAndLimit() =
         runTest {
@@ -81,7 +90,8 @@ class PayoutsTaxApiTest {
                 """{"status":"success","data":{"transactions":[""" +
                     """{"id":"e1","booking_id":"b1","session_date":"2026-07-30T14:00:00.000Z",""" +
                     """"topic_title":"Career Advice","client_name":"Liam Carter","gross_amount":7500,""" +
-                    """"commission_amount":1125,"net_amount":6375,"currency":"USD","payout_status":"settled_direct",""" +
+                    """"commission_amount":1125,"net_amount":6375,"currency":"USD",""" +
+                    """"payout_status":"settled_direct",""" +
                     """"processed_at":"2026-08-01T12:00:00.000Z","created_at":"2026-07-30T10:00:00.000Z"},""" +
                     """{"id":"e2","booking_id":null,"session_date":null,"topic_title":null,"client_name":null,""" +
                     """"gross_amount":100,"commission_amount":15,"net_amount":85,"currency":"USD",""" +
@@ -163,7 +173,6 @@ class PayoutsTaxApiTest {
         runTest {
             enqueue(200, """{"status":"success","data":{"saved":false,"tin_required":true,"message":"TIN required"}}""")
             enqueue(200, """{"status":"success","data":{"saved":true,"tin_required":false}}""")
-            val address = TaxAddressBody(line1 = "1 Main", city = "Toronto", region = "ON", postalCode = "M5V", country = "CA")
 
             val noTin = apiCall { api.saveTaxProfile(SaveTaxProfileRequest("Ana Lee", address, "1990-01-02")) }.data
             val noTinRequest = server.takeRequest()
@@ -193,8 +202,14 @@ class PayoutsTaxApiTest {
 
     @Test
     fun taxTypesRedactPii() {
-        val address = TaxAddressBody(line1 = "1 Main", city = "Toronto", region = "ON", postalCode = "M5V", country = "CA")
-        val request = SaveTaxProfileRequest("Ana Lee", address, "1990-01-02", tin = "123456789", financialAccountIdentifier = "acct99")
+        val request =
+            SaveTaxProfileRequest(
+                legalName = "Ana Lee",
+                address = address,
+                dob = "1990-01-02",
+                tin = "123456789",
+                financialAccountIdentifier = "acct99",
+            )
         val data = TaxProfileData(true, "Ana Lee", TaxProfileAddress(line1 = "1 Main"), "1990-01-02", "acct99")
         val texts = listOf(request.toString(), address.toString(), data.toString(), data.address.toString())
         for (text in texts) {

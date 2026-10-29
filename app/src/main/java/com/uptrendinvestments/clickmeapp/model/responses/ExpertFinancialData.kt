@@ -40,11 +40,15 @@ data class ConnectLinkData(
     val url: String,
 )
 
-/** `GET /expert/payouts/summary` data, in MINOR units. [nextPayoutDate] is `YYYY-MM-DD` or null. */
+/**
+ * `GET /expert/payouts/summary` data, in MINOR units. [nextPayoutDate] is `YYYY-MM-DD` or null. [payoutMethod] is
+ * optional (only `bank_transfer` today). Amounts may be negative after a dispute.
+ */
 @JsonClass(generateAdapter = true)
 data class PayoutSummaryData(
     @Json(name = "available_amount") val availableAmount: Long,
     @Json(name = "pending_amount") val pendingAmount: Long = 0,
     val currency: String,
     @Json(name = "next_payout_date") val nextPayoutDate: String? = null,
+    @Json(name = "payout_method") val payoutMethod: String? = null,
 )

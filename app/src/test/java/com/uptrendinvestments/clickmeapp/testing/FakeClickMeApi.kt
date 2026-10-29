@@ -20,6 +20,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
@@ -51,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.DeclineBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
+import com.uptrendinvestments.clickmeapp.model.responses.EarningsTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
 import com.uptrendinvestments.clickmeapp.model.responses.EndCallData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
@@ -77,12 +79,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsDat
 import com.uptrendinvestments.clickmeapp.model.responses.ReportUserData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
+import com.uptrendinvestments.clickmeapp.model.responses.SaveTaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SetupExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.SignupData
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
+import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -1096,6 +1100,49 @@ class FakeClickMeApi : ClickMeApi {
     override suspend fun getFaqs(): SuccessDataResponse<FaqsPayload> {
         faqsCalls++
         return ok(faqsHandler())
+    }
+
+    // Phase 14: earnings ledger and tax profile.
+    var earningsTransactionsHandler: suspend (page: Int, limit: Int) -> EarningsTransactionsData =
+        { _, _ -> notStubbed() }
+    var taxProfileHandler: suspend () -> TaxProfileData = { notStubbed() }
+    var saveTaxProfileHandler: suspend (SaveTaxProfileRequest) -> SaveTaxProfileData = { notStubbed() }
+
+    @Volatile var earningsTransactionsCalls = 0
+        private set
+
+    @Volatile var taxProfileCalls = 0
+        private set
+
+    @Volatile var saveTaxProfileCalls = 0
+        private set
+
+    private val _earningsTransactionsQueries = mutableListOf<Pair<Int, Int>>()
+    private val _saveTaxProfileRequests = mutableListOf<SaveTaxProfileRequest>()
+
+    val earningsTransactionsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_earningsTransactionsQueries) { _earningsTransactionsQueries.toList() }
+    val saveTaxProfileRequests: List<SaveTaxProfileRequest>
+        get() = synchronized(_saveTaxProfileRequests) { _saveTaxProfileRequests.toList() }
+
+    override suspend fun getEarningsTransactions(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<EarningsTransactionsData> {
+        earningsTransactionsCalls++
+        synchronized(_earningsTransactionsQueries) { _earningsTransactionsQueries += page to limit }
+        return ok(earningsTransactionsHandler(page, limit))
+    }
+
+    override suspend fun getTaxProfile(): SuccessDataResponse<TaxProfileData> {
+        taxProfileCalls++
+        return ok(taxProfileHandler())
+    }
+
+    override suspend fun saveTaxProfile(body: SaveTaxProfileRequest): SuccessDataResponse<SaveTaxProfileData> {
+        saveTaxProfileCalls++
+        synchronized(_saveTaxProfileRequests) { _saveTaxProfileRequests += body }
+        return ok(saveTaxProfileHandler(body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */
