@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
+import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
@@ -53,6 +55,21 @@ class ExpertSettingsActions(
     val onRetrySave: () -> Unit = {},
     val onRetryLoad: () -> Unit = {},
     val onDismissDialog: () -> Unit = {},
+    val onOpenProfessional: () -> Unit = {},
+    val onApplyProfessional: (jobTitle: String, company: String) -> Unit = { _, _ -> },
+    val onDiscardProfessional: () -> Unit = {},
+    val onChangePhoto: () -> Unit = {},
+    val onDismissAvatarError: () -> Unit = {},
+    val onOpenLanguages: () -> Unit = {},
+    val onLanguageQueryChange: (String) -> Unit = {},
+    val onToggleLanguage: (LanguageItem) -> Unit = {},
+    val onRetryLanguages: () -> Unit = {},
+    val onDismissLanguages: () -> Unit = {},
+    val onApplyLanguages: () -> Unit = {},
+    val onOpenCountry: () -> Unit = {},
+    val onCountryQueryChange: (String) -> Unit = {},
+    val onSelectCountry: (String) -> Unit = {},
+    val onDismissCountry: () -> Unit = {},
 )
 
 /**
@@ -62,7 +79,9 @@ class ExpertSettingsActions(
 @Composable
 fun ExpertProfileSettingsScreen(
     viewModel: ExpertProfileSettingsViewModel,
+    origin: SettingsOrigin,
     onBack: () -> Unit,
+    onOpenCrop: (SettingsOrigin) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()

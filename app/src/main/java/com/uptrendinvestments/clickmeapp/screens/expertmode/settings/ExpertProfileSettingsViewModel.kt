@@ -1,15 +1,19 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.web.isAllowedMeetingUrl
 import com.uptrendinvestments.clickmeapp.constants.Countries
+import com.uptrendinvestments.clickmeapp.constants.Country
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageSheetState
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaver
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AvatarUiState
@@ -65,7 +69,15 @@ data class ExpertProfileSettingsUiState(
     val dialog: FieldError? = null,
     val avatarUrl: String? = null,
     val avatar: AvatarUiState = AvatarUiState(),
-)
+    val professionalSheetOpen: Boolean = false,
+    val languageSheet: LanguageSheetState? = null,
+    val countrySheetOpen: Boolean = false,
+    val countryQuery: String = "",
+) {
+    /** The static country list narrowed by [countryQuery], ignoring case. */
+    val visibleCountries: List<Country>
+        get() = Countries.all.filter { it.name.contains(countryQuery.trim(), ignoreCase = true) }
+}
 
 private val EmptySnapshot =
     ExpertSettingsSnapshot(
@@ -204,6 +216,45 @@ class ExpertProfileSettingsViewModel
             _uiState.update { it.copy(snapshot = next, meetingUrlText = value, meetingUrlError = error) }
             saver.onEdited(next)
         }
+
+        // ---- RED stubs (replaced by the GREEN commit) ----
+
+        fun openProfessionalSheet() = Unit
+
+        fun applyProfessional(
+            jobTitle: String,
+            company: String,
+        ) = Unit
+
+        fun discardProfessional() = Unit
+
+        fun openCountry() = Unit
+
+        fun onCountryQuery(value: String) = Unit
+
+        fun selectCountry(code: String) = Unit
+
+        fun dismissCountry() = Unit
+
+        fun openLanguages() = Unit
+
+        fun onLanguageQuery(value: String) = Unit
+
+        fun toggleLanguage(item: LanguageItem) = Unit
+
+        fun applyLanguages() = Unit
+
+        fun dismissLanguages() = Unit
+
+        fun retryLanguages() = Unit
+
+        fun onPhotoPicked(uri: Uri) = Unit
+
+        fun avatarCropOpened() = Unit
+
+        fun dismissAvatarError() = Unit
+
+        fun onScreenShown() = Unit
 
         /** The status icon's tap: re-sends the newest snapshot. */
         fun retrySave() = saver.retry()
