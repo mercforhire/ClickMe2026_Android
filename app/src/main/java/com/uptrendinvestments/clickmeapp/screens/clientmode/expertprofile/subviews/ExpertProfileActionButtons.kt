@@ -89,16 +89,22 @@ fun ExpertProfileActionButtons(
 }
 
 /**
- * Two 56 dp pills shown while the details load, so the buttons never flash enabled and then disabled (D-15). The
- * second bar stands for Message (D-14).
+ * 56 dp pills shown while the details load, so the buttons never flash enabled and then disabled (D-15). [pills] is how
+ * many buttons the loaded layout will have (Book Session and Message, D-14); fewer than two avoids a skeleton that
+ * collapses and shifts the content below it, and none draws nothing.
  */
 @Composable
-fun ExpertProfileActionButtonsSkeleton(modifier: Modifier = Modifier) {
+fun ExpertProfileActionButtonsSkeleton(
+    modifier: Modifier = Modifier,
+    pills: Int = 2,
+) {
+    if (pills <= 0) return
     SkeletonGroup(modifier = modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth()) {
-            SkeletonBlock(Modifier.fillMaxWidth().height(ButtonMinHeight), CircleShape)
-            Spacer(Modifier.height(Spacing.md))
-            SkeletonBlock(Modifier.fillMaxWidth().height(ButtonMinHeight), CircleShape)
+            repeat(pills) { index ->
+                if (index > 0) Spacer(Modifier.height(Spacing.md))
+                SkeletonBlock(Modifier.fillMaxWidth().height(ButtonMinHeight), CircleShape)
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -474,6 +476,21 @@ class ExpertProfileScreenTest {
         rule
             .onNodeWithTag("skeleton")
             .assertHeightIsAtLeast(ButtonBarHeight * 2 + Spacing.md)
+    }
+
+    @Test
+    fun skeletonDrawsOnlyAsManyBarsAsTheLoadedLayoutHas() {
+        rule.setContent {
+            ClickMeTheme {
+                Column {
+                    ExpertProfileActionButtonsSkeleton(Modifier.testTag("one"), pills = 1)
+                    ExpertProfileActionButtonsSkeleton(Modifier.testTag("none"), pills = 0)
+                }
+            }
+        }
+
+        rule.onNodeWithTag("one").assertHeightIsEqualTo(ButtonBarHeight)
+        rule.onAllNodesWithTag("none").assertCountEquals(0)
     }
 
     private var reportCount = 0

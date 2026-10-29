@@ -385,7 +385,7 @@ private fun DetailsSection(
         label = "profileDetails",
     ) { target ->
         when (target) {
-            DetailsKind.Loading -> DetailsSkeleton()
+            DetailsKind.Loading -> DetailsSkeleton(buttonPills = listOf(showBookSession, showMessage).count { it })
             DetailsKind.Error ->
                 Box(Modifier.fillMaxWidth().padding(top = Spacing.lg), contentAlignment = Alignment.TopCenter) {
                     ErrorState(onRetry = onRetry)
@@ -407,13 +407,13 @@ private fun DetailsSection(
 }
 
 @Composable
-private fun DetailsSkeleton() {
+private fun DetailsSkeleton(buttonPills: Int) {
     val loading = stringResource(R.string.content_loading)
     Column(Modifier.clearAndSetSemantics { contentDescription = loading }) {
         Spacer(Modifier.height(Spacing.md))
         ExpertProfileStatsBarSkeleton()
         Spacer(Modifier.height(Spacing.md))
-        ExpertProfileActionButtonsSkeleton()
+        ExpertProfileActionButtonsSkeleton(pills = buttonPills)
         Spacer(Modifier.height(Spacing.lg))
         ExpertProfileAboutCardSkeleton()
         Spacer(Modifier.height(Spacing.lg))
