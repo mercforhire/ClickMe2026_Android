@@ -51,6 +51,7 @@ enum class ErrorCode(
     // 422, rare terminal reschedule backstop (iOS Phase 27.1): the booking is genuinely unconvertible
     // (no connected account, direct charging disabled, start < 24h away, or a legacy card-less booking).
     // UX must prompt the user to re-book, not to pick another slot.
+    // The 6-day paid reschedule cap, RESCHEDULE_TOO_FAR_AHEAD, is in the Android-only block below.
     RescheduleOutsideAuthWindow("RESCHEDULE_OUTSIDE_AUTH_WINDOW"),
 
     // 422, client reschedule / accept-reschedule only: no saved card on the booking, or the card cannot be
@@ -87,6 +88,7 @@ enum class ErrorCode(
 
     // 422, POST /bookings/payment-intent only: session start is > 6 days out. Android gates paid slots to 6 days
     // (quick 261028-to1) and shows this code as an error; it never takes the confirm-without-payment-intent branch.
+    // The confirm-side twin, LONG_LEAD_NOT_AVAILABLE, is in the Android-only block below.
     LongLeadRequiresSavedCard("LONG_LEAD_REQUIRES_SAVED_CARD"),
     CommissionNotConfigured("COMMISSION_NOT_CONFIGURED"), // 500, server config issue
     DirectChargeDisabled("DIRECT_CHARGE_DISABLED"), // 503, server kill switch
@@ -136,6 +138,14 @@ enum class ErrorCode(
 
     // Android-only additions (not in iOS ErrorCode.swift). Keep after the 65 iOS cases.
     CannotChatWithSelf("CANNOT_CHAT_WITH_SELF"), // 422 on POST /chats/initiate (USER-REPORTING section 3)
+
+    // 422, POST /bookings/confirm without a payment intent for a paid topic more than 6 days out (backend 261028-uph).
+    // Android never sends that call (quick 261028-to1), so the mapping is a backstop.
+    LongLeadNotAvailable("LONG_LEAD_NOT_AVAILABLE"),
+
+    // 422, a paid reschedule (propose or accept, client or expert) to a start more than 6 days from now (261028-uph).
+    // Accept re-checks against the server clock, so only a proposal made before that change can hit it on Android.
+    RescheduleTooFarAhead("RESCHEDULE_TOO_FAR_AHEAD"),
     ;
 
     /**
