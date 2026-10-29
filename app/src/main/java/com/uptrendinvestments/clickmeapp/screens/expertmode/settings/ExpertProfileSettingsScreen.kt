@@ -45,6 +45,7 @@ import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
@@ -96,6 +97,7 @@ class ExpertSettingsActions(
     val onCountryQueryChange: (String) -> Unit = {},
     val onSelectCountry: (String) -> Unit = {},
     val onDismissCountry: () -> Unit = {},
+    val onExpertiseSaved: (List<ExpertiseTagItem>) -> Unit = {},
 )
 
 /**
@@ -158,6 +160,7 @@ fun ExpertProfileSettingsScreen(
                 onCountryQueryChange = viewModel::onCountryQuery,
                 onSelectCountry = viewModel::selectCountry,
                 onDismissCountry = viewModel::dismissCountry,
+                onExpertiseSaved = viewModel::onExpertiseSaved,
             )
         }
     ExpertProfileSettingsContent(state = state, actions = actions, modifier = modifier)
@@ -169,6 +172,8 @@ fun ExpertProfileSettingsContent(
     state: ExpertProfileSettingsUiState,
     actions: ExpertSettingsActions,
     modifier: Modifier = Modifier,
+    expertiseSheet: @Composable (onDismiss: () -> Unit, onSaved: (List<ExpertiseTagItem>) -> Unit) -> Unit =
+        { _, _ -> },
 ) {
     Scaffold(
         modifier = modifier,

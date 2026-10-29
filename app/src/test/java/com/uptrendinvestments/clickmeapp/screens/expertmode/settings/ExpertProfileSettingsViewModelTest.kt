@@ -14,6 +14,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertLanguage
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertLocationDetails
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertTag
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
@@ -103,6 +104,7 @@ class ExpertProfileSettingsViewModelTest {
             val languages = state.snapshot?.profile?.languages
             assertEquals(1, languages?.size)
             assertEquals(1, h.api.expertProfileCalls)
+            assertEquals(listOf("Tax", "Law"), state.expertiseTags)
         }
 
     @Test
@@ -346,5 +348,22 @@ class ExpertProfileSettingsViewModelTest {
                 ),
                 h.api.updateUserProfileRequests,
             )
+        }
+
+    @Test
+    fun expertiseSaveDoesNotAutoSave() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onExpertiseSaved(listOf(ExpertiseTagItem("a", "Alpha"), ExpertiseTagItem("b", "Beta")))
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(listOf("Alpha", "Beta"), vm.uiState.value.expertiseTags)
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(0, h.api.updateExpertMeetingUrlCalls)
+            assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
         }
 }

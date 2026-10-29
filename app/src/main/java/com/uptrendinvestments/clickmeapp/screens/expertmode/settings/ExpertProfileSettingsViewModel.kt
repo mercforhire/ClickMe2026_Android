@@ -10,6 +10,7 @@ import com.uptrendinvestments.clickmeapp.constants.Country
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.LanguageItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -75,6 +76,8 @@ data class ExpertProfileSettingsUiState(
     val languageSheet: LanguageSheetState? = null,
     val countrySheetOpen: Boolean = false,
     val countryQuery: String = "",
+    /** The profile's expertise tag labels, shown as chips; the Edit Expertise sheet saves them itself. */
+    val expertiseTags: List<String> = emptyList(),
 ) {
     /** The alpha-3 code of the chosen country, blank when none. */
     val selectedCountryCode: String
@@ -236,6 +239,9 @@ class ExpertProfileSettingsViewModel
             _uiState.update { it.copy(snapshot = next, meetingUrlText = value, meetingUrlError = error) }
             saver.onEdited(next)
         }
+
+        /** The Edit Expertise sheet saved [tags] on its own; only the chips change, nothing is auto-saved. */
+        fun onExpertiseSaved(tags: List<ExpertiseTagItem>) = Unit
 
         // ---- avatar ----
 

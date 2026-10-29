@@ -3,7 +3,13 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.settings
 
 import android.net.Uri
+import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -14,7 +20,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.SKELETON_BLOCK_TAG
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -53,6 +61,7 @@ class ExpertProfileSettingsScreenTest {
 
     private fun readyState(
         meetingUrl: String = "https://zoom.us/j/1",
+        tags: List<String> = listOf("Tax", "Law"),
         languages: List<UserProfileData.LanguageEntry> =
             listOf(UserProfileData.LanguageEntry(id = "en", label = "English")),
     ) = ExpertProfileSettingsUiState(
@@ -67,6 +76,7 @@ class ExpertProfileSettingsScreenTest {
             ),
         meetingUrlText = meetingUrl,
         email = "ana@example.com",
+        expertiseTags = tags,
     )
 
     private fun setContent(
@@ -110,6 +120,7 @@ class ExpertProfileSettingsScreenTest {
                     "Bio",
                     "Professional Details",
                     "Skype / Zoom Meeting Link",
+                    "Expertise",
                     "City",
                     "State/Province",
                     "Country",
@@ -190,4 +201,51 @@ class ExpertProfileSettingsScreenTest {
 
             assertEquals(listOf(SettingsOrigin.Dashboard), opened)
         }
+
+    @Test
+    fun expertiseChipsFromProfile() {
+        setContent(readyState())
+
+        rule.onNodeWithText("Expertise").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Tax").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Law").assertIsDisplayed()
+        rule
+            .onNodeWithText("Edit expertise")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertHeightIsAtLeast(56.dp)
+    }
+
+    @Test
+    fun editExpertiseOpensSheetSlot() {
+        var state by mutableStateOf(readyState())
+        var opened = 0
+        var saved: (List<ExpertiseTagItem>) -> Unit = {}
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileSettingsContent(
+                    state = state,
+                    actions = ExpertSettingsActions(onExpertiseSaved = { state = state.copy(expertiseTags = it.map { t -> t.label }) }),
+                    expertiseSheet = { _, onSaved ->
+                        SideEffect { opened++ }
+                        saved = onSaved
+                        Text("fake expertise sheet")
+                    },
+                )
+            }
+        }
+
+        rule.onNodeWithText("fake expertise sheet").assertDoesNotExist()
+        rule.onNodeWithText("Edit expertise").performScrollTo().performClick()
+        rule.onNodeWithText("fake expertise sheet").assertIsDisplayed()
+        assertEquals(1, opened)
+
+        rule.runOnIdle {
+            saved(listOf(ExpertiseTagItem("a", "Alpha"), ExpertiseTagItem("b", "Beta"), ExpertiseTagItem("c", "Gamma")))
+        }
+
+        rule.onNodeWithText("fake expertise sheet").assertDoesNotExist()
+        listOf("Alpha", "Beta", "Gamma").forEach { rule.onNodeWithText(it).performScrollTo().assertIsDisplayed() }
+        rule.onNodeWithText("Tax").assertDoesNotExist()
+    }
 }
