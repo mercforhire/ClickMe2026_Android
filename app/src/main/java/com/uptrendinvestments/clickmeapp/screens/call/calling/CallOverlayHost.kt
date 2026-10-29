@@ -12,8 +12,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
@@ -120,6 +123,9 @@ fun CallOverlayHost(
  * handler the content composed earlier and therefore runs first (RESEARCH Pitfall 2). While only the pill shows,
  * no handler is composed here, so Back belongs to the screen below.
  *
+ * The content and the pill each pad the horizontal display cutout once (UI-SPEC R5, POL-03); the expanded layer pads
+ * its own sides through `MeetingCallScreen`'s `safeDrawing` padding, so it gets no second consumer here.
+ *
  * Dialog windows draw above the activity root, so the pill cannot sit above an open sheet or dialog (RESEARCH
  * Pattern 7; no Join site is inside a sheet).
  */
@@ -156,6 +162,7 @@ fun CallOverlayContent(
         Box(
             Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                 .testTag(CALL_OVERLAY_CONTENT_TAG)
                 .then(if (expanded) Modifier.clearAndSetSemantics { } else Modifier),
         ) {
@@ -167,6 +174,7 @@ fun CallOverlayContent(
             modifier =
                 Modifier
                     .align(Alignment.BottomEnd)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                     .padding(end = Spacing.md)
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(bottom = PILL_BOTTOM_OFFSET),
