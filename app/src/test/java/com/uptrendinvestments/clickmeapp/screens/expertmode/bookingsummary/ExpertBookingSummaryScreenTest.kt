@@ -239,9 +239,11 @@ class ExpertBookingSummaryScreenTest {
             .onNodeWithText("You were on a call. Tap Join Call to rejoin.")
             .assertExists()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
-        val noteY = rule.onNodeWithTag("call_resume_note").fetchSemanticsNode().positionInRoot.y
-        val joinY = rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).fetchSemanticsNode().positionInRoot.y
-        assertTrue(noteY < joinY)
+        val top = { tag: String ->
+            val node = rule.onNodeWithTag(tag).fetchSemanticsNode()
+            node.positionInRoot.y
+        }
+        assertTrue(top("call_resume_note") < top(EXPERT_SUMMARY_JOIN_TAG))
     }
 
     @Test

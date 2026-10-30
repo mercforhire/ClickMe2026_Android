@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,8 +21,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cancel
-import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -47,13 +49,15 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
-import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.ErrorState
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.RescheduleOutcomeDialog
 import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
@@ -71,6 +75,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -85,6 +90,10 @@ const val MESSAGE_CLIENT_TAG = "message_client"
 /** Test tag on the Cancel Booking button. */
 const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
 
+/** Test tag on the progress bar shown under the app bar while a Retry of a failed refresh runs. */
+const val EXPERT_SUMMARY_REFRESH_PROGRESS_TAG = "expert_summary_refresh_progress"
+
+private val RefreshProgressHeight = 4.dp
 private val CancelMinHeight = 56.dp
 private val CancelIconSize = 24.dp
 private val SummarySkeletonHeight = 224.dp
@@ -185,45 +194,73 @@ fun ExpertBookingSummaryContent(
         onRescheduleNoticeConsumed()
     }
 
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed && state.load is ExpertSummaryLoad.Loaded,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+    )
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AuthTopAppBar(title = stringResource(R.string.expert_summary_title), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        val bodyModifier = Modifier.fillMaxSize().padding(innerPadding)
-        when (val load = state.load) {
-            ExpertSummaryLoad.Loading -> LoadingBody(bodyModifier)
-            is ExpertSummaryLoad.Failed ->
-                Column(
-                    modifier = bodyModifier,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    EmptyState(
-                        icon = Icons.Outlined.ErrorOutline,
-                        heading = stringResource(R.string.expert_summary_load_error),
-                        body = load.message.asString(),
-                        action = EmptyStateAction(stringResource(R.string.expert_retry), onRetry),
+        val bodyModifier = Modifier.fillMaxSize()
+        Box(Modifier.fillMaxSize().padding(innerPadding)) {
+            when (val load = state.load) {
+                ExpertSummaryLoad.Loading -> LoadingBody(bodyModifier)
+                is ExpertSummaryLoad.Failed ->
+                    Box(bodyModifier, contentAlignment = Alignment.TopCenter) {
+                        ErrorState(
+                            onRetry = onRetry,
+                            modifier = Modifier.padding(top = Spacing.lg),
+                            heading = stringResource(R.string.expert_summary_load_error),
+                            body = load.message.asString(),
+                            retryLabel = stringResource(R.string.expert_retry),
+                        )
+                    }
+                ExpertSummaryLoad.Unavailable ->
+                    Box(bodyModifier, contentAlignment = Alignment.TopCenter) {
+                        EmptyState(
+                            icon = Icons.Outlined.EventBusy,
+                            heading = stringResource(R.string.booking_detail_unavailable_heading),
+                            body = stringResource(R.string.booking_detail_unavailable_body),
+                            modifier = Modifier.padding(top = Spacing.xxxl),
+                        )
+                    }
+                is ExpertSummaryLoad.Loaded ->
+                    LoadedBody(
+                        details = load.details,
+                        showCallResumeNote = state.showCallResumeNote,
+                        rescheduleState = rescheduleState,
+                        joinNow = joinNow,
+                        onJoin = onJoin,
+                        onCancel = onCancel,
+                        onAcceptReschedule = onAcceptReschedule,
+                        onDeclineReschedule = onDeclineReschedule,
+                        modifier = bodyModifier,
+                        zone = zone,
+                        timeFormat = timeFormat,
+                        locale = locale,
+                        messageBusy = messageBusy,
+                        onMessage = { onMessage(load.details) },
                     )
-                }
-            ExpertSummaryLoad.Unavailable -> Unit
-            is ExpertSummaryLoad.Loaded ->
-                LoadedBody(
-                    details = load.details,
-                    rescheduleState = rescheduleState,
-                    joinNow = joinNow,
-                    onJoin = onJoin,
-                    onCancel = onCancel,
-                    onAcceptReschedule = onAcceptReschedule,
-                    onDeclineReschedule = onDeclineReschedule,
-                    modifier = bodyModifier,
-                    zone = zone,
-                    timeFormat = timeFormat,
-                    locale = locale,
-                    messageBusy = messageBusy,
-                    onMessage = { onMessage(load.details) },
+            }
+            if (state.isRefreshing && state.load is ExpertSummaryLoad.Loaded) {
+                // Retry keeps the content and never returns to the skeleton (UI-SPEC "Failed refresh").
+                LinearProgressIndicator(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(RefreshProgressHeight)
+                            .align(Alignment.TopCenter)
+                            .testTag(EXPERT_SUMMARY_REFRESH_PROGRESS_TAG),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 )
+            }
         }
     }
 
@@ -254,6 +291,7 @@ private fun LoadingBody(modifier: Modifier = Modifier) {
 @Composable
 private fun LoadedBody(
     details: ExpertSummaryDetails,
+    showCallResumeNote: Boolean,
     rescheduleState: RescheduleUiState,
     joinNow: Instant,
     onJoin: () -> Unit,
@@ -276,6 +314,7 @@ private fun LoadedBody(
         modifier =
             modifier
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
     ) {
         AnimatedVisibility(
@@ -305,6 +344,7 @@ private fun LoadedBody(
             ExpertSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
             details.preparationNotes?.let { ExpertMessageCard(it) }
             if (details.showsJoin) {
+                if (showCallResumeNote) CallResumeNote()
                 JoinCallButton(
                     enabled = isWithinJoinWindow(details.statusCode, details.start, details.end, joinNow),
                     onClick = onJoin,

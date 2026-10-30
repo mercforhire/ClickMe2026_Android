@@ -43,9 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -60,6 +57,7 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
@@ -94,9 +92,6 @@ const val UPCOMING_BOOKING_CANCEL_TAG = "upcoming_booking_cancel"
 
 /** Test tag on the Message Expert button. */
 const val MESSAGE_EXPERT_TAG = "message_expert"
-
-/** Test tag on the one-time "You were on a call" note. */
-const val CALL_RESUME_NOTE_TAG = "call_resume_note"
 
 /** Test tag on the progress bar shown under the app bar while a Retry of a failed refresh runs. */
 const val UPCOMING_BOOKING_REFRESH_PROGRESS_TAG = "upcoming_booking_refresh_progress"
@@ -402,17 +397,7 @@ private fun LoadedBody(
             UpcomingBookingPendingBanner(details.expertName)
         } else {
             if (showCallResumeNote) {
-                Text(
-                    text = stringResource(R.string.call_resume_note),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = Spacing.sm)
-                            .semantics { liveRegion = LiveRegionMode.Polite }
-                            .testTag(CALL_RESUME_NOTE_TAG),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                CallResumeNote()
             }
             UpcomingBookingJoinCard(
                 meetingType = details.meetingType,
