@@ -23,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -110,6 +111,7 @@ fun MakeABookingTimeSlotsCard(
     val locale = LocalConfiguration.current.locales[0]
     val title = stringResource(R.string.make_a_booking_slots_title)
     val countText = slotsCountText(availability, selectedDate, selectedDateLoaded, now, latestSelectableStart)
+    val dateLabel = formatSlotDateLine(selectedDate, locale)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -127,16 +129,17 @@ fun MakeABookingTimeSlotsCard(
                     Modifier.semantics {
                         heading()
                         // Choosing a day announces the result once: "{n} times available" or "No times this day".
+                        // The date is part of the text so two days with the same count still change it.
                         if (countText != null) {
                             liveRegion = LiveRegionMode.Polite
-                            contentDescription = "$title, $countText"
+                            contentDescription = "$title, $dateLabel, $countText"
                         }
                     },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = formatSlotDateLine(selectedDate, locale),
+                text = dateLabel,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.extras.onSurfaceMuted,
             )
@@ -218,7 +221,11 @@ private fun slotsCountText(
     latestSelectableStart: Instant?,
 ): String? {
     if (availability !is AvailabilityState.Loaded || !selectedDateLoaded) return null
-    val count = availability.slotsByDate[selectedDate].orEmpty().count { it.isSelectable(now, latestSelectableStart) }
+    // The clock ticks, but a slot expiring must not re-announce unprompted: count at the moment the day or the
+    // availability last changed.
+    val countedAt = remember(availability, selectedDate, latestSelectableStart) { now }
+    val count =
+        availability.slotsByDate[selectedDate].orEmpty().count { it.isSelectable(countedAt, latestSelectableStart) }
     return if (count == 0) {
         stringResource(R.string.make_a_booking_slots_none_a11y)
     } else {
