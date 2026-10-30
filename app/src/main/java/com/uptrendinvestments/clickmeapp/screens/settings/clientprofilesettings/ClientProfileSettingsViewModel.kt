@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
@@ -75,6 +76,29 @@ private val EmptySnapshot =
         languages = emptyList(),
     )
 
+private const val KEY_FIRST_NAME = "client_settings_first_name"
+private const val KEY_LAST_NAME = "client_settings_last_name"
+private const val KEY_BIO = "client_settings_bio"
+private const val KEY_JOB_TITLE = "client_settings_job_title"
+private const val KEY_COMPANY = "client_settings_company"
+private const val KEY_CITY = "client_settings_city"
+private const val KEY_STATE_PROVINCE = "client_settings_state_province"
+private const val KEY_COUNTRY = "client_settings_country"
+private const val KEY_LANGUAGE_IDS = "client_settings_language_ids"
+private const val KEY_LANGUAGE_LABELS = "client_settings_language_labels"
+private const val KEY_TOUCHED = "client_settings_touched"
+
+private fun ProfileTextFieldId.savedStateKey(): String =
+    when (this) {
+        ProfileTextFieldId.FirstName -> KEY_FIRST_NAME
+        ProfileTextFieldId.LastName -> KEY_LAST_NAME
+        ProfileTextFieldId.Bio -> KEY_BIO
+        ProfileTextFieldId.JobTitle -> KEY_JOB_TITLE
+        ProfileTextFieldId.Company -> KEY_COMPANY
+        ProfileTextFieldId.City -> KEY_CITY
+        ProfileTextFieldId.StateProvince -> KEY_STATE_PROVINCE
+    }
+
 /**
  * State holder for client Profile Settings: iOS-style auto-save (no Save button, no discard dialog). Every change is
  * handed to an [AutoSaver] that PATCHes the changed groups 1.2 s after the last edit. Leaving the screen flushes a
@@ -82,6 +106,13 @@ private val EmptySnapshot =
  *
  * The screen renders from the cached profile, so there is no loading state in the normal case; if the cache is empty
  * the profile is refreshed once.
+ *
+ * Process death (CONTEXT D-12): every edit is mirrored to [SavedStateHandle] as plain Strings and two parallel
+ * `ArrayList<String>` (language ids, with "" for a custom language, and labels), and a touched flag is set. Only the
+ * fields the user edited are written, so [seed] lays those over the server values and the restored edit wins over a
+ * late fetch (RESEARCH Pitfall 7). A restored value that differs from the server goes through [AutoSaver.onEdited]
+ * like a keystroke, so it is saved after the normal debounce. No DTO or secret is stored (Pitfall 6; the profile
+ * form has no secret).
  */
 @HiltViewModel
 class ClientProfileSettingsViewModel
@@ -91,6 +122,7 @@ class ClientProfileSettingsViewModel
         private val userManager: UserManager,
         private val avatarController: ProfileAvatarController,
         @ApplicationScope appScope: CoroutineScope,
+        private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ClientProfileSettingsUiState())
         val uiState: StateFlow<ClientProfileSettingsUiState> = _uiState.asStateFlow()
@@ -163,14 +195,50 @@ class ClientProfileSettingsViewModel
             seeded = true
             // A legacy alpha-2 (or unrecognizable) stored country is seeded as alpha-3 (or blank), so the baseline and
             // every later location PATCH use the form the server requires.
-            val snapshot =
+            val server =
                 ProfileSnapshot.from(profile).let {
                     it.copy(countryCode = Countries.normalize(it.countryCode).orEmpty())
                 }
-            saver.rebase(snapshot)
+            // Restored edits win over the fetched profile; they differ from the baseline, so the saver sends them.
+            val snapshot = restoredOver(server)
+            saver.rebase(server)
             _uiState.update {
                 it.copy(snapshot = snapshot, loadFailed = false, email = profile.personalDetails.email.orEmpty())
             }
+            if (snapshot != server) saver.onEdited(snapshot)
+        }
+
+        /** [server] with every field the user edited before recreation put back (values cut to their maximum). */
+        private fun restoredOver(server: ProfileSnapshot): ProfileSnapshot {
+            if (savedStateHandle.get<Boolean>(KEY_TOUCHED) != true) return server
+            var result = server
+            for (field in ProfileTextFieldId.entries) {
+                val saved = savedStateHandle.get<String>(field.savedStateKey()) ?: continue
+                result = result.with(field, saved.clampLength(field.maxLength))
+            }
+            savedStateHandle.get<String>(KEY_COUNTRY)?.let {
+                result = result.copy(countryCode = Countries.normalize(it).orEmpty())
+            }
+            val ids = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_IDS)
+            val labels = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_LABELS)
+            if (ids != null && labels != null) {
+                result =
+                    result.copy(
+                        languages =
+                            ids.mapIndexed { i, id ->
+                                ProfileLanguage(id.ifBlank { null }, labels.getOrNull(i).orEmpty())
+                            },
+                    )
+            }
+            return result
+        }
+
+        private fun mirrorField(
+            field: ProfileTextFieldId,
+            value: String,
+        ) {
+            savedStateHandle[field.savedStateKey()] = value
+            savedStateHandle[KEY_TOUCHED] = true
         }
 
         /** Applies [value] (cut to the field's maximum) and schedules the save. */
@@ -179,7 +247,9 @@ class ClientProfileSettingsViewModel
             value: String,
         ) {
             val current = _uiState.value.snapshot ?: return
-            val next = current.with(field, value.clampLength(field.maxLength))
+            val clamped = value.clampLength(field.maxLength)
+            val next = current.with(field, clamped)
+            mirrorField(field, clamped)
             _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field) }
             saver.onEdited(next)
         }
@@ -205,6 +275,8 @@ class ClientProfileSettingsViewModel
         fun selectCountry(code: String) {
             val current = _uiState.value.snapshot ?: return
             val next = current.copy(countryCode = Countries.normalize(code).orEmpty())
+            savedStateHandle[KEY_COUNTRY] = next.countryCode
+            savedStateHandle[KEY_TOUCHED] = true
             _uiState.update { it.copy(snapshot = next, countrySheetOpen = false, countryQuery = "") }
             saver.onEdited(next)
         }
@@ -250,6 +322,9 @@ class ClientProfileSettingsViewModel
             val current = _uiState.value.snapshot ?: return
             val customs = current.languages.filter { it.id.isNullOrBlank() }
             val next = current.copy(languages = sheet.selection.map { ProfileLanguage(it.id, it.label) } + customs)
+            savedStateHandle[KEY_LANGUAGE_IDS] = ArrayList(next.languages.map { it.id.orEmpty() })
+            savedStateHandle[KEY_LANGUAGE_LABELS] = ArrayList(next.languages.map { it.label })
+            savedStateHandle[KEY_TOUCHED] = true
             _uiState.update { it.copy(snapshot = next, languageSheet = null) }
             saver.onEdited(next)
         }
@@ -292,6 +367,8 @@ class ClientProfileSettingsViewModel
                     jobTitle = jobTitle.clampLength(ProfileTextFieldId.JobTitle.maxLength),
                     company = company.clampLength(ProfileTextFieldId.Company.maxLength),
                 )
+            mirrorField(ProfileTextFieldId.JobTitle, next.jobTitle)
+            mirrorField(ProfileTextFieldId.Company, next.company)
             _uiState.update {
                 it.copy(
                     snapshot = next,

@@ -49,6 +49,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /** Test tag on the Profile Settings scroll column. */
 const val PROFILE_SETTINGS_LIST_TAG = "profile_settings_list"
@@ -178,6 +179,7 @@ fun ClientProfileSettingsContent(
                         .padding(inner)
                         .imePadding()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(horizontal = Spacing.md, vertical = Spacing.md)
                         .testTag(PROFILE_SETTINGS_LIST_TAG),
             ) {
