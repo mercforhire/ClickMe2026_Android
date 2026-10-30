@@ -12,7 +12,15 @@ set -euo pipefail
 SRC_DIR="${1:-app/src}"
 THEME_COLOR="ui/theme/Color.kt"
 OPT_OUT='// insets-ok:'
+PERL_BIN="${PERL_BIN:-perl}"
 fail=0
+
+# The perl rules must fail closed: a missing perl, a script error or an unreadable file is an internal error (exit 2),
+# never an empty hit list that reads as "OK".
+internal_error() {
+    echo "Design rules: internal error while running $1 (is perl available?); refusing to report OK." >&2
+    exit 2
+}
 
 hits=$(grep -rnE --include='*.kt' 'Color\((0x|red *=|[0-9])' "$SRC_DIR" | grep -v "$THEME_COLOR" || true)
 if [ -n "$hits" ]; then
@@ -57,16 +65,42 @@ first_line() {
 }
 
 read -r -d '' PERL_SCAFFOLD <<'PERL' || true
-# Insets rule (a): for every Scaffold(...) { name -> ... } call, the lambda parameter must exist, not be _, and be used.
+# Insets rule (a): for every Scaffold(...) call with a content lambda ({ name -> ... } after the arguments, or
+# content = { name -> ... } inside them), the lambda parameter must exist, not be _, and be used INSIDE that lambda.
+sub lambda_body {
+    my ($src, $pos) = @_;
+    my ($depth, $i, $len) = (1, $pos, length($src));
+    while ($i < $len) {
+        my $c = substr($src, $i, 1);
+        if ($c eq '{') {
+            $depth++;
+        } elsif ($c eq '}') {
+            $depth--;
+            last if $depth == 0;
+        }
+        $i++;
+    }
+    return substr($src, $pos, $i - $pos);
+}
 for my $f (@ARGV) {
-    open(my $fh, "<", $f) or next;
+    open(my $fh, "<", $f) or die "cannot read $f: $!\n";
     local $/;
     my $src = <$fh>;
     close($fh);
     my @lines = split(/\n/, $src, -1);
-    while ($src =~ /\bScaffold\s*(\((?:[^()]++|(?1))*\))\s*\{\s*(?:(\w+)\s*->)?/g) {
-        my $name = defined($2) ? $2 : "";
-        my $start = $-[0];
+    while ($src =~ /\bScaffold\s*(\((?:[^()]++|(?1))*\))/g) {
+        my ($args, $argsStart, $start, $end) = ($1, $-[1], $-[0], $+[0]);
+        my ($name, $bodyStart);
+        if (substr($src, $end) =~ /\A\s*\{\s*(?:(\w+)\s*->)?/) {
+            $name = $1;
+            $bodyStart = $end + $+[0];
+        } elsif ($args =~ /\bcontent\s*=\s*\{\s*(?:(\w+)\s*->)?/) {
+            $name = $1;
+            $bodyStart = $argsStart + $+[0];
+        } else {
+            next;
+        }
+        $name = defined($name) ? $name : "";
         my $ln = 1 + (substr($src, 0, $start) =~ tr/\n//);
         my $cur = $lines[$ln - 1];
         my $prev = $ln > 1 ? $lines[$ln - 2] : "";
@@ -76,7 +110,8 @@ for my $f (@ARGV) {
             $bad = 1;
         } else {
             my $n = quotemeta($name);
-            $bad = 1 unless $src =~ /padding\(\s*$n\b|consumeWindowInsets\(\s*$n\b|windowInsetsPadding\(\s*$n\b|\b$n\.calculate/;
+            my $body = lambda_body($src, $bodyStart);
+            $bad = 1 unless $body =~ /padding\(\s*$n\b|consumeWindowInsets\(\s*$n\b|windowInsetsPadding\(\s*$n\b|\b$n\.calculate/;
         }
         print "$f:$ln\n" if $bad;
     }
@@ -106,7 +141,8 @@ PERL
 # (a) Scaffold content padding applied.
 hits=""
 if [ -n "$MAIN_FILES" ]; then
-    hits=$(printf '%s\n' "$MAIN_FILES" | tr '\n' '\0' | xargs -0 perl -e "$PERL_SCAFFOLD" -- || true)
+    hits=$(printf '%s\n' "$MAIN_FILES" | tr '\n' '\0' | xargs -0 "$PERL_BIN" -e "$PERL_SCAFFOLD" --) ||
+        internal_error "insets rule a"
 fi
 if [ -n "$hits" ]; then
     echo "Scaffold content padding not applied (insets rule a):"
@@ -163,7 +199,8 @@ fi
 # (R7) No text field inside an AlertDialog.
 hits=""
 if [ -n "$MAIN_FILES" ]; then
-    hits=$(printf '%s\n' "$MAIN_FILES" | tr '\n' '\0' | xargs -0 perl -e "$PERL_DIALOG" -- || true)
+    hits=$(printf '%s\n' "$MAIN_FILES" | tr '\n' '\0' | xargs -0 "$PERL_BIN" -e "$PERL_DIALOG" --) ||
+        internal_error "rule R7"
 fi
 if [ -n "$hits" ]; then
     echo "Text field inside an AlertDialog (R7):"

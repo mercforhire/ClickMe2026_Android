@@ -51,6 +51,48 @@ fun FooScreen() {
 }
 KT
 
+mk a_two_scaffolds FooScreen.kt <<'KT'
+package fixture
+
+@Composable
+fun FooScreen() {
+    Scaffold(topBar = {}) { innerPadding ->
+        Text(text = "ignores the padding")
+    }
+}
+
+@Composable
+fun BarScreen() {
+    Scaffold(topBar = {}) { innerPadding ->
+        Column(Modifier.padding(innerPadding)) { Text(text = "uses it") }
+    }
+}
+KT
+
+mk a_named_content FooScreen.kt <<'KT'
+package fixture
+
+@Composable
+fun FooScreen() {
+    Scaffold(
+        topBar = {},
+        content = { inner -> Text(text = "ignores the padding") },
+    )
+}
+KT
+
+mk a_named_content_ok FooScreen.kt <<'KT'
+package fixture
+
+@Composable
+fun FooScreen() {
+    Scaffold(
+        topBar = {},
+        content = { inner -> Column(Modifier.padding(inner)) { Text(text = "x") } },
+    )
+}
+KT
+
 mk b_bad FooScreen.kt <<'KT'
 package fixture
 
@@ -170,14 +212,25 @@ expect_pass() {
 
 expect_fail a_bad "Scaffold content padding not applied (insets rule a):"
 expect_fail a_unused "Scaffold content padding not applied (insets rule a):"
+expect_fail a_two_scaffolds "Scaffold content padding not applied (insets rule a):"
+expect_fail a_named_content "Scaffold content padding not applied (insets rule a):"
 expect_fail b_bad "Zero-inset Scaffold without nav/IME handling (insets rule b):"
 expect_fail c_bad "Text field without IME handling (insets rule c):"
 expect_fail r7_bad "Text field inside an AlertDialog (R7):"
 expect_pass a_optout
 expect_pass b_optout
 expect_pass r7_optout
+expect_pass a_named_content_ok
 expect_pass good
 expect_pass good_dialog
+
+# Fail closed: with no usable perl the gate must exit 2 and never print "Design rules: OK".
+status=0
+out=$(cd "$tmp" && PERL_BIN=/nonexistent/perl bash "$RULES" "$tmp/good" 2>&1) || status=$?
+if [ "$status" -ne 2 ] || printf '%s\n' "$out" | grep -qF "Design rules: OK"; then
+    echo "FAIL: a missing perl must fail the gate with exit 2, got $status"
+    failures=$((failures + 1))
+fi
 
 if [ "$failures" -ne 0 ]; then
     exit 1
