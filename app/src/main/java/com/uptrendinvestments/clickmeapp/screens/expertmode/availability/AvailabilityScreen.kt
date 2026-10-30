@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +27,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -37,7 +37,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +50,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.PickerField
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.constants.TimezoneEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.AvailabilityDayCard
@@ -63,7 +63,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
-import kotlinx.coroutines.launch
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.text.DateFormat
 import java.time.DayOfWeek
 
@@ -157,19 +157,17 @@ fun AvailabilityContent(
     },
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     // DayOfWeek value and slot index of the slot being edited; a Pair of Ints survives configuration changes.
     var editing by rememberSaveable { mutableStateOf<Pair<Int, Int>?>(null) }
     var showTimezoneSheet by rememberSaveable { mutableStateOf(false) }
 
-    val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Short) }
-            actions.onRefreshFailedShown()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = actions.refresh,
+        onShown = actions.onRefreshFailedShown,
+        message = stringResource(R.string.expert_refresh_failed),
+    )
 
     Scaffold(
         modifier = modifier,
@@ -189,7 +187,8 @@ fun AvailabilityContent(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // The Scaffold has zero content insets (R1 exception), so the host clears the bars and the keyboard itself (R9).
+        snackbarHost = { SnackbarHost(snackbarHostState, Modifier.navigationBarsPadding().imePadding()) },
     ) { innerPadding ->
         when (val load = state.load) {
             AvailabilityLoad.Loading ->
@@ -294,6 +293,7 @@ private fun LoadedBody(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(horizontal = Spacing.md)
                 .padding(top = Spacing.lg),
     ) {
