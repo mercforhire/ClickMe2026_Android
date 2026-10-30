@@ -183,6 +183,7 @@ fun BookingConfirmedContent(
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .contentMaxWidth()
                     .testTag(BOOKING_CONFIRMED_CONTENT_TAG)
                     .verticalScroll(rememberScrollState())
                     .padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl)
@@ -207,6 +208,7 @@ fun BookingConfirmedContent(
                 zone = zone,
                 timeFormat = timeFormat,
                 locale = locale,
+                headlineModifier = Modifier.focusRequester(headlineFocus).focusable(),
             )
             ConfirmedDetailsCard(
                 key = key,

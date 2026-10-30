@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.time.ZoneId
 import java.util.Locale
 
@@ -135,7 +136,7 @@ fun ExpertCancellationContent(
             )
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding).contentMaxWidth()) {
             when (val load = state.load) {
                 ExpertCancelLoad.Loading -> LoadingBody()
                 is ExpertCancelLoad.Failed -> FailedBody(message = load.message.asString(), onRetry = onRetry)
