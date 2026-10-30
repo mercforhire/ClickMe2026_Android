@@ -26,6 +26,7 @@
     <string name="tax_profile_saved">Tax profile saved.</string>
     <string name="tax_profile_load_error">Couldn\'t load tax profile</string>
     <string name="tax_profile_save_error">Couldn\'t save tax profile</string>
+    <string name="tax_profile_secrets_not_restored">For your security, your payout account and TIN are not kept when the app is closed. Check them and enter again any you changed.</string>
     <string name="tax_profile_tin_required_fallback">We need your TIN to finish saving. Enter it below and save again.</string>
     <string name="tax_profile_got_it">Got it</string>
     <string name="tax_profile_dob_confirm">Set date</string>

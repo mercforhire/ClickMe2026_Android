@@ -483,8 +483,32 @@ class ExpertTaxProfileViewModelTest {
             assertEquals("", state.form.tin)
             assertEquals("", state.form.financialAccount)
             assertTrue(state.fieldErrors.isEmpty())
-            assertNull(state.banner)
+            assertEquals(FieldError.Res(R.string.tax_profile_secrets_not_restored), state.banner)
             assertNull(state.dialog)
+        }
+
+    @Test
+    fun aRestoredDraftOverAServerAccountSaysTheSecretsWereNotKept() =
+        runTest(main.testDispatcher) {
+            api.taxProfileHandler = { taxProfile(financialAccountIdentifier = "SERVER-ACC-1") }
+            val handle = SavedStateHandle()
+            val first = loaded(this, handle)
+            first.onFieldChange(TaxProfileField.LegalName, "Mia Roy")
+            first.onFieldChange(TaxProfileField.FinancialAccount, "NEW-ACC-2")
+
+            val state = loaded(this, copyOf(handle)).uiState.value
+
+            assertEquals("Mia Roy", state.form.legalName)
+            assertEquals("SERVER-ACC-1", state.form.financialAccount)
+            assertEquals(FieldError.Res(R.string.tax_profile_secrets_not_restored), state.banner)
+        }
+
+    @Test
+    fun anUntouchedLoadShowsNoRestoreBanner() =
+        runTest(main.testDispatcher) {
+            serverProfile()
+
+            assertNull(loaded(this).uiState.value.banner)
         }
 
     @Test

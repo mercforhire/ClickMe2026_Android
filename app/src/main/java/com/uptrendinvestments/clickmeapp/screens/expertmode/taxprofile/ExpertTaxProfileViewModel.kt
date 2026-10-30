@@ -123,7 +123,8 @@ data class TaxProfileUiState(
  * Process death (CONTEXT D-12): the non-secret fields and the date of birth are mirrored to [SavedStateHandle] as
  * Strings, with a touched flag, and laid over the server prefill when it loads, so a restored edit wins over the
  * fetched profile (RESEARCH Pitfall 7). The TIN and the financial account identifier are never written there
- * (CONTEXT D-09, threat T-15-31): after process death they come back empty with no error text. The TIN is typed, sent
+ * (CONTEXT D-09, threat T-15-31): after process death the TIN comes back empty and the account shows the server's
+ * value, with no error text but an info banner saying they were not kept. The TIN is typed, sent
  * once and cleared after a save, which also clears the touched flag so the next visit shows the server's data.
  */
 @HiltViewModel
@@ -157,7 +158,9 @@ class ExpertTaxProfileViewModel
                                 form = restoredOver(data.toForm()),
                                 tinOnFile = data.tinOnFile,
                                 fieldErrors = emptyMap(),
-                                banner = null,
+                                // A restored draft cannot carry the account or the TIN; say so rather than show the
+                                // server's account beside edited identity data as if it were the draft.
+                                banner = secretsNotRestoredHint(),
                             )
                         }
                     } catch (e: ApiException) {
@@ -165,6 +168,14 @@ class ExpertTaxProfileViewModel
                     }
                 }
         }
+
+        /** The info banner shown when a restored draft overlaid the server data; null when nothing was restored. */
+        private fun secretsNotRestoredHint(): FieldError? =
+            if (savedStateHandle.get<Boolean>(KEY_TOUCHED) == true) {
+                FieldError.Res(R.string.tax_profile_secrets_not_restored)
+            } else {
+                null
+            }
 
         /** [server] with every non-secret field the user edited before recreation put back. */
         private fun restoredOver(server: TaxProfileForm): TaxProfileForm {
