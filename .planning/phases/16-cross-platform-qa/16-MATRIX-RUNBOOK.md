@@ -10,7 +10,7 @@ One ordered runbook for the QA-02 matrix (Direction 1: Android client, iOS exper
 - **Accounts by role only (D-03):** A = the user's real expert account whose live Connect account accepts charges. B = the user's second real account, used as the client. Throwaway = a new account created on Android in Direction 2 for the deletion rows. Never use the store-review account `appreview@clickme.test` for any row. Never paste a password, token, key or card number into this file; card references use the brand and last 4 digits only.
 - **Money safety:** every paid booking is written into "Paid bookings created" when it is made. Stripe test cards are not used (D-02). Never run `scripts/live-cutover-cleanup.js` or any bulk script against production.
 - **Columns:** `Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result`. Direction values: `D1` (Samsung = B client, iPhone = A expert), `D2` (Samsung = A expert, iPhone = B client), `Samsung` (single device), `emulator`.
-- **Result notation:** `[ ]` not yet run; `[x] pass (vc N, YYYY-MM-DD)`; `[!] fail (BUG-NN, vc N)`; `[-] not run: reason`. A row passes only on the build proven by H2 for that session. A failed row's Result also gets a row in `16-BUG-LOG.md`.
+- **Result notation:** `[ ]` not yet run; `[x]` then `pass (vc N, YYYY-MM-DD)` when it passed; `[!]` then `fail (BUG-NN, vc N)` when it failed; `[-] not run: reason`. A row passes only on the build proven by H2 for that session. A failed row's Result also gets a row in `16-BUG-LOG.md`.
 - **Evidence root:** `/Users/LeonChen/ClickMe-release` (outside the repo): `logs/SESSION/ROW.log` and `sessions/SESSION-results.md`. Raw logs and screenshots never enter the repo; this file and the bug log carry ids and error codes only.
 
 ## Harness (Claude, every session)
@@ -210,11 +210,199 @@ Samsung = A (expert), iPhone = B (client). Rows run in order. Amounts follow P0.
 
 ## 5. Samsung tier-1 setting passes (D-06)
 
-Every tier-1 row of `15-DEVICE-CHECKLIST.md`, grouped by the device setting so each setting is switched on and off once. Filled by Task 3.
+Every tier-1 row of `15-DEVICE-CHECKLIST.md`, grouped by the device setting so each setting is switched on and off once. Samsung = B client with the iPhone as A for rows that need a peer (Direction `D1`); other rows are `Samsung`. Row ID = setting prefix plus the checklist ID; Source row ID = the checklist ID, plus a WR id where a 15-REVIEW-FIX device check is attached. Switch the setting on at the start of each subsection and off at its end (E7.6 restores everything at the close).
+
+### 5.1 TalkBack (TB.)
+
+Switch on TalkBack. The SC-4 runs are TB.L1, TB.B1, TB.C1 and TB.K1 (15-UAT test 1). Where a row fails with a known cause, log a fix-if-cheap bug with the fallback named in its Expected cell.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| TB.L1 | L1, 15-UAT test 1 | Samsung | Log in using only TalkBack (SC-4 run). | Login reads title as heading, email, password, Log in; one "Don't have an account? Sign Up" node; Log in says "In progress" while busy; lands on the right home. | Pass or fail note in the results file. | [ ] |
+| TB.L2 | L2 | Samsung | Enter a wrong password and submit. | The server message is spoken and focus lands on the password field. | Note. | [ ] |
+| TB.L3 | L3, WR-A03 | Samsung | On Login with email and password filled, listen to each field; also check one field on Signup and one on Settings. | TalkBack speaks the field name together with its value. If it fails, log fix-if-cheap with this fallback: add the name to the field semantics without hiding the value. | Note and which field. | [ ] |
+| TB.L7 | L7 | Samsung | Complete a password reset to Password Changed. | Focus lands on the "Password Changed" headline first; reading order sensible; Go to Login shows Login with the email pre-filled and an empty password. | Note. | [ ] |
+| TB.B1 | B1, 15-UAT test 1 | D1 | Book a free session using only TalkBack from Expert Profile to Request Sent (peer: iPhone A receives it; a person completes every step). | The whole booking completes by TalkBack alone. | Note. | [ ] |
+| TB.B3 | B3, WR-A04 | Samsung | On the booking form, move through the calendar and slots. Choose a different day with the same slot count. | Day cells read "Today, Selected, Available" or "No availability"; the month title is read before Previous and Next month; choosing a day announces how many times are free; the slots heading re-announces on a day change (WR-A04); Book Now says why it is disabled and "In progress" while busy. | Note. | [ ] |
+| TB.B4 | B4 | Samsung | Tap day cells on the 360 dp phone (about 45.7 dp wide). | Taps are reliable. If taps miss, log fix-if-cheap with this fallback: reduce the calendar card padding. | Note. | [ ] |
+| TB.B5 | B5 | Samsung | Open the topic sheet; close it; force a failed topic load. | Topic cards read as a radio group; closing returns focus to the Topic row; the failed load shows the named error and Retry inside the sheet. | Note. | [ ] |
+| TB.B8 | B8 | Samsung | Enter Request Sent. | TalkBack speaks "Request Sent!" first. | Note. | [ ] |
+| TB.C1 | C1, 15-UAT test 1 | D1 | Join a call from Upcoming Details using TalkBack (peer: iPhone A joins; SC-4 run). | The status line is read first; the order is status, name, timer, Mute, Speaker, Chat, Minimize, End call; "Connecting" is not announced twice. | Note; H5 log. | [ ] |
+| TB.C2 | C2 | D1 | During an active call, move across screens and tabs underneath. | The pill is the first TalkBack node on every screen. If it fails, log fix-if-cheap with this fallback: a focus request on the pill when a screen appears during a live call. | Note. | [ ] |
+| TB.C7 | C7 | D1 | After the force-stop and relaunch in PD.C7, listen to the booking detail. | TalkBack announces the one-time "You were on a call" note. | Note. | [ ] |
+| TB.K1 | K1, 15-UAT test 1 | D1 | Send a chat message using only TalkBack (peer: iPhone A; SC-4 run). | Conversations row, thread reading order, "You: {text}, {time}, Sent" or "Read"; the composer explains why Send is disabled; focus and the keyboard stay after Send. | Note. | [ ] |
+| TB.K2 | K2 | D1 | Focus a Conversations row. | One stop: "{name}, {last message}, {time}, {n} unread", child text not read again. | Note. | [ ] |
+| TB.K3 | K3 | D1 | Listen to a message bubble. | The bubble is not spoken twice. If it fails, log fix-if-cheap with this fallback: drop the Text from the merged bubble node. | Note. | [ ] |
+| TB.K4 | K4, WR-B02 | D1 | Peer (iPhone A) sends the same text twice; delete a failed send of mine. | A peer message arriving is announced once; identical back-to-back texts are re-announced; a newest own message from history is not announced on first composition; deleting a failed send of mine does not re-speak the peer message (WR-B02). | Note. | [ ] |
+| TB.K5 | K5 | D1 | On a failed bubble and the Report reason group, use TalkBack. | A failed bubble offers Retry and Delete; the Report reason group reads as a group. | Note. | [ ] |
+| TB.K10 | K10 | D1 | Open a blocked thread. | The blocked banner is announced. | Note. | [ ] |
+| TB.K11 | K11, WR-B01 | D1 | Network off, pull to refresh in Conversations and in a thread; toggle airplane mode inside a thread. | Rows and messages stay; one "Retry" snackbar; the reconnect failure path shows; the snackbar sits above the keyboard and the composer (WR-B01). | Note. | [ ] |
+| TB.Y12 | Y12 | Samsung | Run Accessibility Scanner over the four SC-4 flows (log in, book, call, chat). | Touch-target, contrast and label findings are logged as bug rows. | Finding count; screenshots outside the repo. | [ ] |
+| TB.Y14 | Y14 | Samsung | Trigger a "Retry" snackbar with TalkBack on. | The snackbar stays long enough to be reached and activated. | Note. | [ ] |
+
+Switch TalkBack off.
+
+### 5.2 Font 200% (FS.)
+
+Switch on Settings, Display, Font size at the largest, then Display size at the largest.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| FS.L4 | L4 | Samsung | Login on the small phone at 200% font with the keyboard. | Nothing clips; IME Next and Done move email to password to submit; autofill offers the saved login; Log in stays reachable above the keyboard. | Note. | [ ] |
+| FS.L5 | L5 | Samsung | Open Login, Forgot Password, Reset Code, Set New Password and Password Changed at 200% with the keyboard open. | Text wraps rather than clips. | Note. | [ ] |
+| FS.B2 | B2 | Samsung | Open Make a Booking at 200%. | Topic row, calendar, slots and notes wrap; Book Now and its reason stay reachable. | Note. | [ ] |
+| FS.B10 | B10 (re-scoped: live Payment Methods, its info sheet and a paid Request Sent, no sandbox) | D1 | Open Payment Methods and its info sheet; view the paid Request Sent from D1.18 at 200%. | All three reflow with no clipped text. | Note. | [ ] |
+| FS.C3 | C3 | D1 | In a call at 200%, view the Connected pair, the final-5-minute banner and the Skype or Zoom external variant. | Names wrap to two lines; Mute, Speaker and End call never leave the screen. | Note. | [ ] |
+| FS.K6 | K6 | D1 | At 200% open Conversations, a thread with a failed bubble, the blocked banner, Report & Block, the Report sheet and the Request Decision footer. | Row name and time wrap; bubbles and composer grow; footer buttons stack. | Note. | [ ] |
+| FS.Y7 | Y7 | Samsung | Change the font scale while on a form in each flow. | Typed text kept, secrets empty, no crash. | Note; H4 crash count. | [ ] |
+| FS.Y12 | Y12 | Samsung | Run Accessibility Scanner at 200% on the four SC-4 flows. | Findings logged. | Finding count. | [ ] |
+
+Switch the font and display size back.
+
+### 5.3 Process death and recreation (PD.)
+
+Switch on Developer options, Don't keep activities. PD.C7 and PD.C8 carry the 15-REVIEW-FIX checks WR-A01 and WR-A02.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| PD.L8 | L8 | Samsung | On Forgot and Set New Password toggle dark mode, then background and return. | The typed email stays; the reset code and both passwords come back empty with no error text. | Note. | [ ] |
+| PD.B5 | B5 | Samsung | Open the topic sheet, change configuration, background and return. | The open sheet survives. | Note. | [ ] |
+| PD.B7 | B7 | Samsung | Background mid-booking and return. | Topic, day, month, slot, meeting type and notes kept; the Request Sent animation does not replay; system Back during an in-flight booking is ignored. | Note. | [ ] |
+| PD.C6 | C6 | D1 | Dark mode toggle, font-scale change and Don't keep activities during a call. | The call continues in the pill or layer; nothing joins a second time or opens the mic by itself. | H5 log (one join only). | [ ] |
+| PD.C7 | C7, WR-A01, WR-A02 | D1 | Start an in-app call, run `am force-stop` (not `am kill`), then tap a push before reopening the app. Separately, force-stop and relaunch directly. | The push destination wins and the "You were on a call" note does not cover it (WR-A01 and WR-A02); a direct relaunch shows the booking detail with Join Call, the one-time note, no auto-join and no microphone indicator; reopening does not show the note again. | H5 log; `pidof` after force-stop. | [ ] |
+| PD.C8 | C8, WR-A01, WR-A02 | D1 | With a call running, swipe the task away and tap the ongoing-call notification. | The app starts through Splash and auth, then lands in the right place; a background FCM wake-up that dies before UI keeps the marker. | Note. | [ ] |
+| PD.K8 | K8 | D1 | Type an unsent message in a thread, background and return. | The draft is back in the same thread and the keyboard does not reopen. | Note. | [ ] |
+| PD.K9 | K9 | D1 | Fill the Report sheet, background and return. | Reason and details are restored. | Note. | [ ] |
+| PD.Y1 | Y1 | Samsung | Rotate the Samsung through the app, including during a call. | It stays portrait on every screen. | Note. | [ ] |
+| PD.Y3 | Y3 | Samsung | Walk the whole signup (as the Throwaway in D2.17 or a second throwaway), backgrounding at each step. | Same step and typed text kept; Verify Email returns with an empty code; password fields empty. | Note. | [ ] |
+| PD.Y4 | Y4 | Samsung | Walk Expert Profile to Request Sent. | Selections kept (specifics in PD.B7). | Note. | [ ] |
+| PD.Y5 | Y5 | D1 | Walk Conversations to a thread, type, background and return. | Draft kept (specifics in PD.K8). | Note. | [ ] |
+| PD.Y6 | Y6 | D1 | Join a call, background and return; then the force-stop case in PD.C7. | Nothing re-joins. | H5 log. | [ ] |
+| PD.Y7 | Y7 | Samsung | Toggle dark mode while on a form in each flow. | Typed text kept, secrets empty, no crash. | Note; H4 crash count. | [ ] |
+| PD.Y11 | Y11 | Samsung | On the Play build, log in, then from a deep screen (booking detail, a chat thread) background and return. Confirm login and the realtime connection work under R8. | The deep screen is restored. If it lands on the start screen, log a bug (add a NavKey keep rule). | Note. | [ ] |
+
+Switch Don't keep activities off.
+
+### 5.4 IME and insets (IM.)
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| IM.L2 | L2 | Samsung | Wrong password with the keyboard open. | Focus lands on the password field above the keyboard. | Note. | [ ] |
+| IM.L4 | L4 | Samsung | Login with the keyboard open. | Log in stays reachable above the open keyboard. | Note. | [ ] |
+| IM.L5 | L5 | Samsung | The four recovery screens with the keyboard open. | Nothing clips. | Note. | [ ] |
+| IM.L6 | L6 | Samsung | Reset code with SMS or OTP autofill; submit with errors. | The 6-digit code autofills; focus moves to the first failing field. | Note. | [ ] |
+| IM.B6 | B6 | Samsung | Type in the booking Notes field with the real keyboard. | Caret stays visible; tapping outside clears focus; a drag dismisses the keyboard; Book Now can be scrolled above the keyboard. | Note. | [ ] |
+| IM.C5 | C5 | D1 | During a call, switch between gesture and 3-button navigation. | The pill sits correctly over both and clears a side display cutout. | Note. | [ ] |
+| IM.K7 | K7, WR-B01 | D1 | Open a thread, show the keyboard, trigger a failed refresh. | The IME pushes the thread up with the cutout and 3-button navigation; the cursor is stable; the long-press Delete menu works; the failed refresh snackbar sits above the keyboard and the composer (WR-B01). | Note. | [ ] |
+| IM.K8 | K8 | D1 | Type an unsent message and background (Don't keep activities is off now). | The draft is back and the keyboard does not reopen. | Note. | [ ] |
+| IM.K9 | K9 | D1 | Open the Report sheet with the real keyboard. | The input stays visible. | Note. | [ ] |
+| IM.Y8 | Y8 | Samsung | Keyboard open over the Samsung cutout. | No text or control sits under the status bar, a side cutout or the keyboard. | Note. | [ ] |
+| IM.Y9 | Y9 | Samsung | Switch between gesture and 3-button navigation. | Snackbars, sticky footers and the call pill clear the bar in both. | Note. | [ ] |
+| IM.Y16 | Y16 | Samsung | Walk the four SC-4 flows. | No text or control sits under the status bar, a side cutout or the navigation bar. | Note. | [ ] |
+
+### 5.5 Plain (PL.)
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| PL.C9 | C9 | D1 | Deny POST_NOTIFICATIONS on API 33+, then join a call. | The call still runs and the pill remains. | Note; H5 log. | [ ] |
+| PL.K12 | K12 | D1 | Use the jump-to-latest control and watch the list move-to-top animation. | They feel right. | Note. | [ ] |
+
+### 5.6 Emulator (EM., D-10)
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| EM.1 | 09-HUMAN-UAT 3, P9 Android 17 | emulator | On `Medium_Phone_API_37.0` run `adb shell cmd audio set-enable-hardening enable`, join a call and background it. | Audio and focus continue; the targetSdk 37 local-network permission does not block Agora. | The adb output and call log lines. | [ ] |
 
 ## 6. Run if time allows (triaged by D-07, not blocking)
 
-Large-window, tier 2-4 and other deferred rows. Failures are triaged by D-07 and do not block automatically. Filled by Task 3.
+Large-window, tier 2-4 and other deferred rows. Failures are triaged by D-07 and do not block automatically. Rows left `[ ]` get "not run in Phase 16: post-release" at close-out. Compact form: the Source row ID names the original checklist or STATE item; the Check is one line.
+
+### 6.1 Large window (emulator, outside the D-06 tier-1 variants)
+
+Resizable AVD from the android-37.0 image (RESEARCH Open Question 3); confirm scope with the user at sign-off.
+
+| Row ID | Source row ID | Check (one line) | Result |
+|---|---|---|---|
+| LW.L9 | L9 | Login and the four recovery screens are centered at 600 dp, app bars span the window, nothing clipped. | [ ] |
+| LW.B9 | B9 | Make a Booking and Request Sent capped at 600 dp; resizing mid-booking keeps every selection and the notes. | [ ] |
+| LW.C4 | C4 | At 900x400 Mute, Speaker and End call show without scrolling; a narrow short window scrolls; phone layout unchanged. | [ ] |
+| LW.C10 | C10 | Resize the window during a call: no clipped controls, call state kept. | [ ] |
+| LW.K13 | K13 | Conversations rows and Report & Block capped at 600 dp. | [ ] |
+| LW.Y2 | Y2 | Resize through phone, 900x400 and 900 dp square: content never clipped, input kept, max width 600 dp. | [ ] |
+
+### 6.2 Tier 2-4 checklist rows
+
+| Row ID | Source row ID | Check (one line) | Result |
+|---|---|---|---|
+| T2.S1 | S1 | All 12 signup surfaces at 200% font with the keyboard open: no clipped text, buttons stack. | [ ] |
+| T2.S2 | S2 | Country, language and expertise search sheets stay visible above the keyboard and the list scrolls. | [ ] |
+| T2.S3 | S3 | TalkBack on the Profile Photo crop offers and performs the custom zoom and move actions. | [ ] |
+| T2.S4 | S4 | Don't keep activities at each signup step: same step, typed text kept, Verify Email code empty. | [ ] |
+| T2.S5 | S5 | Signup screens capped at 600 dp on a large window; app bars full width. | [ ] |
+| T2.S6 | S6 | Review and Overview announce in-flight and error states; Publish reachable; retry works. | [ ] |
+| T2.E1 | E1 | Explore, the View all sheet and Expert Profile at 200%: nothing clips, Book Session reachable. | [ ] |
+| T2.E2 | E2 | Category sheet search and results stay usable with the keyboard open. | [ ] |
+| T2.E3 | E3 | Pull to refresh feels normal; a failed refresh keeps all sections and shows one Retry snackbar. | [ ] |
+| T2.E4 | E4 | With no categories the copy reads "No categories yet" and "Check back soon."; decide if the copy is right. | [ ] |
+| T2.E5 | E5 | Expert Profile with TalkBack: "Book Session with {name}", sections in order, headings navigate. | [ ] |
+| T2.E6 | E6 | Expert Profile on a large window: hero glow full width, sections capped at 600 dp. | [ ] |
+| T2.M1 | M1 | My Bookings, Upcoming Details with a reschedule card, Cancel step 2 and Booking Summary at 200%. | [ ] |
+| T2.M2 | M2 | Failed refresh shows exactly one "Couldn't refresh" snackbar with Retry; TalkBack announces it. | [ ] |
+| T2.M3 | M3 | ErrorState and EmptyState headings navigate as headings and announce once; long headings wrap at 200%. | [ ] |
+| T2.M4 | M4 | Kill the process on Cancel confirm and reopen: the confirm step shows and nothing cancels until Confirm. | [ ] |
+| T2.M5 | M5 | A JPY booking cancel shows the refund snackbar with no decimals (no JPY topic in production: likely not run). | [ ] |
+| T2.M6 | M6 | Decline-reschedule sheet keeps the reason, counter and Decline button visible with the keyboard; text survives a kill. | [ ] |
+| T2.M7 | M7 | My Bookings, Upcoming Details, Booking Summary and Cancel capped at 600 dp on a large window. | [ ] |
+| T2.M8 | M8 | After Retry succeeds on a detail screen, note where TalkBack focus lands (not implemented, log only). | [ ] |
+| T2.N1 | N1 | Notifications list, Write Review, Booking Summary with Feedback and the Past card pill at 200%. | [ ] |
+| T2.N2 | N2 | TalkBack reads the star group, the nested Past card action and the notification rows correctly. | [ ] |
+| T2.N3 | N3 | Offline foreground push on Notifications: rows stay, one Retry snackbar, Retry reloads. | [ ] |
+| T2.N4 | N4 | Notifications and Write Review on a large window: centered 600 dp column, footer background spans. | [ ] |
+| T2.X1 | X1 | Topics, Topic Editor with an error, an overlapping day banner and the Time Range sheet at 200%. | [ ] |
+| T2.X2 | X2 | TalkBack reads the Time Range sheet; the sheet keeps state after recreation and process death. | [ ] |
+| T2.X3 | X3 | Topic Editor focus moves to the first invalid field; description stays above the keyboard; error survives rotation-equivalent. | [ ] |
+| T2.X4 | X4 | Dashboard, request card, Request Decision, Decline sheet, Confirmed, Upcoming card and Cancel step 2 at 200%. | [ ] |
+| T2.X5 | X5 | TalkBack on the Decline and Accept sheets; Booking Confirmed starts on its headline. | [ ] |
+| T2.X6 | X6 | Tab return and realtime events reload without flicker; Confirmed with animations off shows its final state. | [ ] |
+| T2.X7 | X7 | Decline and Accept sheets survive Don't keep activities with text kept and nothing sent. | [ ] |
+| T2.X8 | X8 | Offline refresh on Dashboard, Bookings, Requests, Topics and Availability: one Retry snackbar each, above the bar and keyboard. | [ ] |
+| T2.X9 | X9 | Expert screens capped and centered at 600 dp with full-width app bars on a large window. | [ ] |
+| T2.T1 | T1 | Both hubs, settings, Account Security, Delete Account, Help, Payouts, Activity and Tax at 200%. | [ ] |
+| T2.T2 | T2 | TalkBack announces the save status, password toggle state, FAQ state and selected delete reason. | [ ] |
+| T2.T3 | T3 | The four forms survive Don't keep activities; TIN, account identifier and deletion password come back empty. | [ ] |
+| T2.T4 | T4 | The Tax saved snackbar sits above the gesture bar and the keyboard. | [ ] |
+| T2.T5 | T5 | Offline pull to refresh on Payouts, Activity and Help: content stays, one Retry snackbar. | [ ] |
+| T2.T6 | T6 | A wrong current password keeps the cursor and keyboard; a server error dialog keeps all typed values. | [ ] |
+| T2.T7 | T7 | The Payment Methods loading skeleton matches the loaded rows without a jump. | [ ] |
+| T2.T8 | T8 | After deleting the Throwaway, TalkBack announces the Farewell headline first. | [ ] |
+| T2.T9 | T9 | Log out and Delete dialogs survive Don't keep activities and never auto-confirm. | [ ] |
+| T2.T10 | T10 | Settings screens centered at 600 dp with full-width app bars on a large window. | [ ] |
+| T2.Y10 | Y10 | With animation scales off, Request Sent, Booking Confirmed and sheets show their final state at once. | [ ] |
+| T2.Y13 | Y13 | On a throttled network, skeleton to content and error to retried content show no jump or flicker. | [ ] |
+| T2.Y15 | Y15 | After Don't keep activities, scroll position is restored where data is available (best effort; note regressions). | [ ] |
+
+### 6.3 Other deferred STATE items not in the matrix
+
+| Row ID | Source row ID | Check (one line) | Result |
+|---|---|---|---|
+| OT.P3-2 | P3 SC-2 | Recovery flow on the Play build: Forgot Password to Password Changed, Back behavior, autofill. | [ ] |
+| OT.P3-4 | P3 SC-4 | Airplane mode 10 s then off: `Realtime` returns to Connected within about 2 s of the network. | [ ] |
+| OT.P4-1 | P4 SC-1 | Full signup with a new email (no username or phone) through Publish to the client home. | [ ] |
+| OT.P4-2 | P4 SC-2 | Verify Email sends nothing on open; Resend disabled for 30 s; wrong code shows the inline error. | [ ] |
+| OT.P4-3 | P4 SC-3 | Quit mid-setup and relaunch to the hub with completed steps checked. | [ ] |
+| OT.P4-4 | P4 SC-4 | After publish: carousel shows once; mode switch to Expert and back keeps mode after relaunch. | [ ] |
+| OT.P5-1 | P5 SC-1 | Explore hero, Trending Categories, Featured Topics, Today's Sessions, chip filter and View all. | [ ] |
+| OT.P5-2 | P5 SC-2 | Category cache: View all shows from cache in airplane mode after a relaunch. | [ ] |
+| OT.P5-3 | P5 SC-3 | Expert Profile hero, sections, Book Session and the unavailable-profile message. | [ ] |
+| OT.P10-a | P10 (a) | Topics: create, edit, delete a paid topic; price below the floor shows the live error. | [ ] |
+| OT.P10-b | P10 (b) | Availability: overlapping slots show the banner and disable Save; Save during a call is refused. | [ ] |
+| OT.P10-c | P10 (c) | Timezone: a UTC-zone expert on a non-UTC device sees the device zone filled and stored. | [ ] |
+| OT.P10-e | P10 (e) | French (Canada) locale: typing "12,50" saves 1250 minor units. | [ ] |
+| OT.P10-g | P10 (g) | Edit Expertise offline shows the load error; a topic with 45 or 600 minutes keeps its duration after a title edit. | [ ] |
+| OT.P14-b | P14 (b) | Activity amounts match the ledger, statuses, paging past 20 rows, preview and See all. | [ ] |
+| OT.P14-c | P14 (c) | Hubs and settings auto-save; avatar pick and crop; languages and country persist; change password. | [ ] |
+| OT.P14-e | P14 (e) | Tax & Payout Info saves without and with a TIN. | [ ] |
+| OT.PP | P4 visual bullet, P14 (c) | Photo picker and avatar crop on API 26-32. `[-] not run: no API 26-32 AVD`. | [-] not run: no API 26-32 AVD |
 
 ## 7. End of run: money sweep and cleanup
 
@@ -239,4 +427,24 @@ Rows are added from the `PAID` lines of each results file, at the moment the boo
 
 ## 8. Sign-off (D-09)
 
-The user fills this at close-out. Filled by Task 3.
+A fill-in template. Claude fills the counts at close-out; the user confirms. Phase 16 cannot close until the confirmation line below is filled (D-09).
+
+- **Direction 1 (QA-02) counts:** pass ___ / fail ___ / not run ___
+- **Direction 2 (QA-03) counts:** pass ___ / fail ___ / not run ___
+- **Tier-1 counts (Section 5):** pass ___ / fail ___ / not run ___
+- **Open blocking bugs (must be 0):** ___
+- **3DS outcome (D-02):** a real live 3DS challenge passed in D1 and in D2, or not run with the reason: ___
+- **Money result (D-04):** every hold voided ___, every capture refunded ___, Section 7 ticked ___
+- **Accepted gaps (D-10):**
+  - The user is the only internal tester, so the SC-5 and REL-05 "few real users on a mix of devices" part is accepted at release.
+  - JPY is not runnable (no JPY topic in production).
+  - Large-window rows are outside D-06 (Section 6.1).
+  - Tier 2-4 rows not run (Section 6.2 and 6.3).
+  - Photo picker on API 26-32 (no AVD).
+
+Write-back table (left empty; close-out fills it so every deferred STATE item and checklist row has a result):
+
+| Source item | Runbook rows | Result |
+|---|---|---|
+
+Confirmed by the user on YYYY-MM-DD: option ___ (accept the matrix and tier-1 results / accept with the listed gaps / do not accept, reason: ___)
