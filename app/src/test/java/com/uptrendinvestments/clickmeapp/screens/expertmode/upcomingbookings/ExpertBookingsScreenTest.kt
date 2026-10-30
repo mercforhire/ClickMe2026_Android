@@ -1,11 +1,15 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -31,6 +35,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.sub
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
@@ -336,6 +341,8 @@ class ExpertBookingsScreenTest {
     private class NoticeCalls {
         var noticeConsumed = 0
         var refreshFailureConsumed = 0
+        var refreshes = 0
+        var retries = 0
     }
 
     private fun showContent(
@@ -348,8 +355,8 @@ class ExpertBookingsScreenTest {
                     state = state,
                     joinNow = now,
                     onSelectTab = {},
-                    onRefresh = {},
-                    onRetry = {},
+                    onRefresh = { calls.refreshes++ },
+                    onRetry = { calls.retries++ },
                     onOpenBooking = {},
                     onJoin = {},
                     onUpdateAvailability = {},
@@ -395,6 +402,68 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
         assertEquals(1, calls.refreshFailureConsumed)
         assertEquals(0, calls.noticeConsumed)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        val calls = NoticeCalls()
+        showContent(loadedState(refreshFailed = true), calls)
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        // Long duration: still up after the Short 4 s would have dismissed it.
+        rule.mainClock.autoAdvance = false
+        rule.mainClock.advanceTimeBy(5_000)
+        rule.onNodeWithText("Retry").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        assertEquals(1, calls.refreshes)
+        assertEquals(0, calls.retries)
+    }
+
+    @Test
+    fun listCells() {
+        var state by mutableStateOf(ExpertBookingsUiState(load = ExpertBookingsLoad.Loading))
+        val calls = NoticeCalls()
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingsContent(
+                    state = state,
+                    joinNow = now,
+                    onSelectTab = {},
+                    onRefresh = {},
+                    onRetry = { calls.retries++ },
+                    onOpenBooking = {},
+                    onJoin = {},
+                    onUpdateAvailability = {},
+                    onNoticeConsumed = {},
+                    onRefreshFailureConsumed = {},
+                )
+            }
+        }
+        rule.onNodeWithContentDescription("Loading").assertExists()
+
+        state = state.copy(load = ExpertBookingsLoad.Failed(FieldError.Text("Boom")))
+        rule.waitForIdle()
+        rule.onNodeWithText("Couldn't load sessions").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, calls.retries)
+
+        state = state.copy(load = ExpertBookingsLoad.Loaded, selectedTab = BookingsTab.Upcoming)
+        rule.waitForIdle()
+        rule.onNodeWithText("No Upcoming Sessions Yet").assertExists()
+
+        state = state.copy(selectedTab = BookingsTab.Past)
+        rule.waitForIdle()
+        rule.onNodeWithText("No past sessions yet").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        serve()
+        show()
+        val bounds = rule.onNodeWithTag(EXPERT_UPCOMING_CARD_TAG).getUnclippedBoundsInRoot()
+        assertTrue("width ${bounds.right - bounds.left}", (bounds.right - bounds.left).value <= 600f)
     }
 
     @Test

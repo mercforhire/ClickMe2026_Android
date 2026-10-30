@@ -1,8 +1,12 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.topics
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -20,10 +24,12 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.topicItem
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class TopicsScreenTest {
@@ -175,5 +181,83 @@ class TopicsScreenTest {
         rule.onNodeWithText("OK").performClick()
 
         assertEquals(listOf("dismissDialog"), calls)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        setContent(loaded(t1).copy(snackbar = TopicsSnackbar.RefreshFailed))
+
+        rule.waitForIdle()
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        assertEquals(listOf("snackbarShown"), calls)
+        // Long duration: still up after the Short 4 s would have dismissed it.
+        rule.mainClock.autoAdvance = false
+        rule.mainClock.advanceTimeBy(5_000)
+        rule.onNodeWithText("Retry").performClick()
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+
+        assertEquals(listOf("snackbarShown", "refresh"), calls)
+        rule.onNodeWithText("Tax planning").assertExists()
+    }
+
+    private fun assertResultSnackbarHasNoAction(
+        kind: TopicsSnackbar,
+        message: String,
+    ) {
+        setContent(loaded(t1).copy(snackbar = kind))
+
+        rule.waitForIdle()
+        rule.onNodeWithText(message).assertExists()
+        rule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun addedSnackbarKeepsNoAction() = assertResultSnackbarHasNoAction(TopicsSnackbar.Added, "Topic added")
+
+    @Test
+    fun updatedSnackbarKeepsNoAction() = assertResultSnackbarHasNoAction(TopicsSnackbar.Updated, "Topic updated")
+
+    @Test
+    fun deletedSnackbarKeepsNoAction() = assertResultSnackbarHasNoAction(TopicsSnackbar.Deleted, "Topic deleted")
+
+    @Test
+    fun listCells() {
+        var state by mutableStateOf(TopicsUiState())
+        rule.setContent {
+            ClickMeTheme {
+                TopicsContent(
+                    state = state,
+                    onAddTopic = {},
+                    onEditTopic = {},
+                    onOpenAvailability = {},
+                    onRetry = { calls += "retry" },
+                    onRefresh = {},
+                    onDelete = {},
+                    onDismissDialog = {},
+                    onSnackbarShown = {},
+                )
+            }
+        }
+        rule.onNodeWithTag(TOPICS_SKELETON_TAG).assertExists()
+
+        state = state.copy(list = TopicsListState.Failed(FieldError.Text("Server down")))
+        rule.waitForIdle()
+        rule.onNodeWithText("Couldn't load topics").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(listOf("retry"), calls)
+
+        state = state.copy(list = TopicsListState.Loaded(emptyList()))
+        rule.waitForIdle()
+        rule.onNodeWithText("Add your first topic").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        setContent(loaded(t1))
+
+        val bounds = rule.onNodeWithTag(topicCardTag("t1")).getUnclippedBoundsInRoot()
+        assertTrue("width ${bounds.right - bounds.left}", (bounds.right - bounds.left).value <= 600f)
     }
 }

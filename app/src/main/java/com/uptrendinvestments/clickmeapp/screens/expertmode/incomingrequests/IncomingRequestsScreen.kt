@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.expertmode.IncomingRequestsNotice
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.subviews.IncomingRequestCard
@@ -51,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.Requ
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.ZoneId
@@ -125,12 +127,13 @@ fun IncomingRequestsContent(
             onNoticeConsumed()
         }
     }
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
-            onRefreshFailureConsumed()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+        message = refreshFailedMessage,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -195,7 +198,7 @@ private fun RequestList(
             IncomingRequestCard(
                 row = row,
                 onClick = { onOpenRequest(row.toDecisionKey()) },
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().contentMaxWidth(),
                 zone = zone,
                 timeFormat = timeFormat,
                 locale = locale,

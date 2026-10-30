@@ -62,6 +62,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.Instant
 
 /** The real Dashboard screen over the real ViewModel and repositories, with only the HTTP layer faked. */
@@ -284,6 +285,70 @@ class ExpertDashboardScreenTest {
             rule.onNodeWithText("Retry").performClick()
 
             rule.onNodeWithText("Hello, Ada").assertExists()
+        }
+
+    @Test
+    fun refreshFailedShowsRetry() =
+        runTest(main.testDispatcher) {
+            val f = fixture(requests = listOf(bookingRequestItem("r1")))
+            setContent(f)
+            rule.onNodeWithText("Hello, Ada").assertExists()
+            val before = f.api.expertBookingsCalls
+
+            f.api.expertBookingsHandler = {
+                throw f.api.httpError(500, """{"status":"error","message":"Server down"}""")
+            }
+            f.vm.refresh()
+            rule.waitForIdle()
+            rule.mainClock.autoAdvance = false
+
+            // The content stays and the snackbar offers Retry; Long duration keeps it up past the Short 4 s.
+            rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+            rule.onNodeWithText("Hello, Ada").assertExists()
+            rule.onNodeWithText("Couldn't load dashboard").assertDoesNotExist()
+            rule.mainClock.advanceTimeBy(5_000)
+            rule.onNodeWithText("Retry").assertExists()
+            assertEquals(before + 1, f.api.expertBookingsCalls)
+
+            f.api.expertBookingsHandler = { ExpertBookingsPayload() }
+            rule.onNodeWithText("Retry").performClick()
+            rule.mainClock.autoAdvance = true
+            rule.waitForIdle()
+
+            assertEquals(before + 2, f.api.expertBookingsCalls)
+            rule.onNodeWithText("Hello, Ada").assertExists()
+        }
+
+    @Test
+    fun sectionFailureIsolated() =
+        runTest(main.testDispatcher) {
+            // The weekly earnings fetch has no handler, so it fails: only its own section degrades.
+            val f =
+                fixture(
+                    requests = listOf(bookingRequestItem("r1")),
+                    status = complete,
+                    summary = PayoutSummaryData(4_000, 0, "CAD"),
+                )
+            setContent(f)
+
+            rule.onAllNodesWithText("—").assertCountEquals(1)
+            rule.onNodeWithText("Couldn't load dashboard").assertDoesNotExist()
+            rule.onNodeWithText("Hello, Ada").assertExists()
+            rule.onNodeWithText("1 Pending Request").assertExists()
+            rule.onNodeWithText("Financial Summary").assertExists()
+            rule.onNodeWithText(Money.format(4_000, "CAD")).assertExists()
+        }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun dashboardCapped() =
+        runTest(main.testDispatcher) {
+            val f = fixture(requests = listOf(bookingRequestItem("r1")))
+            setContent(f)
+
+            val banner = rule.onNodeWithTag(DASHBOARD_PENDING_BANNER_TAG).getUnclippedBoundsInRoot()
+            assertTrue("width ${banner.right - banner.left}", (banner.right - banner.left).value <= 600f)
+            assertTrue(banner.left.value >= 150f)
         }
 
     private fun week(

@@ -1,14 +1,18 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.availability
 
+import android.view.View
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,9 +24,16 @@ import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.constants.TimezoneEntry
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.AVAILABILITY_SAVE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.AVAILABILITY_SKELETON_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.TIME_RANGE_DONE_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.TIME_RANGE_END_PREFIX
+import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.TIME_RANGE_START_PREFIX
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.availabilityAddHoursTag
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.subviews.availabilityDayTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.combinedInsets
+import com.uptrendinvestments.clickmeapp.testing.dispatchInsets
+import com.uptrendinvestments.clickmeapp.testing.imeInsets
+import com.uptrendinvestments.clickmeapp.testing.navigationBarInsets
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -30,6 +41,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -50,6 +62,8 @@ class AvailabilityScreenTest {
     private var backCount = 0
     private var dismissDialogCount = 0
     private var refreshFailedShownCount = 0
+    private var refreshCount = 0
+    private lateinit var view: View
     private val toggles = mutableListOf<Pair<DayOfWeek, Boolean>>()
     private val addedHours = mutableListOf<DayOfWeek>()
     private val updatedSlots = mutableListOf<Triple<DayOfWeek, Int, TimeSlot>>()
@@ -58,7 +72,7 @@ class AvailabilityScreenTest {
     private val actions =
         AvailabilityActions(
             retry = { retryCount++ },
-            refresh = {},
+            refresh = { refreshCount++ },
             setDayEnabled = { day, enabled -> toggles += day to enabled },
             addHours = { addedHours += it },
             removeSlot = { _, _ -> },
@@ -76,6 +90,7 @@ class AvailabilityScreenTest {
 
     private fun show(state: AvailabilityUiState) {
         rule.setContent {
+            view = LocalView.current
             ClickMeTheme {
                 AvailabilityContent(
                     state = state,
@@ -304,5 +319,77 @@ class AvailabilityScreenTest {
 
         rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
         assertEquals(1, refreshFailedShownCount)
+    }
+
+    // Phase 15: D-05 Retry, UI-SPEC R9 snackbar insets, D-12 sheet restoration, D-02 width cap.
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        show(loaded(refreshFailed = true))
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        // Long duration: still up after the Short 4 s would have dismissed it.
+        rule.mainClock.autoAdvance = false
+        rule.mainClock.advanceTimeBy(5_000)
+        rule.onNodeWithText("Retry").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+
+        assertEquals(1, refreshCount)
+        assertEquals(0, retryCount)
+        assertEquals(1, refreshFailedShownCount)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun snackbarAboveNavBar() {
+        show(loaded(refreshFailed = true))
+        rule.dispatchInsets(view, navigationBarInsets(48))
+
+        val withNavBar = rule.onNodeWithText("Retry").getUnclippedBoundsInRoot()
+        assertTrue("bottom ${withNavBar.bottom.value}", withNavBar.bottom.value <= 752f)
+
+        rule.dispatchInsets(view, combinedInsets(navigationBarInsets(48), imeInsets(300)))
+        val withIme = rule.onNodeWithText("Retry").getUnclippedBoundsInRoot()
+        assertTrue("bottom ${withIme.bottom.value}", withIme.bottom.value <= 500f)
+    }
+
+    @Test
+    fun timeRangeSheetSurvivesRestore() {
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            ClickMeTheme {
+                AvailabilityContent(
+                    state = loaded(days = mondayNineToFive()),
+                    actions = actions,
+                    onBack = {},
+                    timeFormat = format24,
+                )
+            }
+        }
+
+        rule.onNodeWithContentDescription("Start time 09:00").performScrollTo().performClick()
+        rule.onNodeWithTag(TIME_RANGE_DONE_TAG).assertExists()
+        rule.onNodeWithTag("${TIME_RANGE_START_PREFIX}600").performClick()
+        rule.onNodeWithTag("${TIME_RANGE_END_PREFIX}1080").performClick()
+        rule.onNodeWithTag("${TIME_RANGE_START_PREFIX}600").assertIsSelected()
+        rule.onNodeWithTag("${TIME_RANGE_END_PREFIX}1080").assertIsSelected()
+
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(TIME_RANGE_DONE_TAG).assertExists()
+        rule.onNodeWithTag("${TIME_RANGE_START_PREFIX}600").assertIsSelected()
+        rule.onNodeWithTag("${TIME_RANGE_END_PREFIX}1080").assertIsSelected()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        show(loaded())
+
+        val bounds = rule.onNodeWithTag(availabilityDayTag(DayOfWeek.MONDAY)).getUnclippedBoundsInRoot()
+        assertTrue("width ${bounds.right - bounds.left}", (bounds.right - bounds.left).value <= 600f)
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -36,6 +37,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.showRefreshFailed
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertTopicItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.subviews.TopicCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.subviews.TopicDeleteDialog
@@ -46,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 
 /** Test tag on the "add topic" floating action button (shown only when topics exist). */
@@ -118,10 +121,19 @@ fun TopicsContent(
             TopicsSnackbar.Deleted -> stringResource(R.string.topics_deleted)
             TopicsSnackbar.RefreshFailed -> stringResource(R.string.expert_refresh_failed)
         }
+    val retryLabel = stringResource(R.string.section_retry)
+    val currentOnRefresh by rememberUpdatedState(onRefresh)
     LaunchedEffect(state.snackbar) {
         if (snackbarMessage != null) {
             // Launched on the composition scope so consuming the message does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(snackbarMessage, duration = SnackbarDuration.Short) }
+            if (state.snackbar == TopicsSnackbar.RefreshFailed) {
+                // D-05: a failed pull keeps the list and offers Retry, which re-runs the pull refresh.
+                scope.launch {
+                    snackbarHostState.showRefreshFailed(snackbarMessage, retryLabel) { currentOnRefresh() }
+                }
+            } else {
+                scope.launch { snackbarHostState.showSnackbar(snackbarMessage, duration = SnackbarDuration.Short) }
+            }
             onSnackbarShown()
         }
     }
@@ -201,7 +213,7 @@ fun TopicsContent(
                                     onClick = { onEditTopic(item) },
                                     onEdit = { onEditTopic(item) },
                                     onDelete = { deleteTargetId = item.id },
-                                    modifier = Modifier.animateItem(),
+                                    modifier = Modifier.animateItem().contentMaxWidth(),
                                 )
                             }
                         }

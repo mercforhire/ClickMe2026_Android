@@ -53,9 +53,10 @@ import javax.inject.Inject
  * either gives [DashboardLoad.Failed] (D-13).
  *
  * Refresh triggers (D-05, D-13): pull-to-refresh ([refresh], flags a failure for the snackbar); a quiet reload when
- * the tab is shown again ([onScreenShown]); a quiet reload on every realtime `booking.update`; and a quiet reload
- * when "Back to Home" posts [ExpertLaunchRequest.dashboard] so the pending count drops. Quiet reloads never show
- * Loading and a failed one keeps the previous data. Every start cancels the load in flight, so a burst of events or
+ * the tab is shown again ([onScreenShown]); a reload on every realtime `booking.update`; and a quiet reload when
+ * "Back to Home" posts [ExpertLaunchRequest.dashboard] so the pending count drops. Reloads never show Loading and a
+ * failed one keeps the previous data. They differ on failure only (Phase 15 D-05): the tab-return and launch reloads
+ * stay silent, while the pull and the realtime reload flag the failure so the snackbar offers Retry. Every start cancels the load in flight, so a burst of events or
  * a pull during a quiet reload ends with one latest-wins result and never two overlapping fetch pairs (Pitfall 7).
  *
  * The financial half (plan 11-14) is soft (D-09, D-10): after the hard fetches of every load, the weekly earnings, the
@@ -90,6 +91,12 @@ class ExpertDashboardViewModel
 
             /** Pull-to-refresh: shows the refresh indicator and flags a failure. */
             Pull,
+
+            /**
+             * Refetch started by a realtime event (Phase 15 D-05): behaves like [Quiet] (no skeleton, no indicator,
+             * data kept) but flags a failure so the refresh-failed snackbar offers Retry.
+             */
+            Realtime,
         }
 
         private val _uiState = MutableStateFlow(ExpertDashboardUiState())
@@ -114,7 +121,9 @@ class ExpertDashboardViewModel
             // burst of events ends with one latest-wins result.
             viewModelScope.launch {
                 realtime.events.filterIsInstance<RealtimeEvent.BookingUpdate>().collect {
-                    startLoad(if (_uiState.value.load is DashboardLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
+                    startLoad(
+                        if (_uiState.value.load is DashboardLoad.Loading) LoadMode.Loud else LoadMode.Realtime,
+                    )
                 }
             }
             // D-05: a Back to Home posted before this ViewModel existed is applied now, so the first load is the fresh
@@ -231,7 +240,7 @@ class ExpertDashboardViewModel
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = DashboardLoad.Loading)
                     LoadMode.Pull -> it.copy(isRefreshing = true)
-                    LoadMode.Quiet -> it
+                    LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }
             loadJob =
@@ -245,7 +254,7 @@ class ExpertDashboardViewModel
                             when (mode) {
                                 LoadMode.Loud ->
                                     it.copy(load = DashboardLoad.Failed(e.toSectionMessage()), isRefreshing = false)
-                                LoadMode.Pull -> it.copy(refreshFailed = true, isRefreshing = false)
+                                LoadMode.Pull, LoadMode.Realtime -> it.copy(refreshFailed = true, isRefreshing = false)
                                 LoadMode.Quiet -> it.copy(isRefreshing = false)
                             }
                         }
