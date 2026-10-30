@@ -31,6 +31,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -126,6 +129,10 @@ fun CallOverlayHost(
  * The content and the pill each pad the horizontal display cutout once (UI-SPEC R5, POL-03); the expanded layer pads
  * its own sides through `MeetingCallScreen`'s `safeDrawing` padding, so it gets no second consumer here.
  *
+ * While the pill shows it is the first node in traversal order on whatever screen is underneath: its host is its own
+ * traversal group with a negative traversal index, so it sorts before the default 0 (UI-SPEC Flow 3, Assumption A8).
+ * The JVM tests prove the semantics order only; that TalkBack lands on the pill first is a device-checklist row.
+ *
  * Dialog windows draw above the activity root, so the pill cannot sit above an open sheet or dialog (RESEARCH
  * Pattern 7; no Join site is inside a sheet).
  */
@@ -177,7 +184,11 @@ fun CallOverlayContent(
                     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                     .padding(end = Spacing.md)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(bottom = PILL_BOTTOM_OFFSET),
+                    .padding(bottom = PILL_BOTTOM_OFFSET)
+                    .semantics {
+                        isTraversalGroup = true
+                        traversalIndex = -1f
+                    },
             enter =
                 scaleIn(
                     initialScale = PILL_HIDDEN_SCALE,
