@@ -4,10 +4,13 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescriptionExactly
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -16,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.PICKER_ROW_CHECK_TAG
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.constants.Country
@@ -25,10 +29,12 @@ import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselect
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheetContent
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class SignupBasicInfoScreenTest {
@@ -106,6 +112,30 @@ class SignupBasicInfoScreenTest {
         show(SignupBasicInfoUiState(languages = listOf(english)))
         rule.onNodeWithContentDescription("Remove English").performScrollTo().performClick()
         assertEquals(listOf("en"), removed)
+    }
+
+    /** D-02: on a large window the form column is capped at 600 dp and centered; the app bar stays full width. */
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun formCappedOnLargeWindow() {
+        show(SignupBasicInfoUiState())
+
+        val bounds = rule.onAllNodes(hasSetTextAction())[0].getUnclippedBoundsInRoot()
+        assertTrue("field is ${bounds.right - bounds.left} wide", bounds.right - bounds.left <= 600.dp)
+        assertTrue("field starts at ${bounds.left}", bounds.left >= 150.dp)
+        assertTrue("field ends at ${bounds.right}", bounds.right <= 750.dp)
+    }
+
+    /** A short, wide window (landscape tablet or resized window) still reaches the last row and Save. */
+    @Test
+    @Config(qualifiers = "w900dp-h360dp")
+    fun saveAndLastRowReachableOnShortWindow() {
+        show(SignupBasicInfoUiState())
+
+        rule.onNodeWithText("Add language...").performScrollTo().performClick()
+        assertEquals(1, languageSheetOpens)
+        rule.onNode(hasText("Save") and hasClickAction()).assertIsDisplayed().performClick()
+        assertEquals(1, saves)
     }
 
     @Test

@@ -64,6 +64,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val IconCircleSize = 96.dp
@@ -143,6 +144,7 @@ fun SignupVerifyEmailContent(
                         .consumeWindowInsets(innerPadding)
                         .imePadding()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,

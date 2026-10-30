@@ -57,6 +57,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /**
@@ -135,6 +136,7 @@ fun SignupInitialContent(
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.xxl, bottom = Spacing.xl),
             ) {
                 Text(
