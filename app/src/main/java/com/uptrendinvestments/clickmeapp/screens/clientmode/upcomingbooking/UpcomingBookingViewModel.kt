@@ -12,6 +12,7 @@ import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isNotFound
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
@@ -48,6 +50,11 @@ import java.time.Instant
  * Join Call (CALL-01, D-01): [join] starts the call through the one [CallStarter]. The window only enables the button
  * ([joinNow] ticks every 30 s); the server has the final say on `/join`, so [join] does not re-check it (D-02).
  * Cancel is guarded while this booking's call is live ([attemptCancel], D-13).
+ *
+ * Phase 15: a failed realtime refetch or Retry with content showing keeps the details and raises `refreshFailed` for
+ * the refresh-failed snackbar (D-05); [refresh] is that Retry. The resume note (D-11) is consumed once at construction
+ * from [CallResumeNotice]; nothing here touches the call engine, starter or permission gate. A 404 first load is
+ * [UpcomingBookingUiState.Unavailable], not a failure.
  */
 @HiltViewModel(assistedFactory = UpcomingBookingViewModel.Factory::class)
 class UpcomingBookingViewModel
@@ -100,7 +107,7 @@ class UpcomingBookingViewModel
                 realtime.events
                     .filterIsInstance<RealtimeEvent.BookingUpdate>()
                     .filter { it.bookingId == bookingId }
-                    .collect { startLoad(quiet = _uiState.value is UpcomingBookingUiState.Loaded) }
+                    .collect { startLoad(quiet = _uiState.value is UpcomingBookingUiState.Loaded, flagFailure = true) }
             }
         }
 
@@ -110,10 +117,18 @@ class UpcomingBookingViewModel
 
         /** Retry of a failed refresh with content showing (D-05): the details stay and only a progress bar runs. */
         fun refresh() {
+            val current = _uiState.value
+            if (current !is UpcomingBookingUiState.Loaded) {
+                retry()
+                return
+            }
+            _uiState.value = current.copy(isRefreshing = true, refreshFailed = false)
+            startLoad(quiet = true, flagFailure = true)
         }
 
-        /** The screen showed the refresh-failed snackbar. */
+        /** The screen showed the refresh-failed snackbar, so the flag is spent. */
         fun onRefreshFailureConsumed() {
+            _uiState.update { if (it is UpcomingBookingUiState.Loaded) it.copy(refreshFailed = false) else it }
         }
 
         /**
@@ -161,7 +176,14 @@ class UpcomingBookingViewModel
 
         fun consumeRescheduleNotice() = controller.consumeNotice()
 
-        private fun startLoad(quiet: Boolean): Job {
+        /**
+         * [flagFailure] makes a failed quiet load raise `refreshFailed` for the snackbar (realtime refetch and
+         * Retry). The silent resume reload (D-02) leaves it off.
+         */
+        private fun startLoad(
+            quiet: Boolean,
+            flagFailure: Boolean = false,
+        ): Job {
             loadJob?.cancel()
             loadIsCurrent = true
             if (!quiet) _uiState.value = UpcomingBookingUiState.Loading
@@ -169,9 +191,24 @@ class UpcomingBookingViewModel
                 viewModelScope.launch {
                     try {
                         val details = repository.detail(bookingId).toUpcomingDetails(clock.instant())
-                        _uiState.value = UpcomingBookingUiState.Loaded(details)
+                        _uiState.value = UpcomingBookingUiState.Loaded(details, showCallResumeNote = showCallResumeNote)
                     } catch (e: ApiException) {
-                        if (!quiet) _uiState.value = UpcomingBookingUiState.Failed(e.toSectionMessage())
+                        if (quiet) {
+                            _uiState.update {
+                                if (it is UpcomingBookingUiState.Loaded) {
+                                    it.copy(isRefreshing = false, refreshFailed = it.refreshFailed || flagFailure)
+                                } else {
+                                    it
+                                }
+                            }
+                        } else {
+                            _uiState.value =
+                                if (e.isNotFound()) {
+                                    UpcomingBookingUiState.Unavailable
+                                } else {
+                                    UpcomingBookingUiState.Failed(e.toSectionMessage())
+                                }
+                        }
                     }
                 }
             loadJob = job
