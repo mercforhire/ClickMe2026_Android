@@ -113,6 +113,6 @@ class LoginScreenTest {
         rule.onNodeWithText("Forgot Password?").assertIsNotEnabled()
         rule.onNodeWithText("Sign Up").assertIsNotEnabled()
         rule.onNodeWithText("Login").assertDoesNotExist()
-        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving")).assertExists()
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress")).assertExists()
     }
 }

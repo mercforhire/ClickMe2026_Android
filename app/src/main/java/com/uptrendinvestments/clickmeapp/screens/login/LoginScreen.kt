@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.screens.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -40,6 +40,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +57,7 @@ import com.uptrendinvestments.clickmeapp.components.buttons.AsyncSaveButton
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val LogoSize = 80.dp
@@ -128,6 +132,13 @@ fun LoginContent(
         onFocusRequestConsumed()
     }
 
+    // A server-side wrong-password error lands after the submit (the field is disabled until then), so move focus
+    // to the field once it is enabled again (UI-SPEC Flow 1).
+    val hasPasswordError = state.passwordError != null
+    LaunchedEffect(hasPasswordError, state.isSubmitting) {
+        if (hasPasswordError && !state.isSubmitting) passwordFocus.requestFocus()
+    }
+
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         GreenGlowBlobLayer(Modifier.matchParentSize())
         Column(
@@ -136,65 +147,56 @@ fun LoginContent(
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.xxl, bottom = Spacing.lg),
+                    .verticalScroll(rememberScrollState()),
         ) {
-            LoginHeader()
-            Spacer(Modifier.height(Spacing.lg))
-            ValidatedField(
-                value = state.email,
-                onValueChange = onEmailChange,
-                placeholder = stringResource(R.string.login_email_placeholder),
-                leadingIcon = Icons.Outlined.Email,
-                error = state.emailError?.asString(),
-                modifier = Modifier.focusRequester(emailFocus),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() }),
-                enabled = !state.isSubmitting,
-                contentType = ContentType.EmailAddress,
-            )
-            ValidatedField(
-                value = state.password,
-                onValueChange = onPasswordChange,
-                placeholder = stringResource(R.string.login_password_placeholder),
-                leadingIcon = Icons.Outlined.Lock,
-                error = state.passwordError?.asString(),
-                modifier = Modifier.focusRequester(passwordFocus),
-                isSecure = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                enabled = !state.isSubmitting,
-            )
-            AuthLink(
-                text = stringResource(R.string.login_forgot_password),
-                onClick = onForgotPassword,
-                enabled = !state.isSubmitting,
-                modifier = Modifier.align(Alignment.End),
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            AsyncSaveButton(
-                title = stringResource(R.string.login_submit),
-                state = if (state.isSubmitting) SaveState.Saving else SaveState.Idle,
-                onClick = onSubmit,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(Spacing.lg))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier =
+                    Modifier
+                        .contentMaxWidth()
+                        .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.xxl, bottom = Spacing.lg),
             ) {
-                Text(
-                    text = stringResource(R.string.login_no_account),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.extras.onSurfaceMuted,
+                LoginHeader()
+                Spacer(Modifier.height(Spacing.lg))
+                ValidatedField(
+                    value = state.email,
+                    onValueChange = onEmailChange,
+                    placeholder = stringResource(R.string.login_email_placeholder),
+                    leadingIcon = Icons.Outlined.Email,
+                    error = state.emailError?.asString(),
+                    modifier = Modifier.focusRequester(emailFocus),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() }),
+                    enabled = !state.isSubmitting,
+                    contentType = ContentType.EmailAddress,
                 )
-                Spacer(Modifier.width(Spacing.xs))
-                AuthLink(
-                    text = stringResource(R.string.login_sign_up),
-                    onClick = onSignUp,
+                ValidatedField(
+                    value = state.password,
+                    onValueChange = onPasswordChange,
+                    placeholder = stringResource(R.string.login_password_placeholder),
+                    leadingIcon = Icons.Outlined.Lock,
+                    error = state.passwordError?.asString(),
+                    modifier = Modifier.focusRequester(passwordFocus),
+                    isSecure = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onSubmit() }),
                     enabled = !state.isSubmitting,
                 )
+                AuthLink(
+                    text = stringResource(R.string.login_forgot_password),
+                    onClick = onForgotPassword,
+                    enabled = !state.isSubmitting,
+                    modifier = Modifier.align(Alignment.End),
+                )
+                Spacer(Modifier.height(Spacing.sm))
+                AsyncSaveButton(
+                    title = stringResource(R.string.login_submit),
+                    state = if (state.isSubmitting) SaveState.Saving else SaveState.Idle,
+                    onClick = onSubmit,
+                    modifier = Modifier.fillMaxWidth(),
+                    busyDescription = stringResource(R.string.a11y_in_progress),
+                )
+                Spacer(Modifier.height(Spacing.lg))
+                SignUpPrompt(onClick = onSignUp, enabled = !state.isSubmitting)
             }
         }
     }
@@ -218,6 +220,7 @@ private fun LoginHeader() {
             text = stringResource(R.string.login_wordmark),
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() },
         )
         Text(
             text = stringResource(R.string.login_tagline),
@@ -225,6 +228,40 @@ private fun LoginHeader() {
             color = MaterialTheme.extras.onSurfaceMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = Spacing.xl),
+        )
+    }
+}
+
+/**
+ * "Don't have an account? Sign Up" as one TalkBack node with one action (UI-SPEC Flow 1): the whole row is the
+ * click target, the link half is styled text only, so there is no second focusable.
+ */
+@Composable
+private fun SignUpPrompt(
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = LinkMinHeight)
+                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.login_no_account),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.extras.onSurfaceMuted,
+        )
+        Text(
+            text = stringResource(R.string.login_sign_up),
+            style = MaterialTheme.typography.labelLarge,
+            textDecoration = TextDecoration.Underline,
+            color =
+                if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.extras.onSurfaceMuted,
+            modifier = Modifier.padding(start = Spacing.xs),
         )
     }
 }

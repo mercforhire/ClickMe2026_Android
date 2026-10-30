@@ -44,23 +44,54 @@ class SetNewPasswordViewModelTest {
     }
 
     @Test
-    fun codeIsSanitizedMirroredAndRestored_passwordsNeverSaved() =
+    fun codeIsSanitized() =
+        runTest(rule.testDispatcher) {
+            val (_, vm) = harness()
+            vm.start("a@b.co")
+            vm.onCodeChange("12a34 5678")
+            assertEquals("123456", vm.uiState.value.code)
+        }
+
+    @Test
+    fun codeNeverInSavedState() =
         runTest(rule.testDispatcher) {
             val saved = SavedStateHandle()
             val (_, vm) = harness(saved)
             vm.start("a@b.co")
-            vm.onCodeChange("12a34 5678")
-            vm.onNewPasswordChange("abcdefg1!")
-            vm.onConfirmChange("abcdefg1!")
+            vm.onCodeChange("123456")
             assertEquals("123456", vm.uiState.value.code)
-            assertEquals("123456", saved.get<String>("reset_code"))
-            assertTrue(saved.keys().none { it.contains("password", ignoreCase = true) })
-            assertTrue(saved.keys().all { saved.get<Any>(it) == "123456" })
+            assertTrue("reset_code" !in saved.keys())
+            assertTrue(saved.keys().none { saved.get<Any>(it) == "123456" })
+        }
 
-            val (_, restored) = harness(saved)
-            assertEquals("123456", restored.uiState.value.code)
-            assertEquals("", restored.uiState.value.newPassword)
-            assertEquals("", restored.uiState.value.confirmPassword)
+    @Test
+    fun passwordsNeverInSavedState() =
+        runTest(rule.testDispatcher) {
+            val saved = SavedStateHandle()
+            val (_, vm) = harness(saved)
+            vm.fillValid()
+            assertTrue(saved.keys().none { saved.get<Any>(it) == "abcdefg1!" })
+            assertTrue(saved.keys().isEmpty())
+        }
+
+    @Test
+    fun restoredHandleStartsEmpty() =
+        runTest(rule.testDispatcher) {
+            val saved = SavedStateHandle()
+            val (_, vm) = harness(saved)
+            vm.fillValid()
+
+            // Process death: only what is in the handle survives. A rebuilt ViewModel starts blank (D-09).
+            val (_, restored) = harness(SavedStateHandle(saved.keys().associateWith { saved.get<Any>(it) }))
+            val state = restored.uiState.value
+            assertEquals("", state.code)
+            assertEquals("", state.newPassword)
+            assertEquals("", state.confirmPassword)
+            assertNull(state.codeError)
+            assertNull(state.newPasswordError)
+            assertNull(state.confirmError)
+            restored.start("a@b.co")
+            assertEquals("a@b.co", restored.uiState.value.email)
         }
 
     @Test
