@@ -718,7 +718,7 @@ class MakeABookingScreenTest {
         assertEquals(PaidStep.CollectingPaymentMethod, vm.uiState.value.paidStep)
         composeRule
             .onNodeWithTag(BOOK_NOW_TAG)
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Booking"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress"))
         composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
         composeRule.waitForIdle()
         assertEquals(0, navBacks)

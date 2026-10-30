@@ -59,7 +59,6 @@
     <string name="make_a_booking_state_no_slot">Choose a time slot to continue</string>
     <string name="make_a_booking_state_checking_payment_methods">Checking your payment methods</string>
     <string name="make_a_booking_state_no_topic">Choose a topic to continue</string>
-    <string name="make_a_booking_state_booking">Booking</string>
 
     <!-- Errors -->
     <string name="make_a_booking_error_title">Couldn\'t book</string>

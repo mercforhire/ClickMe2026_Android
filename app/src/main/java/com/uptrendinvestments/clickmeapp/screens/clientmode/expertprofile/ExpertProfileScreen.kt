@@ -80,6 +80,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.launch
 
@@ -238,19 +239,22 @@ fun ExpertProfileContent(
                         rating = state.rating,
                     )
                 }
+                // D-02: the sections cap at 600 dp on a large window; the hero's glow keeps the full width.
                 item(key = "details") {
-                    DetailsSection(
-                        state = state,
-                        onBookSession = onBookSession,
-                        onRetry = onRetry,
-                        showBookSession = showBookSession,
-                        showMessage = showMessage,
-                        messageBusy = messageBusy,
-                        onMessage = onMessage,
-                    )
+                    Column(Modifier.contentMaxWidth()) {
+                        DetailsSection(
+                            state = state,
+                            onBookSession = onBookSession,
+                            onRetry = onRetry,
+                            showBookSession = showBookSession,
+                            showMessage = showMessage,
+                            messageBusy = messageBusy,
+                            onMessage = onMessage,
+                        )
+                    }
                 }
                 if (state.details !is DetailsState.Error) {
-                    item(key = "reviews") { ReviewsSection(state.reviews) }
+                    item(key = "reviews") { Column(Modifier.contentMaxWidth()) { ReviewsSection(state.reviews) } }
                 }
             }
         }
@@ -394,6 +398,7 @@ private fun DetailsSection(
                 (state.details as? DetailsState.Loaded)?.let { loaded ->
                     LoadedDetails(
                         details = loaded.details,
+                        expertName = state.name,
                         tags = state.tags,
                         onBookSession = onBookSession,
                         showBookSession = showBookSession,
@@ -424,6 +429,7 @@ private fun DetailsSkeleton(buttonPills: Int) {
 @Composable
 private fun LoadedDetails(
     details: ProfileDetailsUi,
+    expertName: String,
     tags: List<String>,
     onBookSession: () -> Unit,
     showBookSession: Boolean,
@@ -438,6 +444,7 @@ private fun LoadedDetails(
         ExpertProfileActionButtons(
             isBookable = details.isBookable,
             onBookSession = onBookSession,
+            expertName = expertName,
             showBookSession = showBookSession,
             showMessage = showMessage,
             messageBusy = messageBusy,

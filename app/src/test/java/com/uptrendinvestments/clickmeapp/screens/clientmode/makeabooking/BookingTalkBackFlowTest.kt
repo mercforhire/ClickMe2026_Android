@@ -197,7 +197,7 @@ class BookingTalkBackFlowTest {
             "Book a Session",
             "Topic of Discussion",
             "October 2026",
-            "10:00 AM",
+            "4:00 PM",
             "In-app Voice Call",
             "Message (optional)",
             "Book Now",

@@ -160,7 +160,9 @@ class ExpertProfileScreenTest {
     fun bookableShowsEnabledBookSessionThatCallsBack() {
         var booked = 0
         rule.setContent {
-            ClickMeTheme { ExpertProfileActionButtons(isBookable = true, onBookSession = { booked++ }) }
+            ClickMeTheme {
+                ExpertProfileActionButtons(isBookable = true, onBookSession = { booked++ }, expertName = "Ada Lovelace")
+            }
         }
 
         rule.onNodeWithTag(BOOK_SESSION_TAG).assertIsEnabled()
@@ -172,7 +174,13 @@ class ExpertProfileScreenTest {
     @Test
     fun notBookableShowsDisabledPillAndNoBookSession() {
         rule.setContent {
-            ClickMeTheme { ExpertProfileActionButtons(isBookable = false, onBookSession = {}) }
+            ClickMeTheme {
+                ExpertProfileActionButtons(
+                    isBookable = false,
+                    onBookSession = {},
+                    expertName = "Ada Lovelace",
+                )
+            }
         }
 
         rule.onNodeWithText("Not accepting bookings").assertIsNotEnabled()

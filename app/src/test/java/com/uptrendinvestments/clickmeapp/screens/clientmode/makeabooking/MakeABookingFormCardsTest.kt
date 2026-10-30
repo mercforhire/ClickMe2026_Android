@@ -244,7 +244,7 @@ class MakeABookingFormCardsTest {
         rule
             .onNodeWithTag(BOOK_NOW_TAG)
             .assertIsEnabled()
-            .assert(stateIs("Booking"))
+            .assert(stateIs("In progress"))
             .performClick()
         assertEquals(0, clicks)
     }

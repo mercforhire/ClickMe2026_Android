@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -223,6 +224,8 @@ private fun CalendarDay(
     Column(
         modifier =
             Modifier
+                // The whole grid cell is the touch target, not just the 36 dp circle (48 dp rule, Phase 15 POL-04).
+                .fillMaxSize()
                 .testTag(calendarDayTestTag(date))
                 .selectable(
                     selected = isSelected,

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -236,6 +237,7 @@ private fun SlotChip(
             Modifier
                 .testTag(slotChipTestTag(slot.start))
                 .heightIn(min = ChipMinHeight)
+                .widthIn(min = ChipMinHeight)
                 .background(fill, CircleShape)
                 .then(if (isSelected) Modifier else Modifier.border(1.dp, borderColor, CircleShape))
                 .selectable(
