@@ -1,19 +1,33 @@
----
-phase: 15
-review: 15-REVIEW.md
-titles: json
-findings:
-open: 0
-total: 0
-unparsed: 24
-recorded: 2026-10-30T02:59:56.991Z
----
+# Phase 15: Review Disposition
 
-# Phase 15: Code Review Disposition
+Every finding from 15-REVIEW.md, defaulting to `open`. Update the status column as findings are fixed or accepted.
+Fix run 1 (`/gsd-code-review 15 --fix`, Critical+Warning scope): see 15-REVIEW-FIX.md.
 
-| Finding | Severity | Disposition | Source |
-|---------|----------|-------------|--------|
+Maintained by hand: the GSD disposition script does not parse the lane-letter IDs (`WR-A01`) and writes an empty ledger.
 
-Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
-Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
-Re-running the gate keeps every row it can. A row the current review no longer reports is kept and its Source cell flagged, so a finding does not leave this record silently. ONE exception: when a finding id is REUSED by a different finding, the earlier decision cannot keep a row — the id is taken — and it is dropped. A RECORDED decision (anything but `open`) is named on the console when that happens; a row still at `open` is replaced silently, because `open` records no decision to lose.
+| ID | Status | Note |
+|----|--------|------|
+| IN-A01 | open | Info, out of fix scope |
+| IN-A02 | open | Info, out of fix scope |
+| IN-A03 | open | Info, out of fix scope |
+| IN-A04 | open | Info, out of fix scope |
+| IN-A05 | open | Info, out of fix scope |
+| IN-A06 | open | Info, out of fix scope |
+| IN-B01 | open | Info, out of fix scope |
+| IN-B02 | open | Info, out of fix scope |
+| IN-B03 | open | Info, out of fix scope |
+| IN-B04 | open | Info, out of fix scope |
+| IN-B05 | open | Info, out of fix scope |
+| WR-A01 | fixed | 53e9345d; needs human verification (race/ordering) |
+| WR-A02 | fixed | 53e9345d; needs human verification (lifecycle) |
+| WR-A03 | skipped | Needs on-device TalkBack check: 15-DEVICE-CHECKLIST.md L3, apply fallback if only the label is spoken |
+| WR-A04 | fixed | 5d8eedc1 |
+| WR-A05 | fixed | ee076c36 |
+| WR-A06 | fixed | 2c043ded |
+| WR-A07 | fixed | e2443e4d |
+| WR-B01 | fixed | 633fe822; check snackbar position on device with keyboard up |
+| WR-B02 | fixed | 0087213a; needs human verification (TalkBack announce timing) |
+| WR-B03 | fixed | b10b1e41 |
+| WR-B04 | fixed | 70618d46; new copy `tax_profile_secrets_not_restored` may want product review |
+| WR-B05 | fixed | 349e5b64 |
+| WR-B06 | skipped | Conflicts with tested design (`headlineFocusedAgainOnRecreation`); change test + UI-SPEC together if once-per-entry focus is wanted |
