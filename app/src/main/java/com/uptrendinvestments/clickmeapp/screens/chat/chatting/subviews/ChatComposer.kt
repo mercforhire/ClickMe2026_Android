@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.CHAT_COMPOSER_MAX
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag on the composer text field. */
@@ -67,7 +68,7 @@ private const val DISABLED_ALPHA = 0.38f
  * button that stays in layout. [text] is the ViewModel's draft (already capped); edits are reported through
  * [onTextChange]. The field is disabled while [enabled] is false (thread loading or failed to load) and Send while
  * [canSend] is false. The Scaffold content padding already carries the navigation-bar inset, so only the IME is
- * added here.
+ * added here. The surface spans the window while its content is capped at 600 dp on a large window (D-02).
  */
 @Composable
 @Suppress("LongParameterList")
@@ -94,9 +95,11 @@ fun ChatComposer(
                 .background(MaterialTheme.colorScheme.surface),
     ) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        if (text.length >= COUNTER_FROM) CharacterCounter(length = text.length, atCap = atCap)
+        if (text.length >= COUNTER_FROM) {
+            CharacterCounter(length = text.length, atCap = atCap, modifier = Modifier.contentMaxWidth())
+        }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            modifier = Modifier.contentMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -132,12 +135,13 @@ fun ChatComposer(
 private fun CharacterCounter(
     length: Int,
     atCap: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val limitReached = stringResource(R.string.chat_composer_limit_reached)
     Text(
         text = stringResource(R.string.chat_composer_counter, length),
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.xs)
                 .semantics {
