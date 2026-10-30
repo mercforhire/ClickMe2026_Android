@@ -1,11 +1,14 @@
 package com.uptrendinvestments.clickmeapp.screens.chat.conversations
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -179,47 +182,51 @@ fun ConversationsContent(
                     ),
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = onRefresh,
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-        ) {
-            when (val load = state.load) {
-                ConversationsLoad.Loading -> ConversationsSkeleton()
-                is ConversationsLoad.Failed ->
-                    ScrollableCentered { ConversationsError(message = load.message, onRetry = onRetry) }
-                ConversationsLoad.Loaded ->
-                    if (state.conversations.isEmpty()) {
-                        ScrollableCentered { ConversationsEmptyState(mode = mode) }
-                    } else {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            ConversationsSearchField(
-                                query = state.query,
-                                onQueryChange = onQueryChange,
-                                modifier =
-                                    Modifier
-                                        .contentMaxWidth()
-                                        .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md),
-                            )
-                            val visible = state.visible
-                            if (visible.isEmpty()) {
-                                ScrollableCentered { ConversationsNoResults() }
-                            } else {
-                                ConversationList(
-                                    rows = visible,
-                                    now = now,
-                                    zone = zone,
-                                    locale = locale,
-                                    timeFormat = timeFormat,
-                                    yesterday = yesterday,
-                                    onOpen = onOpen,
+        // The snackbar lives in the content, not in the Scaffold slot: the slot is offset by the system bars only, so
+        // while the search field has focus the refresh-failed Retry would sit under the keyboard.
+        Box(Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding)) {
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (val load = state.load) {
+                    ConversationsLoad.Loading -> ConversationsSkeleton()
+                    is ConversationsLoad.Failed ->
+                        ScrollableCentered { ConversationsError(message = load.message, onRetry = onRetry) }
+                    ConversationsLoad.Loaded ->
+                        if (state.conversations.isEmpty()) {
+                            ScrollableCentered { ConversationsEmptyState(mode = mode) }
+                        } else {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                ConversationsSearchField(
+                                    query = state.query,
+                                    onQueryChange = onQueryChange,
+                                    modifier =
+                                        Modifier
+                                            .contentMaxWidth()
+                                            .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md),
                                 )
+                                val visible = state.visible
+                                if (visible.isEmpty()) {
+                                    ScrollableCentered { ConversationsNoResults() }
+                                } else {
+                                    ConversationList(
+                                        rows = visible,
+                                        now = now,
+                                        zone = zone,
+                                        locale = locale,
+                                        timeFormat = timeFormat,
+                                        yesterday = yesterday,
+                                        onOpen = onOpen,
+                                    )
+                                }
                             }
                         }
-                    }
+                }
             }
+            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).imePadding())
         }
     }
 }

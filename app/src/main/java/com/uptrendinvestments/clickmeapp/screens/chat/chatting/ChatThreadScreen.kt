@@ -243,7 +243,6 @@ fun ChatThreadContent(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         // The Scaffold padding already holds the system-bar insets; consuming them stops imePadding adding them twice.
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding)) {
@@ -282,6 +281,9 @@ fun ChatThreadContent(
                 }
             }
             PeerArrivalAnnouncer(state = state, peerLabel = peerLabel)
+            // In the column, above the composer, and not in the Scaffold slot: a realtime refresh failure is raised
+            // while the user types, and the slot sits under the keyboard where Retry could not be reached.
+            SnackbarHost(snackbarHostState)
             TypingStrip(
                 visible = state.peerTyping,
                 name = peerLabel,
