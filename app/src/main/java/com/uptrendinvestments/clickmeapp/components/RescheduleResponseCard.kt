@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
@@ -113,6 +114,14 @@ fun RescheduleResponseCard(
     var declineText by rememberSaveable(stateSaver = DeclineReasonSaver) { mutableStateOf("") }
     // The viewer responds to the other party's proposal and only watches their own.
     val actionable = proposal.isActionableFor(viewer)
+    // A restored dialog or sheet must not outlive the proposal being actionable (it changed while the app was gone).
+    LaunchedEffect(actionable) {
+        if (!actionable) {
+            showAccept = false
+            showDecline = false
+        }
+    }
+    val canRespond = actionable && submitting == RescheduleSubmitting.None
 
     Surface(
         modifier = modifier.fillMaxWidth().testTag(RESCHEDULE_CARD_TAG),
@@ -139,7 +148,7 @@ fun RescheduleResponseCard(
         }
     }
 
-    if (showAccept) {
+    if (showAccept && canRespond) {
         AcceptDialog(
             proposal = proposal,
             viewer = viewer,
@@ -150,7 +159,7 @@ fun RescheduleResponseCard(
             },
         )
     }
-    if (showDecline) {
+    if (showDecline && canRespond) {
         DeclineSheet(
             viewer = viewer,
             reason = declineText,
