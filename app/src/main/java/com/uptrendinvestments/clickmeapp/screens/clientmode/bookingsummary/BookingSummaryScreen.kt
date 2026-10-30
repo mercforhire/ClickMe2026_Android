@@ -73,6 +73,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.util.Locale
@@ -253,7 +254,7 @@ fun BookingSummaryContent(
 
 @Composable
 private fun LoadingBody(modifier: Modifier = Modifier) {
-    SkeletonGroup(modifier = modifier.padding(horizontal = Spacing.md, vertical = Spacing.md)) {
+    SkeletonGroup(modifier = modifier.contentMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md)) {
         Column {
             SkeletonBlock(
                 modifier = Modifier.fillMaxWidth().heightIn(min = SkeletonCardHeight),
@@ -295,6 +296,7 @@ private fun LoadedBody(
         modifier =
             modifier
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
     ) {
         AnimatedVisibility(
