@@ -198,6 +198,8 @@ class ExpertBookingSummaryViewModel
         /** True when Cancel may open; false (with the guard dialog queued) while this booking's call is live (D-17). */
         fun attemptCancel(): Boolean = callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)
 
+        private fun withLoad(load: ExpertSummaryLoad) = ExpertBookingSummaryUiState(load, showCallResumeNote)
+
         /**
          * [flagFailure] makes a failed quiet load raise `refreshFailed` for the snackbar (realtime refetch and
          * Retry). The silent resume reload leaves it off.
@@ -220,7 +222,10 @@ class ExpertBookingSummaryViewModel
                                 showCallResumeNote,
                             )
                     } catch (e: ApiException) {
-                        if (quiet) {
+                        if (e.isNotFound()) {
+                            // Gone for good, also while the summary shows: a Retry would only loop on the 404.
+                            _uiState.value = withLoad(ExpertSummaryLoad.Unavailable)
+                        } else if (quiet) {
                             _uiState.update {
                                 if (it.load is ExpertSummaryLoad.Loaded) {
                                     it.copy(isRefreshing = false, refreshFailed = it.refreshFailed || flagFailure)
@@ -229,13 +234,7 @@ class ExpertBookingSummaryViewModel
                                 }
                             }
                         } else {
-                            val failed =
-                                if (e.isNotFound()) {
-                                    ExpertSummaryLoad.Unavailable
-                                } else {
-                                    ExpertSummaryLoad.Failed(e.toSectionMessage())
-                                }
-                            _uiState.value = ExpertBookingSummaryUiState(failed, showCallResumeNote)
+                            _uiState.value = withLoad(ExpertSummaryLoad.Failed(e.toSectionMessage()))
                         }
                     }
                 }

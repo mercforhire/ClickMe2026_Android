@@ -411,6 +411,23 @@ class ExpertBookingSummaryViewModelTest {
             assertEquals(ExpertSummaryLoad.Unavailable, vm.uiState.value.load)
         }
 
+    @Test
+    fun aNotFoundQuietReloadWithContentBecomesUnavailable() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+
+            api.expertBookingDetailsHandler = {
+                throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+            }
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "cancelled"))
+            runCurrent()
+
+            assertEquals(ExpertSummaryLoad.Unavailable, vm.uiState.value.load)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
     // ---- join and cancel ----
 
     @Test
