@@ -40,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.ConversationsNotice
@@ -52,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.conversations.subviews.Con
 import com.uptrendinvestments.clickmeapp.screens.chat.conversations.subviews.ConversationsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.Instant
@@ -132,7 +134,6 @@ fun ConversationsContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val yesterday = stringResource(R.string.chat_conversations_yesterday)
-    val refreshFailedMessage = stringResource(R.string.chat_conversations_refresh_failed)
     val notice = state.notice
     val noticeMessage =
         when (notice) {
@@ -150,12 +151,12 @@ fun ConversationsContent(
             onNoticeConsumed()
         }
     }
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
-            onRefreshFailureConsumed()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -197,7 +198,10 @@ fun ConversationsContent(
                             ConversationsSearchField(
                                 query = state.query,
                                 onQueryChange = onQueryChange,
-                                modifier = Modifier.padding(start = Spacing.md, end = Spacing.md, top = Spacing.md),
+                                modifier =
+                                    Modifier
+                                        .contentMaxWidth()
+                                        .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md),
                             )
                             val visible = state.visible
                             if (visible.isEmpty()) {
@@ -247,7 +251,7 @@ private fun ConversationList(
                 row = row,
                 timeLabel = relativeTimeLabel(row.lastMsgAt, now, zone, locale, timeFormat, yesterday),
                 onClick = { onOpen(row) },
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem().contentMaxWidth(),
             )
         }
     }
