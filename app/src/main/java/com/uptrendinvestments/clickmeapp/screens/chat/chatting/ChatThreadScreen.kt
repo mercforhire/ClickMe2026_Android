@@ -52,7 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -320,7 +320,7 @@ private fun PeerArrivalAnnouncer(
     state: ChatThreadUiState,
     peerLabel: String,
 ) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     var started by rememberSaveable { mutableStateOf(false) }
     var lastNewestKey by rememberSaveable { mutableStateOf<String?>(null) }
     var announcement by remember { mutableStateOf("") }
@@ -337,7 +337,7 @@ private fun PeerArrivalAnnouncer(
         lastNewestKey = newest?.key
         announcement = ""
         if (newest is ThreadItem.Message && !newest.mine) {
-            announcement = context.getString(R.string.chat_thread_bubble_a11y, peerLabel, newest.text)
+            announcement = resources.getString(R.string.chat_thread_bubble_a11y, peerLabel, newest.text)
             delay(ANNOUNCEMENT_MS)
             announcement = ""
         }
