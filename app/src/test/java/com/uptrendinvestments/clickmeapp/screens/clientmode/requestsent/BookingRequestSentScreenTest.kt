@@ -6,7 +6,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -30,6 +33,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -365,5 +369,53 @@ class BookingRequestSentScreenTest {
 
         rule.onNodeWithText("View My Bookings").assertIsEnabled()
         rule.onNodeWithTag(REQUEST_SENT_PAYMENT_CARD_TAG).assertExists()
+    }
+
+    @Test
+    fun headlineFocusedOnEntry() {
+        setContent(BookingRequestSentUiState.Loaded(details))
+        rule.waitForIdle()
+
+        // TalkBack leads with the result: the heading takes focus, not the back button.
+        rule.onNodeWithText("Request Sent!").assertIsFocused()
+    }
+
+    @Test
+    fun headlineFocusIsNotRequestedAgainAfterRestoration() {
+        val restorer = StateRestorationTester(rule)
+        restorer.setContent {
+            ClickMeTheme {
+                BookingRequestSentContent(
+                    state = BookingRequestSentUiState.Loaded(details),
+                    onBack = {},
+                    onRetry = {},
+                    onViewBookings = {},
+                    onBackToHome = {},
+                    zone = zone,
+                    timeFormat = time12,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("Request Sent!").assertIsFocused()
+
+        restorer.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Request Sent!").assertIsNotFocused()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun requestSentCapped() {
+        setContent(BookingRequestSentUiState.Loaded(paidDetails))
+        rule.waitForIdle()
+
+        val content = rule.onNodeWithTag(REQUEST_SENT_CONTENT_TAG).getUnclippedBoundsInRoot()
+        val width = content.right.value - content.left.value
+        assertTrue("Content column is $width dp wide, expected <= 600", width <= 600f)
+        assertEquals("Content column must stay centered", 450f, (content.left.value + content.right.value) / 2f, 1f)
+        val card = rule.onNodeWithTag(REQUEST_SENT_PAYMENT_CARD_TAG).getUnclippedBoundsInRoot()
+        assertTrue("Summary card is wider than 600 dp", card.right.value - card.left.value <= 600f)
     }
 }
