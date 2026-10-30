@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.CallStarter
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
@@ -56,6 +57,7 @@ class ExpertBookingSummaryViewModel
         private val callStarter: CallStarter,
         val callGuard: CallGuard,
         joinClock: JoinClock,
+        resumeNotice: CallResumeNotice,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -76,6 +78,9 @@ class ExpertBookingSummaryViewModel
 
         private var loadJob: Job? = null
         private var loadIsCurrent = false
+
+        // Consumed once here, so only the screen the relaunch landed on shows the note (D-11, T-15-38).
+        private val showCallResumeNote = resumeNotice.consumeFor(bookingId)
 
         // Single-flight accept/decline with a server reload before any dialog or notice (never optimistic, D-18).
         private val controller =
@@ -103,6 +108,14 @@ class ExpertBookingSummaryViewModel
 
         fun retry() {
             startLoad(quiet = false)
+        }
+
+        /** Retry of a failed refresh with content showing (D-05): the details stay and only a progress bar runs. */
+        fun refresh() {
+        }
+
+        /** The screen showed the refresh-failed snackbar. */
+        fun onRefreshFailureConsumed() {
         }
 
         /**

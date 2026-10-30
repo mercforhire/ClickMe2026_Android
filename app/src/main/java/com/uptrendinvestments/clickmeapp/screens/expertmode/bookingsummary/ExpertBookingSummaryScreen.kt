@@ -125,6 +125,8 @@ fun ExpertBookingSummaryScreen(
         onJoin = viewModel::join,
         onBack = onBack,
         onRetry = viewModel::retry,
+        onRefresh = viewModel::refresh,
+        onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onAcceptReschedule = viewModel::acceptReschedule,
         onDeclineReschedule = viewModel::declineReschedule,
@@ -164,6 +166,8 @@ fun ExpertBookingSummaryContent(
     locale: Locale = LocalConfiguration.current.locales[0],
     messageBusy: Boolean = false,
     onMessage: (ExpertSummaryDetails) -> Unit = {},
+    onRefresh: () -> Unit = {},
+    onRefreshFailureConsumed: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -203,6 +207,7 @@ fun ExpertBookingSummaryContent(
                         action = EmptyStateAction(stringResource(R.string.expert_retry), onRetry),
                     )
                 }
+            ExpertSummaryLoad.Unavailable -> Unit
             is ExpertSummaryLoad.Loaded ->
                 LoadedBody(
                     details = load.details,

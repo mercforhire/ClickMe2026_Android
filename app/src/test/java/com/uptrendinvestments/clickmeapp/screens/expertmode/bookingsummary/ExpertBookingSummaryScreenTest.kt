@@ -1,13 +1,19 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,9 +22,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_REASON_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_TAG
+import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
@@ -28,7 +36,9 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -47,8 +57,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 class ExpertBookingSummaryScreenTest {
@@ -94,6 +108,7 @@ class ExpertBookingSummaryScreenTest {
                 callStarter,
                 callGuard,
                 JoinClock(clock, CoroutineScope(Job())),
+                CallResumeNotice(),
             )
         val chatEntry = testChatEntryViewModel(api, launch)
         rule.setContent {
@@ -170,6 +185,124 @@ class ExpertBookingSummaryScreenTest {
     fun shortIdIsFirstEightUppercase() {
         showScreen(expertBookingDetail(id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890", start = start))
         rule.onNodeWithText("ID: #A1B2C3D4").assertExists()
+    }
+
+    // ---- call resume note, refresh standard, unavailable and width cap (Phase 15) ----
+
+    private fun summaryDetails() = expertBookingDetail(start = start).toSummaryDetails(now, Locale.US)
+
+    private fun loadedState(
+        showCallResumeNote: Boolean = false,
+        isRefreshing: Boolean = false,
+        refreshFailed: Boolean = false,
+    ) = ExpertBookingSummaryUiState(
+        load = ExpertSummaryLoad.Loaded(summaryDetails()),
+        showCallResumeNote = showCallResumeNote,
+        isRefreshing = isRefreshing,
+        refreshFailed = refreshFailed,
+    )
+
+    private fun showContent(
+        state: ExpertBookingSummaryUiState,
+        events: MutableList<String> = mutableListOf(),
+    ): MutableList<String> {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingSummaryContent(
+                    state = state,
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = now,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = { events += "retry" },
+                    onCancel = {},
+                    onAcceptReschedule = {},
+                    onDeclineReschedule = {},
+                    onDismissRescheduleDialog = {},
+                    onRescheduleNoticeConsumed = {},
+                    onRefresh = { events += "refresh" },
+                    onRefreshFailureConsumed = { events += "refreshFailureConsumed" },
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.waitForIdle()
+        return events
+    }
+
+    @Test
+    fun noteIsPoliteLiveRegionAboveJoin() {
+        showContent(loadedState(showCallResumeNote = true))
+        rule
+            .onNodeWithText("You were on a call. Tap Join Call to rejoin.")
+            .assertExists()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        val noteY = rule.onNodeWithTag("call_resume_note").fetchSemanticsNode().positionInRoot.y
+        val joinY = rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).fetchSemanticsNode().positionInRoot.y
+        assertTrue(noteY < joinY)
+    }
+
+    @Test
+    fun noNoteWhenNotFlagged() {
+        showContent(loadedState())
+        rule.onAllNodesWithText("You were on a call. Tap Join Call to rejoin.").assertCountEquals(0)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        val events = showContent(loadedState(refreshFailed = true))
+        rule.waitForIdle()
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        assertEquals(listOf("refreshFailureConsumed"), events)
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(listOf("refreshFailureConsumed", "refresh"), events)
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+    }
+
+    @Test
+    fun refreshingShowsLinearIndicator() {
+        showContent(loadedState(isRefreshing = true))
+        rule.onNodeWithTag("expert_summary_refresh_progress").assertExists()
+        rule.onAllNodesWithContentDescription("Loading").assertCountEquals(0)
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+    }
+
+    @Test
+    fun noIndicatorWhenNotRefreshing() {
+        showContent(loadedState())
+        rule.onAllNodesWithTag("expert_summary_refresh_progress").assertCountEquals(0)
+    }
+
+    @Test
+    fun firstLoadErrorNamed() {
+        val events = showContent(ExpertBookingSummaryUiState(ExpertSummaryLoad.Failed(FieldError.Text("Boom"))))
+        rule
+            .onNodeWithText("Couldn't load booking")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        rule.onNodeWithText("Boom").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(listOf("retry"), events)
+    }
+
+    @Test
+    fun unavailableShowsNoRetry() {
+        showContent(ExpertBookingSummaryUiState(ExpertSummaryLoad.Unavailable))
+        rule.onNodeWithText("This booking isn't available").assertExists()
+        rule.onNodeWithText("It may have been removed. Go back and try another.").assertExists()
+        rule.onAllNodesWithText("Retry").assertCountEquals(0)
+    }
+
+    /** D-02: on a large window the content column is capped at 600 dp and centered. */
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun contentCapped() {
+        showContent(loadedState())
+        val message = rule.onNodeWithTag(MESSAGE_CLIENT_TAG).getUnclippedBoundsInRoot()
+        assertTrue("message button spans ${message.left} to ${message.right}", message.right <= 750.dp)
+        assertTrue("message button spans ${message.left} to ${message.right}", message.left >= 150.dp)
     }
 
     // ---- Join, message card, Cancel, skeleton and error ----
