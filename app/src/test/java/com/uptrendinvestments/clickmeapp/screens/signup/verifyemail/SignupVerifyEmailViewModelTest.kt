@@ -163,7 +163,7 @@ class SignupVerifyEmailViewModelTest {
         }
 
     @Test
-    fun onCodeChange_sanitizes_mirrors_andClearsTheError() =
+    fun onCodeChange_sanitizes_andClearsTheError() =
         runTest(main.testDispatcher) {
             val saved = SavedStateHandle()
             val h = harness(this)
@@ -176,8 +176,24 @@ class SignupVerifyEmailViewModelTest {
             runCurrent()
 
             assertEquals("123456", vm.uiState.value.code)
-            assertEquals("123456", saved.get<String>("verify_code"))
             assertNull(vm.uiState.value.codeError)
+        }
+
+    /** D-09: the verification code is a secret; it lives in memory only and never reaches the saved state. */
+    @Test
+    fun codeNeverInSavedState() =
+        runTest(main.testDispatcher) {
+            val saved = SavedStateHandle()
+            val h = harness(this)
+            val vm = viewModel(h, saved)
+            sendFirst(vm)
+
+            vm.onCodeChange("123456")
+            runCurrent()
+
+            assertEquals("123456", vm.uiState.value.code)
+            assertFalse("verify_code" in saved.keys())
+            assertTrue(saved.keys().none { saved.get<Any>(it) == "123456" })
         }
 
     @Test
@@ -297,24 +313,26 @@ class SignupVerifyEmailViewModelTest {
         }
 
     @Test
-    fun processDeath_restoresFromSavedState_andSeedsAFreshRepository() =
+    fun cooldownStillRestores_withAnEmptyCodeAndNoError_afterProcessDeath() =
         runTest(main.testDispatcher) {
             val h = harness(this)
             val saved = SavedStateHandle()
             val first = viewModel(h, saved)
             sendFirst(first)
             first.onCodeChange("987654")
+            val restoredSaved = SavedStateHandle(saved.keys().associateWith { saved.get<Any>(it) })
             val endsAt = h.repository.verificationSend.value.cooldownEndsAt
             advanceTimeBy(10_000)
             runCurrent()
 
             val freshRepository =
                 SignupSetupRepository(h.api, h.userManager, h.photo, backgroundScope, main.testDispatcher)
-            val second = viewModel(h, saved, freshRepository)
+            val second = viewModel(h, restoredSaved, freshRepository)
             runCurrent()
 
             assertTrue(second.uiState.value.codeSent)
-            assertEquals("987654", second.uiState.value.code)
+            assertEquals("", second.uiState.value.code)
+            assertNull(second.uiState.value.codeError)
             val expected = ((endsAt - testScheduler.currentTime + 999) / 1000).toInt()
             assertEquals(expected, second.uiState.value.resendSecondsRemaining)
             assertEquals(endsAt, freshRepository.verificationSend.value.cooldownEndsAt)

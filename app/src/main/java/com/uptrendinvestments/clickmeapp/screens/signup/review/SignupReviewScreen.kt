@@ -45,6 +45,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.signup.SetupStep
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val RequiredIconSize = 20.dp
@@ -124,6 +125,7 @@ fun SignupReviewContent(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
@@ -178,7 +180,7 @@ private fun PublishBar(
     Column(
         modifier =
             Modifier
-                .fillMaxWidth()
+                .contentMaxWidth()
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {

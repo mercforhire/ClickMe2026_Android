@@ -51,7 +51,9 @@ data class SignupVerifyEmailUiState(
  * `codeSent` and the cooldown end time live in the singleton [SignupSetupRepository], so leaving and re-entering
  * the step cannot restart the 30 s window. They are also mirrored to [SavedStateHandle] so a process death does
  * not lose them (the repository is empty in a new process and is seeded from there). The end time is stored on
- * the injected [MonotonicClock], never as a remaining-seconds value.
+ * the injected [MonotonicClock], never as a remaining-seconds value. Only those two are mirrored: the typed code
+ * is a secret, held in memory only and never saved, so after a process death the field comes back empty
+ * (Phase 15 CONTEXT D-09).
  */
 @HiltViewModel
 class SignupVerifyEmailViewModel
@@ -61,7 +63,7 @@ class SignupVerifyEmailViewModel
         private val clock: MonotonicClock,
         private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        /** Everything the repository does not own: typed code, errors and save states. */
+        /** Everything the repository does not own: typed code (memory only, D-09), errors and save states. */
         private data class Local(
             val code: String = "",
             val codeError: FieldError? = null,
@@ -72,7 +74,7 @@ class SignupVerifyEmailViewModel
             val isResending: Boolean = false,
         )
 
-        private val local = MutableStateFlow(Local(code = savedStateHandle.get<String>(KEY_CODE).orEmpty()))
+        private val local = MutableStateFlow(Local())
 
         /** True only while the first send's "Email Sent!" confirmation is on screen. */
         private val holdingFirstSend = MutableStateFlow(false)
@@ -166,7 +168,6 @@ class SignupVerifyEmailViewModel
 
         fun onCodeChange(raw: String) {
             val code = AuthValidators.sanitizeCode(raw)
-            savedStateHandle[KEY_CODE] = code
             local.update { it.copy(code = code, codeError = null) }
         }
 
@@ -234,7 +235,6 @@ class SignupVerifyEmailViewModel
                 holdingFirstSend.value = false
             } else {
                 // A new code invalidates the old one.
-                savedStateHandle[KEY_CODE] = ""
                 local.update { it.copy(isResending = false, code = "", codeError = null) }
             }
         }
@@ -286,7 +286,6 @@ class SignupVerifyEmailViewModel
             private const val STATUS_UNPROCESSABLE = 422
             private const val STATUS_TOO_MANY = 429
             private const val KEY_CODE_SENT = "verify_code_sent"
-            private const val KEY_CODE = "verify_code"
             private const val KEY_COOLDOWN_END = "verify_cooldown_end"
         }
     }

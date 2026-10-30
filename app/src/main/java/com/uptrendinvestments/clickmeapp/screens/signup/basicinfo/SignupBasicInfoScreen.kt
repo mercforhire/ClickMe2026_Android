@@ -60,6 +60,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val AddLanguageHeight = 56.dp
@@ -166,6 +167,7 @@ fun SignupBasicInfoContent(
                         .weight(1f)
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(horizontal = Spacing.lg),
             ) {
                 Text(
@@ -251,7 +253,7 @@ fun SignupBasicInfoContent(
                 savedTitle = stringResource(R.string.signup_saved),
                 state = state.saveState,
                 onClick = onSave,
-                modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                modifier = Modifier.contentMaxWidth().padding(Spacing.lg),
             )
         }
     }

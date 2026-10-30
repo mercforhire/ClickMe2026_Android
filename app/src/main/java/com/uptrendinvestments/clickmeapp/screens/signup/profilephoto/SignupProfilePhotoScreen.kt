@@ -53,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 const val PHOTO_IMPORTING_TAG = "signup_photo_importing"
@@ -146,6 +147,7 @@ fun SignupProfilePhotoContent(
                         .weight(1f)
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(horizontal = Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -182,7 +184,7 @@ fun SignupProfilePhotoContent(
                 onClick = onSave,
                 modifier =
                     Modifier
-                        .fillMaxWidth()
+                        .contentMaxWidth()
                         .padding(start = Spacing.lg, end = Spacing.lg, bottom = Spacing.lg),
             )
         }

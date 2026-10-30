@@ -25,6 +25,9 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.IOException
 
+/** Mirrors the private `SignupInitialViewModel.EMAIL_KEY`; the test pins that it is the only key written. */
+private const val EMAIL_KEY = "signup_email"
+
 class SignupInitialViewModelTest {
     @get:Rule
     val main = MainDispatcherRule()
@@ -65,6 +68,28 @@ class SignupInitialViewModelTest {
             api.signupHandler = { throw api.httpError(status, json) }
         }
     }
+
+    /** D-09, T-04-26: only the email is mirrored; the password is a secret and stays in memory. */
+    @Test
+    fun passwordNeverInSavedState() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val h = Harness(this, handle)
+
+            h.fill(email = "ada@b.co", password = "abcdefg1")
+
+            assertEquals("ada@b.co", handle.get<String>(EMAIL_KEY))
+            assertEquals(setOf(EMAIL_KEY), handle.keys())
+            assertTrue(handle.keys().none { handle.get<Any>(it) == "abcdefg1" })
+
+            // After process death the password is empty with no error and no focus request.
+            val restored = Harness(this, SavedStateHandle(handle.keys().associateWith { handle.get<Any>(it) }))
+            val state = restored.viewModel.uiState.value
+            assertEquals("ada@b.co", state.email)
+            assertEquals("", state.password)
+            assertNull(state.passwordError)
+            assertNull(restored.viewModel.focusRequest.value)
+        }
 
     @Test
     fun typingBeforeFirstSubmitShowsNoError() =

@@ -53,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val AutoDetectMinHeight = 48.dp
@@ -119,7 +120,7 @@ fun SignupTimezoneContent(
             Column(
                 modifier =
                     Modifier
-                        .fillMaxWidth()
+                        .contentMaxWidth()
                         .navigationBarsPadding()
                         .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             ) {
@@ -139,6 +140,7 @@ fun SignupTimezoneContent(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(horizontal = Spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
