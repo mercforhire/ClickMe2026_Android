@@ -64,6 +64,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.remembe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import com.uptrendinvestments.clickmeapp.util.Money
 import java.time.Instant
@@ -111,6 +112,7 @@ fun CancellationConfirmStep(
             modifier =
                 Modifier
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .heightIn(min = minHeight)
                     .padding(horizontal = Spacing.md, vertical = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg, Alignment.CenterVertically),

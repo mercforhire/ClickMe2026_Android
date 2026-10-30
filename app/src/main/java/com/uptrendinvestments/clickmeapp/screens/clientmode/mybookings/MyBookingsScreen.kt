@@ -59,6 +59,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.Instant
@@ -334,7 +335,7 @@ private fun TabBody(
                                             joinNow,
                                         ),
                                     onJoin = { onJoin(item) },
-                                    modifier = Modifier.animateItem(),
+                                    modifier = Modifier.animateItem().contentMaxWidth(),
                                     messageBusy = messageBusyPeerId.equals(item.expert.id, ignoreCase = true),
                                     onMessage = { onMessage(item) },
                                     zone = zone,
@@ -347,7 +348,7 @@ private fun TabBody(
                                 PastBookingCard(
                                     row = row,
                                     onClick = { onOpenPast(row.item.bookingId) },
-                                    modifier = Modifier.animateItem(),
+                                    modifier = Modifier.animateItem().contentMaxWidth(),
                                     onLeaveReview =
                                         if (row.status.raw == STATUS_COMPLETED &&
                                             row.item.bookingId !in reviewedBookingIds

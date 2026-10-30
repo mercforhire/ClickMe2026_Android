@@ -36,6 +36,7 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /** Test tag on the Submit review button. */
 const val WRITE_REVIEW_SUBMIT_TAG = "write_review_submit"
@@ -67,7 +68,7 @@ fun WriteReviewFooter(
             onClick = { if (!submitting) onSubmit() },
             modifier =
                 Modifier
-                    .fillMaxWidth()
+                    .contentMaxWidth()
                     .padding(Spacing.md)
                     .heightIn(min = 56.dp)
                     .testTag(WRITE_REVIEW_SUBMIT_TAG)
@@ -103,7 +104,7 @@ fun WriteReviewSkeleton(modifier: Modifier = Modifier) {
             Column(
                 modifier =
                     Modifier
-                        .fillMaxWidth()
+                        .contentMaxWidth()
                         .padding(horizontal = Spacing.md)
                         .padding(top = Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -126,7 +127,7 @@ fun WriteReviewSkeleton(modifier: Modifier = Modifier) {
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
+                        .contentMaxWidth()
                         .padding(Spacing.md)
                         .height(56.dp),
                 shape = CircleShape,

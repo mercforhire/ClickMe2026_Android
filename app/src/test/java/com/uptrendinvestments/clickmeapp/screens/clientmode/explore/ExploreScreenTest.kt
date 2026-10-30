@@ -8,8 +8,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import org.junit.Assert.assertEquals
@@ -57,6 +59,8 @@ class ExploreScreenTest {
     private var viewAllCount = 0
     private var chipTapped: String? = null
     private var consumedCount = 0
+    private var refreshCount = 0
+    private var retryCount = 0
     private var sessionClicked: String? = null
     private var sessionJoined: TodaysSessionUi? = null
 
@@ -67,8 +71,8 @@ class ExploreScreenTest {
                     state = state,
                     avatarUrl = null,
                     onAvatarClick = {},
-                    onRefresh = {},
-                    onRetry = {},
+                    onRefresh = { refreshCount++ },
+                    onRetry = { retryCount++ },
                     onChipTap = { chipTapped = it },
                     onViewAll = { viewAllCount++ },
                     onClearFilter = {},
@@ -225,8 +229,44 @@ class ExploreScreenTest {
     fun refreshFailureShowsSnackbarAndIsConsumedOnce() {
         show(fullState.copy(refreshFailed = true))
         rule.waitForIdle()
-        rule.onNodeWithText("Couldn't refresh. Pull down to try again.").assertExists()
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
         assertEquals(1, consumedCount)
+    }
+
+    @Test
+    fun refreshFailedShowsRetryAndKeepsSections() {
+        show(fullState.copy(refreshFailed = true))
+        rule.waitForIdle()
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, refreshCount)
+        assertEquals(0, retryCount)
+        listOf("Today's Sessions", "Trending Categories", "Featured Topics", "Recommended Experts").forEach {
+            assertTrue("$it kept", exists(it))
+        }
+    }
+
+    @Test
+    fun sectionFailureIsolated() {
+        show(fullState.copy(featuredTopics = SectionState.Error(FieldError.Text("Boom"))))
+        // The failed section names itself and offers Retry; every loaded section still shows its content.
+        assertTrue(exists("Featured Topics"))
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryCount)
+        rule.onNodeWithText("Technology").assertExists()
+        rule.onNodeWithText("Ada Lovelace", substring = true).assertExists()
+        assertFalse(exists("Intro to ML"))
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h3000dp")
+    fun exploreCapped() {
+        show(fullState)
+        // 900 dp window, 600 dp column centered: content starts at 150 dp or later, never at the 16 dp edge.
+        val heading = rule.onNodeWithText("Recommended Experts").getUnclippedBoundsInRoot()
+        assertTrue("heading left ${heading.left}", heading.left >= 150.dp)
+        val list = rule.onNodeWithTag(EXPLORE_LIST_TAG).getUnclippedBoundsInRoot()
+        assertTrue(list.right - list.left > 600.dp)
     }
 
     @Test

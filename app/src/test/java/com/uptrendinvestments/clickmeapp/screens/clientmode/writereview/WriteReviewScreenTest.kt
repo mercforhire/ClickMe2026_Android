@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -48,6 +49,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -272,6 +274,37 @@ class WriteReviewScreenTest {
         rule.onNodeWithText("Needs work").assertExists()
         rule.onNodeWithText("Edit review").performClick()
         assertEquals(1, calls.dismissed)
+    }
+
+    @Test
+    fun submitInFlightAndError() {
+        // In flight: busy state, taps ignored (see also submittingLocksForm).
+        val calls = setContent(ready.copy(submitting = true))
+        rule.onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG).performClick()
+        assertEquals(0, calls.submits)
+    }
+
+    @Test
+    fun submitErrorKeepsTheRatingAndText() {
+        setContent(
+            ready.copy(rating = 2, comment = "Needs work", submitError = FieldError.Text("Validation failed")),
+        )
+        rule.onNodeWithText("Validation failed").assertExists()
+        rule.onNodeWithContentDescription("2 stars").assertIsSelected()
+        rule.onNodeWithText("Needs work").assertExists()
+        rule.onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG).assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        setContent(ready)
+        val field = rule.onNodeWithTag(WRITE_REVIEW_INPUT_TAG).getUnclippedBoundsInRoot()
+        assertTrue("field width ${field.right - field.left}", field.right - field.left <= 600.dp)
+        assertTrue("field left ${field.left}", field.left >= 150.dp)
+        // The footer button is capped too; the footer background itself stays full width.
+        val submit = rule.onNodeWithTag(WRITE_REVIEW_SUBMIT_TAG).getUnclippedBoundsInRoot()
+        assertTrue("submit width ${submit.right - submit.left}", submit.right - submit.left <= 600.dp)
     }
 
     @Test

@@ -10,7 +10,9 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescriptionExactly
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -19,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_COMMENT_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_CONFIRM_TAG
@@ -30,10 +33,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subview
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -324,6 +329,55 @@ class ClientCancellationScreenTest {
         rule.onNodeWithText("Boom").assertExists()
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retryCount)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun cappedReasonStep() {
+        showScreen(loaded)
+        val field = rule.onNodeWithTag(CANCEL_COMMENT_TAG).getUnclippedBoundsInRoot()
+        assertTrue("field width ${field.right - field.left}", field.right - field.left <= 600.dp)
+        assertTrue("field left ${field.left}", field.left >= 150.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun cappedConfirmStep() {
+        showScreen(loaded.copy(step = CancelStep.Confirm, refund = RefundPreview.HoldReleased))
+        val keep = rule.onNodeWithTag(CANCEL_KEEP_TAG).getUnclippedBoundsInRoot()
+        assertTrue("keep width ${keep.right - keep.left}", keep.right - keep.left <= 600.dp)
+        assertTrue("keep left ${keep.left}", keep.left >= 150.dp)
+    }
+
+    @Test
+    fun confirmNeverAutoConfirmsAfterRestore() {
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            ClickMeTheme {
+                ClientCancellationContent(
+                    state = loaded.copy(step = CancelStep.Confirm, refund = RefundPreview.HoldReleased),
+                    onBack = { backCount++ },
+                    onRetry = { retryCount++ },
+                    onSelectReason = { selectedReason = it },
+                    onCommentChange = { typed = it },
+                    onContinue = { continueCount++ },
+                    onBackToReason = { backToReasonCount++ },
+                    onConfirm = { confirmCount++ },
+                    onDismissError = { dismissErrorCount++ },
+                    onFinished = { finishedCount++ },
+                    zone = zone,
+                    timeFormat = time12,
+                    locale = Locale.US,
+                )
+            }
+        }
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        assertEquals(0, confirmCount)
+        assertEquals(0, finishedCount)
+        // The confirm step is back and still waits for the tap.
+        rule.onNodeWithText("Confirm Cancellation?").assertExists()
+        rule.onNodeWithTag(CANCEL_CONFIRM_TAG).assertIsEnabled()
     }
 
     @Test

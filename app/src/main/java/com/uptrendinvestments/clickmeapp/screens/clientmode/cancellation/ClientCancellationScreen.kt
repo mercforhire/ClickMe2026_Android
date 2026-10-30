@@ -47,6 +47,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.time.ZoneId
 import java.util.Locale
 
@@ -194,7 +195,7 @@ private fun stepTransition(forward: Boolean): ContentTransform {
 private fun LoadingBody(modifier: Modifier = Modifier) {
     SkeletonGroup(modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(
-            modifier = Modifier.padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg),
+            modifier = Modifier.contentMaxWidth().padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             SkeletonBlock(Modifier.width(HeadlineSkeleton).height(HeadlineSkeletonHeight))

@@ -201,6 +201,23 @@ class ClientCancellationViewModelTest {
         }
 
     @Test
+    fun aRestoredConfirmStepNeverCancelsOnItsOwn() =
+        runTest(main.testDispatcher) {
+            stubDetail(bookingDetail(paymentStatus = "held"))
+            val handle =
+                SavedStateHandle(
+                    mapOf("cancel_step" to "Confirm", "cancel_reason" to "Other", "cancel_comment" to "Moved"),
+                )
+            val vm = vm(handle)
+            runCurrent()
+            assertEquals(CancelStep.Confirm, vm.uiState.value.step)
+            assertFalse(vm.uiState.value.isSubmitting)
+            assertFalse(vm.uiState.value.isFinished)
+            assertEquals(0, api.cancelClientBookingCalls)
+            assertTrue(api.cancelClientBookingRequests.isEmpty())
+        }
+
+    @Test
     fun unknownSavedValuesFallBackToTheDefaults() =
         runTest(main.testDispatcher) {
             stubDetail()

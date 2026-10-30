@@ -29,6 +29,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.NOTIFICATIONS_END_NOTE_TAG
@@ -63,6 +64,7 @@ class NotificationsScreenTest {
     private var backCount = 0
     private var settingsCount = 0
     private var retryCount = 0
+    private var refreshCount = 0
     private var refreshFailureShownCount = 0
     private var tapped: NotificationRowModel? = null
 
@@ -94,7 +96,7 @@ class NotificationsScreenTest {
                         notificationsEnabled = notificationsEnabled,
                         onBack = { backCount++ },
                         onRetry = { retryCount++ },
-                        onRefresh = {},
+                        onRefresh = { refreshCount++ },
                         onRowTap = { tapped = it },
                         onOpenSettings = { settingsCount++ },
                         onRefreshFailureShown = { refreshFailureShownCount++ },
@@ -297,6 +299,56 @@ class NotificationsScreenTest {
         show(loaded(today(row("1", "A"))).copy(refreshFailed = true))
         rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
         assertEquals(1, refreshFailureShownCount)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        show(loaded(today(row("1", "A"), row("2", "B"))).copy(refreshFailed = true))
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, refreshCount)
+        assertEquals(0, retryCount)
+        assertEquals(2, rule.onAllNodesWithTag(NOTIFICATION_ROW_TAG).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun listCells() {
+        show(NotificationsUiState(load = NotificationsLoad.Loading))
+        rule.onNodeWithContentDescription("Loading").assertExists()
+    }
+
+    @Test
+    fun listCellsEmptyAndNamedError() {
+        show(loaded())
+        rule.onNodeWithText("You're all caught up").assertExists()
+    }
+
+    @Test
+    fun listCellsNamedErrorHasRetry() {
+        show(NotificationsUiState(load = NotificationsLoad.Failed(FieldError.Text("Boom"))))
+        rule.onNodeWithText("Couldn't load notifications").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryCount)
+    }
+
+    @Test
+    fun listCellsOneRowHasNoEmptyState() {
+        show(loaded(today(row("1", "Only one"))))
+        rule.onNodeWithText("Only one").assertExists()
+        assertFalse(exists("You're all caught up"))
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h3000dp")
+    fun listCapped() {
+        show(threeRows)
+        val bounds = rule.onAllNodesWithTag(NOTIFICATION_ROW_TAG)[0].getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
+        assertTrue("row width $width", width <= 600.dp)
+        // The list scroll area itself stays full width.
+        val list = rule.onNodeWithTag(NOTIFICATIONS_LIST_TAG).getUnclippedBoundsInRoot()
+        assertTrue(list.right - list.left > 600.dp)
     }
 
     @Test

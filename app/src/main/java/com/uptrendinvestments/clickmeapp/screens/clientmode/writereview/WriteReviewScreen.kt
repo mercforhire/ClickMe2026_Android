@@ -36,6 +36,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /**
  * Write Review bound to its [viewModel]. A successful submit calls [onSubmitted] once, then tells the ViewModel the
@@ -139,6 +140,7 @@ private fun ReviewForm(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(horizontal = Spacing.md)
                 .padding(top = Spacing.lg, bottom = Spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -50,6 +50,7 @@ import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancellationReason
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag prefix on each reason row; the suffix is the [CancellationReason] entry name. */
@@ -102,6 +103,7 @@ fun CancellationReasonStep(
                 .fillMaxWidth()
                 .imePadding()
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {

@@ -17,7 +17,6 @@
     <string name="explore_experts_empty_filtered">No experts in this category yet</string>
     <string name="explore_experts_empty">No experts available yet</string>
     <string name="explore_clear_filter">Clear filter</string>
-    <string name="explore_refresh_failed">Couldn\'t refresh. Pull down to try again.</string>
     <string name="explore_featured_semantics">%1$s, %2$s, with %3$s</string>
     <!-- Expert card TalkBack description: name, optional title, rating, optional tags. -->
     <string name="expert_card_tags_semantics">Expertise: %1$s</string>

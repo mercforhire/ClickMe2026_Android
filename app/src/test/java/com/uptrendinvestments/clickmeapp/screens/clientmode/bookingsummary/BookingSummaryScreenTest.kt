@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -18,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RATING_STAR_FILLED_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
@@ -41,6 +43,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -264,6 +267,16 @@ class BookingSummaryScreenTest {
         rule.onNodeWithText("Check your connection and try again.").assertExists()
         rule.onNodeWithText("Retry").performClick()
         assertEquals(listOf("retry"), calls.events)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        setScreen(BookingSummaryUiState.Loaded(details()))
+        val button = rule.onNodeWithTag(BOOKING_SUMMARY_BOOK_AGAIN_TAG).getUnclippedBoundsInRoot()
+        assertTrue("button width ${button.right - button.left}", button.right - button.left <= 600.dp)
+        // Centered: the content column starts well in from the 900 dp window edge.
+        assertTrue("button left ${button.left}", button.left >= 150.dp)
     }
 
     @Test
