@@ -817,7 +817,36 @@ Plans:
   2. With an Android client and an iOS expert, the matrix passes: Stripe test cards including 3DS, push from a killed app, a call kept alive in the background and across rejoin, and payout onboarding. (Week 8 checkpoint, user-confirmed)
   3. With an iOS client and an Android expert, the same matrix passes. (Week 8 checkpoint, user-confirmed)
 
-**Plans:** TBD
+**Plans:** 8 plans
+Plans:
+**Wave 1**
+
+- [ ] 16-01-PLAN.md — Matrix runbook (pre-flight, Direction 1, switch, Direction 2, tier-1 setting passes, run-if-time, money sweep, sign-off) and the D-11 bug log
+- [ ] 16-02-PLAN.md — Full gate, signed versionCode 1 bundle, build ledger and versionCode policy, R8 cold start, first internal-track upload and Play install (closes 999.1 02-15/02-16, user checkpoint)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16-03-PLAN.md — Pre-flight on the Play build, live-money plan decision (CA$5 floor, voids vs captures, 3DS route), release smoke (user checkpoints)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16-04-PLAN.md — Session A: Direction 1 matrix (QA-02) and the Samsung tier-1 setting passes, then triage (user checkpoint)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16-05-PLAN.md — Fix batch A: regression-tested fixes, versionCode bump, signed build, upload and re-test (user checkpoint)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 16-06-PLAN.md — Session B: direction switch and Direction 2 matrix (QA-03), payouts link, account deletion, then triage (user checkpoint)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 16-07-PLAN.md — Fix batch B: regression-tested fixes, versionCode bump, signed build, upload and re-test (user checkpoint)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 16-08-PLAN.md — Close-out: write-back to sources, money sweep (voids and refunds), D-10 record, user sign-off (D-09, user checkpoints)
 
 ### Phase 17: Play Store Release
 
