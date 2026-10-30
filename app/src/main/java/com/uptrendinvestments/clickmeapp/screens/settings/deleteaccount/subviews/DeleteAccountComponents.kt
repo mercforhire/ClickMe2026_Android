@@ -52,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteSt
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.FEEDBACK_COUNTER_FROM
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.FEEDBACK_MAX
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag on "Keep my account" (both forms). */
@@ -303,7 +304,10 @@ fun DeleteAccountBottomBar(
                 .imePadding(),
     ) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Column(
+            modifier = Modifier.contentMaxWidth().padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
             val keep: @Composable () -> Unit = {
                 PressScaleButton(
                     onClick = onKeep,

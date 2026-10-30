@@ -9,8 +9,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -19,7 +21,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_COMMENTS_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_CONFIRM_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_KEEP_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -28,10 +34,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class DeleteAccountScreenTest {
@@ -80,6 +88,32 @@ class DeleteAccountScreenTest {
     private fun systemBack() {
         rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
         rule.waitForIdle()
+    }
+
+    @Test
+    fun farewellHeadlineFocused() {
+        rule.setContent { ClickMeTheme { DeleteAccountFarewell(onBackToLogin = {}) } }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("We're sorry to see you go!").assertIsFocused()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        setContent(DeleteAccountUiState(step = DeleteStep.Reason))
+
+        // The content column and the pinned footer buttons are capped and centered.
+        val comments = rule.onNodeWithTag(DELETE_COMMENTS_TAG).performScrollTo().getUnclippedBoundsInRoot()
+        val confirm = rule.onNodeWithTag(DELETE_CONFIRM_TAG).getUnclippedBoundsInRoot()
+        val keep = rule.onNodeWithTag(DELETE_KEEP_TAG).getUnclippedBoundsInRoot()
+        listOf(comments, confirm, keep).forEach { bounds ->
+            assertTrue("width ${bounds.right - bounds.left}", bounds.right - bounds.left <= 600.dp)
+            assertTrue("left ${bounds.left}", bounds.left >= 150.dp)
+        }
+        // The app bar stays full width: the back arrow sits at the window's leading edge, not in the column.
+        val back = rule.onNodeWithContentDescription("Back").getUnclippedBoundsInRoot()
+        assertTrue("back left ${back.left}", back.left < 100.dp)
     }
 
     @Test

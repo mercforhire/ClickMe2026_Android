@@ -17,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.subviews.ModeSwitchCard
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.serialization.Serializable
 
 /** Nav key for the Mode Switcher page. */
@@ -47,6 +48,7 @@ fun ModeSwitchScreen(
                 Modifier
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(horizontal = Spacing.lg, vertical = Spacing.lg)
                     .selectableGroup(),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),

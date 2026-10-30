@@ -9,6 +9,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.config.AppLinks
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -27,6 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class ClientProfileHomeScreenTest {
@@ -157,6 +161,37 @@ class ClientProfileHomeScreenTest {
         rule.onNodeWithText("Log Out").performClick()
         rule.onAllNodesWithText("Log out of ClickMe?").assertCountEquals(0)
         assertEquals(1, calls["logout"])
+    }
+
+    @Test
+    fun logOutNeverAutoConfirmsAfterRestore() {
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            ClickMeTheme {
+                ClientProfileHomeContent(card = ana, versionLabel = "Version 9.9.9 (42)", actions = actions)
+            }
+        }
+        rule.onNodeWithTag("profile_hub_logout").performScrollTo().performClick()
+        rule.onNodeWithText("Log out of ClickMe?").assertExists()
+
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        // The confirm dialog may come back, but only a tap on "Log Out" runs the callback.
+        assertEquals(null, calls["logout"])
+        rule.onNodeWithText("Stay logged in").performClick()
+        assertEquals(null, calls["logout"])
+        rule.onAllNodesWithText("Log out of ClickMe?").assertCountEquals(0)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun hubCapped() {
+        setContent()
+
+        val card = rule.onNodeWithTag("profile_hub_user_card").getUnclippedBoundsInRoot()
+        assertTrue("card width ${card.right - card.left}", card.right - card.left <= 600.dp)
+        assertTrue("card left ${card.left}", card.left >= 150.dp)
     }
 
     @Test
