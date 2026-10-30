@@ -4,13 +4,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -203,5 +206,48 @@ class MakeABookingTopicCardsTest {
         rule.onNodeWithText("Intro").assertIsDisplayed()
         rule.onNodeWithText("Blank desc").assertIsDisplayed()
         rule.onNodeWithText("   ").assertDoesNotExist()
+    }
+
+    @Test
+    fun topicLoadFailureShowsNamedError() {
+        var retries = 0
+        rule.setContent {
+            ClickMeTheme {
+                MakeABookingTopicPicker(
+                    topics = TopicsState.Failed(FieldError.Text("Expert not found")),
+                    selectedTopic = null,
+                    onOpen = {},
+                    onRetry = { retries++ },
+                )
+            }
+        }
+        rule.onNodeWithText("Couldn't load topics").assertIsDisplayed()
+        rule.onNodeWithText("Expert not found").assertIsDisplayed()
+        rule.onNodeWithText("Retry").assertHasClickAction().performClick()
+        assertEquals(1, retries)
+        rule.onAllNodesWithText("Retry connection").assertCountEquals(0)
+    }
+
+    @Test
+    fun topicEmptyShowsEmptyCopyWithoutRetry() {
+        rule.setContent {
+            ClickMeTheme {
+                MakeABookingTopicPicker(TopicsState.Loaded(emptyList()), null, onOpen = {}, onRetry = {})
+            }
+        }
+        rule.onNodeWithText("This expert has no topics to book yet.").assertIsDisplayed()
+        rule.onAllNodesWithText("Retry").assertCountEquals(0)
+    }
+
+    @Test
+    fun topicRowsAreRadioButtonsInASelectableGroup() {
+        setSheet(listOf(sheetFreeTopic, paidTopic), "t1")
+
+        rule.onAllNodes(hasRole(Role.RadioButton)).assertCountEquals(2)
+        rule
+            .onAllNodes(
+                SemanticsMatcher.keyIsDefined(SemanticsProperties.SelectableGroup) and
+                    hasAnyDescendant(hasRole(Role.RadioButton)),
+            ).assertCountEquals(1)
     }
 }

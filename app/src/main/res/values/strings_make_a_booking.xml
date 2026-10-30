@@ -20,16 +20,24 @@
         <item quantity="other">%d minutes</item>
     </plurals>
     <string name="make_a_booking_topic_a11y">Topic of Discussion, %1$s, %2$s, %3$s</string>
+    <string name="make_a_booking_topics_error_heading">Couldn\'t load topics</string>
     <string name="make_a_booking_no_topics">This expert has no topics to book yet.</string>
 
     <!-- Calendar -->
     <string name="make_a_booking_previous_month">Previous month</string>
     <string name="make_a_booking_next_month">Next month</string>
-    <string name="make_a_booking_day_open">Has open times</string>
+    <string name="make_a_booking_day_open">Available</string>
+    <string name="make_a_booking_day_no_availability">No availability</string>
+    <string name="make_a_booking_day_selected">Selected</string>
     <string name="make_a_booking_day_today">Today</string>
 
     <!-- Slots -->
     <string name="make_a_booking_no_slots">No available slots on this day.</string>
+    <plurals name="make_a_booking_slots_available_a11y">
+        <item quantity="one">%d time available</item>
+        <item quantity="other">%d times available</item>
+    </plurals>
+    <string name="make_a_booking_slots_none_a11y">No times this day</string>
     <string name="make_a_booking_pick_a_day">Pick a day to see its available times.</string>
     <string name="make_a_booking_slot_unavailable">Unavailable</string>
     <string name="make_a_booking_tz_same">Times are in your time zone (%1$s).</string>
@@ -59,7 +67,6 @@
     <string name="make_a_booking_state_no_slot">Choose a time slot to continue</string>
     <string name="make_a_booking_state_checking_payment_methods">Checking your payment methods</string>
     <string name="make_a_booking_state_no_topic">Choose a topic to continue</string>
-    <string name="make_a_booking_state_booking">Booking</string>
 
     <!-- Errors -->
     <string name="make_a_booking_error_title">Couldn\'t book</string>

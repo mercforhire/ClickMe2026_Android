@@ -39,7 +39,8 @@ private val ProgressSize = 24.dp
  * The booking CTA (D-08). Enabled only when [disabledReason] is null. The label cross-fades between "Book Now" and
  * "Add a Payment Method" ([ctaAction]) inside the same footprint, so the button never changes size. While
  * [isSubmitting] the button keeps its enabled fill, shows a progress indicator instead of the label and ignores
- * taps (D-11). Each disabled reason is also announced through the button's `stateDescription`.
+ * taps (D-11). Each disabled reason, and the in-flight state ("In progress"), is announced through the button's
+ * `stateDescription`.
  */
 @Composable
 fun MakeABookingBookButton(
@@ -51,7 +52,7 @@ fun MakeABookingBookButton(
 ) {
     val state =
         when {
-            isSubmitting -> stringResource(R.string.make_a_booking_state_booking)
+            isSubmitting -> stringResource(R.string.a11y_in_progress)
             disabledReason == BookDisabledReason.NoSlot -> stringResource(R.string.make_a_booking_state_no_slot)
             disabledReason == BookDisabledReason.CheckingPaymentMethods ->
                 stringResource(R.string.make_a_booking_state_checking_payment_methods)

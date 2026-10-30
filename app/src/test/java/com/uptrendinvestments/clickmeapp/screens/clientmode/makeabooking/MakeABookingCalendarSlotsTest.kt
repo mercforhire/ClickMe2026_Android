@@ -1,5 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -7,6 +9,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -113,13 +116,11 @@ class MakeABookingCalendarSlotsTest {
     }
 
     @Test
-    fun openDaysAreAnnouncedAsHavingOpenTimes() {
+    fun openDaysAreAnnouncedAsAvailableAndOthersAsNoAvailability() {
         setCalendar(openDays = setOf(LocalDate.of(2026, 10, 24)))
 
-        rule.onNodeWithTag(calendarDayTestTag(LocalDate.of(2026, 10, 24))).assert(stateIs("Has open times"))
-        rule
-            .onNodeWithTag(calendarDayTestTag(LocalDate.of(2026, 10, 25)))
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        rule.onNodeWithTag(calendarDayTestTag(LocalDate.of(2026, 10, 24))).assert(stateIs("Available"))
+        rule.onNodeWithTag(calendarDayTestTag(LocalDate.of(2026, 10, 25))).assert(stateIs("No availability"))
     }
 
     @Test
@@ -350,4 +351,142 @@ class MakeABookingCalendarSlotsTest {
             assertTrue(context.getString(it).contains("$PAID_BOOKING_MAX_LEAD_DAYS days"))
         }
     }
+
+    // ---- Phase 15 Flow 2: calendar and slot semantics ----
+
+    private fun slotsOf(vararg starts: Instant) =
+        AvailabilityState.Loaded(
+            mapOf(today to starts.map { BookingTimeSlot(it, it.plusSeconds(1800), isAvailable = true) }),
+        )
+
+    private val later1 = Instant.parse("2026-10-22T22:00:00Z")
+    private val later2 = Instant.parse("2026-10-22T23:00:00Z")
+
+    private val isPoliteLiveRegion =
+        SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+
+    private fun descriptionContains(part: String) =
+        SemanticsMatcher("contentDescription contains $part") {
+            it.config.getOrNull(SemanticsProperties.ContentDescription)?.any { text -> text.contains(part) } == true
+        }
+
+    @Test
+    fun slotsHeadingAnnouncesCount() {
+        setSlots(availability = slotsOf(open, later1, later2))
+        rule
+            .onNode(hasText("Available Time Slots") and isPoliteLiveRegion)
+            .assert(descriptionContains("3 times available"))
+    }
+
+    @Test
+    fun slotsHeadingAnnouncesASingleTimeInTheSingular() {
+        setSlots(availability = slotsOf(open))
+        rule.onNode(hasText("Available Time Slots")).assert(descriptionContains("1 time available"))
+    }
+
+    @Test
+    fun slotsHeadingAnnouncesNoTimesForAnEmptyDay() {
+        setSlots(availability = AvailabilityState.Loaded(emptyMap()))
+        rule
+            .onNode(hasText("Available Time Slots") and isPoliteLiveRegion)
+            .assert(descriptionContains("No times this day"))
+    }
+
+    @Test
+    fun slotsHeadingDoesNotAnnounceACountWhileLoading() {
+        setSlots(availability = AvailabilityState.Loading)
+        rule
+            .onNode(hasText("Available Time Slots"))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+    }
+
+    @Test
+    fun slotsInTimeOrder() {
+        setSlots(availability = slotsOf(open, later1, later2))
+
+        val chips = rule.onAllNodes(anySlotChip).fetchSemanticsNodes()
+        val starts = chips.map { it.config.getOrNull(SemanticsProperties.TestTag).orEmpty() }
+        assertEquals(starts.sorted(), starts)
+        val positions = chips.map { it.boundsInRoot.top * ROW_WEIGHT + it.boundsInRoot.left }
+        assertEquals(positions.sorted(), positions)
+    }
+
+    @Test
+    fun calendarAndSlotsAreSeparateTraversalGroups() {
+        rule.setContent {
+            ClickMeTheme {
+                Column {
+                    MakeABookingCalendarCard(
+                        displayedMonth = YearMonth.of(2026, 10),
+                        today = today,
+                        selectedDate = today,
+                        openDays = emptySet(),
+                        canGoToPreviousMonth = false,
+                        onPreviousMonth = {},
+                        onNextMonth = {},
+                        onSelectDate = {},
+                    )
+                    MakeABookingTimeSlotsCard(
+                        selectedDate = today,
+                        availability = loaded,
+                        now = now,
+                        selectedSlotStart = null,
+                        expertTimezone = null,
+                        onSelectSlot = {},
+                        onRetry = {},
+                        zone = zone,
+                        timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    )
+                }
+            }
+        }
+
+        val isGroup = SemanticsMatcher.expectValue(SemanticsProperties.IsTraversalGroup, true)
+        val hasMonth = hasAnyDescendant(hasText("October 2026"))
+        val hasSlotsTitle = hasAnyDescendant(hasText("Available Time Slots"))
+        val calendarGroups = rule.onAllNodes(isGroup and hasMonth).fetchSemanticsNodes()
+        assertTrue("the calendar must be a traversal group", calendarGroups.isNotEmpty())
+        // No single group spans both cards, so a swipe does not wander between them.
+        rule.onAllNodes(isGroup and hasMonth and hasSlotsTitle).assertCountEquals(0)
+        rule.onAllNodes(isGroup and hasSlotsTitle).assertCountEquals(1)
+    }
+
+    @Test
+    fun monthTitleIsAHeadingAndKeepsItsLiveRegion() {
+        setCalendar()
+        rule
+            .onNode(hasText("October 2026"))
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+            .assert(isPoliteLiveRegion)
+    }
+
+    @Test
+    fun emptyMonthReadsNoAvailabilityAndKeepsNavigationEnabled() {
+        setCalendar(canGoToPreviousMonth = true)
+
+        val enabledDays =
+            rule
+                .onAllNodes(
+                    SemanticsMatcher("is an enabled day cell") {
+                        it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("make_a_booking_day_") == true &&
+                            it.config.getOrNull(SemanticsProperties.Disabled) == null
+                    },
+                ).fetchSemanticsNodes()
+        assertTrue(enabledDays.isNotEmpty())
+        enabledDays.forEach {
+            val state = it.config.getOrNull(SemanticsProperties.StateDescription).orEmpty()
+            assertTrue("day state was '$state'", state.contains("No availability"))
+        }
+        rule.onNodeWithContentDescription("Previous month").assertIsEnabled()
+        rule.onNodeWithContentDescription("Next month").assertIsEnabled()
+    }
+
+    @Test
+    fun theSelectedDayReadsSelected() {
+        setCalendar(openDays = setOf(today))
+
+        rule.onNodeWithTag(calendarDayTestTag(today)).assert(stateIs("Today, Selected, Available"))
+    }
 }
+
+private const val ROW_WEIGHT = 10_000f

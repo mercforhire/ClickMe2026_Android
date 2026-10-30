@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -71,13 +72,20 @@ fun LazyListScope.makeABookingTopicItems(
     selectedTopicId: String?,
     onSelect: (String) -> Unit,
 ) {
-    items(topics, key = { it.id }) { topic ->
-        MakeABookingTopicCard(
-            topic = topic,
-            selected = topic.id == selectedTopicId,
-            onClick = { onSelect(topic.id) },
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        )
+    // One item so the radio cards form a single selectable group for TalkBack; an expert has a handful of topics.
+    item(key = "topics") {
+        Column(Modifier.selectableGroup()) {
+            topics.forEach { topic ->
+                key(topic.id) {
+                    MakeABookingTopicCard(
+                        topic = topic,
+                        selected = topic.id == selectedTopicId,
+                        onClick = { onSelect(topic.id) },
+                        modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    )
+                }
+            }
+        }
     }
     item(key = "bottom_spacer") { Spacer(Modifier.height(Spacing.xl)) }
 }

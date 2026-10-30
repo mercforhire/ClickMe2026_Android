@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
@@ -42,12 +44,14 @@ private val IconSize = 20.dp
  * Book Session sits above Message (D-14). An expert who is not bookable gets the same Book Session pill, disabled and
  * relabelled (D-04); the server still gates the booking itself. Message stays enabled either way (D-12) and is
  * omitted when [showMessage] is false, on the signed-in user's own profile. The Book Session pill (enabled or not) is
- * omitted when [showBookSession] is false: an expert viewing their own profile cannot book themselves.
+ * omitted when [showBookSession] is false: an expert viewing their own profile cannot book themselves. The enabled
+ * Book Session button reads "Book Session with [expertName]" to TalkBack (Phase 15 Flow 2).
  */
 @Composable
 fun ExpertProfileActionButtons(
     isBookable: Boolean,
     onBookSession: () -> Unit,
+    expertName: String,
     modifier: Modifier = Modifier,
     showBookSession: Boolean = true,
     showMessage: Boolean = false,
@@ -57,9 +61,13 @@ fun ExpertProfileActionButtons(
     val buttonModifier = Modifier.fillMaxWidth().heightIn(min = ButtonMinHeight)
     Column(modifier.fillMaxWidth()) {
         if (showBookSession && isBookable) {
+            val bookSessionDescription = stringResource(R.string.expert_profile_book_session_a11y, expertName)
             PressScaleButton(
                 onClick = onBookSession,
-                modifier = buttonModifier.testTag(BOOK_SESSION_TAG),
+                modifier =
+                    buttonModifier
+                        .testTag(BOOK_SESSION_TAG)
+                        .semantics { contentDescription = bookSessionDescription },
             ) {
                 Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(IconSize))
                 Spacer(Modifier.width(Spacing.sm))
@@ -114,7 +122,7 @@ fun ExpertProfileActionButtonsSkeleton(
 private fun ExpertProfileActionButtonsPreview() {
     ClickMeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
-            ExpertProfileActionButtons(isBookable = true, onBookSession = {})
+            ExpertProfileActionButtons(isBookable = true, onBookSession = {}, expertName = "Ada Lovelace")
         }
     }
 }
