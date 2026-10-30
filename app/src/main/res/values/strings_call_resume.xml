@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Booking detail screens after a process kill during a call (Phase 15, D-11, UI-SPEC A4) and the "unavailable"
+         state both detail screens show for a booking the server no longer has (UI-SPEC Detail archetype, rule 5).
+         The first-load error headings already exist: upcoming_booking_load_error_title ("Couldn't load booking") and
+         expert_summary_load_error ("Couldn't load booking"). -->
+    <string name="call_resume_note">You were on a call. Tap Join Call to rejoin.</string>
+    <string name="booking_detail_unavailable_heading">This booking isn\'t available</string>
+    <string name="booking_detail_unavailable_body">It may have been removed. Go back and try another.</string>
+</resources>

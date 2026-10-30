@@ -5,16 +5,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -22,10 +25,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
+import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
@@ -74,6 +79,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -340,6 +346,8 @@ class UpcomingBookingScreenTest {
                     onRescheduleNoticeConsumed = { calls.events += "consumed" },
                     messageBusy = messageBusy,
                     onMessage = { calls.events += "message" },
+                    onRefresh = { calls.events += "refresh" },
+                    onRefreshFailureConsumed = { calls.events += "refreshFailureConsumed" },
                     zone = zone,
                     timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                     locale = Locale.US,
@@ -526,6 +534,78 @@ class UpcomingBookingScreenTest {
         }
     }
 
+    // ---- call resume note, refresh standard, unavailable and width cap (Phase 15) ----
+
+    @Test
+    fun noteIsPoliteLiveRegionAboveJoin() {
+        setScreen(UpcomingBookingUiState.Loaded(details(), showCallResumeNote = true))
+        rule
+            .onNodeWithText("You were on a call. Tap Join Call to rejoin.")
+            .assertExists()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        assertTrue(rule.topOf("call_resume_note") < rule.topOf(UPCOMING_BOOKING_JOIN_TAG))
+    }
+
+    @Test
+    fun noNoteWhenNotFlagged() {
+        setScreen(loaded())
+        rule.onAllNodesWithText("You were on a call. Tap Join Call to rejoin.").assertCountEquals(0)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        val calls = setScreen(UpcomingBookingUiState.Loaded(details(), refreshFailed = true))
+        rule.waitForIdle()
+        rule.onNodeWithText("Confirmed").assertExists()
+        assertEquals(listOf("refreshFailureConsumed"), calls.events)
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(listOf("refreshFailureConsumed", "refresh"), calls.events)
+        rule.onNodeWithText("Confirmed").assertExists()
+    }
+
+    @Test
+    fun refreshingShowsLinearIndicator() {
+        setScreen(UpcomingBookingUiState.Loaded(details(), isRefreshing = true))
+        rule.onNodeWithTag("upcoming_booking_refresh_progress").assertExists()
+        rule.onAllNodesWithContentDescription("Loading").assertCountEquals(0)
+        rule.onNodeWithText("Confirmed").assertExists()
+    }
+
+    @Test
+    fun noIndicatorWhenNotRefreshing() {
+        setScreen(loaded())
+        rule.onAllNodesWithTag("upcoming_booking_refresh_progress").assertCountEquals(0)
+    }
+
+    @Test
+    fun firstLoadErrorNamed() {
+        val calls = setScreen(UpcomingBookingUiState.Failed(FieldError.Text("Boom")))
+        rule
+            .onNodeWithText("Couldn't load booking")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(listOf("retry"), calls.events)
+    }
+
+    @Test
+    fun unavailableShowsNoRetry() {
+        setScreen(UpcomingBookingUiState.Unavailable)
+        rule.onNodeWithText("This booking isn't available").assertExists()
+        rule.onNodeWithText("It may have been removed. Go back and try another.").assertExists()
+        rule.onAllNodesWithText("Retry").assertCountEquals(0)
+    }
+
+    /** D-02: on a large window the content column is capped at 600 dp and centered. */
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun contentCapped() {
+        setScreen(loaded())
+        val message = rule.onNodeWithTag(MESSAGE_EXPERT_TAG).getUnclippedBoundsInRoot()
+        assertTrue("message button spans ${message.left} to ${message.right}", message.right <= 750.dp)
+        assertTrue("message button spans ${message.left} to ${message.right}", message.left >= 150.dp)
+    }
+
     // ---- Cancel guard (D-13), through the real ViewModel ----
 
     private fun screenViewModel(
@@ -542,6 +622,7 @@ class UpcomingBookingScreenTest {
             FakeCallStarter(),
             guard,
             JoinClock(MutableClock(detailsStart.minusSeconds(600)), CoroutineScope(Job())),
+            CallResumeNotice(),
         )
     }
 

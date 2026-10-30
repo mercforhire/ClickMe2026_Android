@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.CallStarter
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
@@ -60,6 +61,7 @@ class UpcomingBookingViewModel
         private val callStarter: CallStarter,
         private val callGuard: CallGuard,
         joinClock: JoinClock,
+        resumeNotice: CallResumeNotice,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -73,6 +75,9 @@ class UpcomingBookingViewModel
 
         private var loadJob: Job? = null
         private var loadIsCurrent = false
+
+        // Consumed once here, so only the screen the relaunch landed on shows the note (D-11, T-15-38).
+        private val showCallResumeNote = resumeNotice.consumeFor(bookingId)
 
         private val controller =
             RescheduleResponseController(
@@ -101,6 +106,14 @@ class UpcomingBookingViewModel
 
         fun retry() {
             startLoad(quiet = false)
+        }
+
+        /** Retry of a failed refresh with content showing (D-05): the details stay and only a progress bar runs. */
+        fun refresh() {
+        }
+
+        /** The screen showed the refresh-failed snackbar. */
+        fun onRefreshFailureConsumed() {
         }
 
         /**

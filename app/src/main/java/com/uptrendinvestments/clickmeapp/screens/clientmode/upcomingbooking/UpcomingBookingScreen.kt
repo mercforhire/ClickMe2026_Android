@@ -139,6 +139,8 @@ fun UpcomingBookingScreen(
         onJoin = viewModel::join,
         onBack = onBack,
         onRetry = viewModel::retry,
+        onRefresh = viewModel::refresh,
+        onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onAccept = viewModel::accept,
         onDecline = viewModel::decline,
@@ -175,6 +177,8 @@ fun UpcomingBookingContent(
     modifier: Modifier = Modifier,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    onRefreshFailureConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -223,6 +227,7 @@ fun UpcomingBookingContent(
                         action = EmptyStateAction(stringResource(R.string.section_retry), onRetry),
                     )
                 }
+            UpcomingBookingUiState.Unavailable -> Unit
             is UpcomingBookingUiState.Loaded ->
                 LoadedBody(
                     details = state.details,
