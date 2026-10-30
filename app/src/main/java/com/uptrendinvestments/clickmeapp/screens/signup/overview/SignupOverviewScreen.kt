@@ -71,6 +71,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.signup.SetupStep
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private const val TOTAL_STEPS = 5
@@ -165,7 +166,7 @@ fun SignupOverviewContent(
                 onClick = onNext,
                 modifier =
                     Modifier
-                        .fillMaxWidth()
+                        .contentMaxWidth()
                         .heightIn(min = 56.dp)
                         .padding(start = Spacing.lg, end = Spacing.lg, bottom = Spacing.lg),
             ) {
@@ -183,6 +184,7 @@ fun SignupOverviewContent(
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(horizontal = Spacing.lg),
             ) {
                 Header()

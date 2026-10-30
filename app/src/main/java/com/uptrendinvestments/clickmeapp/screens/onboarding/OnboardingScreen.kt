@@ -53,6 +53,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.backgrounds.GreenGlowBlobLayer
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
 
@@ -98,7 +99,7 @@ fun OnboardingContent(
                 OnboardingPageContent(pages[index])
             }
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg),
+                modifier = Modifier.contentMaxWidth().padding(horizontal = Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 PageDots(pagerState = pagerState, count = pages.size)
@@ -138,6 +139,7 @@ private fun OnboardingPageContent(page: OnboardingPage) {
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(top = Spacing.xxl)
                 .padding(horizontal = Spacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally,

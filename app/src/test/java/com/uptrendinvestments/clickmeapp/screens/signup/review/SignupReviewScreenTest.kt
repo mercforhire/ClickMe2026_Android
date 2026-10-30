@@ -1,11 +1,16 @@
 package com.uptrendinvestments.clickmeapp.screens.signup.review
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -14,14 +19,18 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.signup.SetupStep
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class SignupReviewScreenTest {
@@ -157,5 +166,62 @@ class SignupReviewScreenTest {
         rule.onNodeWithText("Server exploded").assertIsDisplayed()
         rule.onNodeWithText("OK").performClick()
         assertEquals(1, dismissed)
+    }
+
+    /** D-07: while publishing the button is busy (announced) and a tap neither fires nor re-enters. */
+    @Test
+    fun publishInFlightIgnoresRepeatTaps() {
+        var published = 0
+        show(full.copy(saveState = SaveState.Saving), onPublish = { published++ })
+
+        val busy =
+            rule.onNode(
+                hasClickAction() and SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"),
+            )
+        busy.assertExists()
+        busy.performClick()
+        busy.performClick()
+
+        assertEquals(0, published)
+    }
+
+    /** D-07: a failed publish shows the error dialog; closing it leaves every reviewed value in place. */
+    @Test
+    fun publishFailureKeepsReview() {
+        var state by mutableStateOf(full.copy(dialogError = FieldError.Text("Server exploded")))
+        rule.setContent {
+            ClickMeTheme {
+                SignupReviewContent(
+                    state = state,
+                    onEdit = {},
+                    onPublish = {},
+                    onBack = {},
+                    onDismissMissingFields = {},
+                    onDismissDialog = { state = state.copy(dialogError = null) },
+                )
+            }
+        }
+
+        rule.onNodeWithText("Couldn't publish profile").assertIsDisplayed()
+        rule.onNodeWithText("Server exploded").assertIsDisplayed()
+        rule.onNodeWithText("OK").performClick()
+
+        rule.onNodeWithText("Server exploded").assertDoesNotExist()
+        listOf("Ada", "Toronto, ON, Canada", "English", "(GMT-05:00) Eastern Time", "Tax").forEach {
+            rule.onNodeWithText(it).assertExists()
+        }
+        rule.onNode(hasText("Publish Profile") and hasClickAction()).assertIsEnabled()
+    }
+
+    /** D-02: on a large window the card column is capped at 600 dp and centered. */
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun reviewCappedOnLargeWindow() {
+        show(full)
+
+        val edit = rule.onNodeWithContentDescription("Edit Personal Details").getUnclippedBoundsInRoot()
+        val label = rule.onNodeWithText("First Name").getUnclippedBoundsInRoot()
+        assertTrue("card edit button ends at ${edit.right}", edit.right <= 750.dp)
+        assertTrue("card label starts at ${label.left}", label.left >= 150.dp)
     }
 }

@@ -46,6 +46,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 private val RowMinHeight = 56.dp
@@ -119,7 +120,7 @@ fun SignupTagsContent(
                     .imePadding(),
         ) {
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier.weight(1f).contentMaxWidth(),
                 contentPadding = PaddingValues(horizontal = Spacing.lg),
             ) {
                 item(key = "search") {
@@ -159,7 +160,7 @@ fun SignupTagsContent(
                 onClick = onSave,
                 modifier =
                     Modifier
-                        .fillMaxWidth()
+                        .contentMaxWidth()
                         .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.lg),
             )
         }
