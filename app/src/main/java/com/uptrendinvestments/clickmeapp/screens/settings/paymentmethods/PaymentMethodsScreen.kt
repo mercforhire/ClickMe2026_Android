@@ -40,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +52,8 @@ import com.stripe.android.paymentsheet.PaymentSheet
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
+import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButtonDefaults
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
@@ -69,6 +70,7 @@ import com.uptrendinvestments.clickmeapp.stripe.rememberClickMePaymentSheetAppea
 import com.uptrendinvestments.clickmeapp.stripe.toSheetOutcome
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag on the "Add Payment Method" button. */
@@ -77,6 +79,8 @@ const val PAYMENT_METHODS_ADD_TAG = "payment_methods_add"
 private val AddButtonMinHeight = 56.dp
 private val AddIconSize = 24.dp
 private val AddSpinnerStroke = 2.dp
+private val SkeletonRowHeight = 72.dp
+private const val SKELETON_ROWS = 4
 
 /**
  * Port of iOS `PaymentMethodsView`. Back always pops: an in-flight set-default or remove finishes in the ViewModel
@@ -195,25 +199,25 @@ fun PaymentMethodsContent(
     }
 }
 
+/** Row-shaped skeleton that copies the real card row height (UI-SPEC archetype A); one "Loading" announcement. */
 @Composable
 private fun LoadingBody(modifier: Modifier = Modifier) {
-    val loadingLabel = stringResource(R.string.payment_methods_loading_a11y)
-    Column(
-        modifier =
-            modifier.fillMaxSize().semantics(mergeDescendants = true) {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = loadingLabel
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(Spacing.sm))
-        Text(
-            text = stringResource(R.string.payment_methods_loading),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.extras.onSurfaceMuted,
-        )
+    SkeletonGroup(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .contentMaxWidth()
+                    .padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            repeat(SKELETON_ROWS) {
+                SkeletonBlock(
+                    modifier = Modifier.fillMaxWidth().height(SkeletonRowHeight),
+                    shape = MaterialTheme.shapes.medium,
+                )
+            }
+        }
     }
 }
 
@@ -247,6 +251,7 @@ private fun EmptyBody(
             modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(horizontal = Spacing.md),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -282,7 +287,7 @@ private fun CardsBody(
         item(key = "saved_cards_label") {
             Text(
                 text = stringResource(R.string.payment_methods_saved_cards),
-                modifier = Modifier.padding(horizontal = Spacing.xs).semantics { heading() },
+                modifier = Modifier.contentMaxWidth().padding(horizontal = Spacing.xs).semantics { heading() },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.extras.onSurfaceMuted,
             )
@@ -294,18 +299,18 @@ private fun CardsBody(
                 actionsEnabled = state.busy == null,
                 onSetDefault = { onSetDefault(card.id) },
                 onRemove = { onRequestRemove(card.id) },
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.contentMaxWidth().animateItem(),
             )
         }
         // The list gap is md; these items add the rest of the lg spacing from the UI-SPEC.
         item(key = "add_button") {
-            Column {
+            Column(modifier = Modifier.contentMaxWidth()) {
                 Spacer(Modifier.height(Spacing.sm))
                 AddCardButton(state.isAddingCard, onAddCard)
             }
         }
         item(key = "trust_copy") {
-            Column {
+            Column(modifier = Modifier.contentMaxWidth()) {
                 Spacer(Modifier.height(Spacing.sm))
                 TrustCopy()
             }

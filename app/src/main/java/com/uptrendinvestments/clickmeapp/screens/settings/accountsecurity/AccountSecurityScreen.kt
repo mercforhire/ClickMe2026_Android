@@ -25,6 +25,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.subviews.ChangePasswordCard
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.subviews.DeleteAccountEntryCard
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /**
  * Hilt-aware Account Security screen (iOS `AccountSecurityView`). [onOpenDeleteAccount] runs only when the call
@@ -85,6 +86,7 @@ fun AccountSecurityContent(
                     .consumeWindowInsets(innerPadding)
                     .imePadding()
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(horizontal = Spacing.md, vertical = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {

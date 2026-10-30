@@ -6,13 +6,16 @@ import android.app.Application
 import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
@@ -27,6 +30,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertFina
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_BALANCE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.subviews.PAYOUTS_CONTINUE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -53,6 +57,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
 /** The real Payouts screen over the real ViewModel and repositories, with only the HTTP layer faked. */
 @RunWith(RobolectricTestRunner::class)
@@ -403,4 +408,81 @@ class PayoutsScreenTest {
             rule.onAllNodesWithText("Recent activity").assertCountEquals(0)
             rule.onAllNodesWithTag(EARNINGS_ROW_TAG).assertCountEquals(0)
         }
+
+    private fun showContent(
+        state: PayoutsUiState,
+        onRetry: () -> Unit = {},
+        onRefresh: () -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                PayoutsScreenContent(
+                    state = state,
+                    origin = SettingsOrigin.Dashboard,
+                    onBack = {},
+                    onRetry = onRetry,
+                    onRefresh = onRefresh,
+                    onRefreshFailureShown = {},
+                    onStartPayoutSetup = {},
+                    onOnboardingUrl = {},
+                    onDismissOnboardingError = {},
+                    onOpenActivity = {},
+                    onOpenTaxProfile = {},
+                )
+            }
+        }
+    }
+
+    private fun loadedState(refreshFailed: Boolean = false): PayoutsUiState {
+        val summary = payoutSummary(available = 12_500L)
+        return PayoutsUiState(
+            load = PayoutsLoad.Loaded,
+            content = PayoutsContent.Loaded(summary = summary, eligible = true),
+            summary = summary,
+            refreshFailed = refreshFailed,
+        )
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        var refreshed = 0
+        showContent(loadedState(refreshFailed = true), onRefresh = { refreshed++ })
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        // The balance stays under the snackbar.
+        rule.onNodeWithText(Money.format(12_500L, "CAD")).assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, refreshed)
+    }
+
+    @Test
+    fun stateCells() {
+        showContent(PayoutsUiState(load = PayoutsLoad.Loading))
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onAllNodesWithText("Couldn't load payouts").assertCountEquals(0)
+    }
+
+    @Test
+    fun stateCellsNamedErrorRetries() {
+        var retried = 0
+        showContent(
+            PayoutsUiState(load = PayoutsLoad.Failed(FieldError.Text("Down"))),
+            onRetry = { retried++ },
+        )
+        rule.onNodeWithText("Couldn't load payouts").assertExists()
+        rule.onNodeWithText("Down").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retried)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        showContent(loadedState())
+        val row = rule.onNodeWithTag(PAYOUTS_TAX_ROW_TAG).getUnclippedBoundsInRoot()
+        assertTrue("row width ${row.right - row.left}", row.right - row.left <= 600.dp)
+        // Centered: the content column starts well in from the 900 dp window edge.
+        assertTrue("row left ${row.left}", row.left >= 150.dp)
+    }
 }

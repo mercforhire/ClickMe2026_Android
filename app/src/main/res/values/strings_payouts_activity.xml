@@ -16,7 +16,6 @@
     <string name="payouts_activity_error_title">Couldn\'t load activity</string>
     <string name="payouts_activity_loading_more">Loading more…</string>
     <string name="payouts_activity_retry">Retry</string>
-    <string name="payouts_activity_refresh_failed">Couldn\'t refresh your activity. Showing what was loaded.</string>
 
     <!-- "{client} · {date}" under the topic; "—" stands in for any missing text. -->
     <string name="payouts_activity_row_line" translatable="false">%1$s · %2$s</string>

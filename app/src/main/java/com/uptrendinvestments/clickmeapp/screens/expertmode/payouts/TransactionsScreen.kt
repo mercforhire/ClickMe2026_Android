@@ -25,7 +25,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -35,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -50,16 +48,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.util.Locale
 
@@ -114,15 +113,12 @@ fun TransactionsContent(
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val refreshFailedMessage = stringResource(R.string.payouts_activity_refresh_failed)
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
-            onRefreshFailureConsumed()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -198,13 +194,15 @@ private fun ActivityList(
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         items(items = state.rows, key = { it.id }) { row ->
-            EarningsTransactionRow(item = row, zone = zone, locale = locale)
+            EarningsTransactionRow(item = row, modifier = Modifier.contentMaxWidth(), zone = zone, locale = locale)
         }
         if (state.isPaging) {
-            item(key = FOOTER_PAGING_KEY) { PagingFooter() }
+            item(key = FOOTER_PAGING_KEY) { PagingFooter(Modifier.contentMaxWidth()) }
         }
         state.pageError?.let { error ->
-            item(key = FOOTER_ERROR_KEY) { PageErrorFooter(error = error, onRetry = onRetryPage) }
+            item(key = FOOTER_ERROR_KEY) {
+                PageErrorFooter(error = error, onRetry = onRetryPage, modifier = Modifier.contentMaxWidth())
+            }
         }
     }
 }
@@ -217,9 +215,9 @@ private fun LazyListState.lastVisibleIndex(): Int? {
 
 /** The trailing "Loading more…" row while the next page is fetched. */
 @Composable
-private fun PagingFooter() {
+private fun PagingFooter(modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.md),
+        modifier = modifier.fillMaxWidth().padding(vertical = Spacing.md),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -241,9 +239,10 @@ private fun PagingFooter() {
 private fun PageErrorFooter(
     error: FieldError,
     onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
+        modifier = modifier.fillMaxWidth().padding(vertical = Spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -262,7 +261,8 @@ private fun PageErrorFooter(
 private fun ActivitySkeleton() {
     SkeletonGroup(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.md, vertical = Spacing.md),
+            modifier =
+                Modifier.fillMaxSize().contentMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             repeat(SKELETON_ROWS) {

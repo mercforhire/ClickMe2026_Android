@@ -5,11 +5,13 @@ import android.content.Intent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.FaqCategory
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -22,6 +24,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -69,6 +72,7 @@ class HelpScreenTest {
 
     private val retries = mutableListOf<Unit>()
     private val shown = mutableListOf<Unit>()
+    private val refreshes = mutableListOf<Unit>()
 
     private fun setContent(
         state: HelpUiState = HelpUiState(load = HelpLoad.Loaded(categories)),
@@ -80,7 +84,7 @@ class HelpScreenTest {
                     state = state,
                     onBack = {},
                     onRetry = { retries += Unit },
-                    onRefresh = {},
+                    onRefresh = { refreshes += Unit },
                     onRefreshFailureShown = { shown += Unit },
                     launchEmail = launchEmail,
                 )
@@ -202,5 +206,36 @@ class HelpScreenTest {
 
         rule.onNodeWithContentDescription("Loading").assertExists()
         rule.onNodeWithText("Frequently Asked Questions").assertDoesNotExist()
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        setContent(HelpUiState(load = HelpLoad.Loaded(categories), refreshFailed = true))
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+
+        assertEquals(1, refreshes.size)
+        assertEquals(0, retries.size)
+        // The categories stay under the snackbar.
+        rule.onNodeWithText("Account").assertExists()
+    }
+
+    @Test
+    fun stateCells() {
+        setContent(HelpUiState())
+        rule.onNodeWithContentDescription("Loading").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        setContent()
+
+        val email = rule.onNodeWithTag("help_email_us").getUnclippedBoundsInRoot()
+        assertTrue("row width ${email.right - email.left}", email.right - email.left <= 600.dp)
+        // Centered: the content column starts well in from the 900 dp window edge.
+        assertTrue("row left ${email.left}", email.left >= 150.dp)
     }
 }

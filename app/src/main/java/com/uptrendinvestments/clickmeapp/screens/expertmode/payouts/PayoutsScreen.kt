@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -42,6 +41,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.ProfileMenuRow
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.components.SectionHeader
 import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
 
@@ -124,11 +125,10 @@ fun PayoutsScreenContent(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val refreshFailedMessage = stringResource(R.string.payouts_refresh_failed)
     val linkFailedMessage = stringResource(R.string.payouts_link_failed)
     val openTab =
         rememberCustomTabLauncher {
-            scope.launch { snackbarHostState.showSnackbar(linkFailedMessage, duration = SnackbarDuration.Short) }
+            scope.launch { snackbarHostState.showSnackbar(linkFailedMessage) }
         }
     // T-14-24: the single-use Stripe link is read once, cleared from the state right away, then opened.
     LaunchedEffect(state.onboardingUrl) {
@@ -144,13 +144,12 @@ fun PayoutsScreenContent(
             confirmLabel = stringResource(R.string.payouts_got_it),
         )
     }
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Short) }
-            onRefreshFailureShown()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureShown,
+    )
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -193,6 +192,7 @@ fun PayoutsScreenContent(
                             Modifier
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
+                                .contentMaxWidth()
                                 .padding(horizontal = Spacing.md)
                                 .padding(top = Spacing.lg),
                         verticalArrangement = Arrangement.spacedBy(Spacing.lg),

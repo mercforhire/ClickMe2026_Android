@@ -1,18 +1,26 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.payouts
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.earningsTransaction
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.Money
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.ZoneOffset
 import java.util.Locale
 
@@ -25,6 +33,7 @@ class TransactionsScreenTest {
         state: TransactionsUiState,
         onRetry: () -> Unit = {},
         onRetryPage: () -> Unit = {},
+        onRefresh: () -> Unit = {},
     ) {
         rule.setContent {
             ClickMeTheme {
@@ -36,7 +45,7 @@ class TransactionsScreenTest {
                     onRowVisible = {},
                     onRetry = onRetry,
                     onRetryPage = onRetryPage,
-                    onRefresh = {},
+                    onRefresh = onRefresh,
                     onRefreshFailureConsumed = {},
                 )
             }
@@ -118,5 +127,55 @@ class TransactionsScreenTest {
         assertEquals(1, rowCount())
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retried)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        var refreshed = 0
+        show(
+            TransactionsUiState(
+                load = TransactionsLoad.Loaded,
+                rows = listOf(earningsTransaction("e1"), earningsTransaction("e2")),
+                refreshFailed = true,
+            ),
+            onRefresh = { refreshed++ },
+        )
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        // The rows stay under the snackbar.
+        assertEquals(2, rowCount())
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, refreshed)
+    }
+
+    @Test
+    fun listCells() {
+        show(TransactionsUiState(load = TransactionsLoad.Loading))
+
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onAllNodesWithText("No activity yet").assertCountEquals(0)
+    }
+
+    @Test
+    fun listCellsOneRowHasNoEmptyHeading() {
+        show(TransactionsUiState(load = TransactionsLoad.Loaded, rows = listOf(earningsTransaction())))
+
+        assertEquals(1, rowCount())
+        rule.onAllNodesWithText("No activity yet").assertCountEquals(0)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        show(TransactionsUiState(load = TransactionsLoad.Loaded, rows = listOf(earningsTransaction())))
+
+        val row = rule.onAllNodesWithTag(EARNINGS_ROW_TAG)[0].getUnclippedBoundsInRoot()
+        assertTrue("row width ${row.right - row.left}", row.right - row.left <= 600.dp)
+        // Centered: the row starts well in from the 900 dp window edge.
+        assertTrue("row left ${row.left}", row.left >= 150.dp)
+        // The list scroll area itself stays full width.
+        val list = rule.onNodeWithTag(TRANSACTIONS_LIST_TAG).getUnclippedBoundsInRoot()
+        assertTrue(list.right - list.left > 600.dp)
     }
 }

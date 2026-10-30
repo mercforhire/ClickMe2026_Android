@@ -5,8 +5,6 @@
     <string name="payment_methods_add">Add Payment Method</string>
     <string name="payment_methods_trust">Cards are securely stored by Stripe. ClickMe never sees your full card number.</string>
 
-    <string name="payment_methods_loading">Loading payment methods…</string>
-    <string name="payment_methods_loading_a11y">Loading</string>
 
     <string name="payment_methods_empty_heading">No saved cards yet</string>
     <string name="payment_methods_empty_body">Add your first card to book faster next time.</string>

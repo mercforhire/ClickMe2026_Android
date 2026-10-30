@@ -23,7 +23,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.config.AppLinks
@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.help.subviews.HelpCont
 import com.uptrendinvestments.clickmeapp.screens.settings.help.subviews.HelpFaqCard
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 
 private val SkeletonHeaderWidth = 200.dp
@@ -112,16 +113,14 @@ fun HelpContent(
     val expandedIds = rememberSaveable(saver = ExpandedIdsSaver) { mutableStateListOf<String>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val refreshFailedMessage = stringResource(R.string.help_refresh_failed)
     val noMailMessage = stringResource(R.string.help_no_mail_app, AppLinks.SUPPORT_EMAIL)
 
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage) }
-            onRefreshFailureShown()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureShown,
+    )
 
     // No resolveActivity check (and no <queries> entry): starting the intent and catching the miss covers every case.
     val emailUs: () -> Unit = {
@@ -150,10 +149,10 @@ fun HelpContent(
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
                 when (val load = state.load) {
-                    HelpLoad.Loading -> item(key = "loading") { HelpSkeleton() }
+                    HelpLoad.Loading -> item(key = "loading") { HelpSkeleton(Modifier.contentMaxWidth()) }
                     is HelpLoad.Failed -> {
                         item(key = "failed") { HelpFailed(load.message, onRetry) }
-                        item(key = "contact") { ContactSection(emailUs) }
+                        item(key = "contact") { ContactSection(emailUs, Modifier.contentMaxWidth()) }
                     }
                     is HelpLoad.Loaded -> {
                         if (load.categories.isNotEmpty()) {
@@ -161,10 +160,11 @@ fun HelpContent(
                                 FaqSection(
                                     categories = load.categories,
                                     expandedIds = expandedIds,
+                                    modifier = Modifier.contentMaxWidth(),
                                 )
                             }
                         }
-                        item(key = "contact") { ContactSection(emailUs) }
+                        item(key = "contact") { ContactSection(emailUs, Modifier.contentMaxWidth()) }
                     }
                 }
             }
@@ -186,8 +186,9 @@ private fun SectionHeader(text: String) {
 private fun FaqSection(
     categories: List<FaqCategory>,
     expandedIds: SnapshotStateList<String>,
+    modifier: Modifier = Modifier,
 ) {
-    Column {
+    Column(modifier = modifier) {
         SectionHeader(stringResource(R.string.help_faq_section))
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             categories.forEach { category ->
@@ -210,7 +211,7 @@ private fun HelpFailed(
     onRetry: () -> Unit,
 ) {
     Box(
-        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = Modifier.contentMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         contentAlignment = Alignment.Center,
     ) {
         EmptyState(
@@ -223,8 +224,11 @@ private fun HelpFailed(
 }
 
 @Composable
-private fun ContactSection(onEmailUs: () -> Unit) {
-    Column {
+private fun ContactSection(
+    onEmailUs: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
         SectionHeader(stringResource(R.string.help_contact_section))
         HelpContactRow(onClick = onEmailUs)
     }
@@ -232,8 +236,8 @@ private fun ContactSection(onEmailUs: () -> Unit) {
 
 /** A header bar and four cards, then a header bar and one card, matching the loaded layout. */
 @Composable
-private fun HelpSkeleton() {
-    SkeletonGroup {
+private fun HelpSkeleton(modifier: Modifier = Modifier) {
+    SkeletonGroup(modifier = modifier) {
         Column {
             SkeletonHeaderBar()
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {

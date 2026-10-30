@@ -21,7 +21,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -58,6 +65,16 @@ fun ChangePasswordCard(
     modifier: Modifier = Modifier,
 ) {
     val editable = state.saveState == SaveState.Idle
+    val focus = remember { PasswordField.entries.associateWith { FocusRequester() } }
+    // Focus moves to the first field that newly fails (a wrong current password, a validation message). Typing in a
+    // field only clears its message, so it never steals focus back (UI-SPEC "Submit errors and in-flight", D-07).
+    var shownErrors by remember { mutableStateOf(emptySet<PasswordField>()) }
+    LaunchedEffect(state.fieldErrors) {
+        val failing = state.fieldErrors.keys
+        val fresh = PasswordField.entries.firstOrNull { it in failing && it !in shownErrors }
+        shownErrors = failing
+        fresh?.let { focus.getValue(it).requestFocus() }
+    }
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.account_security_change_password),
@@ -75,6 +92,7 @@ fun ChangePasswordCard(
         ValidatedField(
             value = state.current,
             onValueChange = onCurrentChange,
+            modifier = Modifier.focusRequester(focus.getValue(PasswordField.Current)),
             placeholder = stringResource(R.string.account_security_current_hint),
             leadingIcon = Icons.Outlined.Lock,
             error = state.fieldErrors[PasswordField.Current]?.asString(),
@@ -86,6 +104,7 @@ fun ChangePasswordCard(
         ValidatedField(
             value = state.new,
             onValueChange = onNewChange,
+            modifier = Modifier.focusRequester(focus.getValue(PasswordField.New)),
             placeholder = stringResource(R.string.account_security_new_hint),
             leadingIcon = Icons.Outlined.Lock,
             error = state.fieldErrors[PasswordField.New]?.asString(),
@@ -108,6 +127,7 @@ fun ChangePasswordCard(
         ValidatedField(
             value = state.confirm,
             onValueChange = onConfirmChange,
+            modifier = Modifier.focusRequester(focus.getValue(PasswordField.Confirm)),
             placeholder = stringResource(R.string.account_security_confirm_hint),
             leadingIcon = Icons.Outlined.Lock,
             error = state.fieldErrors[PasswordField.Confirm]?.asString(),

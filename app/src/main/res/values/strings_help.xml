@@ -10,5 +10,4 @@
     <string name="help_expanded">Expanded</string>
     <string name="help_collapsed">Collapsed</string>
     <string name="help_no_mail_app">No email app found. Write to %1$s from any mail app.</string>
-    <string name="help_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
 </resources>
