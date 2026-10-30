@@ -4,8 +4,11 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -39,10 +42,12 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -72,11 +77,11 @@ class ExpertCancellationScreenTest {
         api.cancelExpertBookingHandler = { _, _ -> CancelBookingData(refundAmount, currency) }
     }
 
-    private fun showScreen() {
+    private fun showScreen(handle: SavedStateHandle = SavedStateHandle()) {
         val viewModel =
             ExpertCancellationViewModel(
                 ExpertCancelKey("b1", ExpertBookingOrigin.Bookings),
-                SavedStateHandle(),
+                handle,
                 ExpertBookingsRepository(api),
                 clock,
                 launchRequest,
@@ -301,6 +306,139 @@ class ExpertCancellationScreenTest {
         rule.onNodeWithText("OK").performClick()
         assertEquals(1, dismissed)
     }
+
+    // region Phase 15: state cells, restoration, large window
+
+    private fun showContent(
+        state: ExpertCancellationUiState,
+        onRetry: () -> Unit = {},
+        onConfirm: () -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertCancellationContent(
+                    state = state,
+                    onBack = { backCount++ },
+                    onRetry = onRetry,
+                    onSelectReason = {},
+                    onCommentChange = {},
+                    onContinue = {},
+                    onBackToReason = {},
+                    onConfirm = onConfirm,
+                    onDismissError = {},
+                    onFinished = {},
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun stateCells() {
+        showContent(ExpertCancellationUiState())
+        // First load: one polite "Loading" skeleton, no step content yet.
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onNodeWithText("Why are you cancelling?").assertDoesNotExist()
+    }
+
+    @Test
+    fun failedLoadShowsNamedErrorWithRetry() {
+        var retries = 0
+        showContent(
+            ExpertCancellationUiState(load = ExpertCancelLoad.Failed(FieldError.Text("Offline"))),
+            onRetry = { retries++ },
+        )
+
+        rule.onNodeWithText("Couldn't load booking").assertExists()
+        rule.onNodeWithText("Offline").assertExists()
+        rule.onNodeWithContentDescription("Back").assertIsEnabled()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+    }
+
+    @Test
+    fun confirmNeverAutoConfirmsAfterRestore() {
+        stub(fee = 75.0)
+        val handle =
+            SavedStateHandle(
+                mapOf(
+                    ExpertCancellationViewModel.KEY_STEP to CancelStep.Confirm.name,
+                    ExpertCancellationViewModel.KEY_REASON to ExpertCancelReason.Other.name,
+                ),
+            )
+        showScreen(handle)
+
+        // The process-death restore lands on the confirm step and waits for a tap.
+        rule.onNodeWithText("Confirm Cancellation?").assertExists()
+        rule.onNodeWithTag(EXPERT_CANCEL_CONFIRM_TAG).assertIsEnabled()
+        assertEquals(0, api.cancelExpertBookingCalls)
+        assertEquals(emptyList<Pair<String, CancelBookingRequest>>(), api.cancelExpertBookingRequests)
+        assertEquals(0, cancelledCount)
+        assertEquals(null, launchRequest.bookings.consume())
+
+        confirm()
+        assertEquals(1, api.cancelExpertBookingCalls)
+        assertEquals(1, cancelledCount)
+    }
+
+    @Test
+    fun confirmStepRecreatedDoesNotCallConfirm() {
+        var confirms = 0
+        val restorer = StateRestorationTester(rule)
+        val state =
+            ExpertCancellationUiState(
+                load = ExpertCancelLoad.Loaded(summary),
+                step = CancelStep.Confirm,
+                reason = ExpertCancelReason.Other,
+            )
+        restorer.setContent {
+            ClickMeTheme {
+                ExpertCancellationContent(
+                    state = state,
+                    onBack = {},
+                    onRetry = {},
+                    onSelectReason = {},
+                    onCommentChange = {},
+                    onContinue = {},
+                    onBackToReason = {},
+                    onConfirm = { confirms++ },
+                    onDismissError = {},
+                    onFinished = {},
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        restorer.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Confirm Cancellation?").assertExists()
+        assertEquals(0, confirms)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        stub()
+        showScreen()
+
+        val reasonStep = rule.onNodeWithTag(EXPERT_CANCEL_CONTINUE_TAG).getUnclippedBoundsInRoot()
+        val reasonWidth = reasonStep.right.value - reasonStep.left.value
+        assertTrue("Continue is $reasonWidth dp wide, expected <= 600", reasonWidth <= 600f)
+
+        pick("Other")
+        goToConfirm()
+        val confirmButton = rule.onNodeWithTag(EXPERT_CANCEL_CONFIRM_TAG).getUnclippedBoundsInRoot()
+        val confirmWidth = confirmButton.right.value - confirmButton.left.value
+        assertTrue("Confirm is $confirmWidth dp wide, expected <= 600", confirmWidth <= 600f)
+    }
+
+    // endregion
 
     @Test
     fun reasonLabelsEqualTheWireLabels() {

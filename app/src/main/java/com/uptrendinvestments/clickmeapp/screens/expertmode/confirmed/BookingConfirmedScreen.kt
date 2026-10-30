@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,9 +26,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,10 +46,14 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.subviews.C
 import com.uptrendinvestments.clickmeapp.screens.expertmode.meetingTypeLabel
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
+
+/** Test tag on the scrolling content column. */
+const val BOOKING_CONFIRMED_CONTENT_TAG = "booking_confirmed_content"
 
 private const val ANIM_DURATION_MS = 300
 private const val ICON_DELAY_MS = 0
@@ -160,6 +168,10 @@ fun BookingConfirmedContent(
     val actionsEnabled by remember { derivedStateOf { progress[ACTIONS_INDEX].value >= 1f } }
     val locale = LocalConfiguration.current.locales[0]
 
+    // A result screen: TalkBack starts on the headline once, on entry (UI-SPEC Global rule 8).
+    val headlineFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { headlineFocus.requestFocus() } }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -171,6 +183,7 @@ fun BookingConfirmedContent(
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .testTag(BOOKING_CONFIRMED_CONTENT_TAG)
                     .verticalScroll(rememberScrollState())
                     .padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl)
                     .navigationBarsPadding(),
