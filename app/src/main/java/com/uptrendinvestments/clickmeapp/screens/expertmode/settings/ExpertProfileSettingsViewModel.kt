@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.settings
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
@@ -106,11 +107,42 @@ private val EmptySnapshot =
         meetingUrl = "",
     )
 
+private const val KEY_FIRST_NAME = "expert_settings_first_name"
+private const val KEY_LAST_NAME = "expert_settings_last_name"
+private const val KEY_BIO = "expert_settings_bio"
+private const val KEY_JOB_TITLE = "expert_settings_job_title"
+private const val KEY_COMPANY = "expert_settings_company"
+private const val KEY_CITY = "expert_settings_city"
+private const val KEY_STATE_PROVINCE = "expert_settings_state_province"
+private const val KEY_COUNTRY = "expert_settings_country"
+private const val KEY_MEETING_URL = "expert_settings_meeting_url"
+private const val KEY_LANGUAGE_IDS = "expert_settings_language_ids"
+private const val KEY_LANGUAGE_LABELS = "expert_settings_language_labels"
+private const val KEY_TOUCHED = "expert_settings_touched"
+
+private fun ProfileTextFieldId.savedStateKey(): String =
+    when (this) {
+        ProfileTextFieldId.FirstName -> KEY_FIRST_NAME
+        ProfileTextFieldId.LastName -> KEY_LAST_NAME
+        ProfileTextFieldId.Bio -> KEY_BIO
+        ProfileTextFieldId.JobTitle -> KEY_JOB_TITLE
+        ProfileTextFieldId.Company -> KEY_COMPANY
+        ProfileTextFieldId.City -> KEY_CITY
+        ProfileTextFieldId.StateProvince -> KEY_STATE_PROVINCE
+    }
+
 /**
  * State holder for Expert Settings (iOS `ExpertProfileSettingsViewModel`). It loads `GET expert/profile`, then
  * auto-saves like the client screen: the shared fields go through `PATCH user/profile` and the Skype / Zoom link through
  * `PATCH expert/profile`, both from one [AutoSaver]. A blank or non-http(s) link is never sent, so a typo cannot wipe or
  * break the link booked clients join through.
+ *
+ * Process death (CONTEXT D-12): edited fields, the country, the languages (two parallel `ArrayList<String>`: ids with
+ * "" for a custom language, and labels) and the typed meeting link are mirrored to [SavedStateHandle] with a touched
+ * flag. [seed] lays them over the fetched profile, so a restored edit wins over the late `GET expert/profile` (RESEARCH
+ * Pitfall 7), and a restored value that differs from the server is handed to the auto-saver like a keystroke. The link
+ * is restored as typed text but re-validated: a restored blank or invalid link never reaches the saver snapshot.
+ * Expertise tags come from the server and are not mirrored. Only Strings and string lists are stored (Pitfall 6).
  */
 @HiltViewModel
 class ExpertProfileSettingsViewModel
@@ -121,6 +153,7 @@ class ExpertProfileSettingsViewModel
         private val avatarController: ProfileAvatarController,
         private val userManager: UserManager,
         @ApplicationScope appScope: CoroutineScope,
+        private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ExpertProfileSettingsUiState())
         val uiState: StateFlow<ExpertProfileSettingsUiState> = _uiState.asStateFlow()
@@ -207,17 +240,69 @@ class ExpertProfileSettingsViewModel
                 )
             savedMeetingUrl = meetingUrl
             saver.rebase(snapshot)
+            val restored = restoredOver(snapshot)
+            val restoredText = restoredMeetingUrlText() ?: meetingUrl
             _uiState.update {
                 it.copy(
                     load = ExpertSettingsLoad.Ready,
-                    snapshot = snapshot,
-                    meetingUrlText = meetingUrl,
-                    meetingUrlError = null,
+                    snapshot = restored,
+                    meetingUrlText = restoredText,
+                    meetingUrlError = meetingUrlErrorFor(restoredText),
                     email = personal?.email.orEmpty(),
                     avatarUrl = profile.avatarUrl,
                     expertiseTags = profile.expertiseTags.orEmpty().map { tag -> tag.label },
                 )
             }
+            if (restored != snapshot) saver.onEdited(restored)
+        }
+
+        private fun touched() = savedStateHandle.get<Boolean>(KEY_TOUCHED) == true
+
+        /** The meeting link text the user typed before recreation, or null when there is none to restore. */
+        private fun restoredMeetingUrlText(): String? =
+            if (touched()) savedStateHandle.get<String>(KEY_MEETING_URL) else null
+
+        /** [server] with every field the user edited before recreation put back (values cut to their maximum). */
+        private fun restoredOver(server: ExpertSettingsSnapshot): ExpertSettingsSnapshot {
+            if (!touched()) return server
+            var profile = server.profile
+            for (field in ProfileTextFieldId.entries) {
+                val saved = savedStateHandle.get<String>(field.savedStateKey()) ?: continue
+                profile = profile.with(field, saved.clampLength(field.maxLength))
+            }
+            savedStateHandle.get<String>(KEY_COUNTRY)?.let {
+                profile = profile.copy(countryCode = Countries.normalize(it).orEmpty())
+            }
+            val ids = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_IDS)
+            val labels = savedStateHandle.get<ArrayList<String>>(KEY_LANGUAGE_LABELS)
+            if (ids != null && labels != null) {
+                profile =
+                    profile.copy(
+                        languages =
+                            ids.mapIndexed { i, id ->
+                                ProfileLanguage(id.ifBlank { null }, labels.getOrNull(i).orEmpty())
+                            },
+                    )
+            }
+            // A blank or invalid link keeps the server's, so it can neither wipe the link nor store a bad URL.
+            val link = restoredMeetingUrlText()?.trim().orEmpty()
+            val meetingUrl = if (link.isNotEmpty() && isAllowedMeetingUrl(link)) link else server.meetingUrl
+            return ExpertSettingsSnapshot(profile = profile, meetingUrl = meetingUrl)
+        }
+
+        private fun meetingUrlErrorFor(text: String): FieldError? =
+            if (text.isNotBlank() && !isAllowedMeetingUrl(text.trim())) {
+                FieldError.Res(R.string.expert_settings_meeting_invalid)
+            } else {
+                null
+            }
+
+        private fun mirrorField(
+            field: ProfileTextFieldId,
+            value: String,
+        ) {
+            savedStateHandle[field.savedStateKey()] = value
+            savedStateHandle[KEY_TOUCHED] = true
         }
 
         /** Applies [value] (cut to the field's maximum) and schedules the save. */
@@ -226,7 +311,9 @@ class ExpertProfileSettingsViewModel
             value: String,
         ) {
             val current = _uiState.value.snapshot ?: return
-            val next = current.copy(profile = current.profile.with(field, value.clampLength(field.maxLength)))
+            val clamped = value.clampLength(field.maxLength)
+            val next = current.copy(profile = current.profile.with(field, clamped))
+            mirrorField(field, clamped)
             _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field) }
             saver.onEdited(next)
         }
@@ -242,8 +329,9 @@ class ExpertProfileSettingsViewModel
             if (trimmed != rejectedMeetingUrl) rejectedMeetingUrl = null
             val valid = trimmed.isNotEmpty() && isAllowedMeetingUrl(trimmed)
             val next = current.copy(meetingUrl = if (valid) trimmed else savedMeetingUrl)
-            val error =
-                if (trimmed.isNotEmpty() && !valid) FieldError.Res(R.string.expert_settings_meeting_invalid) else null
+            val error = meetingUrlErrorFor(value)
+            savedStateHandle[KEY_MEETING_URL] = value
+            savedStateHandle[KEY_TOUCHED] = true
             _uiState.update { it.copy(snapshot = next, meetingUrlText = value, meetingUrlError = error) }
             saver.onEdited(next)
         }
@@ -275,6 +363,8 @@ class ExpertProfileSettingsViewModel
         fun selectCountry(code: String) {
             val current = _uiState.value.snapshot ?: return
             val next = current.copy(profile = current.profile.copy(countryCode = Countries.normalize(code).orEmpty()))
+            savedStateHandle[KEY_COUNTRY] = next.profile.countryCode
+            savedStateHandle[KEY_TOUCHED] = true
             _uiState.update { it.copy(snapshot = next, countrySheetOpen = false, countryQuery = "") }
             saver.onEdited(next)
         }
@@ -321,6 +411,9 @@ class ExpertProfileSettingsViewModel
             val customs = current.profile.languages.filter { it.id.isNullOrBlank() }
             val languages = sheet.selection.map { ProfileLanguage(it.id, it.label) } + customs
             val next = current.copy(profile = current.profile.copy(languages = languages))
+            savedStateHandle[KEY_LANGUAGE_IDS] = ArrayList(languages.map { it.id.orEmpty() })
+            savedStateHandle[KEY_LANGUAGE_LABELS] = ArrayList(languages.map { it.label })
+            savedStateHandle[KEY_TOUCHED] = true
             _uiState.update { it.copy(snapshot = next, languageSheet = null) }
             saver.onEdited(next)
         }
@@ -366,6 +459,8 @@ class ExpertProfileSettingsViewModel
                     company = company.clampLength(ProfileTextFieldId.Company.maxLength),
                 )
             val next = current.copy(profile = profile)
+            mirrorField(ProfileTextFieldId.JobTitle, profile.jobTitle)
+            mirrorField(ProfileTextFieldId.Company, profile.company)
             _uiState.update {
                 it.copy(
                     snapshot = next,

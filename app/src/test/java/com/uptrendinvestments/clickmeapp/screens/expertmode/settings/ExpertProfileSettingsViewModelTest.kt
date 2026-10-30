@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.expertmode.settings
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.MeetingUrlBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileBasicBody
@@ -75,7 +76,10 @@ class ExpertProfileSettingsViewModelTest {
         return h
     }
 
-    private fun TestScope.viewModel(h: SignupTestHarness): ExpertProfileSettingsViewModel {
+    private fun TestScope.viewModel(
+        h: SignupTestHarness,
+        handle: SavedStateHandle = SavedStateHandle(),
+    ): ExpertProfileSettingsViewModel {
         val profileRepository = ProfileSettingsRepository(h.api)
         return ExpertProfileSettingsViewModel(
             ExpertProfileSettingsRepository(h.api),
@@ -83,8 +87,15 @@ class ExpertProfileSettingsViewModelTest {
             ProfileAvatarController(h.photo, profileRepository, h.userManager, backgroundScope),
             h.userManager,
             backgroundScope,
+            handle,
         )
     }
+
+    /** What the system hands the recreated ViewModel: the same entries in a new handle. */
+    private fun copyOf(handle: SavedStateHandle) = SavedStateHandle(handle.keys().associateWith { handle.get<Any>(it) })
+
+    private fun miaHandle() =
+        SavedStateHandle(mapOf("expert_settings_first_name" to "Mia", "expert_settings_touched" to true))
 
     @Test
     fun loadsAndSeedsFromExpertProfile() =
@@ -406,5 +417,157 @@ class ExpertProfileSettingsViewModelTest {
             assertEquals(0, h.api.updateUserProfileCalls)
             assertEquals(0, h.api.updateExpertMeetingUrlCalls)
             assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
+        }
+
+    // ---- process death and recreation (CONTEXT D-12) ----
+
+    @Test
+    fun typedFieldsRestored() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.languagesHandler = {
+                LanguagesPayload(listOf(LanguageItem("en", "English"), LanguageItem("fr", "French")))
+            }
+            val handle = SavedStateHandle()
+            val first = viewModel(h, handle)
+            runCurrent()
+            first.onFieldChange(ProfileTextFieldId.FirstName, "Mia")
+            first.onFieldChange(ProfileTextFieldId.LastName, "Roy")
+            first.onFieldChange(ProfileTextFieldId.Bio, "Coach")
+            first.applyProfessional("Advisor", "Acme")
+            first.onFieldChange(ProfileTextFieldId.City, "Lyon")
+            first.onMeetingUrlChange("https://meet.example.com/x")
+            first.selectCountry("FR")
+            first.openLanguages()
+            runCurrent()
+            first.toggleLanguage(LanguageItem("fr", "French"))
+            first.applyLanguages()
+
+            val second = viewModel(h, copyOf(handle))
+            runCurrent()
+
+            val state = second.uiState.value
+            assertEquals(first.uiState.value.snapshot, state.snapshot)
+            assertEquals("Mia", state.snapshot?.profile?.firstName)
+            assertEquals("Advisor", state.snapshot?.profile?.jobTitle)
+            assertEquals("FRA", state.snapshot?.profile?.countryCode)
+            assertEquals(
+                listOf("en", "fr"),
+                state.snapshot
+                    ?.profile
+                    ?.languages
+                    ?.map { it.id },
+            )
+            assertEquals("https://meet.example.com/x", state.meetingUrlText)
+            assertEquals("https://meet.example.com/x", state.snapshot?.meetingUrl)
+        }
+
+    @Test
+    fun restoredBeatsServer() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+
+            val vm = viewModel(h, miaHandle())
+            runCurrent()
+
+            val profile =
+                vm.uiState.value.snapshot
+                    ?.profile
+            assertEquals("Mia", profile?.firstName)
+            assertEquals("Lee", profile?.lastName)
+            assertEquals("Toronto", profile?.city)
+        }
+
+    @Test
+    fun untouchedSeedsFromServer() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+
+            val vm = viewModel(h, SavedStateHandle())
+            runCurrent()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "Ana",
+                vm.uiState.value.snapshot
+                    ?.profile
+                    ?.firstName,
+            )
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(0, h.api.updateExpertMeetingUrlCalls)
+        }
+
+    @Test
+    fun restoredEditIsAutoSaved() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+
+            viewModel(h, miaHandle())
+            runCurrent()
+            assertEquals(0, h.api.updateUserProfileCalls)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(1, h.api.updateUserProfileCalls)
+            assertEquals(
+                "Mia",
+                h.api.updateUserProfileRequests
+                    .single()
+                    .basic
+                    ?.firstName,
+            )
+        }
+
+    @Test
+    fun onlyBundleTypes() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.languagesHandler = { LanguagesPayload(listOf(LanguageItem("fr", "French"))) }
+            val handle = SavedStateHandle()
+            val vm = viewModel(h, handle)
+            runCurrent()
+            vm.onFieldChange(ProfileTextFieldId.Bio, "About me")
+            vm.onMeetingUrlChange("https://meet.example.com/x")
+            vm.applyProfessional("Coach", "Acme")
+            vm.selectCountry("FR")
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("fr", "French"))
+            vm.applyLanguages()
+
+            assertTrue(handle.keys().isNotEmpty())
+            for (key in handle.keys()) {
+                val value = handle.get<Any>(key)
+                val isStringList = value is ArrayList<*> && value.all { it is String }
+                assertTrue("$key holds ${value?.javaClass}", value is String || value is Boolean || isStringList)
+            }
+        }
+
+    @Test
+    fun blankMeetingLinkNeverSent() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val handle =
+                SavedStateHandle(
+                    mapOf(
+                        "expert_settings_meeting_url" to "   ",
+                        "expert_settings_first_name" to "Mia",
+                        "expert_settings_touched" to true,
+                    ),
+                )
+
+            val vm = viewModel(h, handle)
+            runCurrent()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "https://zoom.us/j/1",
+                vm.uiState.value.snapshot
+                    ?.meetingUrl,
+            )
+            assertEquals(0, h.api.updateExpertMeetingUrlCalls)
+            assertEquals(1, h.api.updateUserProfileCalls)
         }
 }

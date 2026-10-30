@@ -21,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.components.SKELETON_BLOCK_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
@@ -181,6 +182,7 @@ class ExpertProfileSettingsScreenTest {
                     ProfileAvatarController(h.photo, profileRepository, h.userManager, backgroundScope),
                     h.userManager,
                     backgroundScope,
+                    SavedStateHandle(),
                 )
             runCurrent()
             vm.onPhotoPicked(Uri.parse("content://photo/1"))

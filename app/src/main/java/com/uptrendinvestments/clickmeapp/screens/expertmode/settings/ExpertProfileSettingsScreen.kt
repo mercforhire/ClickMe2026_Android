@@ -87,6 +87,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.languageselection.LanguageSelectionSheet
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.subviews.CountryPickerSheet
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.util.UUID
 
 /** Test tag on the Expert Settings scroll column. */
@@ -321,6 +322,7 @@ private fun ExpertSettingsFields(
                 .fillMaxSize()
                 .imePadding()
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(horizontal = Spacing.md, vertical = Spacing.md)
                 .testTag(EXPERT_SETTINGS_LIST_TAG),
     ) {
