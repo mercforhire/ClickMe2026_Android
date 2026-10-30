@@ -42,7 +42,6 @@
     <!-- Errors -->
     <string name="payouts_error_title">Couldn\'t load payouts</string>
     <string name="payouts_setup_error_title">Couldn\'t open payout setup</string>
-    <string name="payouts_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
     <string name="payouts_got_it">Got it</string>
     <string name="payouts_link_failed">Couldn\'t open the link. Try again later.</string>
 </resources>
