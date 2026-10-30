@@ -5,8 +5,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -26,12 +28,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.ConnectionType
+import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.CALL_END_TRAVERSAL_INDEX
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.EndingSoonBanner
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.ExternalLinkActions
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.ExternalSessionHero
@@ -42,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MeetingCa
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MeetingCallEndButton
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MeetingCallInfo
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MeetingCallTimer
+import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.ShortWindowHeight
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.callStatusText
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -53,6 +60,9 @@ const val MEETING_CALL_SCREEN_TAG = "meeting_call_screen"
 /** Cross-fade when the variant changes after the join response overrides the client-side hint (D-05). */
 private const val VARIANT_FADE_MS = 200
 
+/** A short window at least this wide puts the hero beside the controls instead of above them. */
+private val SideBySideMinWidth = 560.dp
+
 /**
  * The expanded call layer for both variants (UI-SPEC surfaces 1 and 2). Stateless: the overlay host maps the live
  * session with [toMeetingCallUiState] and wires the callbacks.
@@ -60,6 +70,12 @@ private const val VARIANT_FADE_MS = 200
  * The layer is full screen and applies its own edge-to-edge insets (D-08): `safeDrawing` at the top and sides,
  * `navigationBars` at the bottom. The column is a min-height-fill scroll: a normal phone gets the weighted spacer, and
  * at 200% font scale the whole column scrolls so End Call stays reachable.
+ *
+ * TalkBack reads the layer in the order of UI-SPEC Flow 3 through traversal indexes inside a traversal group. The
+ * variant content is its own group because `AnimatedContent` puts a semantics node between it and the root column,
+ * and indexes only sort the direct children of a group: status line (-1), name, timer, Mute and Speaker (0), Chat (1), Minimize (2), End call (3, always last). On a
+ * window shorter than 480 dp the hero shrinks, the gaps tighten and, when the window is also wide, the hero sits beside
+ * the controls so Mute, Speaker and End call stay on screen.
  */
 @Composable
 fun MeetingCallScreen(
@@ -143,16 +159,72 @@ private fun InAppContent(
     zone: ZoneId,
     timeFormat: DateFormat,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    val configuration = LocalConfiguration.current
+    val shortWindow = configuration.screenHeightDp.dp < ShortWindowHeight
+    val sideBySide = shortWindow && configuration.screenWidthDp.dp >= SideBySideMinWidth
+    val hero: @Composable () -> Unit = {
         MeetingCallAvatar(
             status = state.status,
             peerAvatarUrl = state.peerAvatarUrl,
             myAvatarUrl = state.myAvatarUrl,
         )
-        Spacer(Modifier.height(Spacing.xl))
+    }
+    val panel: @Composable (Modifier) -> Unit = { panelModifier ->
+        InAppPanel(
+            state = state,
+            compact = shortWindow,
+            onMinimize = onMinimize,
+            onToggleMute = onToggleMute,
+            onToggleSpeaker = onToggleSpeaker,
+            onEndCall = onEndCall,
+            onChat = onChat,
+            chatBusy = chatBusy,
+            zone = zone,
+            timeFormat = timeFormat,
+            modifier = panelModifier,
+        )
+    }
+    if (sideBySide) {
+        // A short, wide window cannot stack the hero over the controls: the hero moves beside them so Mute, Speaker and
+        // End call stay on screen. Semantics are unchanged: the nodes are still siblings in the layer's traversal group.
+        Row(
+            modifier = Modifier.fillMaxWidth().semantics { isTraversalGroup = true },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { hero() }
+            panel(Modifier.weight(1f))
+        }
+    } else {
+        Column(
+            modifier = Modifier.fillMaxWidth().semantics { isTraversalGroup = true },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            hero()
+            Spacer(Modifier.height(if (shortWindow) Spacing.md else Spacing.xl))
+            panel(Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** Name, status, controls and End call. [compact] tightens the vertical gaps on a short window (below 480 dp). */
+@Composable
+private fun InAppPanel(
+    state: MeetingCallUiState,
+    compact: Boolean,
+    onMinimize: () -> Unit,
+    onToggleMute: () -> Unit,
+    onToggleSpeaker: () -> Unit,
+    onEndCall: () -> Unit,
+    onChat: () -> Unit,
+    chatBusy: Boolean,
+    zone: ZoneId,
+    timeFormat: DateFormat,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         MeetingCallInfo(
             peerName = state.peerName,
             topic = state.topic,
@@ -163,7 +235,7 @@ private fun InAppContent(
             zone = zone,
             timeFormat = timeFormat,
         )
-        Spacer(Modifier.height(Spacing.lg))
+        Spacer(Modifier.height(if (compact) Spacing.md else Spacing.lg))
         MeetingCallControls(
             showAudioControls = true,
             isMuted = state.isMuted,
@@ -176,12 +248,15 @@ private fun InAppContent(
             chatBusy = chatBusy,
             audioControlsEnabled = !state.isEndingCall,
         )
-        Spacer(Modifier.height(Spacing.xl))
+        Spacer(Modifier.height(if (compact) Spacing.md else Spacing.xl))
         MeetingCallEndButton(
             label = stringResource(R.string.call_end_call),
             isEnding = state.isEndingCall,
             onClick = onEndCall,
-            modifier = Modifier.padding(horizontal = Spacing.lg),
+            modifier =
+                Modifier
+                    .padding(horizontal = Spacing.lg)
+                    .semantics { traversalIndex = CALL_END_TRAVERSAL_INDEX },
         )
     }
 }
@@ -198,7 +273,7 @@ private fun ExternalContent(
     timeFormat: DateFormat,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().semantics { isTraversalGroup = true },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         ExternalSessionHero(
@@ -243,7 +318,10 @@ private fun ExternalContent(
             label = stringResource(R.string.call_end_session),
             isEnding = state.isEndingCall,
             onClick = onEndCall,
-            modifier = Modifier.padding(horizontal = Spacing.lg),
+            modifier =
+                Modifier
+                    .padding(horizontal = Spacing.lg)
+                    .semantics { traversalIndex = CALL_END_TRAVERSAL_INDEX },
         )
     }
 }

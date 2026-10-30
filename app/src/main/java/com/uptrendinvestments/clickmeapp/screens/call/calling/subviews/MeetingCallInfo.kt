@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,10 +16,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -26,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +57,9 @@ const val MEETING_CALL_NAME_TAG = "meeting_call_name"
 
 private const val CHIP_FILL_ALPHA = 0.12f
 private const val CHIP_BORDER_ALPHA = 0.45f
+
+/** The status line is read first inside the call layer's traversal group (UI-SPEC Flow 3). */
+private const val STATUS_TRAVERSAL_INDEX = -1f
 
 /** The status line copy for a call state. */
 @Composable
@@ -121,6 +130,10 @@ fun MeetingCallTimer(
 /**
  * Name, topic, scheduled range, timer and status line under the hero. Stateless: the screen passes the resolved
  * [timer] and [statusText]. A null [statusText] hides the status line.
+ *
+ * The status line is the first node TalkBack reads (traversal index -1) and takes focus once when the layer first
+ * shows, so a user who joins hears "Connecting" before anything else (UI-SPEC Flow 3). It is a polite live region;
+ * the timer is not one.
  */
 @Composable
 fun MeetingCallInfo(
@@ -134,6 +147,12 @@ fun MeetingCallInfo(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
 ) {
+    val statusFocus = remember { FocusRequester() }
+    val hasStatus = statusText != null
+    // Keyed on whether the line exists, never on its text: focus moves once on entry, not on every status change.
+    LaunchedEffect(hasStatus) {
+        if (hasStatus) runCatching { statusFocus.requestFocus() }
+    }
     Column(
         modifier = modifier.padding(horizontal = Spacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -177,7 +196,12 @@ fun MeetingCallInfo(
                 modifier =
                     Modifier
                         .testTag(MEETING_CALL_STATUS_TAG)
-                        .semantics { liveRegion = LiveRegionMode.Polite },
+                        .focusRequester(statusFocus)
+                        .focusable()
+                        .semantics {
+                            liveRegion = LiveRegionMode.Polite
+                            traversalIndex = STATUS_TRAVERSAL_INDEX
+                        },
             )
         }
     }
