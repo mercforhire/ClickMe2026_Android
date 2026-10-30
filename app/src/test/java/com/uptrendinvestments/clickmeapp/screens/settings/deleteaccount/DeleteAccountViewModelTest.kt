@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
@@ -32,8 +33,17 @@ class DeleteAccountViewModelTest {
     private val guard = FakeCallGuard()
     private val deletionState = AccountDeletionState()
 
-    private fun viewModel() =
-        DeleteAccountViewModel(DeleteAccountRepository(api), guard, deletionState, CoroutineScope(main.testDispatcher))
+    private fun viewModel(handle: SavedStateHandle = SavedStateHandle()) =
+        DeleteAccountViewModel(
+            DeleteAccountRepository(api),
+            guard,
+            deletionState,
+            CoroutineScope(main.testDispatcher),
+            handle,
+        )
+
+    /** What the system hands the recreated ViewModel: the same entries in a new handle. */
+    private fun copyOf(handle: SavedStateHandle) = SavedStateHandle(handle.keys().associateWith { handle.get<Any>(it) })
 
     private fun stubSuccess() {
         var minted = 0
@@ -299,4 +309,75 @@ class DeleteAccountViewModelTest {
         assertFalse(text.contains("hunter2"))
         assertFalse(text.contains("private words"))
     }
+
+    // ---- process death and recreation (CONTEXT D-12, D-09) ----
+
+    @Test
+    fun reasonFeedbackAndStepRestored() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val first = viewModel(handle)
+            first.continueFromWarning()
+            first.selectReason(DeleteAccountReason.Other)
+            first.onFeedbackChange("Too many emails")
+
+            val second = viewModel(copyOf(handle))
+
+            val state = second.uiState.value
+            assertEquals(DeleteStep.Reason, state.step)
+            assertEquals(DeleteAccountReason.Other, state.reason)
+            assertEquals("Too many emails", state.feedback)
+        }
+
+    @Test
+    fun backToWarningIsRestored() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val first = viewModel(handle)
+            first.continueFromWarning()
+            first.backToWarning()
+
+            assertEquals(DeleteStep.Warning, viewModel(copyOf(handle)).uiState.value.step)
+        }
+
+    @Test
+    fun restoredFeedbackIsCapped() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle(mapOf("delete_account_feedback" to "x".repeat(FEEDBACK_MAX + 50)))
+
+            assertEquals(
+                FEEDBACK_MAX,
+                viewModel(handle)
+                    .uiState.value.feedback.length,
+            )
+        }
+
+    @Test
+    fun passwordNeverInSavedState() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = viewModel(handle)
+            vm.fillReasonForm(feedback = "bye", password = "s3cret-pw")
+
+            assertTrue(handle.keys().isNotEmpty())
+            for (key in handle.keys()) {
+                val value = handle.get<Any>(key)
+                assertFalse("$key must not hold the password", value.toString().contains("s3cret-pw"))
+                assertFalse("no password key: $key", key.contains("password", ignoreCase = true))
+                assertTrue("$key holds ${value?.javaClass}", value is String)
+            }
+        }
+
+    @Test
+    fun restoredPasswordEmptyWithoutError() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            viewModel(handle).fillReasonForm(password = "s3cret-pw")
+
+            val state = viewModel(copyOf(handle)).uiState.value
+
+            assertEquals("", state.password)
+            assertNull(state.passwordError)
+            assertNull(state.dialog)
+        }
 }

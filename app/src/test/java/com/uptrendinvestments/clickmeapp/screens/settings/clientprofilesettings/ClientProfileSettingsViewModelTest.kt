@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileBasicBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileLanguagesBody
@@ -54,13 +55,19 @@ class ClientProfileSettingsViewModelTest {
         return h
     }
 
-    private fun TestScope.viewModel(h: SignupTestHarness) =
-        ClientProfileSettingsViewModel(
-            ProfileSettingsRepository(h.api),
-            h.userManager,
-            ProfileAvatarController(h.photo, ProfileSettingsRepository(h.api), h.userManager, backgroundScope),
-            backgroundScope,
-        )
+    private fun TestScope.viewModel(
+        h: SignupTestHarness,
+        handle: SavedStateHandle = SavedStateHandle(),
+    ) = ClientProfileSettingsViewModel(
+        ProfileSettingsRepository(h.api),
+        h.userManager,
+        ProfileAvatarController(h.photo, ProfileSettingsRepository(h.api), h.userManager, backgroundScope),
+        backgroundScope,
+        handle,
+    )
+
+    /** What the system hands the recreated ViewModel: the same entries in a new handle. */
+    private fun copyOf(handle: SavedStateHandle) = SavedStateHandle(handle.keys().associateWith { handle.get<Any>(it) })
 
     @Test
     fun seedsFromTheCachedProfile() =
@@ -669,5 +676,116 @@ class ClientProfileSettingsViewModelTest {
                     .location
                     ?.countryCode,
             )
+        }
+
+    // ---- process death and recreation (CONTEXT D-12) ----
+
+    private fun miaHandle() =
+        SavedStateHandle(mapOf("client_settings_first_name" to "Mia", "client_settings_touched" to true))
+
+    @Test
+    fun typedFieldsRestored() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.languagesHandler = { catalogue }
+            val handle = SavedStateHandle()
+            val first = viewModel(h, handle)
+            runCurrent()
+            first.onFieldChange(ProfileTextFieldId.FirstName, "Mia")
+            first.onFieldChange(ProfileTextFieldId.City, "Lyon")
+            first.selectCountry("FR")
+            first.openLanguages()
+            runCurrent()
+            first.toggleLanguage(LanguageItem("fr", "French"))
+            first.toggleLanguage(LanguageItem("de", "German"))
+            first.applyLanguages()
+
+            val second = viewModel(h, copyOf(handle))
+            runCurrent()
+
+            val restored = second.uiState.value.snapshot
+            assertEquals("Mia", restored?.firstName)
+            assertEquals("Lyon", restored?.city)
+            assertEquals("FRA", restored?.countryCode)
+            assertEquals(listOf("en", "fr", "de"), restored?.languages?.map { it.id })
+            assertEquals(first.uiState.value.snapshot, restored)
+        }
+
+    @Test
+    fun restoredBeatsServer() =
+        runTest(main.testDispatcher) {
+            val h = SignupTestHarness(this, tmp, main.testDispatcher)
+            h.signIn()
+            runCurrent()
+            h.api.userProfileHandler = { seeded }
+            val handle = miaHandle()
+
+            val vm = viewModel(h, handle)
+            runCurrent()
+
+            val snapshot = vm.uiState.value.snapshot
+            assertEquals("Mia", snapshot?.firstName)
+            assertEquals("Lee", snapshot?.lastName)
+        }
+
+    @Test
+    fun untouchedSeedsFromServer() =
+        runTest(main.testDispatcher) {
+            val h = SignupTestHarness(this, tmp, main.testDispatcher)
+            h.signIn()
+            runCurrent()
+            h.api.userProfileHandler = { seeded }
+
+            val vm = viewModel(h, SavedStateHandle())
+            runCurrent()
+
+            assertEquals(
+                "Ana",
+                vm.uiState.value.snapshot
+                    ?.firstName,
+            )
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun restoredEditIsAutoSaved() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(after = userProfileData(firstName = "Mia", lastName = "Lee", bio = "Hi there"))
+            val handle = miaHandle()
+
+            viewModel(h, handle)
+            runCurrent()
+            assertEquals(0, h.api.updateUserProfileCalls)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(basic = ProfileBasicBody("Mia", "Lee", "Hi there"))),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun onlyBundleTypes() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.languagesHandler = { catalogue }
+            val handle = SavedStateHandle()
+            val vm = viewModel(h, handle)
+            runCurrent()
+            vm.onFieldChange(ProfileTextFieldId.Bio, "About me")
+            vm.applyProfessional("Coach", "Acme")
+            vm.selectCountry("FR")
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("fr", "French"))
+            vm.applyLanguages()
+
+            assertTrue(handle.keys().isNotEmpty())
+            for (key in handle.keys()) {
+                val value = handle.get<Any>(key)
+                val isStringList = value is ArrayList<*> && value.all { it is String }
+                assertTrue("$key holds ${value?.javaClass}", value is String || value is Boolean || isStringList)
+            }
         }
 }

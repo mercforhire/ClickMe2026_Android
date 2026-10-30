@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
@@ -28,6 +29,33 @@ const val DEFAULT_TAX_COUNTRY = "CA"
 
 private const val COUNTRY_CODE_LENGTH = 2
 private const val HTTP_UNPROCESSABLE = 422
+
+private const val KEY_LEGAL_NAME = "tax_profile_legal_name"
+private const val KEY_DOB = "tax_profile_dob"
+private const val KEY_LINE1 = "tax_profile_line1"
+private const val KEY_LINE2 = "tax_profile_line2"
+private const val KEY_CITY = "tax_profile_city"
+private const val KEY_REGION = "tax_profile_region"
+private const val KEY_POSTAL_CODE = "tax_profile_postal_code"
+private const val KEY_COUNTRY = "tax_profile_country"
+private const val KEY_TOUCHED = "tax_profile_touched"
+
+/**
+ * The saved-state key of a field that survives process death, or null for the two that never do: the TIN (a secret,
+ * CONTEXT D-09) and the financial account identifier (bank details). Both stay in memory only.
+ */
+private fun TaxProfileField.savedStateKey(): String? =
+    when (this) {
+        TaxProfileField.LegalName -> KEY_LEGAL_NAME
+        TaxProfileField.Dob -> KEY_DOB
+        TaxProfileField.Line1 -> KEY_LINE1
+        TaxProfileField.Line2 -> KEY_LINE2
+        TaxProfileField.City -> KEY_CITY
+        TaxProfileField.Region -> KEY_REGION
+        TaxProfileField.PostalCode -> KEY_POSTAL_CODE
+        TaxProfileField.Country -> KEY_COUNTRY
+        TaxProfileField.FinancialAccount, TaxProfileField.Tin -> null
+    }
 
 /** The inputs of the Tax & Payout Info form. */
 enum class TaxProfileField { LegalName, Dob, Line1, Line2, City, Region, PostalCode, Country, FinancialAccount, Tin }
@@ -92,14 +120,18 @@ data class TaxProfileUiState(
 /**
  * State holder of Tax & Payout Info (PAYOUT-04, port of iOS `ExpertTaxProfileViewModel`).
  *
- * The form lives in memory only: no saved-state handle, so neither the TIN nor the personal details survive process
- * death and the form reloads from the server (threat T-14-31). The TIN is typed, sent once and cleared after a save.
+ * Process death (CONTEXT D-12): the non-secret fields and the date of birth are mirrored to [SavedStateHandle] as
+ * Strings, with a touched flag, and laid over the server prefill when it loads, so a restored edit wins over the
+ * fetched profile (RESEARCH Pitfall 7). The TIN and the financial account identifier are never written there
+ * (CONTEXT D-09, threat T-15-31): after process death they come back empty with no error text. The TIN is typed, sent
+ * once and cleared after a save, which also clears the touched flag so the next visit shows the server's data.
  */
 @HiltViewModel
 class ExpertTaxProfileViewModel
     @Inject
     constructor(
         private val repository: TaxProfileRepository,
+        private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(TaxProfileUiState())
         val uiState: StateFlow<TaxProfileUiState> = _uiState.asStateFlow()
@@ -122,7 +154,7 @@ class ExpertTaxProfileViewModel
                         _uiState.update {
                             it.copy(
                                 load = TaxProfileLoad.Ready,
-                                form = data.toForm(),
+                                form = restoredOver(data.toForm()),
                                 tinOnFile = data.tinOnFile,
                                 fieldErrors = emptyMap(),
                                 banner = null,
@@ -132,6 +164,28 @@ class ExpertTaxProfileViewModel
                         _uiState.update { it.copy(load = TaxProfileLoad.Failed(e.toSectionMessage())) }
                     }
                 }
+        }
+
+        /** [server] with every non-secret field the user edited before recreation put back. */
+        private fun restoredOver(server: TaxProfileForm): TaxProfileForm {
+            if (savedStateHandle.get<Boolean>(KEY_TOUCHED) != true) return server
+
+            fun saved(field: TaxProfileField): String? = field.savedStateKey()?.let { savedStateHandle.get<String>(it) }
+            return server.copy(
+                legalName = saved(TaxProfileField.LegalName) ?: server.legalName,
+                dob = saved(TaxProfileField.Dob) ?: server.dob,
+                line1 = saved(TaxProfileField.Line1) ?: server.line1,
+                line2 = saved(TaxProfileField.Line2) ?: server.line2,
+                city = saved(TaxProfileField.City) ?: server.city,
+                region = saved(TaxProfileField.Region) ?: server.region,
+                postalCode = saved(TaxProfileField.PostalCode) ?: server.postalCode,
+                country =
+                    saved(TaxProfileField.Country)
+                        ?.filter(Char::isLetter)
+                        ?.uppercase()
+                        ?.take(COUNTRY_CODE_LENGTH)
+                        ?: server.country,
+            )
         }
 
         fun onFieldChange(
@@ -155,8 +209,30 @@ class ExpertTaxProfileViewModel
                         TaxProfileField.FinancialAccount -> form.copy(financialAccount = value)
                         TaxProfileField.Tin -> form.copy(tin = value)
                     }
+                mirror(field, next)
                 state.copy(form = next, fieldErrors = state.fieldErrors - field)
             }
+        }
+
+        /** Writes the edited non-secret [field] to the saved state; the TIN and the account identifier are skipped. */
+        private fun mirror(
+            field: TaxProfileField,
+            form: TaxProfileForm,
+        ) {
+            val key = field.savedStateKey() ?: return
+            savedStateHandle[key] =
+                when (field) {
+                    TaxProfileField.LegalName -> form.legalName
+                    TaxProfileField.Dob -> form.dob
+                    TaxProfileField.Line1 -> form.line1
+                    TaxProfileField.Line2 -> form.line2
+                    TaxProfileField.City -> form.city
+                    TaxProfileField.Region -> form.region
+                    TaxProfileField.PostalCode -> form.postalCode
+                    TaxProfileField.Country -> form.country
+                    TaxProfileField.FinancialAccount, TaxProfileField.Tin -> return
+                }
+            savedStateHandle[KEY_TOUCHED] = true
         }
 
         /** The Material date picker answers in UTC milliseconds; the wire wants the calendar day as `yyyy-MM-dd`. */
@@ -185,7 +261,9 @@ class ExpertTaxProfileViewModel
         private fun applySaved(result: SaveTaxProfileData) {
             _uiState.update { state ->
                 when {
-                    result.saved ->
+                    result.saved -> {
+                        // The server has the data now: a later recreation shows what it holds, not this draft.
+                        savedStateHandle[KEY_TOUCHED] = false
                         // The TIN is sent once; it must not linger in memory after the server has it.
                         state.copy(
                             saveState = SaveState.Idle,
@@ -193,6 +271,7 @@ class ExpertTaxProfileViewModel
                             tinOnFile = true,
                             savedEvent = true,
                         )
+                    }
                     // The server wrote nothing because it still needs the TIN: a prompt, not an error (iOS parity).
                     // Every field stays so the expert only adds the TIN and saves again.
                     result.tinRequired ->

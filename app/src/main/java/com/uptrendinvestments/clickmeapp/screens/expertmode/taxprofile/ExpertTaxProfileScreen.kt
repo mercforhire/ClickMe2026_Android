@@ -82,6 +82,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -180,7 +181,10 @@ fun ExpertTaxProfileContent(
                 backEnabled = !state.saving,
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            // The Scaffold has zero insets (the body pads itself), so the host clears the bars and the keyboard itself.
+            SnackbarHost(snackbarHostState, Modifier.navigationBarsPadding().imePadding())
+        },
     ) { innerPadding ->
         when (val load = state.load) {
             TaxProfileLoad.Loading -> TaxProfileSkeleton(Modifier.padding(innerPadding))
@@ -284,6 +288,7 @@ private fun TaxProfileBody(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(horizontal = Spacing.md)
                     .padding(top = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -349,7 +354,12 @@ private fun TaxProfileBody(
             Spacer(Modifier.height(Spacing.xl))
         }
         Column(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(Spacing.md),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .contentMaxWidth()
+                    .padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             state.banner?.let { TinBanner(it.asString()) }

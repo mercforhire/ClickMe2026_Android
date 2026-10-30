@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
@@ -51,11 +52,17 @@ class ExpertTaxProfileViewModelTest {
         }
     }
 
-    private fun loaded(scope: TestScope): ExpertTaxProfileViewModel {
-        val vm = ExpertTaxProfileViewModel(repository)
+    private fun loaded(
+        scope: TestScope,
+        handle: SavedStateHandle = SavedStateHandle(),
+    ): ExpertTaxProfileViewModel {
+        val vm = ExpertTaxProfileViewModel(repository, handle)
         scope.runCurrent()
         return vm
     }
+
+    /** What the system hands the recreated ViewModel: the same entries in a new handle. */
+    private fun copyOf(handle: SavedStateHandle) = SavedStateHandle(handle.keys().associateWith { handle.get<Any>(it) })
 
     @Test
     fun prefillFromServer() =
@@ -405,5 +412,119 @@ class ExpertTaxProfileViewModelTest {
             vm.onFieldChange(TaxProfileField.Country, "usa")
 
             assertEquals("US", vm.uiState.value.form.country)
+        }
+
+    // ---- process death and recreation (CONTEXT D-12, D-09) ----
+
+    private fun TestScope.fillAndRecreate(
+        tin: String = "123456789",
+        financialAccount: String = "ACC-99887766",
+    ): Pair<SavedStateHandle, ExpertTaxProfileViewModel> {
+        api.taxProfileHandler = { taxProfile() }
+        val handle = SavedStateHandle()
+        val first = loaded(this, handle)
+        first.onFieldChange(TaxProfileField.LegalName, "Mia Roy")
+        first.onDobPicked(
+            LocalDate
+                .of(1991, 3, 4)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli(),
+        )
+        first.onFieldChange(TaxProfileField.Line1, "9 Rue Neuve")
+        first.onFieldChange(TaxProfileField.Line2, "Apt 2")
+        first.onFieldChange(TaxProfileField.City, "Lyon")
+        first.onFieldChange(TaxProfileField.Region, "ON")
+        first.onFieldChange(TaxProfileField.PostalCode, "K1A0B1")
+        first.onFieldChange(TaxProfileField.Country, "ca")
+        first.onFieldChange(TaxProfileField.FinancialAccount, financialAccount)
+        first.onFieldChange(TaxProfileField.Tin, tin)
+        return handle to loaded(this, copyOf(handle))
+    }
+
+    @Test
+    fun nonSecretFieldsRestored() =
+        runTest(main.testDispatcher) {
+            val (_, second) = fillAndRecreate()
+
+            val form = second.uiState.value.form
+            assertEquals("Mia Roy", form.legalName)
+            assertEquals("1991-03-04", form.dob)
+            assertEquals("9 Rue Neuve", form.line1)
+            assertEquals("Apt 2", form.line2)
+            assertEquals("Lyon", form.city)
+            assertEquals("ON", form.region)
+            assertEquals("K1A0B1", form.postalCode)
+            assertEquals("CA", form.country)
+        }
+
+    @Test
+    fun tinNeverInSavedState() =
+        runTest(main.testDispatcher) {
+            val (handle, _) = fillAndRecreate(tin = "123456789", financialAccount = "ACC-99887766")
+
+            assertTrue(handle.keys().isNotEmpty())
+            for (key in handle.keys()) {
+                val value = handle.get<Any>(key)
+                assertFalse("$key must not hold the TIN", value.toString().contains("123456789"))
+                assertFalse("$key must not hold the account identifier", value.toString().contains("ACC-99887766"))
+                assertFalse("no TIN key: $key", key.contains("tin", ignoreCase = true))
+                assertFalse("no account key: $key", key.contains("financial", ignoreCase = true))
+                assertTrue("$key holds ${value?.javaClass}", value is String || value is Boolean)
+            }
+        }
+
+    @Test
+    fun restoredTinIsEmptyWithoutError() =
+        runTest(main.testDispatcher) {
+            val (_, second) = fillAndRecreate()
+
+            val state = second.uiState.value
+            assertEquals("", state.form.tin)
+            assertEquals("", state.form.financialAccount)
+            assertTrue(state.fieldErrors.isEmpty())
+            assertNull(state.banner)
+            assertNull(state.dialog)
+        }
+
+    @Test
+    fun restoredBeatsServer() =
+        runTest(main.testDispatcher) {
+            serverProfile()
+            val handle =
+                SavedStateHandle(mapOf("tax_profile_legal_name" to "Mia Roy", "tax_profile_touched" to true))
+
+            val form = loaded(this, handle).uiState.value.form
+
+            assertEquals("Mia Roy", form.legalName)
+            assertEquals("1 Main", form.line1)
+            assertEquals("1990-01-02", form.dob)
+        }
+
+    @Test
+    fun untouchedSeedsFromServer() =
+        runTest(main.testDispatcher) {
+            serverProfile()
+
+            val form = loaded(this, SavedStateHandle()).uiState.value.form
+
+            assertEquals("Ana Lee", form.legalName)
+        }
+
+    @Test
+    fun aSavedFormIsNotRestoredOverTheServer() =
+        runTest(main.testDispatcher) {
+            serverProfile()
+            api.saveTaxProfileHandler = { SaveTaxProfileData(saved = true) }
+            val handle = SavedStateHandle()
+            val first = loaded(this, handle)
+            first.onFieldChange(TaxProfileField.LegalName, "Mia Roy")
+            first.save()
+            runCurrent()
+            assertEquals(1, api.saveTaxProfileRequests.size)
+
+            val second = loaded(this, copyOf(handle))
+
+            assertEquals("Ana Lee", second.uiState.value.form.legalName)
         }
 }
