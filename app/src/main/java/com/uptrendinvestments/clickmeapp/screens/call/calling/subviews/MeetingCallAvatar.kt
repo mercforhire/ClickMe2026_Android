@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,14 @@ private const val GLOW_ALPHA_MIN = 0.10f
 private const val GLOW_ALPHA_MAX = 0.28f
 private val HeroMaxWidth = 320.dp
 private val GlowSize = 360.dp
+private val SingleAvatarSize = 160.dp
+private val PairAvatarSize = 96.dp
+
+/** Below this window height the hero shrinks and the call layer compacts (UI-SPEC "Large screens", D-02). */
+internal val ShortWindowHeight = 480.dp
+
+/** The hero avatar never shrinks below this on a short window. */
+private val MinAvatarSize = 96.dp
 
 /**
  * An avatar inside a primary ring. [pulsing] scales the ring between 1.0 and 1.06 (UI-SPEC Motion); otherwise it is
@@ -81,6 +90,9 @@ fun CallRingAvatar(
 /**
  * The call hero. One 160dp peer avatar with a pulsing ring while connecting or waiting; a 300 ms cross-fade to the
  * two-avatar pair (mine left, peer right, 96dp) once connected. The ring is static when connected or ended.
+ *
+ * In a window shorter than [ShortWindowHeight] the single avatar and the glow scale down with the window height; the
+ * avatar never goes below 96dp (the pair is already 96dp) so Mute, Speaker and End call stay on screen.
  */
 @Composable
 fun MeetingCallAvatar(
@@ -90,6 +102,10 @@ fun MeetingCallAvatar(
     modifier: Modifier = Modifier,
 ) {
     val primary = MaterialTheme.colorScheme.primary
+    val windowHeight = LocalConfiguration.current.screenHeightDp.dp
+    val heightFactor = if (windowHeight < ShortWindowHeight) windowHeight / ShortWindowHeight else 1f
+    val singleSize = (SingleAvatarSize * heightFactor).coerceAtLeast(MinAvatarSize)
+    val glowSize = (GlowSize * heightFactor).coerceAtLeast(MinAvatarSize)
     val glowTransition = rememberInfiniteTransition(label = "callGlow")
     val glowAlpha by glowTransition.animateFloat(
         initialValue = GLOW_ALPHA_MIN,
@@ -104,7 +120,7 @@ fun MeetingCallAvatar(
         Box(
             modifier =
                 Modifier
-                    .requiredSize(GlowSize)
+                    .requiredSize(glowSize)
                     .drawBehind {
                         drawCircle(
                             Brush.radialGradient(
@@ -126,13 +142,13 @@ fun MeetingCallAvatar(
                     horizontalArrangement = Arrangement.spacedBy(-Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CallRingAvatar(myAvatarUrl, 96.dp, 3.dp, Spacing.xs, pulsing = false)
-                    CallRingAvatar(peerAvatarUrl, 96.dp, 3.dp, Spacing.xs, pulsing = false)
+                    CallRingAvatar(myAvatarUrl, PairAvatarSize, 3.dp, Spacing.xs, pulsing = false)
+                    CallRingAvatar(peerAvatarUrl, PairAvatarSize, 3.dp, Spacing.xs, pulsing = false)
                 }
             } else {
                 CallRingAvatar(
                     url = peerAvatarUrl,
-                    size = 160.dp,
+                    size = singleSize,
                     ringWidth = 4.dp,
                     ringGap = Spacing.sm,
                     pulsing = status == CallStatus.Connecting || status == CallStatus.WaitingForPeer,

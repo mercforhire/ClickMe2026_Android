@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,6 +59,15 @@ const val CALL_CONTROL_SPEAKER_TAG = "call_control_speaker"
 private val CircleSize = 64.dp
 private val IconSize = 24.dp
 private val MinControlWidth = 48.dp
+
+/**
+ * Traversal indexes inside the call layer's traversal group (UI-SPEC Flow 3): Mute and Speaker keep the default 0 so
+ * they follow the timer, then Chat, then Minimize, and End call is last so it is never hit by accident while swiping.
+ * The row lays Minimize out before Chat, so both need an explicit index.
+ */
+private const val CHAT_TRAVERSAL_INDEX = 1f
+private const val MINIMIZE_TRAVERSAL_INDEX = 2f
+const val CALL_END_TRAVERSAL_INDEX = 3f
 private const val DISABLED_ALPHA = 0.38f
 private const val ON_BORDER_ALPHA = 0.5f
 private val SpinnerStroke = 2.dp
@@ -188,14 +198,14 @@ fun MeetingCallControls(
             icon = Icons.Outlined.KeyboardArrowDown,
             label = stringResource(R.string.call_control_minimize),
             onClick = onMinimize,
-            modifier = cell.testTag(CALL_CONTROL_MINIMIZE_TAG),
+            modifier = cell.testTag(CALL_CONTROL_MINIMIZE_TAG).traversalAt(MINIMIZE_TRAVERSAL_INDEX),
             contentDescription = stringResource(R.string.call_control_minimize_a11y),
         )
         MeetingCallControlButton(
             icon = Icons.Outlined.Forum,
             label = stringResource(R.string.call_control_chat),
             onClick = { if (!chatBusy) onChat() },
-            modifier = cell.testTag(CALL_CONTROL_CHAT_TAG),
+            modifier = cell.testTag(CALL_CONTROL_CHAT_TAG).traversalAt(CHAT_TRAVERSAL_INDEX),
             enabled = chatEnabled,
             stateDescription = if (chatBusy) stringResource(R.string.chat_entry_opening) else null,
             busy = chatBusy,
@@ -230,6 +240,8 @@ fun MeetingCallControls(
         }
     }
 }
+
+private fun Modifier.traversalAt(index: Float): Modifier = semantics { traversalIndex = index }
 
 @Preview(name = "MeetingCallControls")
 @Composable
