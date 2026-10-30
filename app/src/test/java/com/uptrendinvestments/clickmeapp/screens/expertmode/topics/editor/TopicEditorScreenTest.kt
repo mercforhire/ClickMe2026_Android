@@ -1,16 +1,20 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor
 
+import android.view.View
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -21,7 +25,10 @@ import androidx.compose.ui.test.performTextInput
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.subviews.TOPIC_ADD_EXPERTISE_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.subviews.TOPIC_DESCRIPTION_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.dispatchInsets
+import com.uptrendinvestments.clickmeapp.testing.imeInsets
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.Money
 import org.junit.Assert.assertEquals
@@ -30,11 +37,14 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class TopicEditorScreenTest {
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<ComponentActivity>()
+
+    private lateinit var view: View
 
     private val law = ExpertiseTagItem(id = "law", label = "Law")
     private val audit = ExpertiseTagItem(id = "audit", label = "Audit")
@@ -49,6 +59,7 @@ class TopicEditorScreenTest {
         expertiseSheet: @Composable (() -> Unit, (List<ExpertiseTagItem>) -> Unit) -> Unit = { _, _ -> },
     ) {
         rule.setContent {
+            view = LocalView.current
             ClickMeTheme {
                 TopicEditorContent(
                     state = state,
@@ -232,4 +243,79 @@ class TopicEditorScreenTest {
         rule.waitForIdle()
         assertEquals(1, handled)
     }
+
+    // region Phase 15: load cells, keyboard, large window
+    //
+    // The editor never fetches the topic: an edit is seeded from the list item (TopicEditorKey, D-07), so there is no
+    // form-level skeleton or prefill error. Only the Expertise section loads, and it has its own row and Retry.
+
+    @Test
+    fun editFormShowsSeededFieldsAtOnceWithoutAFormLoadingState() {
+        setContent(TopicEditorUiState(isEdit = true, title = "Pricing deep dive", description = "Notes"))
+
+        rule.onNodeWithText("Edit Topic").assertExists()
+        rule.onNodeWithContentDescription("Loading").assertDoesNotExist()
+        rule.onNodeWithText("Pricing deep dive").assertExists()
+        rule.onNodeWithTag(TOPIC_EDITOR_SAVE_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun blankCreateFormHasNoLoadingState() {
+        setContent(TopicEditorUiState(isEdit = false, tags = TopicTagsLoad.Loaded(emptyList())))
+
+        rule.onNodeWithText("Add Topic").assertExists()
+        rule.onNodeWithContentDescription("Loading").assertDoesNotExist()
+        rule.onNode(titleInput()).assertExists()
+    }
+
+    @Test
+    fun tagsLoading_showsItsRowAndLeavesTheFormUsable() {
+        setContent(TopicEditorUiState(isEdit = true, tags = TopicTagsLoad.Loading))
+
+        rule.onNodeWithText("Loading tags…").performScrollTo().assertExists()
+        rule.onNode(titleInput()).assertExists()
+        rule.onNodeWithTag(TOPIC_EDITOR_SAVE_TAG).assertIsEnabled()
+    }
+
+    @Test
+    fun tagsFailed_keepsTheAppBarAndFormAndRetryReRunsTheLoad() {
+        var retries = 0
+        setContent(
+            TopicEditorUiState(isEdit = true, tags = TopicTagsLoad.Failed),
+            TopicEditorActions(retryTags = { retries++ }),
+        )
+
+        rule.onNodeWithText("Edit Topic").assertExists()
+        rule.onNode(titleInput()).assertExists()
+        rule.onNodeWithText("Couldn't load your tags.").performScrollTo().assertExists()
+        rule.onNodeWithText("Retry").performScrollTo().performClick()
+        assertEquals(1, retries)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun focusedFieldAboveIme() {
+        setContent(TopicEditorUiState(isEdit = false, tags = TopicTagsLoad.Loaded(emptyList())))
+        rule.onNodeWithTag(TOPIC_DESCRIPTION_TAG).performScrollTo().performClick()
+
+        rule.dispatchInsets(view, imeInsets(bottomPx = 300))
+
+        // The editor is a zero-inset Scaffold that pads the IME itself: the column shrinks and scrolls.
+        val field = rule.onNodeWithTag(TOPIC_DESCRIPTION_TAG)
+        field.performScrollTo()
+        val bottom = field.getUnclippedBoundsInRoot().bottom.value
+        assertTrue("Description bottom $bottom dp must be at or above the IME top (500 dp)", bottom <= 500f)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        setContent(TopicEditorUiState(isEdit = false, tags = TopicTagsLoad.Loaded(emptyList())))
+
+        val bounds = rule.onNode(titleInput()).getUnclippedBoundsInRoot()
+        val width = bounds.right.value - bounds.left.value
+        assertTrue("Title field is $width dp wide, expected <= 600", width <= 600f)
+    }
+
+    // endregion
 }

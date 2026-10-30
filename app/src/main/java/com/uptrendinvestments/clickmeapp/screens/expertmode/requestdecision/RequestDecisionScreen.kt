@@ -44,6 +44,7 @@ import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.capNotes
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.BookingConfirmedKey
@@ -60,8 +61,12 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.time.ZoneId
 import java.util.Locale
+
+/** Test tag on the scrolling content column of a loaded request. */
+const val REQUEST_CONTENT_TAG = "request_content"
 
 private val HeaderSkeletonAvatar = 72.dp
 private val NameSkeletonWidth = 160.dp
@@ -140,6 +145,9 @@ fun RequestDecisionContent(
     var declineOpen by rememberSaveable { mutableStateOf(false) }
     var declineReasonName by rememberSaveable { mutableStateOf<String?>(null) }
     var declineNote by rememberSaveable { mutableStateOf("") }
+    // Restored text passes the same caps as typed text (D-12); the sheets and the calls only ever see capped values.
+    val acceptMessage = capNotes(acceptText, ACCEPT_MESSAGE_MAX_CHARS)
+    val cappedDeclineNote = capNotes(declineNote, DECLINE_NOTE_MAX_CHARS)
     val declineReason = DeclineReason.entries.firstOrNull { it.name == declineReasonName }
     val submitting = state.submitting != DecisionSubmitting.None
     val canDecide = state.load is RequestDecisionLoad.Loaded && !state.isExpired
@@ -177,7 +185,7 @@ fun RequestDecisionContent(
             }
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding).contentMaxWidth()) {
             when (val load = state.load) {
                 RequestDecisionLoad.Loading -> LoadingBody()
                 is RequestDecisionLoad.Failed -> FailedBody(message = load.message.asString(), onRetry = onRetry)
@@ -197,11 +205,11 @@ fun RequestDecisionContent(
 
     if (acceptOpen && canDecide) {
         AcceptRequestSheet(
-            message = acceptText,
+            message = acceptMessage,
             onMessageChange = { acceptText = it },
             isSubmitting = state.submitting == DecisionSubmitting.Accepting,
             onDismiss = { acceptOpen = false },
-            onConfirm = { onAccept(acceptText) },
+            onConfirm = { onAccept(acceptMessage) },
         )
     }
 
@@ -211,11 +219,11 @@ fun RequestDecisionContent(
             details = loaded.details,
             selected = declineReason,
             onSelect = { declineReasonName = it.name },
-            note = declineNote,
+            note = cappedDeclineNote,
             onNoteChange = { declineNote = it },
             isSubmitting = state.submitting == DecisionSubmitting.Declining,
             onDismiss = { declineOpen = false },
-            onConfirm = { declineReason?.let { onDecline(it, declineNote) } },
+            onConfirm = { declineReason?.let { onDecline(it, cappedDeclineNote) } },
             zone = zone,
             timeFormat = timeFormat,
             locale = locale,
@@ -246,6 +254,7 @@ private fun LoadedBody(
         modifier =
             Modifier
                 .fillMaxSize()
+                .testTag(REQUEST_CONTENT_TAG)
                 .verticalScroll(rememberScrollState())
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),

@@ -6,12 +6,16 @@ import android.content.ContextWrapper
 import android.content.Intent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -19,14 +23,17 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.v2.runComposeUiTest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.DashboardLaunch
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -37,6 +44,11 @@ private class NoCalendarContext(
     base: Context,
 ) : ContextWrapper(base) {
     override fun startActivity(intent: Intent?) = throw ActivityNotFoundException("no calendar")
+}
+
+/** The system "animations off" setting as the composition sees it: every animation jumps to its end. */
+private object MotionOff : MotionDurationScale {
+    override val scaleFactor: Float = 0f
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -180,6 +192,57 @@ class BookingConfirmedScreenTest {
     }
 
     @Test
+    fun headlineFocusedOnEntry() {
+        setContent()
+        rule.waitForIdle()
+
+        rule
+            .onNodeWithText("Booking Confirmed!")
+            .assertIsFocused()
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun headlineFocusedAgainOnRecreation() {
+        val restorer = StateRestorationTester(rule)
+        restorer.setContent {
+            ClickMeTheme {
+                BookingConfirmedContent(
+                    key = key,
+                    onBack = {},
+                    onAddToCalendar = {},
+                    onBackToHome = {},
+                    zone = zone,
+                    timeFormat = time12,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("Booking Confirmed!").assertIsFocused()
+
+        restorer.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        // A recreated screen is a new entry, so the headline takes focus again and the buttons are already enabled.
+        rule.onNodeWithText("Booking Confirmed!").assertIsFocused()
+        rule.onNodeWithTag("confirmed_add_calendar").assertIsEnabled()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        setContent()
+        rule.waitForIdle()
+
+        val content = rule.onNodeWithTag(BOOKING_CONFIRMED_CONTENT_TAG).getUnclippedBoundsInRoot()
+        val width = content.right.value - content.left.value
+        assertTrue("Confirmed content is $width dp wide, expected <= 600", width <= 600f)
+        val button = rule.onNodeWithTag("confirmed_add_calendar").getUnclippedBoundsInRoot()
+        val buttonWidth = button.right.value - button.left.value
+        assertTrue("Add to Calendar is $buttonWidth dp wide, expected <= 600", buttonWidth <= 600f)
+    }
+
+    @Test
     fun backToHomePostsDashboardReload() {
         val launchRequest = ExpertLaunchRequest()
         var home = 0
@@ -207,4 +270,42 @@ class BookingConfirmedScreenTest {
         assertEquals(DashboardLaunch, pendingWhenNavigating)
         assertEquals(DashboardLaunch, launchRequest.dashboard.consume())
     }
+}
+
+/** Own class: `runComposeUiTest` must not share a JVM test with a `createComposeRule` rule. */
+@OptIn(ExperimentalTestApi::class)
+@RunWith(RobolectricTestRunner::class)
+class BookingConfirmedMotionTest {
+    @Test
+    fun animationsOffShowsFinalState() =
+        runComposeUiTest(effectContext = MotionOff) {
+            mainClock.autoAdvance = false
+            setContent {
+                ClickMeTheme {
+                    BookingConfirmedContent(
+                        key =
+                            BookingConfirmedKey(
+                                bookingId = "b1",
+                                clientName = "Ada Lovelace",
+                                clientAvatarUrl = null,
+                                topic = "Algorithms",
+                                startMillis = Instant.parse("2026-10-24T18:00:00Z").toEpochMilli(),
+                                endMillis = Instant.parse("2026-10-24T19:00:00Z").toEpochMilli(),
+                                meetingType = "skype_zoom",
+                                clientMessage = null,
+                            ),
+                        onBack = {},
+                        onAddToCalendar = {},
+                        onBackToHome = {},
+                        zone = ZoneId.of("America/Toronto"),
+                        timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    )
+                }
+            }
+            // With animations on the buttons stay disabled until the last block lands (buttonsEnabledAfterEntry).
+            mainClock.advanceTimeBy(100)
+
+            onNodeWithTag("confirmed_add_calendar").assertIsEnabled()
+            onNodeWithTag("confirmed_back_home").assertIsEnabled()
+        }
 }

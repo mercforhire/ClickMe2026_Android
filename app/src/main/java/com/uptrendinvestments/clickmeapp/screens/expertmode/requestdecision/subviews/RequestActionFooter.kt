@@ -26,6 +26,7 @@ import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /** Test tag on the footer's Accept button. */
 const val REQUEST_ACCEPT_TAG = "request_accept"
@@ -35,6 +36,9 @@ const val REQUEST_DECLINE_TAG = "request_decline"
 
 /** Test tag on the Message control, in the footer and in the expired state. */
 const val REQUEST_MESSAGE_TAG = "request_message"
+
+/** Test tag on the footer's full-width background surface. */
+const val REQUEST_FOOTER_TAG = "request_footer"
 
 private val FooterButtonMinHeight = 56.dp
 private const val STACK_BELOW_WIDTH_DP = 320
@@ -61,12 +65,12 @@ fun RequestActionFooter(
     val stacked =
         LocalConfiguration.current.screenWidthDp < STACK_BELOW_WIDTH_DP ||
             LocalDensity.current.fontScale >= STACK_AT_FONT_SCALE
-    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+    Surface(modifier = modifier.fillMaxWidth().testTag(REQUEST_FOOTER_TAG), color = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.navigationBarsPadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             if (stacked) {
                 Column(
-                    modifier = Modifier.padding(Spacing.md),
+                    modifier = Modifier.contentMaxWidth().padding(Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
                     AcceptButton(enabled, onAccept, Modifier.fillMaxWidth())
@@ -81,7 +85,7 @@ fun RequestActionFooter(
                 }
             } else {
                 Row(
-                    modifier = Modifier.padding(Spacing.md),
+                    modifier = Modifier.contentMaxWidth().padding(Spacing.md),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
                     MessageButton(

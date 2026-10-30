@@ -64,7 +64,8 @@ private val ActionIconSize = 24.dp
 /**
  * "Booking Confirmed!" heading and the body naming the client (iOS named the expert, Android names the client because
  * the viewer is the expert). The client name is untrusted text: it is a format argument, rendered as plain text. The
- * block is a polite live region so the result is announced.
+ * block is a polite live region so the result is announced. [headlineModifier] lands on the heading text itself; the
+ * screen uses it to make the heading the initial TalkBack focus.
  */
 @Composable
 fun ConfirmedHeadline(
@@ -74,6 +75,7 @@ fun ConfirmedHeadline(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = Locale.getDefault(),
+    headlineModifier: Modifier = Modifier,
 ) {
     val body =
         stringResource(
@@ -88,7 +90,7 @@ fun ConfirmedHeadline(
     ) {
         Text(
             text = stringResource(R.string.booking_confirmed_headline),
-            modifier = Modifier.semantics { heading() },
+            modifier = headlineModifier.semantics { heading() },
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
