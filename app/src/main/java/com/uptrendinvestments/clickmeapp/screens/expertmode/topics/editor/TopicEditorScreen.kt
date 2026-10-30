@@ -65,6 +65,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.util.Money
 import java.util.UUID
 
@@ -232,6 +233,7 @@ private fun EditorBody(
             modifier
                 .fillMaxSize()
                 .imePadding()
+                .contentMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Spacing.md)
                 .padding(top = Spacing.lg),
