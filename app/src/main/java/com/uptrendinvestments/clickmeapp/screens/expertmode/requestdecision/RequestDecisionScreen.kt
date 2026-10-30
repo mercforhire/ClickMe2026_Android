@@ -63,6 +63,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import java.time.ZoneId
 import java.util.Locale
 
+/** Test tag on the scrolling content column of a loaded request. */
+const val REQUEST_CONTENT_TAG = "request_content"
+
 private val HeaderSkeletonAvatar = 72.dp
 private val NameSkeletonWidth = 160.dp
 private val NameSkeletonHeight = 24.dp
@@ -246,6 +249,7 @@ private fun LoadedBody(
         modifier =
             Modifier
                 .fillMaxSize()
+                .testTag(REQUEST_CONTENT_TAG)
                 .verticalScroll(rememberScrollState())
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),

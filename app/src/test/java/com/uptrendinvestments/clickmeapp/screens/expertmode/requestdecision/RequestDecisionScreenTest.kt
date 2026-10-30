@@ -3,7 +3,13 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
+import androidx.compose.runtime.saveable.SaveableStateRegistry
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -15,6 +21,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -43,7 +51,9 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subv
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.DECLINE_SHEET_KEEP_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_DECLINE_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_FOOTER_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.subviews.REQUEST_MESSAGE_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.bookingRequestDetail
@@ -59,6 +69,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.IOException
 import java.time.Instant
 
@@ -608,5 +619,197 @@ class RequestDecisionScreenTest {
         show(RequestDecisionKey("r1"))
         rule.onAllNodesWithText("Report", substring = true).assertCountEquals(0)
         rule.onAllNodesWithText("Block", substring = true).assertCountEquals(0)
+    }
+
+    // region Phase 15: restoration, state cells, large window
+
+    private val acceptedMessages = mutableListOf<String>()
+    private val declinedCalls = mutableListOf<Pair<DeclineReason, String>>()
+    private var retryCount = 0
+
+    private val loadedState get() = RequestDecisionUiState(load = RequestDecisionLoad.Loaded(details))
+
+    @Composable
+    private fun StatelessContent(state: RequestDecisionUiState) {
+        ClickMeTheme {
+            RequestDecisionContent(
+                state = state,
+                onBack = { backCount++ },
+                onRetry = { retryCount++ },
+                onAccept = { acceptedMessages += it },
+                onDecline = { reason, note -> declinedCalls += reason to note },
+                onDismissDialog = {},
+            )
+        }
+    }
+
+    private fun showRestorable(state: RequestDecisionUiState = loadedState): StateRestorationTester {
+        val restorer = StateRestorationTester(rule)
+        restorer.setContent { StatelessContent(state) }
+        rule.waitForIdle()
+        return restorer
+    }
+
+    private fun pickReason(reason: DeclineReason) {
+        rule.onNodeWithTag(DECLINE_REASON_ROW_TAG_PREFIX + reason.name).performScrollTo().performClick()
+    }
+
+    @Test
+    fun declineSheetSurvivesRestore() {
+        val restorer = showRestorable()
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).performClick()
+        pickReason(DeclineReason.NotAvailable)
+        rule.onNodeWithTag(DECLINE_NOTE_FIELD_TAG).performTextInput("Out of town")
+
+        restorer.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Decline Booking Request?").assertExists()
+        rule.onNodeWithTag(DECLINE_REASON_ROW_TAG_PREFIX + DeclineReason.NotAvailable.name).assertIsSelected()
+        rule.onNodeWithTag(DECLINE_REASON_ROW_TAG_PREFIX + DeclineReason.Other.name).assertIsNotSelected()
+        rule.onNodeWithTag(DECLINE_NOTE_FIELD_TAG).assertTextContains("Out of town")
+        // The restore never confirms by itself.
+        assertEquals(0, declinedCalls.size)
+        assertEquals(0, acceptedMessages.size)
+    }
+
+    @Test
+    fun acceptSheetSurvivesRestore() {
+        val restorer = showRestorable()
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).performClick()
+        rule.onNodeWithTag(ACCEPT_MESSAGE_FIELD_TAG).performTextInput("See you soon")
+
+        restorer.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Confirm Booking").assertExists()
+        rule.onNodeWithTag(ACCEPT_MESSAGE_FIELD_TAG).assertTextContains("See you soon")
+        assertEquals(0, acceptedMessages.size)
+        assertEquals(0, declinedCalls.size)
+    }
+
+    @Test
+    fun closedSheetsStayClosedAfterRestore() {
+        val restorer = showRestorable()
+
+        restorer.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Confirm Booking").assertDoesNotExist()
+        rule.onNodeWithText("Decline Booking Request?").assertDoesNotExist()
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).assertExists()
+    }
+
+    /**
+     * Opens a sheet, types [marker], saves, replaces the saved [marker] with 1500 characters (an oversized or tampered
+     * restore) and recomposes from that saved state.
+     */
+    private fun restoreWithOversizedText(
+        openTag: String,
+        fieldTag: String,
+        marker: String,
+        reason: DeclineReason? = null,
+    ) {
+        val first = SaveableStateRegistry(restoredValues = null, canBeSaved = { true })
+        var registry by mutableStateOf(first)
+        var visible by mutableStateOf(true)
+        rule.setContent {
+            CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
+                if (visible) StatelessContent(loadedState)
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(openTag).performClick()
+        reason?.let(::pickReason)
+        rule.onNodeWithTag(fieldTag).performTextInput(marker)
+
+        val saved = rule.runOnIdle { first.performSave() }
+        val oversized = "q".repeat(OVERSIZED_LENGTH)
+        val tampered = saved.mapValues { (_, values) -> values.map { if (it == marker) oversized else it } }
+        rule.runOnIdle { visible = false }
+        rule.waitForIdle()
+        rule.runOnIdle {
+            registry = SaveableStateRegistry(restoredValues = tampered, canBeSaved = { true })
+            visible = true
+        }
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun restoredNoteCapped() {
+        restoreWithOversizedText(REQUEST_DECLINE_TAG, DECLINE_NOTE_FIELD_TAG, "zz", DeclineReason.Other)
+
+        rule.onNodeWithText("1000/1000").assertExists()
+        rule.onNodeWithText("1500/1000").assertDoesNotExist()
+        rule.onNodeWithTag(DECLINE_SHEET_CONFIRM_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf(DeclineReason.Other to "q".repeat(DECLINE_NOTE_MAX_CHARS)), declinedCalls)
+    }
+
+    @Test
+    fun restoredMessageCapped() {
+        restoreWithOversizedText(REQUEST_ACCEPT_TAG, ACCEPT_MESSAGE_FIELD_TAG, "zz")
+
+        rule.onNodeWithText("1000/1000").assertExists()
+        rule.onNodeWithTag(ACCEPT_SHEET_CONFIRM_TAG).performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("q".repeat(ACCEPT_MESSAGE_MAX_CHARS)), acceptedMessages)
+    }
+
+    @Test
+    fun firstLoadShowsSkeleton() {
+        rule.setContent { StatelessContent(RequestDecisionUiState()) }
+
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun failedLoadShowsNamedErrorWithRetry() {
+        rule.setContent {
+            StatelessContent(RequestDecisionUiState(load = RequestDecisionLoad.Failed(FieldError.Text("Offline"))))
+        }
+
+        rule.onNodeWithText("Couldn't load request").assertExists()
+        rule.onNodeWithText("Offline").assertExists()
+        rule.onNodeWithContentDescription("Back").assertIsEnabled()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryCount)
+    }
+
+    @Test
+    fun expiredRequestIsReadOnly() {
+        rule.setContent { StatelessContent(loadedState.copy(isExpired = true)) }
+
+        rule.onNodeWithText("This request has expired").assertExists()
+        rule.onNodeWithTag(REQUEST_ACCEPT_TAG).assertDoesNotExist()
+        rule.onNodeWithTag(REQUEST_DECLINE_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        rule.setContent { StatelessContent(loadedState) }
+
+        val content = rule.onNodeWithTag(REQUEST_CONTENT_TAG).getUnclippedBoundsInRoot()
+        val contentWidth = content.right.value - content.left.value
+        assertTrue("Request content is $contentWidth dp wide, expected <= 600", contentWidth <= 600f)
+
+        val footer = rule.onNodeWithTag(REQUEST_FOOTER_TAG).getUnclippedBoundsInRoot()
+        val footerWidth = footer.right.value - footer.left.value
+        assertTrue("Footer background is $footerWidth dp wide, expected the full 900 dp window", footerWidth >= 899f)
+        val message = rule.onNodeWithTag(REQUEST_MESSAGE_TAG).getUnclippedBoundsInRoot()
+        val accept = rule.onNodeWithTag(REQUEST_ACCEPT_TAG).getUnclippedBoundsInRoot()
+        assertTrue("Footer buttons start at ${message.left.value}, expected >= 150", message.left.value >= 150f)
+        assertTrue("Footer buttons end at ${accept.right.value}, expected <= 750", accept.right.value <= 750f)
+    }
+
+    // endregion
+
+    private companion object {
+        const val OVERSIZED_LENGTH = 1500
     }
 }
