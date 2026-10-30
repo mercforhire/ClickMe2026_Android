@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
@@ -316,6 +318,36 @@ class ConversationsScreenTest {
             assertTrue("missing $it in: $description", description.contains(it))
         }
         assertTrue(existsUnmergedTag(CONVERSATION_PRESENCE_TAG))
+    }
+
+    @Test
+    fun rowIsOneFullNode() {
+        val long = "word ".repeat(60).trim()
+        assertEquals(299, long.length)
+        val full = long + "!"
+        assertEquals(300, full.length)
+        show(loaded(row(lastMessage = full, unread = 2, lastMsgAt = Instant.parse("2026-10-27T09:41:00Z"))))
+
+        assertEquals(1, rule.onAllNodesWithTag(CONVERSATION_ROW_TAG).fetchSemanticsNodes().size)
+        val description =
+            rule
+                .onNodeWithTag(CONVERSATION_ROW_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsProperties.ContentDescription)
+                .orEmpty()
+                .joinToString()
+        assertEquals("Ada Lovelace, $full, 9:41 AM, 2 unread", description)
+
+        // 300 characters cannot fit on one line, so a single laid-out line means the preview is truncated.
+        val layouts = mutableListOf<TextLayoutResult>()
+        rule
+            .onNodeWithText(full, useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult]
+            .action
+            ?.invoke(layouts)
+        assertEquals(1, layouts.single().lineCount)
     }
 
     @Test
