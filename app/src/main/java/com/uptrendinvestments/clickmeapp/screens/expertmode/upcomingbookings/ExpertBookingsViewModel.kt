@@ -80,6 +80,12 @@ class ExpertBookingsViewModel
 
             /** Pull-to-refresh: shows the refresh indicator and flags a failure. */
             Pull,
+
+            /**
+             * Refetch started by a realtime event (Phase 15 D-05): behaves like [Quiet] (no skeleton, no indicator,
+             * lists kept) but flags a failure so the refresh-failed snackbar offers Retry.
+             */
+            Realtime,
         }
 
         private val _uiState =
@@ -103,7 +109,9 @@ class ExpertBookingsViewModel
             // the in-flight load, so a burst of events ends with one latest-wins result (T-11-12).
             viewModelScope.launch {
                 realtime.events.filterIsInstance<RealtimeEvent.BookingUpdate>().collect {
-                    startLoad(if (_uiState.value.load is ExpertBookingsLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
+                    startLoad(
+                        if (_uiState.value.load is ExpertBookingsLoad.Loading) LoadMode.Loud else LoadMode.Realtime,
+                    )
                 }
             }
             // D-17: a launch posted before this ViewModel existed is applied now, before the first load, so the
@@ -194,7 +202,7 @@ class ExpertBookingsViewModel
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = ExpertBookingsLoad.Loading)
                     LoadMode.Pull -> it.copy(isRefreshing = true)
-                    LoadMode.Quiet -> it
+                    LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }
             loadJob =
@@ -209,7 +217,7 @@ class ExpertBookingsViewModel
                         _uiState.update {
                             when (mode) {
                                 LoadMode.Loud -> it.copy(load = failed, isRefreshing = false)
-                                LoadMode.Pull -> it.copy(refreshFailed = true, isRefreshing = false)
+                                LoadMode.Pull, LoadMode.Realtime -> it.copy(refreshFailed = true, isRefreshing = false)
                                 LoadMode.Quiet -> it.copy(isRefreshing = false)
                             }
                         }

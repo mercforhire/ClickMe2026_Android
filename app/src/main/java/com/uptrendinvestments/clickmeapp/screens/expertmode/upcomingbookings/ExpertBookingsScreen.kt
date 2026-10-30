@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
@@ -64,6 +65,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.Instant
@@ -166,12 +168,13 @@ fun ExpertBookingsContent(
             onNoticeConsumed()
         }
     }
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Long) }
-            onRefreshFailureConsumed()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+        message = refreshFailedMessage,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -325,7 +328,7 @@ private fun ExpertBookingsList(
                         onJoin = { onJoin(item) },
                         messageBusy = messageBusyPeerId != null && messageBusyPeerId == item.client.id,
                         onMessage = { onMessage(item) },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem().contentMaxWidth(),
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -336,7 +339,7 @@ private fun ExpertBookingsList(
                     ExpertPastCard(
                         row = row,
                         onOpen = { onOpenBooking(row.item.bookingId) },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem().contentMaxWidth(),
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,

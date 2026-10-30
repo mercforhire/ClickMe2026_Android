@@ -291,6 +291,56 @@ class ExpertBookingsViewModelTest {
             assertFalse(vm.uiState.value.refreshFailed)
         }
 
+    // Phase 15 D-05: realtime refetch failures flag the refresh-failed snackbar, tab-return reloads stay silent.
+
+    @Test
+    fun realtimeFailureFlags() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            api.expertBookingsHandler = { throw IOException("offline") }
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "cancelled"))
+            runCurrent()
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(expectedLists(), vm.uiState.value.lists)
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+        }
+
+    @Test
+    fun quietTabReturnFailureIsSilent() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            api.expertBookingsHandler = { throw IOException("offline") }
+            vm.onScreenShown()
+            runCurrent()
+            assertFalse(vm.uiState.value.refreshFailed)
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(expectedLists(), vm.uiState.value.lists)
+        }
+
+    @Test
+    fun realtimeDuringTheFirstLoadStaysLoud() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.expertBookingsHandler = {
+                gate.await()
+                throw IOException("offline")
+            }
+            val vm = vm()
+            runCurrent()
+            assertEquals(ExpertBookingsLoad.Loading, vm.uiState.value.load)
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "confirmed"))
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(vm.uiState.value.load is ExpertBookingsLoad.Failed)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
     @Test
     fun quietFailureKeepsRowsSilently() =
         runTest(main.testDispatcher) {
