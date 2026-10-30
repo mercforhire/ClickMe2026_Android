@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -7,8 +8,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -29,6 +38,10 @@ internal const val NAME_MARKER = "\u0000"
  * never mentions payment (D-14, iOS parity, UI-SPEC A2): the paid difference is the lifecycle card below the details
  * card, so CONTEXT's "paid headline" is this unchanged headline plus that card. The name is a format argument
  * (never a pattern) and rendered as a plain span.
+ *
+ * The heading takes focus once when it first composes, so TalkBack leads with the result of the booking instead of
+ * the back button (UI-SPEC Flow 2). The request is remembered across recreation (`rememberSaveable`), so a rotation
+ * or a restore does not pull focus back from wherever the user moved it.
  */
 @Composable
 fun BookingRequestSentHeadline(
@@ -36,6 +49,14 @@ fun BookingRequestSentHeadline(
     modifier: Modifier = Modifier,
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
+    val focusRequester = remember { FocusRequester() }
+    var focusRequested by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!focusRequested) {
+            focusRequested = true
+            focusRequester.requestFocus()
+        }
+    }
     // Format with a marker so the name span can be styled even when the name itself contains text of the body.
     val template = stringResource(R.string.request_sent_body, NAME_MARKER)
     val body = requestSentBody(template, expertName, SpanStyle(color = onSurface, fontWeight = FontWeight.SemiBold))
@@ -45,7 +66,7 @@ fun BookingRequestSentHeadline(
     ) {
         Text(
             text = stringResource(R.string.request_sent_headline),
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier.focusRequester(focusRequester).focusable().semantics { heading() },
             style = MaterialTheme.typography.headlineLarge,
             color = onSurface,
             textAlign = TextAlign.Center,

@@ -52,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentHeadline
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -67,6 +68,9 @@ private val SlideDistance = 16.dp
 
 /** Test tag on the paid-booking [PaymentLifecycleCard] shown below the details card. */
 internal const val REQUEST_SENT_PAYMENT_CARD_TAG = "request_sent_payment_card"
+
+/** Test tag on the capped content column of the loaded Request Sent screen. */
+internal const val REQUEST_SENT_CONTENT_TAG = "request_sent_content"
 
 /**
  * Port of iOS BookingRequestSentView. Unlike iOS it replaces the booking screen in the back stack (D-12), so Back
@@ -197,53 +201,61 @@ private fun LoadedBody(
     val expertName = details.expertName ?: stringResource(R.string.request_sent_label_expert)
     val locale = LocalConfiguration.current.locales[0]
 
+    // The scroll area stays full width; only the content column is capped on a large window (D-02).
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xxl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                .verticalScroll(rememberScrollState()),
     ) {
-        BookingRequestSentCheckIcon(
+        Column(
             modifier =
-                Modifier.graphicsLayer {
-                    val p = progress[ICON_INDEX].value
-                    scaleX = ICON_START_SCALE + (1f - ICON_START_SCALE) * p
-                    scaleY = scaleX
-                    alpha = p
-                },
-        )
-        BookingRequestSentHeadline(
-            expertName = expertName,
-            modifier = Modifier.fadeSlideUp { progress[HEADLINE_INDEX].value },
-        )
-        BookingRequestSentDetailsCard(
-            details = details,
-            modifier = Modifier.fadeSlideUp { progress[CARD_INDEX].value },
-            zone = zone,
-            timeFormat = timeFormat,
-        )
-        // Paid bookings only (iOS `!viewModel.isFree`). Enters with the details card, not as a fifth stage.
-        if (!details.isFree) {
-            PaymentLifecycleCard(
-                stage = PaymentLifecycleStage.HoldPlaced,
-                sessionWhen = formatSessionWhen(details.start, zone, locale, timeFormat),
+                Modifier
+                    .contentMaxWidth()
+                    .testTag(REQUEST_SENT_CONTENT_TAG)
+                    .padding(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xxl),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            BookingRequestSentCheckIcon(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .testTag(REQUEST_SENT_PAYMENT_CARD_TAG)
-                        .fadeSlideUp { progress[CARD_INDEX].value },
+                    Modifier.graphicsLayer {
+                        val p = progress[ICON_INDEX].value
+                        scaleX = ICON_START_SCALE + (1f - ICON_START_SCALE) * p
+                        scaleY = scaleX
+                        alpha = p
+                    },
+            )
+            BookingRequestSentHeadline(
+                expertName = expertName,
+                modifier = Modifier.fadeSlideUp { progress[HEADLINE_INDEX].value },
+            )
+            BookingRequestSentDetailsCard(
+                details = details,
+                modifier = Modifier.fadeSlideUp { progress[CARD_INDEX].value },
+                zone = zone,
+                timeFormat = timeFormat,
+            )
+            // Paid bookings only (iOS `!viewModel.isFree`). Enters with the details card, not as a fifth stage.
+            if (!details.isFree) {
+                PaymentLifecycleCard(
+                    stage = PaymentLifecycleStage.HoldPlaced,
+                    sessionWhen = formatSessionWhen(details.start, zone, locale, timeFormat),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag(REQUEST_SENT_PAYMENT_CARD_TAG)
+                            .fadeSlideUp { progress[CARD_INDEX].value },
+                )
+            }
+            BookingRequestSentActions(
+                onViewBookings = onViewBookings,
+                onBackToHome = onBackToHome,
+                enabled = actionsVisible,
+                modifier = Modifier.fadeSlideUp { progress[ACTIONS_INDEX].value },
             )
         }
-        BookingRequestSentActions(
-            onViewBookings = onViewBookings,
-            onBackToHome = onBackToHome,
-            enabled = actionsVisible,
-            modifier = Modifier.fadeSlideUp { progress[ACTIONS_INDEX].value },
-        )
     }
 }
 

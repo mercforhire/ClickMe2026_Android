@@ -51,6 +51,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.time.Instant
 import java.time.LocalDate
 
@@ -183,6 +184,8 @@ fun MakeABookingContent(
             )
         },
     ) { innerPadding ->
+        // The scroll area (and its tap and drag handling) stays full width; only the form column inside it is
+        // capped on a large window (D-02).
         Column(
             modifier =
                 Modifier
@@ -191,90 +194,96 @@ fun MakeABookingContent(
                     .imePadding()
                     .pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
                     .verticalScroll(scrollState)
-                    .testTag(MAKE_A_BOOKING_SCROLL_TAG)
-                    .padding(PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg)),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                    .testTag(MAKE_A_BOOKING_SCROLL_TAG),
         ) {
-            Section(R.string.make_a_booking_section_expert) {
-                MakeABookingExpertCard(state.expertName, state.expertTitle, state.expertImageUrl)
-            }
-            Section(R.string.make_a_booking_section_topic) {
-                MakeABookingTopicPicker(
-                    topics = state.topics,
-                    selectedTopic = state.selectedTopic,
-                    onOpen = { showTopicSheet = true },
-                    onRetry = onRetryTopics,
-                    enabled = editable,
-                )
-            }
-            Section(R.string.make_a_booking_section_time) {
-                MakeABookingCalendarCard(
-                    displayedMonth = state.displayedMonth,
-                    today = state.today,
-                    selectedDate = state.selectedDate,
-                    openDays = state.openDays,
-                    canGoToPreviousMonth = state.canGoToPreviousMonth,
-                    onPreviousMonth = onPreviousMonth,
-                    onNextMonth = onNextMonth,
-                    onSelectDate = onSelectDate,
-                    enabled = editable,
-                )
-            }
-            MakeABookingTimeSlotsCard(
-                selectedDate = state.selectedDate,
-                availability = state.availability,
-                now = state.now,
-                selectedSlotStart = state.selectedSlotStart,
-                expertTimezone = state.expertTimezone,
-                onSelectSlot = onSelectSlot,
-                onRetry = onRetryAvailability,
-                enabled = editable,
-                selectedDateLoaded = state.isSelectedDateLoaded,
-                zone = state.zone,
-                timeFormat = timeFormat,
-                latestSelectableStart = state.latestSelectableStart,
-            )
-            Section(R.string.make_a_booking_section_meeting_type) {
-                MakeABookingMeetingTypeCard(
-                    selected = state.meetingType,
-                    onSelect = onSelectMeetingType,
-                    enabled = editable,
-                )
-            }
-            Section(R.string.make_a_booking_section_message) {
-                MakeABookingNotesCard(
-                    notes = state.notes,
-                    onNotesChange = onNotesChange,
-                    readOnly = !editable,
-                )
-            }
-            Section(R.string.make_a_booking_section_summary) {
-                MakeABookingSummarySection(
-                    topic = state.selectedTopic,
-                    selectedDate = state.selectedDate,
-                    selectedSlotStart = state.selectedSlotStart,
-                    meetingType = state.meetingType,
-                    zone = state.zone,
-                    timeFormat = timeFormat,
-                )
-            }
-            // UI-SPEC: lg below the Summary (the form gap), md between the info link and the button.
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                if (state.selectedTopic?.isFree == false) {
-                    MakeABookingPaymentInfoLink(
-                        onClick = { showPaymentInfo = true },
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
+            Column(
+                modifier =
+                    Modifier
+                        .contentMaxWidth()
+                        .padding(PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg)),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            ) {
+                Section(R.string.make_a_booking_section_expert) {
+                    MakeABookingExpertCard(state.expertName, state.expertTitle, state.expertImageUrl)
+                }
+                Section(R.string.make_a_booking_section_topic) {
+                    MakeABookingTopicPicker(
+                        topics = state.topics,
+                        selectedTopic = state.selectedTopic,
+                        onOpen = { showTopicSheet = true },
+                        onRetry = onRetryTopics,
+                        enabled = editable,
                     )
                 }
-                MakeABookingBookButton(
-                    disabledReason = state.bookDisabledReason,
-                    ctaAction = state.bookCtaAction,
-                    isSubmitting = state.isSubmitting,
-                    onClick =
-                        if (state.bookCtaAction == BookCtaAction.AddPaymentMethod) onOpenPaymentMethods else onBook,
+                Section(R.string.make_a_booking_section_time) {
+                    MakeABookingCalendarCard(
+                        displayedMonth = state.displayedMonth,
+                        today = state.today,
+                        selectedDate = state.selectedDate,
+                        openDays = state.openDays,
+                        canGoToPreviousMonth = state.canGoToPreviousMonth,
+                        onPreviousMonth = onPreviousMonth,
+                        onNextMonth = onNextMonth,
+                        onSelectDate = onSelectDate,
+                        enabled = editable,
+                    )
+                }
+                MakeABookingTimeSlotsCard(
+                    selectedDate = state.selectedDate,
+                    availability = state.availability,
+                    now = state.now,
+                    selectedSlotStart = state.selectedSlotStart,
+                    expertTimezone = state.expertTimezone,
+                    onSelectSlot = onSelectSlot,
+                    onRetry = onRetryAvailability,
+                    enabled = editable,
+                    selectedDateLoaded = state.isSelectedDateLoaded,
+                    zone = state.zone,
+                    timeFormat = timeFormat,
+                    latestSelectableStart = state.latestSelectableStart,
                 )
+                Section(R.string.make_a_booking_section_meeting_type) {
+                    MakeABookingMeetingTypeCard(
+                        selected = state.meetingType,
+                        onSelect = onSelectMeetingType,
+                        enabled = editable,
+                    )
+                }
+                Section(R.string.make_a_booking_section_message) {
+                    MakeABookingNotesCard(
+                        notes = state.notes,
+                        onNotesChange = onNotesChange,
+                        readOnly = !editable,
+                    )
+                }
+                Section(R.string.make_a_booking_section_summary) {
+                    MakeABookingSummarySection(
+                        topic = state.selectedTopic,
+                        selectedDate = state.selectedDate,
+                        selectedSlotStart = state.selectedSlotStart,
+                        meetingType = state.meetingType,
+                        zone = state.zone,
+                        timeFormat = timeFormat,
+                    )
+                }
+                // UI-SPEC: lg below the Summary (the form gap), md between the info link and the button.
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    if (state.selectedTopic?.isFree == false) {
+                        MakeABookingPaymentInfoLink(
+                            onClick = { showPaymentInfo = true },
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                    }
+                    MakeABookingBookButton(
+                        disabledReason = state.bookDisabledReason,
+                        ctaAction = state.bookCtaAction,
+                        isSubmitting = state.isSubmitting,
+                        onClick =
+                            if (state.bookCtaAction == BookCtaAction.AddPaymentMethod) onOpenPaymentMethods else onBook,
+                    )
+                }
+                Spacer(Modifier.navigationBarsPadding().padding(bottom = Spacing.xl))
             }
-            Spacer(Modifier.navigationBarsPadding().padding(bottom = Spacing.xl))
         }
     }
 
