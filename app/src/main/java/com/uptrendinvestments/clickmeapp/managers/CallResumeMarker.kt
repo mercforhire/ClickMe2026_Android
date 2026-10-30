@@ -32,7 +32,7 @@ import javax.inject.Singleton
  *
  * The marker holds the booking id and the scheduled end and nothing else (no peer name, token, channel or user id;
  * T-15-19). It is written while an in-app session is live and cleared when the session ends, on logout (it is a
- * [SessionDataCleaner]) and once it is consumed. At [start], a marker with no live session is routed through
+ * [SessionDataCleaner]) and once the routed destination has been taken by the screen shell. At [start], a marker with no live session is routed through
  * [PushLaunchRequest] as a `BookingDetail` with the Either audience, so the Phase 13 push routing resolves the
  * client's Upcoming Booking Details or the expert's Booking Summary; it is dropped without routing once the booking
  * is more than [CUTOFF_SECONDS] past its scheduled end (the CALL-07 cutoff). A live session at [start] (an Activity
@@ -69,14 +69,26 @@ class CallResumeMarker
             val bookingId = prefs[KEY_BOOKING_ID]
             val scheduledEndMs = prefs[KEY_SCHEDULED_END_MS]
             if (bookingId == null && scheduledEndMs == null) return
-            // Consumed once: cleared before routing, so a crash while routing cannot replay it.
-            clearStore()
-            if (bookingId.isNullOrBlank() || scheduledEndMs == null) return
-            if (callCenter.session.value != null) return
+            if (bookingId.isNullOrBlank() || scheduledEndMs == null || callCenter.session.value != null) {
+                clearStore()
+                return
+            }
             val cutoff = Instant.ofEpochMilli(scheduledEndMs).plusSeconds(CUTOFF_SECONDS)
-            if (!clock.instant().isBefore(cutoff)) return
+            if (!clock.instant().isBefore(cutoff)) {
+                clearStore()
+                return
+            }
+            // An explicit destination already waiting (a push tap) wins: the resume steps aside rather than hijack it.
+            val destination = PushDestination.BookingDetail(bookingId, PushAudience.Either)
+            if (!pushLaunchRequest.destination.postIfAbsent(destination)) {
+                clearStore()
+                return
+            }
             notice.post(bookingId)
-            pushLaunchRequest.destination.post(PushDestination.BookingDetail(bookingId, PushAudience.Either))
+            // Consumed only once the screen shell has taken the destination (or something replaced it). A process
+            // that was started for no UI (a push wake-up) and is killed again keeps the marker for the real launch.
+            pushLaunchRequest.destination.pending.first { pending -> pending != destination }
+            clearStore()
         }
 
         private fun CallSession.toMarker(): Marker? {

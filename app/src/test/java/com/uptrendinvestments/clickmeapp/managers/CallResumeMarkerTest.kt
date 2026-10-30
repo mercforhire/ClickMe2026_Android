@@ -156,7 +156,37 @@ class CallResumeMarkerTest {
             assertEquals(PushDestination.BookingDetail("b1", PushAudience.Either), s.awaitRouted())
             assertTrue(s.notice.consumeFor("b1"))
             assertFalse(s.notice.consumeFor("b1"))
+            // The marker is cleared only once the screen shell takes the destination.
+            s.push.destination.consume()
             s.awaitEmptyStore()
+        }
+
+    @Test
+    fun markerSurvivesUntilTheDestinationIsConsumed() =
+        runTest(main.testDispatcher) {
+            val s = setup()
+            s.seed("b1", s.clockPlus(600))
+            s.marker.start()
+            s.awaitRouted()
+            settle()
+            // A process start that never reaches the UI must not lose the call: the marker is still stored.
+            assertEquals("b1", s.stored()[CallResumeMarker.KEY_BOOKING_ID])
+            s.push.destination.consume()
+            s.awaitEmptyStore()
+        }
+
+    @Test
+    fun pendingPushTapIsNotOverwritten() =
+        runTest(main.testDispatcher) {
+            val s = setup()
+            val tap = PushDestination.BookingDetail("tapped", PushAudience.Client)
+            s.push.destination.post(tap)
+            s.seed("b1", s.clockPlus(600))
+            s.marker.start()
+            s.awaitEmptyStore()
+            settle()
+            assertEquals(tap, s.push.destination.pending.value)
+            assertFalse(s.notice.consumeFor("b1"))
         }
 
     @Test
@@ -195,6 +225,7 @@ class CallResumeMarkerTest {
             s.seed("b1", s.clockPlus(600))
             s.marker.start()
             assertEquals(PushDestination.BookingDetail("b1", PushAudience.Either), s.awaitRouted())
+            s.push.destination.consume()
             s.awaitEmptyStore()
             settle()
             val joins = s.h.engine.joins

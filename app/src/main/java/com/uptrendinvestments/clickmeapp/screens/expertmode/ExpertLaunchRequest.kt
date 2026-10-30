@@ -21,6 +21,9 @@ class OneShotSlot<T : Any> {
         _pending.value = value
     }
 
+    /** Stores [value] only when nothing is pending; returns whether it was stored. Never replaces a hand-off. */
+    fun postIfAbsent(value: T): Boolean = _pending.compareAndSet(null, value)
+
     /** Returns the pending value and clears it, or null when there is none. */
     fun consume(): T? = _pending.getAndUpdate { null }
 }
