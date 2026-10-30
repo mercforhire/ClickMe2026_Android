@@ -462,6 +462,44 @@ class UpcomingBookingViewModelTest {
             assertEquals(UpcomingBookingUiState.Unavailable, vm.uiState.value)
         }
 
+    @Test
+    fun aNotFoundQuietReloadWithContentBecomesUnavailable() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            val vm = vm()
+            runCurrent()
+
+            api.clientBookingDetailHandler = {
+                throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+            }
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "cancelled"))
+            runCurrent()
+
+            assertEquals(UpcomingBookingUiState.Unavailable, vm.uiState.value)
+        }
+
+    @Test
+    fun refreshQuietlyDoesNotCancelARunningRetry() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            val vm = vm()
+            runCurrent()
+
+            val gate = CompletableDeferred<ClientBookingDetail>()
+            api.clientBookingDetailHandler = { gate.await() }
+            vm.refresh()
+            runCurrent()
+            vm.onScreenHidden()
+            vm.refreshQuietly()
+            runCurrent()
+            assertTrue(loaded(vm).isRefreshing)
+
+            gate.complete(bookingDetail(status = "in_progress"))
+            runCurrent()
+            assertFalse(loaded(vm).isRefreshing)
+            assertEquals(BookingStatusLabel.InProgress, loaded(vm).details.status.label)
+        }
+
     // ---- reschedule response ----
 
     private fun pendingReschedule() =

@@ -137,6 +137,8 @@ class UpcomingBookingViewModel
          */
         fun refreshQuietly() {
             if (loadJob?.isActive == true && loadIsCurrent) return
+            // A user's Retry still running must not be cancelled by a silent reload that would not flag its failure.
+            if ((_uiState.value as? UpcomingBookingUiState.Loaded)?.isRefreshing == true) return
             startLoad(quiet = _uiState.value is UpcomingBookingUiState.Loaded)
         }
 
@@ -193,7 +195,10 @@ class UpcomingBookingViewModel
                         val details = repository.detail(bookingId).toUpcomingDetails(clock.instant())
                         _uiState.value = UpcomingBookingUiState.Loaded(details, showCallResumeNote = showCallResumeNote)
                     } catch (e: ApiException) {
-                        if (quiet) {
+                        if (e.isNotFound()) {
+                            // Gone for good, also while the details show: a Retry would only loop on the 404.
+                            _uiState.value = UpcomingBookingUiState.Unavailable
+                        } else if (quiet) {
                             _uiState.update {
                                 if (it is UpcomingBookingUiState.Loaded) {
                                     it.copy(isRefreshing = false, refreshFailed = it.refreshFailed || flagFailure)
@@ -202,12 +207,7 @@ class UpcomingBookingViewModel
                                 }
                             }
                         } else {
-                            _uiState.value =
-                                if (e.isNotFound()) {
-                                    UpcomingBookingUiState.Unavailable
-                                } else {
-                                    UpcomingBookingUiState.Failed(e.toSectionMessage())
-                                }
+                            _uiState.value = UpcomingBookingUiState.Failed(e.toSectionMessage())
                         }
                     }
                 }
