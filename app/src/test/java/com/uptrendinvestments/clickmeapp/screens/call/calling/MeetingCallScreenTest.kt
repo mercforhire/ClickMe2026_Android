@@ -5,17 +5,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
@@ -36,6 +42,7 @@ import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MEETING_C
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MEETING_CALL_STATUS_TAG
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -252,10 +259,51 @@ class MeetingCallScreenTest {
     fun rootIsATraversalGroupAndTheNameIsAHeading() {
         show(inApp())
         rule
-            .onNode(SemanticsMatcher.expectValue(SemanticsProperties.IsTraversalGroup, true))
+            .onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.IsTraversalGroup, true))
+            .onFirst()
             .assertExists()
         rule
             .onNodeWithTag(MEETING_CALL_NAME_TAG)
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h400dp")
+    fun controlsVisibleOnShortWindow() {
+        show(inApp())
+
+        listOf(CALL_CONTROL_MUTE_TAG, CALL_CONTROL_SPEAKER_TAG, CALL_END_BUTTON_TAG).forEach { tag ->
+            rule.onNodeWithTag(tag).assertIsDisplayed()
+            val bottom = rule.onNodeWithTag(tag).getBoundsInRoot().bottom
+            assertTrue("$tag bottom is $bottom, expected <= 400.dp without scrolling", bottom <= 400.dp)
+        }
+        rule.onNodeWithTag(MEETING_CALL_HERO_SINGLE_TAG).assertHeightIsAtLeast(96.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun avatarUnchangedOnPhone() {
+        show(inApp())
+
+        // 160 dp avatar + 2 * (4 dp ring + 8 dp gap).
+        rule.onNodeWithTag(MEETING_CALL_HERO_SINGLE_TAG).assertHeightIsEqualTo(184.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun longPeerNameTwoLines() {
+        show(inApp().copy(peerName = "Alexandria ".repeat(11).trim()))
+
+        val results = mutableListOf<TextLayoutResult>()
+        rule
+            .onNodeWithTag(MEETING_CALL_NAME_TAG)
+            .fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult]
+            .action
+            ?.invoke(results)
+        assertTrue("name lines: ${results.map { it.lineCount }}", results.single().lineCount <= 2)
+        listOf(CALL_CONTROL_MUTE_TAG, CALL_CONTROL_SPEAKER_TAG, CALL_END_BUTTON_TAG).forEach { tag ->
+            rule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+        }
     }
 }
