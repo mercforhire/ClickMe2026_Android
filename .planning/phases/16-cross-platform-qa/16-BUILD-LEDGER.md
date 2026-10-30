@@ -61,7 +61,7 @@ Used by 16-05, 16-07 and any gap plan.
 
 | versionCode | versionName | git sha | AAB sha256 (first 16) | Archive | Cert pin match | Uploaded (date) | Play status | Samsung proof (versionCode, lastUpdateTime, installer) | Rows re-run |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | 0.1.0 | d31aab18 | be68ecc836fe949e | /Users/LeonChen/ClickMe-release/clickme-0.1.0-1.aab | yes (pin set) | | not uploaded | pending | |
+| 1 | 0.1.0 | d31aab18 | be68ecc836fe949e | /Users/LeonChen/ClickMe-release/clickme-0.1.0-1.aab | yes | 2026-10-30 | available | vc 1, 2026-10-30 17:57:21, com.android.vending | |
 
 ## Fix batches
 
@@ -73,3 +73,7 @@ Used by 16-05, 16-07 and any gap plan.
 - Gate B2 for versionCode 1 passed on HEAD 2a532a0b (test + ktlint + assembleDevDebug; lintDevDebug + lintProdDebug at -Xmx4g; design rules + self-test), all BUILD SUCCESSFUL. Commits after 2a532a0b touch only `.planning/` docs (verified with `git diff --name-only 2a532a0b HEAD | grep -v '^\.planning/'` printing nothing), so the gate was not re-run.
 - vc 1 archive sha256: aab be68ecc836fe949e5bfb52f570368cab2d8ff2627cc4c8744d0923fca292e8d1, apk 8ae07d7ee6bb9e17a5ec616a5d33f128a2c9f69018e981d83cca5e22776ea6b8, mapping 1ac2bb1f41b12525057cf8d7fda6151ed443e95e88db2b5c7b4ca04c825f8dce (mapping path app/build/outputs/mapping/prodRelease/mapping.txt confirmed, RESEARCH A12). APK is signed with the v2 scheme (sufficient for minSdk 26).
 - vc 1 R8 cold start: Status ok, TotalTime 783 ms, crash lines 0, Login screen visible (button label is "Login", not "Log in" as the plan text assumed; email, password, Forgot Password?, Sign Up all present) (2026-10-30). Fresh install of the archived apk on SM_A075F; no keep rule needed.
+- vc 1 available on internal testing (2026-10-30). Installed on SM_A075F from Google Play (installer com.android.vending, versionCode 1, lastUpdateTime 2026-10-30 17:57:21, crash buffer 0), logged in as account B. The sideload was uninstalled first. The Play-generated split reports minSdk 32 for this device's variant; that is bundletool device targeting, not a config change.
+- Play Console App integrity upload key certificate SHA-256 confirmed by the user to equal the pin above.
+- Play app signing cert (Google-generated key) of the installed base.apk, for Firebase registration (optional user follow-up, not done yet): SHA-256 979e9011c606c65faee98f0895bc3e4e71e57c616ed050936f5c01c2ecc91064, SHA-1 8db73866795076c1d571fb0ffdebd0521cdb0d6a (DN CN=Android, O=Google Inc.).
+- Plan-text deviation: the Task 3 check `logcat -s Realtime | state=Connected` cannot pass as written, because no code in app/src/main logs `state=` (the Realtime tag only logs warnings and dropped events, RealtimeService.kt). Realtime is exercised functionally by runbook rows R1 and D1 (chat, push). Not forced to pass.
