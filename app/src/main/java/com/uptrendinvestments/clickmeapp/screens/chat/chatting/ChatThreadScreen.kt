@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -315,7 +316,8 @@ fun ChatThreadContent(
  * Speaks a peer message that arrives while the thread is open, once, as "{name}: {text}" (UI-SPEC Flow 4). A 1 dp node
  * with a polite live region carries the text for [ANNOUNCEMENT_MS] and is then emptied, so an identical message later
  * is announced again. The first loaded page is only recorded (also across recreation), a message of mine never speaks,
- * and prepending an older page leaves the newest key unchanged, so history is never announced.
+ * and only an item newer than the newest one already seen can be an arrival, so prepending an older page or the newest
+ * item reverting to an earlier peer message (a failed send of mine was deleted) never re-announces.
  */
 @Composable
 private fun PeerArrivalAnnouncer(
@@ -324,20 +326,28 @@ private fun PeerArrivalAnnouncer(
 ) {
     val resources = LocalResources.current
     var started by rememberSaveable { mutableStateOf(false) }
-    var lastNewestKey by rememberSaveable { mutableStateOf<String?>(null) }
+    // The newest createdAt (epoch ms) the announcer has seen. Only a message newer than it can be an arrival, so the
+    // newest item reverting to an already-heard peer message (my failed send was deleted) never speaks again.
+    var lastSeenAtMs by rememberSaveable { mutableStateOf<Long?>(null) }
     var announcement by remember { mutableStateOf("") }
     val loaded = state.load is ThreadLoad.Loaded
     val newest = state.items.lastOrNull()
     LaunchedEffect(loaded, newest?.key) {
         if (!loaded) return@LaunchedEffect
+        val newestAtMs = newest?.createdAt?.toEpochMilli()
         if (!started) {
             started = true
-            lastNewestKey = newest?.key
+            lastSeenAtMs = newestAtMs
             return@LaunchedEffect
         }
-        if (newest?.key == lastNewestKey) return@LaunchedEffect
-        lastNewestKey = newest?.key
-        announcement = ""
+        if (newestAtMs == null || newestAtMs <= (lastSeenAtMs ?: Long.MIN_VALUE)) return@LaunchedEffect
+        lastSeenAtMs = newestAtMs
+        if (announcement.isNotEmpty()) {
+            // Let the emptied node reach composition, so an identical message right after is a real change.
+            announcement = ""
+            withFrameNanos { }
+            withFrameNanos { }
+        }
         if (newest is ThreadItem.Message && !newest.mine) {
             announcement = resources.getString(R.string.chat_thread_bubble_a11y, peerLabel, newest.text)
             delay(ANNOUNCEMENT_MS)

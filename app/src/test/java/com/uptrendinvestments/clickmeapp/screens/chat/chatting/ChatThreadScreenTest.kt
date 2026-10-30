@@ -738,6 +738,20 @@ class ChatThreadScreenTest {
     }
 
     @Test
+    fun deletingMyFailedSendDoesNotReAnnounceThePeerMessageBeforeIt() {
+        val base = loaded(listOf(incoming("m1", "Hello", at = "2026-10-27T09:00:00Z")))
+        show(base)
+        rule.waitForIdle()
+
+        val failedSend = own("m2", "Oops", delivery = Delivery.Failed, at = "2026-10-27T09:05:00Z")
+        arrive(base.copy(items = base.items + failedSend))
+        rule.mainClock.advanceTimeBy(6_000)
+
+        arrive(base)
+        rule.onAllNodes(anyPeerAnnouncement()).assertCountEquals(0)
+    }
+
+    @Test
     fun composerSurvivesRecreation() {
         val harness = ChatThreadTestHarness()
         harness.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
