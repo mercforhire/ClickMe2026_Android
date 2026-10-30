@@ -515,4 +515,87 @@ class ChatThreadViewModelTest {
             vm.onScreenHidden()
             assertNull(h.session.openThreadId.value)
         }
+
+    private fun serveEmptyThread() {
+        h.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
+    }
+
+    /** What the system hands the next ViewModel after recreation or process death: a copy of the saved values. */
+    private fun savedCopy(handle: SavedStateHandle) =
+        SavedStateHandle(handle.keys().associateWith { handle.get<Any>(it) })
+
+    @Test
+    fun composerRestoredFromHandle() =
+        runTest(main.testDispatcher) {
+            serveEmptyThread()
+            val saved = SavedStateHandle()
+            val vm = h.viewModel(saved = saved)
+            runCurrent()
+            vm.onComposerChanged("draft")
+
+            val recreated = h.viewModel(saved = savedCopy(saved))
+
+            assertEquals("draft", recreated.uiState.value.composerText)
+        }
+
+    @Test
+    fun composerIsPerThread() =
+        runTest(main.testDispatcher) {
+            serveEmptyThread()
+            val keyA = ChatThreadKey("tA", "p1", "Ada", null, true)
+            val savedA = SavedStateHandle()
+            val a = h.viewModel(keyA, savedA)
+            runCurrent()
+            a.onComposerChanged("for Ada")
+
+            val b = h.viewModel(ChatThreadKey("tB", "p2", "Bob", null, true), SavedStateHandle())
+            val aAgain = h.viewModel(keyA, savedCopy(savedA))
+
+            assertEquals("", b.uiState.value.composerText)
+            assertEquals("for Ada", aAgain.uiState.value.composerText)
+        }
+
+    @Test
+    fun restoredComposerIsCapped() =
+        runTest(main.testDispatcher) {
+            serveEmptyThread()
+            val tooLong = "x".repeat(ChatThreadViewModel.COMPOSER_MAX + 50)
+            val saved = SavedStateHandle(mapOf(ChatThreadViewModel.KEY_COMPOSER to tooLong))
+
+            val vm = h.viewModel(saved = saved)
+
+            assertEquals(ChatThreadViewModel.COMPOSER_MAX, vm.uiState.value.composerText.length)
+        }
+
+    @Test
+    fun failedBubbleNotRestored() =
+        runTest(main.testDispatcher) {
+            val theirs = chatMessage(id = "m1", senderId = "p1", content = "Theirs", createdAt = at(1))
+            h.api.chatMessagesHandler = { _, _, _ -> messagesPayload(listOf(theirs)) }
+            h.api.sendChatMessageHandler = { _, _ -> throw IOException("offline") }
+            val saved = SavedStateHandle()
+            val vm = h.viewModel(saved = saved)
+            runCurrent()
+            vm.onComposerChanged("lost words")
+            vm.send()
+            runCurrent()
+            assertEquals(
+                Delivery.Failed,
+                (
+                    vm.uiState.value.items
+                        .last() as ThreadItem.Message
+                ).delivery,
+            )
+
+            val recreated = h.viewModel(saved = savedCopy(saved))
+            runCurrent()
+
+            assertEquals(
+                listOf("Theirs"),
+                recreated.uiState.value.items
+                    .map { (it as ThreadItem.Message).text },
+            )
+            assertEquals("", recreated.uiState.value.composerText)
+            assertFalse(saved.keys().any { saved.get<Any>(it).toString().contains("lost words") })
+        }
 }

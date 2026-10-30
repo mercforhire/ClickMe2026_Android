@@ -3,18 +3,26 @@ package com.uptrendinvestments.clickmeapp.screens.chat.chatting
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -26,6 +34,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
@@ -35,6 +44,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_INP
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.subviews.CHAT_SEND_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatSlotTime
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.messagesPayload
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -190,11 +200,11 @@ class ChatThreadScreenTest {
     }
 
     @Test
-    fun sentStatusLineExposesTimeOnly() {
+    fun sentStatusLineExposesTimeAndSent() {
         show(loaded(listOf(own("m1", "On it", Delivery.Sent))))
         val time = formatSlotTime(Instant.parse("2026-10-27T09:01:00Z"), zone, timeFormat)
 
-        rule.onNode(hasText("On it") and hasContentDescription(time)).assertIsDisplayed()
+        rule.onNode(hasText("On it") and hasContentDescription("$time, Sent")).assertIsDisplayed()
         rule.onAllNodesWithText("Read", useUnmergedTree = true).assertCountEquals(0)
     }
 
@@ -622,5 +632,110 @@ class ChatThreadScreenTest {
         rule.waitForIdle()
 
         rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsFocused()
+    }
+
+    @Test
+    fun emptyThreadKeepsComposer() {
+        show(loaded(emptyList()))
+
+        rule.onNodeWithText("Start your conversation here.").assertIsDisplayed()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsEnabled()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assert(SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus))
+        rule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    /** Applies [next] and lets a few frames run on the paused test clock, so the announcement has not timed out. */
+    private fun arrive(next: ChatThreadUiState) {
+        rule.mainClock.autoAdvance = false
+        rule.runOnUiThread {
+            shown = next
+            Snapshot.sendApplyNotifications()
+        }
+        rule.mainClock.advanceTimeBy(ARRIVAL_FRAMES_MS)
+    }
+
+    /** A polite live region that speaks a peer message: the arrival announcer (a bubble carries no live region). */
+    private fun arrivalAnnouncement(text: String) =
+        hasContentDescription(text) and SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)
+
+    private fun anyPeerAnnouncement() =
+        hasContentDescription("Ada Lovelace: ", substring = true) and
+            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+
+    @Test
+    fun livePeerMessageAnnouncedOnce() {
+        val base = loaded(listOf(incoming("m1", "Hello"), own("m2", "Hi Ada")))
+        show(base)
+        rule.onAllNodes(anyPeerAnnouncement()).assertCountEquals(0)
+
+        arrive(base.copy(items = base.items + incoming("m3", "New", at = "2026-10-27T09:05:00Z")))
+        rule.onAllNodes(arrivalAnnouncement("Ada Lovelace: New")).assertCountEquals(1)
+
+        // Recomposing without a new message does not speak it again, and it clears after a few seconds.
+        rule.mainClock.advanceTimeBy(6_000)
+        rule.onAllNodes(arrivalAnnouncement("Ada Lovelace: New")).assertCountEquals(0)
+    }
+
+    @Test
+    fun firstMessageOfAnEmptyThreadIsAnnounced() {
+        val base = loaded(emptyList())
+        show(base)
+        rule.waitForIdle()
+
+        arrive(base.copy(items = listOf(incoming("m1", "Welcome"))))
+
+        rule.onAllNodes(arrivalAnnouncement("Ada Lovelace: Welcome")).assertCountEquals(1)
+    }
+
+    @Test
+    fun earlierPageAndOwnMessagesAreNotAnnounced() {
+        val base = loaded(listOf(incoming("m2", "Newer", at = "2026-10-27T10:00:00Z")))
+        show(base)
+
+        rule.waitForIdle()
+        val older = incoming("m1", "Older", at = "2026-10-26T09:00:00Z")
+        arrive(base.copy(items = listOf(older) + base.items))
+        rule.onAllNodes(arrivalAnnouncement("Ada Lovelace: Older")).assertCountEquals(0)
+        rule.onAllNodes(anyPeerAnnouncement()).assertCountEquals(0)
+
+        arrive(shown.copy(items = shown.items + own("m3", "Mine", at = "2026-10-27T10:05:00Z")))
+        rule.onAllNodes(anyPeerAnnouncement()).assertCountEquals(0)
+    }
+
+    @Test
+    fun composerSurvivesRecreation() {
+        val harness = ChatThreadTestHarness()
+        harness.api.chatMessagesHandler = { _, _, _ -> messagesPayload(emptyList()) }
+        var handle = SavedStateHandle()
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            val viewModel = remember { harness.viewModel(saved = handle) }
+            ClickMeTheme {
+                ChatThreadScreen(
+                    viewModel = viewModel,
+                    mode = AppMode.Client,
+                    onBack = {},
+                    onOpenBooking = { _, _ -> },
+                    onViewProfile = {},
+                    onOpenReportBlock = {},
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(CHAT_INPUT_TAG).performTextInput("draft")
+        rule.waitForIdle()
+
+        // The system keeps the saved values and gives the next ViewModel a copy of them.
+        val persisted = handle
+        handle = SavedStateHandle(persisted.keys().associateWith { persisted.get<Any>(it) })
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertTextContains("draft")
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertIsNotFocused()
+    }
+
+    private companion object {
+        const val ARRIVAL_FRAMES_MS = 200L
     }
 }

@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
@@ -47,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.chat.capText
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.CHAT_COMPOSER_MAX
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /** Test tag on the composer text field. */
@@ -66,7 +68,7 @@ private const val DISABLED_ALPHA = 0.38f
  * button that stays in layout. [text] is the ViewModel's draft (already capped); edits are reported through
  * [onTextChange]. The field is disabled while [enabled] is false (thread loading or failed to load) and Send while
  * [canSend] is false. The Scaffold content padding already carries the navigation-bar inset, so only the IME is
- * added here.
+ * added here. The surface spans the window while its content is capped at 600 dp on a large window (D-02).
  */
 @Composable
 @Suppress("LongParameterList")
@@ -93,9 +95,11 @@ fun ChatComposer(
                 .background(MaterialTheme.colorScheme.surface),
     ) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        if (text.length >= COUNTER_FROM) CharacterCounter(length = text.length, atCap = atCap)
+        if (text.length >= COUNTER_FROM) {
+            CharacterCounter(length = text.length, atCap = atCap, modifier = Modifier.contentMaxWidth())
+        }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            modifier = Modifier.contentMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -111,27 +115,40 @@ fun ChatComposer(
                 focusRequester = focusRequester,
                 modifier = Modifier.weight(1f),
             )
-            SendButton(canSend = canSend, onSend = onSend)
+            SendButton(
+                canSend = canSend,
+                onSend = {
+                    onSend()
+                    // The field keeps focus and the keyboard stays open after a send (UI-SPEC Flow 4).
+                    focusRequester.requestFocus()
+                },
+            )
         }
     }
 }
 
-/** "{n}/10000" from [COUNTER_FROM] characters, `tertiary` at the cap, announced once politely when the cap is hit. */
+/**
+ * "{n}/10000" from [COUNTER_FROM] characters, `tertiary` at the cap. Not a live region below the cap, so typing never
+ * speaks the count; at the cap it announces "Message length limit reached" once, politely (UI-SPEC Flow 4).
+ */
 @Composable
 private fun CharacterCounter(
     length: Int,
     atCap: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val limitReached = stringResource(R.string.chat_composer_limit_reached)
     Text(
         text = stringResource(R.string.chat_composer_counter, length),
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.xs)
                 .semantics {
-                    liveRegion = LiveRegionMode.Polite
-                    if (atCap) contentDescription = limitReached
+                    if (atCap) {
+                        liveRegion = LiveRegionMode.Polite
+                        contentDescription = limitReached
+                    }
                 },
         style = MaterialTheme.typography.bodySmall,
         color = if (atCap) MaterialTheme.colorScheme.tertiary else MaterialTheme.extras.onSurfaceMuted,
@@ -150,6 +167,7 @@ private fun ComposerField(
     var focused by remember { mutableStateOf(false) }
     val shape = MaterialTheme.shapes.extraLarge
     val scheme = MaterialTheme.colorScheme
+    val name = stringResource(R.string.chat_composer_placeholder)
     TextField(
         value = value,
         onValueChange = onValueChange,
@@ -159,7 +177,10 @@ private fun ComposerField(
                     width = if (focused) 2.dp else 1.dp,
                     color = if (focused) scheme.primary else scheme.outlineVariant,
                     shape = shape,
-                ).focusRequester(focusRequester)
+                ).semantics {
+                    // The placeholder is the name only while the field is empty; keep it once text is typed.
+                    if (value.text.isNotEmpty()) contentDescription = name
+                }.focusRequester(focusRequester)
                 .onFocusChanged { focused = it.isFocused }
                 .testTag(CHAT_INPUT_TAG),
         enabled = enabled,
@@ -196,9 +217,16 @@ private fun SendButton(
     onSend: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val disabledReason = stringResource(R.string.chat_composer_send_disabled_a11y)
     IconButton(
         onClick = onSend,
-        modifier = Modifier.size(SendButtonSize).testTag(CHAT_SEND_TAG),
+        modifier =
+            Modifier
+                .size(SendButtonSize)
+                .semantics {
+                    // A disabled Send says why (UI-SPEC Flow 4).
+                    if (!canSend) stateDescription = disabledReason
+                }.testTag(CHAT_SEND_TAG),
         enabled = canSend,
         colors =
             IconButtonDefaults.iconButtonColors(

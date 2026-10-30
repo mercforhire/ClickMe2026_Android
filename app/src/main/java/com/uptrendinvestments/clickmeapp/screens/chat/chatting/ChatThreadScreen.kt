@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -45,15 +46,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,6 +90,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.remembe
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.time.LocalDate
@@ -96,6 +104,7 @@ const val CHAT_THREAD_LIST_TAG = "chat_thread_list"
 private val TopBarAvatarSize = 32.dp
 private const val LOAD_EARLIER_KEY = "load_earlier"
 private const val COMPOSER_SWAP_MS = 200
+private const val ANNOUNCEMENT_MS = 4_000L
 
 /** The key this thread was opened with, rebuilt from the live state so View profile and Report use the filled-in peer. */
 fun ChatThreadUiState.toThreadKey(): ChatThreadKey =
@@ -273,6 +282,7 @@ fun ChatThreadContent(
                         }
                 }
             }
+            PeerArrivalAnnouncer(state = state, peerLabel = peerLabel)
             TypingStrip(
                 visible = state.peerTyping,
                 name = peerLabel,
@@ -298,6 +308,47 @@ fun ChatThreadContent(
             }
         }
     }
+}
+
+/**
+ * Speaks a peer message that arrives while the thread is open, once, as "{name}: {text}" (UI-SPEC Flow 4). A 1 dp node
+ * with a polite live region carries the text for [ANNOUNCEMENT_MS] and is then emptied, so an identical message later
+ * is announced again. The first loaded page is only recorded (also across recreation), a message of mine never speaks,
+ * and prepending an older page leaves the newest key unchanged, so history is never announced.
+ */
+@Composable
+private fun PeerArrivalAnnouncer(
+    state: ChatThreadUiState,
+    peerLabel: String,
+) {
+    val context = LocalContext.current
+    var started by rememberSaveable { mutableStateOf(false) }
+    var lastNewestKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var announcement by remember { mutableStateOf("") }
+    val loaded = state.load is ThreadLoad.Loaded
+    val newest = state.items.lastOrNull()
+    LaunchedEffect(loaded, newest?.key) {
+        if (!loaded) return@LaunchedEffect
+        if (!started) {
+            started = true
+            lastNewestKey = newest?.key
+            return@LaunchedEffect
+        }
+        if (newest?.key == lastNewestKey) return@LaunchedEffect
+        lastNewestKey = newest?.key
+        announcement = ""
+        if (newest is ThreadItem.Message && !newest.mine) {
+            announcement = context.getString(R.string.chat_thread_bubble_a11y, peerLabel, newest.text)
+            delay(ANNOUNCEMENT_MS)
+            announcement = ""
+        }
+    }
+    Box(
+        Modifier.size(1.dp).semantics {
+            liveRegion = LiveRegionMode.Polite
+            if (announcement.isNotEmpty()) contentDescription = announcement
+        },
+    )
 }
 
 /** Vertically scrollable, centered column so pull-to-refresh works from the empty and error states. */
@@ -326,6 +377,9 @@ private fun ThreadList(
     modifier: Modifier = Modifier,
 ) {
     val rows = remember(state.items, zone) { buildThreadRows(state.items, zone).asReversed() }
+    // Only the newest message of mine speaks its status changes ("Sent", then "Read"); older ones stay silent.
+    val newestOwnKey =
+        remember(state.items) { state.items.lastOrNull { it is ThreadItem.Message && it.mine }?.key }
     val today = LocalDate.now(zone)
     val todayLabel = stringResource(R.string.chat_thread_today)
     val yesterdayLabel = stringResource(R.string.chat_thread_yesterday)
@@ -348,16 +402,22 @@ private fun ThreadList(
                     is ThreadRow.DateHeader ->
                         DateSeparator(
                             label = dateLabel(row.date, today, locale, todayLabel, yesterdayLabel),
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier.animateItem().contentMaxWidth(),
                         )
                     is ThreadRow.Entry ->
-                        Box(Modifier.padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm).animateItem()) {
+                        Box(
+                            Modifier
+                                .padding(top = if (row.tightAbove) Spacing.xs else Spacing.sm)
+                                .animateItem()
+                                .contentMaxWidth(),
+                        ) {
                             EntryContent(
                                 row = row,
                                 state = state,
                                 zone = zone,
                                 locale = locale,
                                 timeFormat = timeFormat,
+                                newestOwnKey = newestOwnKey,
                                 onOpenBooking = onOpenBooking,
                                 onRetryMessage = onRetryMessage,
                                 onDeleteMessage = onDeleteMessage,
@@ -367,7 +427,11 @@ private fun ThreadList(
             }
             if (state.hasMoreEarlier) {
                 item(key = LOAD_EARLIER_KEY) {
-                    LoadEarlierButton(loading = state.isLoadingEarlier, onClick = onLoadEarlier)
+                    LoadEarlierButton(
+                        loading = state.isLoadingEarlier,
+                        onClick = onLoadEarlier,
+                        modifier = Modifier.contentMaxWidth(),
+                    )
                 }
             }
         }
@@ -409,6 +473,7 @@ private fun EntryContent(
     zone: ZoneId,
     locale: Locale,
     timeFormat: DateFormat,
+    newestOwnKey: String?,
     onOpenBooking: (bookingId: String, isTerminal: Boolean) -> Unit,
     onRetryMessage: (clientMsgId: String) -> Unit,
     onDeleteMessage: (clientMsgId: String) -> Unit,
@@ -423,6 +488,7 @@ private fun EntryContent(
                 timeText = formatSlotTime(item.createdAt, zone, timeFormat),
                 onRetry = { item.clientMsgId?.let(onRetryMessage) },
                 onDelete = { item.clientMsgId?.let(onDeleteMessage) },
+                announceStatus = item.key == newestOwnKey,
             )
         is ThreadItem.SystemEvent ->
             SystemEventRow(

@@ -86,7 +86,7 @@ class ChatThreadViewModel
                     peerAvatarUrl = key.peerAvatarUrl,
                     peerIsExpert = key.peerIsExpert,
                     isSelfThread = key.peerId != null && key.peerId.equals(currentUser.currentUserId(), true),
-                    composerText = savedStateHandle.get<String>(KEY_COMPOSER).orEmpty(),
+                    composerText = capText(savedStateHandle.get<String>(KEY_COMPOSER).orEmpty(), COMPOSER_MAX),
                 ),
             )
         val uiState: StateFlow<ChatThreadUiState> = _uiState.asStateFlow()
@@ -575,7 +575,11 @@ class ChatThreadViewModel
         companion object {
             const val FIRST_PAGE = 1
 
-            /** SavedStateHandle key of the unsent composer text (survives rotation and process death). */
+            /**
+             * SavedStateHandle key of the unsent composer text (D-10): it survives Activity recreation and process death
+             * for this thread's back stack entry, and is capped again when read. The app never writes it to disk, so it
+             * does not outlive an app restart, and failed bubbles are not stored here at all.
+             */
             const val KEY_COMPOSER = "chat_thread_composer"
 
             /** Composer limit in UTF-16 code units: the backend `content` max (D-04). */
