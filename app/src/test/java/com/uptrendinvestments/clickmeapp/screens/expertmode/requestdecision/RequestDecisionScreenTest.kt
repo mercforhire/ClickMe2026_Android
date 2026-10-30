@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
@@ -725,7 +726,11 @@ class RequestDecisionScreenTest {
 
         val saved = rule.runOnIdle { first.performSave() }
         val oversized = "q".repeat(OVERSIZED_LENGTH)
-        val tampered = saved.mapValues { (_, values) -> values.map { if (it == marker) oversized else it } }
+        // rememberSaveable keeps each mutableStateOf as a saved MutableState; swap the typed marker for oversized text.
+        val tampered =
+            saved.mapValues { (_, values) ->
+                values.map { if (it is MutableState<*> && it.value == marker) mutableStateOf(oversized) else it }
+            }
         rule.runOnIdle { visible = false }
         rule.waitForIdle()
         rule.runOnIdle {

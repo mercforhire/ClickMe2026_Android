@@ -26,6 +26,7 @@ import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /** Test tag on the footer's Accept button. */
 const val REQUEST_ACCEPT_TAG = "request_accept"
@@ -69,7 +70,7 @@ fun RequestActionFooter(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             if (stacked) {
                 Column(
-                    modifier = Modifier.padding(Spacing.md),
+                    modifier = Modifier.contentMaxWidth().padding(Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
                     AcceptButton(enabled, onAccept, Modifier.fillMaxWidth())
@@ -84,7 +85,7 @@ fun RequestActionFooter(
                 }
             } else {
                 Row(
-                    modifier = Modifier.padding(Spacing.md),
+                    modifier = Modifier.contentMaxWidth().padding(Spacing.md),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
                     MessageButton(
