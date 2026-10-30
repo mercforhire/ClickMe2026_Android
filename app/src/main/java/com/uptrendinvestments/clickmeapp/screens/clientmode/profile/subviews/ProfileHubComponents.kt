@@ -56,6 +56,7 @@ import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLaunche
 import com.uptrendinvestments.clickmeapp.config.AppLinks
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import kotlinx.coroutines.launch
 
@@ -113,6 +114,7 @@ fun ProfileHubScaffold(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(start = Spacing.md, top = Spacing.lg, end = Spacing.md, bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             content = content,

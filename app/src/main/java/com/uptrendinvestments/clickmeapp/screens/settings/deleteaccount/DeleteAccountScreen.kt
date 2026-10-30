@@ -34,6 +34,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DeleteAccountWarningHeader
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /**
  * Port of iOS `DeleteAccountView` (PROF-04): the Warning form, then the Reason and password form. The Farewell is not
@@ -126,6 +127,7 @@ fun DeleteAccountContent(
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .contentMaxWidth()
                         .padding(horizontal = Spacing.md, vertical = Spacing.md),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {

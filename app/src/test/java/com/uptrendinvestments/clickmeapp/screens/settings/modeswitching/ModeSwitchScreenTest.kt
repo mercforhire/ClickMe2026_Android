@@ -2,18 +2,22 @@ package com.uptrendinvestments.clickmeapp.screens.settings.modeswitching
 
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class ModeSwitchScreenTest {
@@ -37,6 +41,16 @@ class ModeSwitchScreenTest {
     private fun clientCard() = rule.onNode(hasText("Client Mode"))
 
     private fun expertCard() = rule.onNode(hasText("Expert Mode"))
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        setScreen(AppMode.Client)
+
+        val card = clientCard().getUnclippedBoundsInRoot()
+        assertTrue("card width ${card.right - card.left}", card.right - card.left <= 600.dp)
+        assertTrue("card left ${card.left}", card.left >= 150.dp)
+    }
 
     @Test
     fun rendersTitleAndBothCardsCopy() {
