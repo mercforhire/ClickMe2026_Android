@@ -31,11 +31,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.NotificationRow
@@ -63,7 +62,7 @@ import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.Notifica
 import com.uptrendinvestments.clickmeapp.screens.notifications.subviews.openNotificationSettings
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
-import kotlinx.coroutines.launch
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /** Test tag on the notifications list. */
 const val NOTIFICATIONS_LIST_TAG = "notifications_list"
@@ -135,16 +134,13 @@ fun NotificationsContent(
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val refreshFailedMessage = stringResource(R.string.notifications_refresh_failed)
-
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage) }
-            onRefreshFailureShown()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureShown,
+        message = stringResource(R.string.notifications_refresh_failed),
+    )
 
     Scaffold(
         modifier = modifier,
@@ -284,7 +280,7 @@ private fun NotificationsList(
                     exit =
                         fadeOut(tween(Motion.STRENGTH_METER_VISIBILITY_MS)) +
                             shrinkVertically(tween(Motion.STRENGTH_METER_VISIBILITY_MS)),
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().contentMaxWidth(),
                 ) {
                     NotificationsOffRow(onClick = onOpenSettings)
                 }
@@ -295,14 +291,8 @@ private fun NotificationsList(
                 NotificationSectionHeader(
                     day = section.day,
                     modifier =
-                        Modifier.animateItem().then(
-                            if (index >
-                                0
-                            ) {
-                                Modifier.padding(top = Spacing.md)
-                            } else {
-                                Modifier
-                            },
+                        Modifier.animateItem().contentMaxWidth().then(
+                            if (index > 0) Modifier.padding(top = Spacing.md) else Modifier,
                         ),
                 )
             }
@@ -310,10 +300,10 @@ private fun NotificationsList(
                 NotificationRow(
                     row = row,
                     onClick = row.destination?.let { { onRowTap(row) } },
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().contentMaxWidth(),
                 )
             }
         }
-        item(key = "end-note") { NotificationsEndNote(Modifier.animateItem()) }
+        item(key = "end-note") { NotificationsEndNote(Modifier.animateItem().contentMaxWidth()) }
     }
 }

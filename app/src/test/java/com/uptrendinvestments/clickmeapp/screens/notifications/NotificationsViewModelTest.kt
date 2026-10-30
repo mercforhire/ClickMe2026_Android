@@ -203,6 +203,52 @@ class NotificationsViewModelTest {
         }
 
     @Test
+    fun arrivalReloadFailureFlags() =
+        runTest(main.testDispatcher) {
+            serve("a")
+            val vm = vm()
+            runCurrent()
+            api.notificationsHandler = { _, _ -> throw IOException("offline") }
+            launchRequest.onForegroundArrival()
+            runCurrent()
+            assertEquals(listOf("a"), vm.loadedIds())
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+            vm.consumeRefreshFailure()
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun arrivalDuringFirstLoadFailureIsLoud() =
+        runTest(main.testDispatcher) {
+            api.notificationsHandler = { _, _ -> throw IOException("offline") }
+            val vm = vm()
+            runCurrent()
+            launchRequest.onForegroundArrival()
+            runCurrent()
+            assertEquals(
+                NotificationsLoad.Failed(FieldError.Res(R.string.login_error_network)),
+                vm.uiState.value.load,
+            )
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun quietTabReturnFailureIsSilent() =
+        runTest(main.testDispatcher) {
+            serve("a")
+            val vm = vm()
+            runCurrent()
+            api.notificationsHandler = { _, _ -> throw IOException("offline") }
+            vm.onScreenHidden()
+            vm.onScreenShown()
+            runCurrent()
+            assertEquals(2, api.notificationsQueries.size)
+            assertEquals(listOf("a"), vm.loadedIds())
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
     fun pullFailureSetsRefreshFailed() =
         runTest(main.testDispatcher) {
             serve("a")

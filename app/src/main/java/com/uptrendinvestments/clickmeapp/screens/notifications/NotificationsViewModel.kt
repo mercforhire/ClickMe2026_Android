@@ -21,8 +21,9 @@ import javax.inject.Inject
  * state, grouped by local day. The device time zone is read at load time.
  *
  * Refresh triggers: pull-to-refresh ([refresh], flags a failure for the snackbar); a quiet reload when the screen is
- * shown again ([onScreenShown]); and a quiet reload on every foreground push, the iOS `newNotificationTick` (D-12).
- * Quiet reloads never show Loading and a failed one keeps the rows. A row tap goes through the same pipeline as a
+ * shown again ([onScreenShown], a failure is silent); and a reload on every foreground push, the iOS
+ * `newNotificationTick` (D-12), which flags a failure so the snackbar offers Retry (Phase 15 D-05).
+ * Neither reload shows Loading and a failed one keeps the rows. A row tap goes through the same pipeline as a
  * push tap ([onRowTapped]).
  */
 @HiltViewModel
@@ -42,6 +43,12 @@ class NotificationsViewModel
 
             /** Pull-to-refresh: shows the refresh indicator and flags a failure. */
             Pull,
+
+            /**
+             * Reload started by a foreground push arrival (Phase 15 D-05): behaves like [Quiet] (no skeleton, no
+             * indicator, rows kept) but flags a failure so the refresh-failed snackbar offers Retry.
+             */
+            Realtime,
         }
 
         private val _uiState = MutableStateFlow(NotificationsUiState())
@@ -56,7 +63,7 @@ class NotificationsViewModel
             val seen = launchRequest.arrivals.value
             viewModelScope.launch {
                 launchRequest.arrivals.collect { tick ->
-                    if (tick != seen) startLoad(LoadMode.Quiet)
+                    if (tick != seen) startLoad(LoadMode.Realtime)
                 }
             }
         }
@@ -89,9 +96,9 @@ class NotificationsViewModel
         }
 
         private fun startLoad(requested: LoadMode) {
-            // Nothing to keep yet: a quiet reload before the first success is a loud one.
+            // Nothing to keep yet: a quiet or realtime reload before the first success is a loud one.
             val mode =
-                if (requested == LoadMode.Quiet && _uiState.value.load !is NotificationsLoad.Loaded) {
+                if (requested.isBackground() && _uiState.value.load !is NotificationsLoad.Loaded) {
                     LoadMode.Loud
                 } else {
                     requested
@@ -102,7 +109,7 @@ class NotificationsViewModel
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = NotificationsLoad.Loading)
                     LoadMode.Pull -> it.copy(isRefreshing = true)
-                    LoadMode.Quiet -> it
+                    LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }
             loadJob =
@@ -115,13 +122,16 @@ class NotificationsViewModel
                             when (mode) {
                                 LoadMode.Loud ->
                                     it.copy(load = NotificationsLoad.Failed(e.toSectionMessage()), isRefreshing = false)
-                                LoadMode.Pull -> it.copy(refreshFailed = true, isRefreshing = false)
+                                LoadMode.Pull, LoadMode.Realtime ->
+                                    it.copy(refreshFailed = true, isRefreshing = false)
                                 LoadMode.Quiet -> it.copy(isRefreshing = false)
                             }
                         }
                     }
                 }
         }
+
+        private fun LoadMode.isBackground() = this == LoadMode.Quiet || this == LoadMode.Realtime
 
         private suspend fun loadSections(): NotificationsLoad.Loaded {
             val now = clock.instant()
