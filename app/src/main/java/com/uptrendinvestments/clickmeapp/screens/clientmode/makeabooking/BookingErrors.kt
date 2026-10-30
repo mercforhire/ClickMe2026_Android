@@ -70,3 +70,12 @@ fun ApiException.toSectionMessage(): FieldError =
         is ApiException.Network -> FieldError.Res(R.string.login_error_network)
         is ApiException.Decoding -> FieldError.Res(R.string.login_error_unknown)
     }
+
+private const val HTTP_NOT_FOUND = 404
+
+/**
+ * True when the server says the record is gone (404). The booking detail screens show "unavailable" with no Retry for
+ * it, because a retry would loop on a permanent condition (UI-SPEC Detail archetype, rule 5).
+ */
+fun ApiException.isNotFound(): Boolean =
+    this is ApiException.Http && (status == HTTP_NOT_FOUND || code == ErrorCode.NotFound)

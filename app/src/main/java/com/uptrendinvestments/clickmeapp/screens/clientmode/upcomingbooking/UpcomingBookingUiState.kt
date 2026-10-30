@@ -64,8 +64,21 @@ sealed interface UpcomingBookingUiState {
         val message: FieldError,
     ) : UpcomingBookingUiState
 
+    /** The server no longer has this booking (404). Not an error: no Retry, the back arrow is the exit. */
+    data object Unavailable : UpcomingBookingUiState
+
+    /**
+     * @property showCallResumeNote the one-time "You were on a call" note, set for the booking a process kill
+     *   interrupted (D-11, UI-SPEC A4).
+     * @property isRefreshing a user Retry of a failed refresh is running; the content stays (D-05).
+     * @property refreshFailed a background or Retry refresh failed with content showing; the screen shows the
+     *   refresh-failed snackbar and consumes the flag.
+     */
     data class Loaded(
         val details: UpcomingBookingDetails,
+        val showCallResumeNote: Boolean = false,
+        val isRefreshing: Boolean = false,
+        val refreshFailed: Boolean = false,
     ) : UpcomingBookingUiState
 }
 

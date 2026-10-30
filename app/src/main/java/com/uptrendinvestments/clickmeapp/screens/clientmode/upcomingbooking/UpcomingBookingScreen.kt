@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,8 +22,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cancel
-import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -48,12 +50,14 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
-import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.ErrorState
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.RescheduleOutcomeDialog
 import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
@@ -77,6 +81,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -88,6 +93,10 @@ const val UPCOMING_BOOKING_CANCEL_TAG = "upcoming_booking_cancel"
 /** Test tag on the Message Expert button. */
 const val MESSAGE_EXPERT_TAG = "message_expert"
 
+/** Test tag on the progress bar shown under the app bar while a Retry of a failed refresh runs. */
+const val UPCOMING_BOOKING_REFRESH_PROGRESS_TAG = "upcoming_booking_refresh_progress"
+
+private val RefreshProgressHeight = 4.dp
 private val CancelMinHeight = 56.dp
 private val CancelIconSize = 24.dp
 private val StatusSkeletonSize = 96.dp
@@ -139,6 +148,8 @@ fun UpcomingBookingScreen(
         onJoin = viewModel::join,
         onBack = onBack,
         onRetry = viewModel::retry,
+        onRefresh = viewModel::refresh,
+        onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onAccept = viewModel::accept,
         onDecline = viewModel::decline,
@@ -175,6 +186,8 @@ fun UpcomingBookingContent(
     modifier: Modifier = Modifier,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
+    onRefresh: () -> Unit = {},
+    onRefreshFailureConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -201,44 +214,73 @@ fun UpcomingBookingContent(
         onRescheduleNoticeConsumed()
     }
 
+    RefreshFailedSnackbarEffect(
+        refreshFailed = (state as? UpcomingBookingUiState.Loaded)?.refreshFailed == true,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+    )
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AuthTopAppBar(title = stringResource(R.string.upcoming_booking_title), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        val bodyModifier = Modifier.fillMaxSize().padding(innerPadding)
-        when (state) {
-            UpcomingBookingUiState.Loading -> LoadingBody(bodyModifier)
-            is UpcomingBookingUiState.Failed ->
-                Column(
-                    modifier = bodyModifier,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    EmptyState(
-                        icon = Icons.Outlined.ErrorOutline,
-                        heading = stringResource(R.string.upcoming_booking_load_error_title),
-                        body = state.message.asString(),
-                        action = EmptyStateAction(stringResource(R.string.section_retry), onRetry),
+        val bodyModifier = Modifier.fillMaxSize()
+        Box(Modifier.fillMaxSize().padding(innerPadding)) {
+            when (state) {
+                UpcomingBookingUiState.Loading -> LoadingBody(bodyModifier)
+                is UpcomingBookingUiState.Failed ->
+                    Box(bodyModifier, contentAlignment = Alignment.TopCenter) {
+                        ErrorState(
+                            onRetry = onRetry,
+                            modifier = Modifier.padding(top = Spacing.lg),
+                            heading = stringResource(R.string.upcoming_booking_load_error_title),
+                            body = state.message.asString(),
+                            retryLabel = stringResource(R.string.section_retry),
+                        )
+                    }
+                UpcomingBookingUiState.Unavailable ->
+                    Box(bodyModifier, contentAlignment = Alignment.TopCenter) {
+                        EmptyState(
+                            icon = Icons.Outlined.EventBusy,
+                            heading = stringResource(R.string.booking_detail_unavailable_heading),
+                            body = stringResource(R.string.booking_detail_unavailable_body),
+                            modifier = Modifier.padding(top = Spacing.xxxl),
+                        )
+                    }
+                is UpcomingBookingUiState.Loaded ->
+                    LoadedBody(
+                        details = state.details,
+                        showCallResumeNote = state.showCallResumeNote,
+                        rescheduleState = rescheduleState,
+                        joinNow = joinNow,
+                        onJoin = onJoin,
+                        onCancel = onCancel,
+                        onAccept = onAccept,
+                        onDecline = onDecline,
+                        messageBusy = messageBusy,
+                        onMessage = onMessage,
+                        modifier = bodyModifier,
+                        zone = zone,
+                        timeFormat = timeFormat,
+                        locale = locale,
                     )
-                }
-            is UpcomingBookingUiState.Loaded ->
-                LoadedBody(
-                    details = state.details,
-                    rescheduleState = rescheduleState,
-                    joinNow = joinNow,
-                    onJoin = onJoin,
-                    onCancel = onCancel,
-                    onAccept = onAccept,
-                    onDecline = onDecline,
-                    messageBusy = messageBusy,
-                    onMessage = onMessage,
-                    modifier = bodyModifier,
-                    zone = zone,
-                    timeFormat = timeFormat,
-                    locale = locale,
+            }
+            if ((state as? UpcomingBookingUiState.Loaded)?.isRefreshing == true) {
+                // Retry keeps the content and never returns to the skeleton (UI-SPEC "Failed refresh").
+                LinearProgressIndicator(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(RefreshProgressHeight)
+                            .align(Alignment.TopCenter)
+                            .testTag(UPCOMING_BOOKING_REFRESH_PROGRESS_TAG),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 )
+            }
         }
     }
 
@@ -289,6 +331,7 @@ private fun LoadingBody(modifier: Modifier = Modifier) {
 @Composable
 private fun LoadedBody(
     details: UpcomingBookingDetails,
+    showCallResumeNote: Boolean,
     rescheduleState: RescheduleUiState,
     joinNow: Instant,
     onJoin: () -> Unit,
@@ -311,6 +354,7 @@ private fun LoadedBody(
         modifier =
             modifier
                 .verticalScroll(rememberScrollState())
+                .contentMaxWidth()
                 .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
     ) {
         AnimatedVisibility(
@@ -352,6 +396,9 @@ private fun LoadedBody(
         if (details.showsPendingBanner) {
             UpcomingBookingPendingBanner(details.expertName)
         } else {
+            if (showCallResumeNote) {
+                CallResumeNote()
+            }
             UpcomingBookingJoinCard(
                 meetingType = details.meetingType,
                 joinLink = details.joinLink,

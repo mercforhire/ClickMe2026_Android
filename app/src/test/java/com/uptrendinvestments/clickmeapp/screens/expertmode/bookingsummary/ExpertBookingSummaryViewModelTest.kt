@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
@@ -51,6 +52,7 @@ class ExpertBookingSummaryViewModelTest {
     private val now = clock.instant
     private val callStarter = FakeCallStarter()
     private val callGuard = FakeCallGuard()
+    private val notice = CallResumeNotice()
 
     private val repository = ExpertBookingsRepository(api)
 
@@ -64,6 +66,7 @@ class ExpertBookingSummaryViewModelTest {
             callStarter,
             callGuard,
             JoinClock(clock, joinScope),
+            notice,
         )
 
     private fun loaded(vm: ExpertBookingSummaryViewModel): ExpertSummaryDetails =
@@ -277,6 +280,135 @@ class ExpertBookingSummaryViewModelTest {
 
             assertEquals(1, api.expertBookingDetailsCalls)
             assertEquals(BookingStatusLabel.Confirmed, loaded(vm).status.label)
+        }
+
+    // ---- call resume note (D-11) ----
+
+    @Test
+    fun noteShownOnceWhenNoticePosted() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            notice.post("b1")
+            val first = vm()
+            runCurrent()
+            val second = vm()
+            runCurrent()
+
+            assertTrue(first.uiState.value.showCallResumeNote)
+            assertFalse(second.uiState.value.showCallResumeNote)
+        }
+
+    @Test
+    fun noNoteForOtherBooking() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            notice.post("b2")
+            val vm = vm()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.showCallResumeNote)
+        }
+
+    @Test
+    fun noteSurvivesReloads() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            notice.post("b1")
+            val vm = vm()
+            runCurrent()
+
+            vm.refreshQuietly()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.showCallResumeNote)
+        }
+
+    // ---- failed refresh with content (D-05) ----
+
+    @Test
+    fun realtimeFailureKeepsContentAndFlags() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+            val before = loaded(vm)
+
+            api.expertBookingDetailsHandler = { throw IOException("offline") }
+            realtime.emit(RealtimeEvent.BookingUpdate("b1", "completed"))
+            runCurrent()
+
+            assertEquals(before, loaded(vm))
+            assertTrue(vm.uiState.value.refreshFailed)
+
+            vm.onRefreshFailureConsumed()
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun aQuietResumeReloadFailureStaysSilent() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+
+            api.expertBookingDetailsHandler = { throw IOException("offline") }
+            vm.refreshQuietly()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun refreshKeepsContentWhileRunning() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+            val before = loaded(vm)
+
+            val gate = CompletableDeferred<ExpertBookingDetail>()
+            api.expertBookingDetailsHandler = { gate.await() }
+            vm.refresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.isRefreshing)
+            assertEquals(before, loaded(vm))
+
+            gate.complete(detail("in_progress"))
+            runCurrent()
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertFalse(vm.uiState.value.refreshFailed)
+            assertEquals(BookingStatusLabel.InProgress, loaded(vm).status.label)
+        }
+
+    @Test
+    fun refreshFailureFlagsAndClearsTheRunningState() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+            val before = loaded(vm)
+
+            api.expertBookingDetailsHandler = { throw IOException("offline") }
+            vm.refresh()
+            runCurrent()
+
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertEquals(before, loaded(vm))
+        }
+
+    // ---- unavailable (UI-SPEC Detail rule 5) ----
+
+    @Test
+    fun aNotFoundFirstLoadIsUnavailableNotFailed() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = {
+                throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"missing"}""")
+            }
+            val vm = vm()
+            runCurrent()
+
+            assertEquals(ExpertSummaryLoad.Unavailable, vm.uiState.value.load)
         }
 
     // ---- join and cancel ----

@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.CallStarter
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
@@ -12,6 +13,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeConnection
 import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isNotFound
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponseController
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
@@ -40,6 +43,11 @@ import java.util.Locale
  * triggered by [refreshQuietly] (screen shown again, for example back from the Cancel screen) and by a realtime
  * `booking.update` for this booking id only (D-13). The loaded [ExpertBookingDetail] is kept in memory
  * ([loadedDetail]) for the reschedule card (11-13).
+ *
+ * Phase 15: a failed realtime refetch or Retry with content showing keeps the details and raises `refreshFailed` for
+ * the refresh-failed snackbar (D-05); [refresh] is that Retry. The resume note (D-11) is consumed once at construction
+ * from [CallResumeNotice]; nothing here touches the call engine, starter or permission gate. A 404 first load is
+ * [ExpertSummaryLoad.Unavailable], not a failure.
  *
  * Join (D-14): [join] starts the call through the one [CallStarter] with the client as the peer. Cancel is guarded
  * while this booking's call is live ([attemptCancel], D-17).
@@ -56,6 +64,7 @@ class ExpertBookingSummaryViewModel
         private val callStarter: CallStarter,
         val callGuard: CallGuard,
         joinClock: JoinClock,
+        resumeNotice: CallResumeNotice,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -64,7 +73,10 @@ class ExpertBookingSummaryViewModel
 
         private val bookingId = key.bookingId
 
-        private val _uiState = MutableStateFlow(ExpertBookingSummaryUiState())
+        // Consumed once here, so only the screen the relaunch landed on shows the note (D-11, T-15-38).
+        private val showCallResumeNote = resumeNotice.consumeFor(bookingId)
+
+        private val _uiState = MutableStateFlow(ExpertBookingSummaryUiState(showCallResumeNote = showCallResumeNote))
         val uiState: StateFlow<ExpertBookingSummaryUiState> = _uiState.asStateFlow()
 
         /** Shared 30 s wall clock that turns the Join button on without leaving the screen. */
@@ -97,12 +109,29 @@ class ExpertBookingSummaryViewModel
                 realtime.events
                     .filterIsInstance<RealtimeEvent.BookingUpdate>()
                     .filter { it.bookingId == bookingId }
-                    .collect { startLoad(quiet = _uiState.value.load is ExpertSummaryLoad.Loaded) }
+                    .collect {
+                        startLoad(quiet = _uiState.value.load is ExpertSummaryLoad.Loaded, flagFailure = true)
+                    }
             }
         }
 
         fun retry() {
             startLoad(quiet = false)
+        }
+
+        /** Retry of a failed refresh with content showing (D-05): the details stay and only a progress bar runs. */
+        fun refresh() {
+            if (_uiState.value.load !is ExpertSummaryLoad.Loaded) {
+                retry()
+                return
+            }
+            _uiState.update { it.copy(isRefreshing = true, refreshFailed = false) }
+            startLoad(quiet = true, flagFailure = true)
+        }
+
+        /** The screen showed the refresh-failed snackbar, so the flag is spent. */
+        fun onRefreshFailureConsumed() {
+            _uiState.update { it.copy(refreshFailed = false) }
         }
 
         /**
@@ -169,10 +198,17 @@ class ExpertBookingSummaryViewModel
         /** True when Cancel may open; false (with the guard dialog queued) while this booking's call is live (D-17). */
         fun attemptCancel(): Boolean = callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)
 
-        private fun startLoad(quiet: Boolean): Job {
+        /**
+         * [flagFailure] makes a failed quiet load raise `refreshFailed` for the snackbar (realtime refetch and
+         * Retry). The silent resume reload leaves it off.
+         */
+        private fun startLoad(
+            quiet: Boolean,
+            flagFailure: Boolean = false,
+        ): Job {
             loadJob?.cancel()
             loadIsCurrent = true
-            if (!quiet) _uiState.value = ExpertBookingSummaryUiState(ExpertSummaryLoad.Loading)
+            if (!quiet) _uiState.value = ExpertBookingSummaryUiState(ExpertSummaryLoad.Loading, showCallResumeNote)
             val job =
                 viewModelScope.launch {
                     try {
@@ -181,10 +217,25 @@ class ExpertBookingSummaryViewModel
                         _uiState.value =
                             ExpertBookingSummaryUiState(
                                 ExpertSummaryLoad.Loaded(detail.toSummaryDetails(clock.instant(), Locale.getDefault())),
+                                showCallResumeNote,
                             )
                     } catch (e: ApiException) {
-                        if (!quiet) {
-                            _uiState.value = ExpertBookingSummaryUiState(ExpertSummaryLoad.Failed(e.toSectionMessage()))
+                        if (quiet) {
+                            _uiState.update {
+                                if (it.load is ExpertSummaryLoad.Loaded) {
+                                    it.copy(isRefreshing = false, refreshFailed = it.refreshFailed || flagFailure)
+                                } else {
+                                    it
+                                }
+                            }
+                        } else {
+                            val failed =
+                                if (e.isNotFound()) {
+                                    ExpertSummaryLoad.Unavailable
+                                } else {
+                                    ExpertSummaryLoad.Failed(e.toSectionMessage())
+                                }
+                            _uiState.value = ExpertBookingSummaryUiState(failed, showCallResumeNote)
                         }
                     }
                 }
