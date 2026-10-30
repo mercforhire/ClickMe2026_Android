@@ -772,7 +772,7 @@ Plans:
   3. The app draws edge-to-edge, and no content is hidden behind the system bars, display cutouts or the keyboard.
   4. A TalkBack user can log in, book a session, join a call and send a chat message.
 
-**Plans:** 19/20 plans executed in 4 waves
+**Plans:** 20/20 plans executed in 4 waves
 
 Plans:
 **Wave 1**
@@ -801,7 +801,7 @@ Plans:
 - [x] 15-20-PLAN.md — Settings tier (cont.): Farewell focus, Delete Account, profile hubs and Mode Switch caps, log out never auto-confirms
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 15-17-PLAN.md — `15-DEVICE-CHECKLIST.md` (absorbs Phases 3-14 deferred checks), STATE superseded marks, phase gate
+- [x] 15-17-PLAN.md — `15-DEVICE-CHECKLIST.md` (absorbs Phases 3-14 deferred checks), STATE superseded marks, phase gate
 
 **UI hint**: yes
 
@@ -854,7 +854,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
-| 15. Polish & Hardening | 19/20 | In Progress | - |
+| 15. Polish & Hardening | 20/20 | In Progress | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
 
