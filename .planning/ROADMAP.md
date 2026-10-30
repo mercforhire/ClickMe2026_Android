@@ -772,7 +772,7 @@ Plans:
   3. The app draws edge-to-edge, and no content is hidden behind the system bars, display cutouts or the keyboard.
   4. A TalkBack user can log in, book a session, join a call and send a chat message.
 
-**Plans:** 18/20 plans executed in 4 waves
+**Plans:** 19/20 plans executed in 4 waves
 
 Plans:
 **Wave 1**
@@ -792,7 +792,7 @@ Plans:
 - [x] 15-19-PLAN.md — SC-4 flow 2 (cont.): Book Now above the IME, Request Sent headline focus, Make a Booking and Request Sent caps
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 15-11-PLAN.md — Chat D-05 (Conversations, thread), conversation rows, blocked banner, Report sheet restoration and IME
+- [x] 15-11-PLAN.md — Chat D-05 (Conversations, thread), conversation rows, blocked banner, Report sheet restoration and IME
 - [x] 15-12-PLAN.md — Client tier: Notifications and Explore D-05, client detail screens state audit, width caps
 - [x] 15-13-PLAN.md — Expert lists D-05 (Dashboard, Bookings, Requests, Topics, Availability), Availability snackbar insets
 - [x] 15-14-PLAN.md — Expert detail and forms: Request Decision sheets restoration, Booking Confirmed focus, Topic Editor states
@@ -854,7 +854,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
-| 15. Polish & Hardening | 18/20 | In Progress | - |
+| 15. Polish & Hardening | 19/20 | In Progress | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
 
