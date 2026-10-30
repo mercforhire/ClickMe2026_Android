@@ -6,11 +6,13 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -24,6 +26,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.SKELETON_BLOCK_TAG
@@ -33,16 +36,21 @@ import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileAddress
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
+import com.uptrendinvestments.clickmeapp.testing.dispatchInsets
+import com.uptrendinvestments.clickmeapp.testing.imeInsets
+import com.uptrendinvestments.clickmeapp.testing.navigationBarInsets
 import com.uptrendinvestments.clickmeapp.testing.taxProfile
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.LocalDate
 import java.time.ZoneOffset
 
@@ -57,7 +65,7 @@ class ExpertTaxProfileScreenTest {
     private val api = FakeClickMeApi()
 
     private fun showWithViewModel(): ExpertTaxProfileViewModel {
-        val viewModel = ExpertTaxProfileViewModel(TaxProfileRepository(api))
+        val viewModel = ExpertTaxProfileViewModel(TaxProfileRepository(api), SavedStateHandle())
         rule.setContent {
             ClickMeTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -325,5 +333,47 @@ class ExpertTaxProfileScreenTest {
     fun theDateOfBirthIsShownAsMonthDayYear() {
         assertEquals("Jan 2, 1990", formatTaxDob("1990-01-02"))
         assertNull(formatTaxDob("not a date"))
+    }
+
+    /** UI-SPEC R9: the zero-inset Scaffold's snackbar clears the navigation bar and the keyboard. */
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun snackbarAboveNavBarAndIme() {
+        lateinit var view: android.view.View
+        // Frozen clock: the snackbar's 4 s timeout never elapses while the insets are measured.
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            view = LocalView.current
+            ClickMeTheme { Content(ready().copy(savedEvent = true)) }
+        }
+        rule.mainClock.advanceTimeBy(300)
+
+        rule.dispatchInsets(view, navigationBarInsets(bottomPx = 48))
+        rule.mainClock.advanceTimeBy(300)
+        val withNavBar =
+            rule
+                .onNodeWithText("Tax profile saved.")
+                .getUnclippedBoundsInRoot()
+                .bottom.value
+        assertTrue("snackbar bottom $withNavBar dp must be above the navigation bar (752 dp)", withNavBar <= 752f)
+
+        rule.dispatchInsets(view, imeInsets(bottomPx = 300))
+        rule.mainClock.advanceTimeBy(300)
+        val withIme =
+            rule
+                .onNodeWithText("Tax profile saved.")
+                .getUnclippedBoundsInRoot()
+                .bottom.value
+        assertTrue("snackbar bottom $withIme dp must be above the keyboard (500 dp)", withIme <= 500f)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        show(ready())
+
+        val bounds = rule.onAllNodes(hasSetTextAction())[0].getUnclippedBoundsInRoot()
+        val width = bounds.right.value - bounds.left.value
+        assertTrue("field is $width dp wide, expected <= 600", width <= 600f)
     }
 }

@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
@@ -35,6 +36,10 @@ private const val HTTP_TOO_MANY_REQUESTS = 429
 private val PASSWORD_INCORRECT = FieldError.Res(R.string.delete_account_password_incorrect)
 private val GENERIC = FieldError.Res(R.string.delete_account_generic)
 
+private const val KEY_STEP = "delete_account_step"
+private const val KEY_REASON = "delete_account_reason"
+private const val KEY_FEEDBACK = "delete_account_feedback"
+
 /**
  * Everything the Delete Account screen shows. [password] and the deletion token are secrets: this state is never put
  * in a saved-state handle, and [toString] leaves out the password and the comments.
@@ -63,6 +68,11 @@ data class DeleteAccountUiState(
  * point returns early while it is set (T-14-13). On success it stays set: the root Farewell covers the screen
  * ([AccountDeletionState]) and nothing else runs. The password and the token live in memory or in a local variable
  * only (T-14-14). The request pair runs on the application scope so that leaving the screen cannot cancel it.
+ *
+ * Process death (CONTEXT D-12): the step, the chosen reason (enum name) and the comments are mirrored to
+ * [SavedStateHandle] as Strings; the password never is (CONTEXT D-09, threat T-15-31), so after recreation it comes
+ * back empty with no error text. The default handle only serves callers that build the ViewModel by hand; Hilt always
+ * supplies the real one.
  */
 @HiltViewModel
 class DeleteAccountViewModel
@@ -72,30 +82,43 @@ class DeleteAccountViewModel
         private val callGuard: CallGuard,
         private val deletionState: AccountDeletionState,
         @ApplicationScope private val appScope: CoroutineScope,
+        private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
     ) : ViewModel() {
-        private val _uiState = MutableStateFlow(DeleteAccountUiState())
+        private val _uiState =
+            MutableStateFlow(
+                DeleteAccountUiState(
+                    step = savedStateHandle.get<String>(KEY_STEP)?.let(::stepOrNull) ?: DeleteStep.Warning,
+                    reason = savedStateHandle.get<String>(KEY_REASON)?.let(::reasonOrNull),
+                    feedback = savedStateHandle.get<String>(KEY_FEEDBACK).orEmpty().clampLength(FEEDBACK_MAX),
+                ),
+            )
         val uiState: StateFlow<DeleteAccountUiState> = _uiState.asStateFlow()
 
         /** Warning's "Delete Account": moves to the Reason form unless a live call blocks the action. */
         fun continueFromWarning() {
             if (_uiState.value.isDeleting) return
             if (!callGuard.attempt(RestrictedAction.DeleteAccount)) return
+            savedStateHandle[KEY_STEP] = DeleteStep.Reason.name
             _uiState.update { it.copy(step = DeleteStep.Reason) }
         }
 
         fun backToWarning() {
             if (_uiState.value.isDeleting) return
+            savedStateHandle[KEY_STEP] = DeleteStep.Warning.name
             _uiState.update { it.copy(step = DeleteStep.Warning) }
         }
 
         fun selectReason(reason: DeleteAccountReason) {
             if (_uiState.value.isDeleting) return
+            savedStateHandle[KEY_REASON] = reason.name
             _uiState.update { it.copy(reason = reason) }
         }
 
         fun onFeedbackChange(value: String) {
             if (_uiState.value.isDeleting) return
-            _uiState.update { it.copy(feedback = value.clampLength(FEEDBACK_MAX)) }
+            val clamped = value.clampLength(FEEDBACK_MAX)
+            savedStateHandle[KEY_FEEDBACK] = clamped
+            _uiState.update { it.copy(feedback = clamped) }
         }
 
         fun onPasswordChange(value: String) {
@@ -187,4 +210,11 @@ class DeleteAccountViewModel
         fun dismissDialog() {
             _uiState.update { it.copy(dialog = null) }
         }
+    }
+
+private fun stepOrNull(name: String): DeleteStep? = DeleteStep.entries.firstOrNull { it.name == name }
+
+private fun reasonOrNull(name: String): DeleteAccountReason? =
+    DeleteAccountReason.entries.firstOrNull {
+        it.name == name
     }
