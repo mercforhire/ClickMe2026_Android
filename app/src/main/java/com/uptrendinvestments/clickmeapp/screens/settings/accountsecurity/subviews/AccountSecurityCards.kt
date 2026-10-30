@@ -68,7 +68,9 @@ fun ChangePasswordCard(
     val focus = remember { PasswordField.entries.associateWith { FocusRequester() } }
     // Focus moves to the first field that newly fails (a wrong current password, a validation message). Typing in a
     // field only clears its message, so it never steals focus back (UI-SPEC "Submit errors and in-flight", D-07).
-    var shownErrors by remember { mutableStateOf(emptySet<PasswordField>()) }
+    // Seeded with the errors already showing: after a rotation or a back-stack return the ViewModel still holds them,
+    // and they are not newly failing.
+    var shownErrors by remember { mutableStateOf(state.fieldErrors.keys.toSet()) }
     LaunchedEffect(state.fieldErrors) {
         val failing = state.fieldErrors.keys
         val fresh = PasswordField.entries.firstOrNull { it in failing && it !in shownErrors }
