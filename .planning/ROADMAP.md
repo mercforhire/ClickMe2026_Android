@@ -772,7 +772,7 @@ Plans:
   3. The app draws edge-to-edge, and no content is hidden behind the system bars, display cutouts or the keyboard.
   4. A TalkBack user can log in, book a session, join a call and send a chat message.
 
-**Plans:** 5/20 plans executed in 4 waves
+**Plans:** 18/20 plans executed in 4 waves
 
 Plans:
 **Wave 1**
@@ -783,22 +783,22 @@ Plans:
 - [x] 15-09-PLAN.md — D-11 call resume marker: PII-free DataStore marker, app-start routing to the booking detail, never joins
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 15-05-PLAN.md — SC-4 flow 1: Login TalkBack and IME, Set New Password code out of saved state, recovery screens
-- [ ] 15-06-PLAN.md — Signup restoration end to end, verification code out of saved state, signup width caps
-- [ ] 15-07-PLAN.md — SC-4 flow 2: Book Session / Book Now semantics, slot announcements, topic picker ErrorState, Expert Profile cap
-- [ ] 15-08-PLAN.md — SC-4 flow 3: call layer reading order and focus, pill first, no auto-join on restore, short windows
-- [ ] 15-10-PLAN.md — SC-4 flow 4: composer and bubble semantics, D-10 draft restoration, composer IME
-- [ ] 15-18-PLAN.md — Upcoming Details and expert Summary: one-time call resume note, D-05 refresh, named first-load error, width caps
-- [ ] 15-19-PLAN.md — SC-4 flow 2 (cont.): Book Now above the IME, Request Sent headline focus, Make a Booking and Request Sent caps
+- [x] 15-05-PLAN.md — SC-4 flow 1: Login TalkBack and IME, Set New Password code out of saved state, recovery screens
+- [x] 15-06-PLAN.md — Signup restoration end to end, verification code out of saved state, signup width caps
+- [x] 15-07-PLAN.md — SC-4 flow 2: Book Session / Book Now semantics, slot announcements, topic picker ErrorState, Expert Profile cap
+- [x] 15-08-PLAN.md — SC-4 flow 3: call layer reading order and focus, pill first, no auto-join on restore, short windows
+- [x] 15-10-PLAN.md — SC-4 flow 4: composer and bubble semantics, D-10 draft restoration, composer IME
+- [x] 15-18-PLAN.md — Upcoming Details and expert Summary: one-time call resume note, D-05 refresh, named first-load error, width caps
+- [x] 15-19-PLAN.md — SC-4 flow 2 (cont.): Book Now above the IME, Request Sent headline focus, Make a Booking and Request Sent caps
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 15-11-PLAN.md — Chat D-05 (Conversations, thread), conversation rows, blocked banner, Report sheet restoration and IME
-- [ ] 15-12-PLAN.md — Client tier: Notifications and Explore D-05, client detail screens state audit, width caps
-- [ ] 15-13-PLAN.md — Expert lists D-05 (Dashboard, Bookings, Requests, Topics, Availability), Availability snackbar insets
-- [ ] 15-14-PLAN.md — Expert detail and forms: Request Decision sheets restoration, Booking Confirmed focus, Topic Editor states
-- [ ] 15-15-PLAN.md — Settings forms SavedStateHandle (profile, expert, tax, delete) without secrets, settings IME
-- [ ] 15-16-PLAN.md — Settings tier: Payouts, Activity, Help D-05, Payment Methods and Account Security audit
-- [ ] 15-20-PLAN.md — Settings tier (cont.): Farewell focus, Delete Account, profile hubs and Mode Switch caps, log out never auto-confirms
+- [x] 15-12-PLAN.md — Client tier: Notifications and Explore D-05, client detail screens state audit, width caps
+- [x] 15-13-PLAN.md — Expert lists D-05 (Dashboard, Bookings, Requests, Topics, Availability), Availability snackbar insets
+- [x] 15-14-PLAN.md — Expert detail and forms: Request Decision sheets restoration, Booking Confirmed focus, Topic Editor states
+- [x] 15-15-PLAN.md — Settings forms SavedStateHandle (profile, expert, tax, delete) without secrets, settings IME
+- [x] 15-16-PLAN.md — Settings tier: Payouts, Activity, Help D-05, Payment Methods and Account Security audit
+- [x] 15-20-PLAN.md — Settings tier (cont.): Farewell focus, Delete Account, profile hubs and Mode Switch caps, log out never auto-confirms
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 15-17-PLAN.md — `15-DEVICE-CHECKLIST.md` (absorbs Phases 3-14 deferred checks), STATE superseded marks, phase gate
@@ -854,7 +854,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 12. Chat, Report & Block | 17/17 | Complete    | 2026-10-27 |
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
-| 15. Polish & Hardening | 5/20 | In Progress | - |
+| 15. Polish & Hardening | 18/20 | In Progress | - |
 | 16. Cross-Platform QA | 0/TBD | Not started | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
 
