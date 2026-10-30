@@ -28,7 +28,6 @@
     <string name="chat_thread_empty_body">Say hello!</string>
     <string name="chat_thread_typing">%1$s is typing…</string>
     <string name="chat_thread_jump_latest">Jump to latest message</string>
-    <string name="chat_thread_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
     <string name="chat_thread_menu_more">More options</string>
     <string name="chat_thread_menu_view_profile">View profile</string>
     <string name="chat_thread_menu_block_or_report">Block or report</string>

@@ -109,6 +109,7 @@ class ChatThreadScreenTest {
     private var lastBooking: Pair<String, Boolean>? = null
     private var loadEarlierCalls = 0
     private var retryCalls = 0
+    private var refreshCalls = 0
     private var reportBlockCalls = 0
     private var viewProfileCalls = 0
     private var refreshFailureConsumed = 0
@@ -135,7 +136,7 @@ class ChatThreadScreenTest {
                     timeFormat = timeFormat,
                     onBack = {},
                     onRetry = { retryCalls++ },
-                    onRefresh = {},
+                    onRefresh = { refreshCalls++ },
                     onLoadEarlier = { loadEarlierCalls++ },
                     onOpenBooking = { id, terminal -> lastBooking = id to terminal },
                     onViewProfile = { viewProfileCalls++ },
@@ -470,6 +471,40 @@ class ChatThreadScreenTest {
 
         rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertIsDisplayed()
         assertTrue(refreshFailureConsumed >= 1)
+    }
+
+    @Test
+    fun refreshFailedShowsRetry() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(refreshFailed = true, composerText = "my draft"))
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertIsDisplayed()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, refreshCalls)
+        assertEquals(0, retryCalls)
+        rule.onNodeWithTag(CHAT_INPUT_TAG).assertTextContains("my draft")
+        rule.onNodeWithText("Hello").assertIsDisplayed()
+    }
+
+    @Test
+    fun firstLoadErrorNamed() {
+        show(ChatThreadUiState(threadId = "t1", load = ThreadLoad.Failed(FieldError.Text("Server is down"))))
+
+        rule.onNodeWithText("Couldn't load messages").assertIsDisplayed()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryCalls)
+        assertEquals(0, refreshCalls)
+    }
+
+    @Test
+    fun blockedBannerIsPoliteLiveRegion() {
+        show(
+            loaded(listOf(incoming("m1", "Earlier words")))
+                .copy(block = BlockState(isBlocked = true, blockedByMe = true)),
+        )
+
+        rule
+            .onNodeWithText("You blocked this conversation")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
     }
 
     @Test

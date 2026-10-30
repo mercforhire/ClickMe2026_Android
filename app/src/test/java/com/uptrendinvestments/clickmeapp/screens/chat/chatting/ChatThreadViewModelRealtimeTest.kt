@@ -74,6 +74,91 @@ class ChatThreadViewModelRealtimeTest {
             assertEquals(ThreadLoad.Loaded, vm.uiState.value.load)
         }
 
+    private fun servePeerMessage() {
+        h.api.chatMessagesHandler = { _, _, _ ->
+            messagesPayload(listOf(chatMessage(id = "m1", senderId = "p1", content = "Hello")))
+        }
+    }
+
+    private fun failReloads() {
+        h.api.chatMessagesHandler = { _, _, _ ->
+            throw h.api.httpError(500, """{"status":"error","message":"Boom"}""")
+        }
+    }
+
+    @Test
+    fun bookingUpdateReloadFailureFlags() =
+        runTest(main.testDispatcher) {
+            servePeerMessage()
+            val vm = h.viewModel()
+            runCurrent()
+            failReloads()
+            h.realtime.emit(RealtimeEvent.BookingUpdate(bookingId = "b1", status = "confirmed"))
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertEquals(ThreadLoad.Loaded, vm.uiState.value.load)
+            assertEquals(
+                listOf("m1"),
+                vm.uiState.value.items
+                    .map { it.serverId },
+            )
+        }
+
+    @Test
+    fun reconnectReloadFailureFlags() =
+        runTest(main.testDispatcher) {
+            servePeerMessage()
+            val vm = h.viewModel()
+            runCurrent()
+            h.realtime.setState(ConnectionState.Connected)
+            runCurrent()
+            failReloads()
+            h.realtime.setState(ConnectionState.Disconnected)
+            runCurrent()
+            h.realtime.setState(ConnectionState.Connected)
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertEquals(ThreadLoad.Loaded, vm.uiState.value.load)
+            assertEquals(
+                listOf("m1"),
+                vm.uiState.value.items
+                    .map { it.serverId },
+            )
+        }
+
+    @Test
+    fun quietReloadStillSilent() =
+        runTest(main.testDispatcher) {
+            servePeerMessage()
+            val vm = h.viewModel()
+            runCurrent()
+            failReloads()
+            vm.onScreenShown()
+            runCurrent()
+            assertFalse(vm.uiState.value.refreshFailed)
+            assertEquals(ThreadLoad.Loaded, vm.uiState.value.load)
+            assertEquals(
+                listOf("m1"),
+                vm.uiState.value.items
+                    .map { it.serverId },
+            )
+        }
+
+    @Test
+    fun pullFailureStillFlags() =
+        runTest(main.testDispatcher) {
+            servePeerMessage()
+            val vm = h.viewModel()
+            runCurrent()
+            failReloads()
+            vm.refresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            vm.consumeRefreshFailure()
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
     @Test
     fun incomingPeerMessageAppendedOnce() =
         runTest(main.testDispatcher) {
