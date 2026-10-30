@@ -6,6 +6,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.MonotonicClock
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodItem
@@ -33,10 +35,12 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -85,11 +89,12 @@ class PaymentMethodsScreenTest {
     )
 
     @Test
-    fun loadingShowsMessageUnderTheAppBar() {
+    fun stateCells() {
         setContent(PaymentMethodsUiState())
 
         rule.onNodeWithText("Payment Methods").assertExists()
-        rule.onNodeWithText("Loading payment methods…").assertExists()
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onAllNodesWithText("Couldn't load payment methods").assertCountEquals(0)
     }
 
     @Test
@@ -269,5 +274,26 @@ class PaymentMethodsScreenTest {
         assertNotNull(viewModel.uiState.value.list as? PaymentMethodsListState.Loaded)
         assertEquals(1, api.getPaymentMethodsCalls)
         rule.onNodeWithText("Visa •••• 4242", substring = true).assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        setContent(loaded(visa, master))
+
+        val add = rule.onNodeWithTag(PAYMENT_METHODS_ADD_TAG).getUnclippedBoundsInRoot()
+        assertTrue("button width ${add.right - add.left}", add.right - add.left <= 600.dp)
+        // Centered: the content column starts well in from the 900 dp window edge.
+        assertTrue("button left ${add.left}", add.left >= 150.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun cappedEmpty() {
+        setContent(loaded())
+
+        val add = rule.onNodeWithTag(PAYMENT_METHODS_ADD_TAG).getUnclippedBoundsInRoot()
+        assertTrue("button width ${add.right - add.left}", add.right - add.left <= 600.dp)
+        assertTrue("button left ${add.left}", add.left >= 150.dp)
     }
 }

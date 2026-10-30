@@ -10,7 +10,9 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescriptionExactly
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -23,6 +25,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.subviews.ACCOUNT_SECURITY_DELETE_TAG
@@ -41,6 +44,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -209,6 +213,76 @@ class AccountSecurityScreenTest {
         rule.onAllNodesWithContentDescription("Show password").assertCountEquals(3)
         rule.onAllNodesWithContentDescription("Show password")[0].performClick()
         rule.onAllNodesWithContentDescription("Hide password").assertCountEquals(1)
+    }
+
+    @Test
+    fun inFlightIgnoresTaps() {
+        val gate = CompletableDeferred<SuccessMessageResponse>()
+        api.updatePasswordHandler = { gate.await() }
+        show()
+        fillValidForm()
+
+        rule.onNodeWithTag(ACCOUNT_SECURITY_UPDATE_TAG).performScrollTo().performClick()
+        rule.onNodeWithTag(ACCOUNT_SECURITY_UPDATE_TAG).performClick()
+        rule.onNodeWithTag(ACCOUNT_SECURITY_UPDATE_TAG).performClick()
+
+        assertEquals(1, api.updatePasswordCalls)
+        // The inputs are locked while the request is in flight: a disabled field exposes no text input.
+        rule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+
+        gate.complete(SuccessMessageResponse(status = "success"))
+        rule.waitForIdle()
+        assertEquals(1, api.updatePasswordCalls)
+    }
+
+    @Test
+    fun wrongPasswordFocusesField() {
+        api.updatePasswordHandler = { throw api.httpError(403, """{"status":"error"}""") }
+        show()
+        fillValidForm()
+
+        rule.onNodeWithTag(ACCOUNT_SECURITY_UPDATE_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        // Inline under the field, no dialog, and the cursor is in the failing field.
+        rule.onNodeWithText("Current password is incorrect.").assertExists()
+        rule.onAllNodesWithText("Couldn't update password").assertCountEquals(0)
+        rule.onAllNodes(hasSetTextAction())[0].assertIsFocused()
+    }
+
+    @Test
+    fun otherFailureDialogKeepsValues() {
+        api.updatePasswordHandler = { throw api.httpError(500, """{"status":"error"}""") }
+        show()
+        fillValidForm()
+
+        rule.onNodeWithTag(ACCOUNT_SECURITY_UPDATE_TAG).performScrollTo().performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't update password").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't update your password. Please try again.").assertIsDisplayed()
+        rule.onNodeWithText("Got it").performClick()
+        rule.waitForIdle()
+
+        rule.onAllNodesWithText("Couldn't update password").assertCountEquals(0)
+        // Every typed value is still there: the masked text keeps its length.
+        val lengths =
+            rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().map {
+                it.config[SemanticsProperties.EditableText].text.length
+            }
+        assertEquals(listOf(8, 8, 8), lengths)
+        assertEquals(1, api.updatePasswordCalls)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        show()
+
+        val update = rule.onNodeWithTag(ACCOUNT_SECURITY_UPDATE_TAG).getUnclippedBoundsInRoot()
+        assertTrue("button width ${update.right - update.left}", update.right - update.left <= 600.dp)
+        // Centered: the content column starts well in from the 900 dp window edge.
+        assertTrue("button left ${update.left}", update.left >= 150.dp)
     }
 
     @Test
