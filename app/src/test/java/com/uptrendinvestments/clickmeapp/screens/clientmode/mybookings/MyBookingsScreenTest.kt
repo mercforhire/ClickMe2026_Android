@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -24,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_MESSAGE_TAG
@@ -46,6 +48,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -384,6 +387,24 @@ class MyBookingsScreenTest {
         show { Content(loaded(tab = BookingsTab.Past)) }
         rule.onNodeWithText("No past bookings yet").assertExists()
         assertTrue(!exists("Explore Experts"))
+    }
+
+    @Test
+    fun listCellsOneItemShowsTheRowWithoutEmptyState() {
+        show { Content(loaded(upcoming = listOf(bookingItem("b1")))) }
+        assertEquals(1, rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
+        assertTrue(!exists("No Bookings Yet!"))
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun capped() {
+        show { Content(loaded(upcoming = listOf(bookingItem("b1")))) }
+        val card = rule.onNodeWithTag(UPCOMING_BOOKING_CARD_TAG).getUnclippedBoundsInRoot()
+        assertTrue("card width ${card.right - card.left}", card.right - card.left <= 600.dp)
+        // The list scroll area (and so pull-to-refresh) stays full width.
+        val list = rule.onNodeWithTag(MY_BOOKINGS_LIST_TAG).getUnclippedBoundsInRoot()
+        assertTrue(list.right - list.left > 600.dp)
     }
 
     @Test

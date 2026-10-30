@@ -107,4 +107,30 @@ class AllCategoriesSheetTest {
         rule.onNodeWithText("No categories match “zzz”").assertIsDisplayed()
         rule.onNodeWithText("Try a different search term.").assertIsDisplayed()
     }
+
+    @Test
+    fun sheetCells() {
+        // Loading
+        show(CategoriesSheetUiState(catalog = CategoryCatalog.Loading))
+        rule.onNodeWithText("Loading categories…").assertIsDisplayed()
+    }
+
+    @Test
+    fun failedCatalogKeepsTheTypedSearchTextAndRetries() {
+        var retries = 0
+        show(CategoriesSheetUiState(catalog = CategoryCatalog.Failed, query = "des"), onRetry = { retries++ })
+        rule.onNodeWithText("Couldn't load categories").assertIsDisplayed()
+        rule.onNodeWithText("des").assertIsDisplayed()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+        rule.onNodeWithText("des").assertIsDisplayed()
+    }
+
+    @Test
+    fun emptyCatalogShowsEmptyCopyWithNoAction() {
+        show(CategoriesSheetUiState(catalog = CategoryCatalog.Loaded(emptyList())))
+        rule.onNodeWithText("No categories yet").assertIsDisplayed()
+        rule.onNodeWithText("Check back soon.").assertIsDisplayed()
+        rule.onNodeWithText("Retry").assertDoesNotExist()
+    }
 }

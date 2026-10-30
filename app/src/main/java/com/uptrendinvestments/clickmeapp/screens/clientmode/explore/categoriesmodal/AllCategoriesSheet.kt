@@ -123,7 +123,9 @@ private fun allCategoriesItems(
             CategoryCatalog.Loading -> item { PickerLoading(text = loadingText) }
             CategoryCatalog.Failed -> item { CategoriesError(onRetry = onRetry) }
             is CategoryCatalog.Loaded ->
-                if (state.noMatch) {
+                if (state.catalog.items.isEmpty()) {
+                    item { CategoriesEmpty() }
+                } else if (state.noMatch) {
                     item { CategoriesNoMatch(heading = noMatchHeading) }
                 } else {
                     items(state.visible, key = { it.id }) { category ->
@@ -153,6 +155,16 @@ private fun CategoriesError(onRetry: () -> Unit) {
             Text(stringResource(R.string.section_retry))
         }
     }
+}
+
+/** An empty catalog: nothing to retry or change, so no action (UI-SPEC archetype E). */
+@Composable
+private fun CategoriesEmpty() {
+    StateColumn(
+        icon = Icons.Outlined.SearchOff,
+        heading = stringResource(R.string.all_categories_empty_heading),
+        body = stringResource(R.string.all_categories_empty_body),
+    )
 }
 
 @Composable

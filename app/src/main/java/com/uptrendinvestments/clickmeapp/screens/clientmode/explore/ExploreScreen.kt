@@ -20,7 +20,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -30,6 +29,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.NotificationBellButton
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.SectionAppear
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
@@ -41,7 +41,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.Exp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreHeroHeader
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreTodaysSessionsSection
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
-import kotlinx.coroutines.launch
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.time.Instant
 
 /** Test tag on the Explore home list. */
@@ -123,20 +123,18 @@ fun ExploreContent(
     onOpenNotifications: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val refreshFailedMessage = stringResource(R.string.explore_refresh_failed)
     val showToday = state.todaysSessions.isNotEmpty()
     val showFeatured = state.featuredTopics.isVisible()
     val expertsIndex = 2 + (if (showToday) 1 else 0) + (if (showFeatured) 1 else 0)
 
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage) }
-            onRefreshFailureConsumed()
-        }
-    }
+    // A failed refresh keeps every loaded section; Retry re-runs the same refresh (D-05).
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+    )
 
     // Applying a filter scrolls to Recommended Experts, but only when its header is off screen.
     var lastSelection by remember { mutableStateOf(state.selection) }
@@ -183,10 +181,10 @@ fun ExploreContent(
                     PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(Spacing.xl),
             ) {
-                item(key = "hero") { ExploreHeroHeader() }
+                item(key = "hero") { ExploreHeroHeader(Modifier.contentMaxWidth()) }
                 if (showToday) {
                     item(key = "today") {
-                        SectionAppear {
+                        SectionAppear(Modifier.contentMaxWidth()) {
                             ExploreTodaysSessionsSection(
                                 sessions = state.todaysSessions,
                                 now = joinNow,
@@ -198,6 +196,7 @@ fun ExploreContent(
                 }
                 item(key = "categories") {
                     ExploreCategoriesSection(
+                        modifier = Modifier.contentMaxWidth(),
                         state = state.categories,
                         selection = state.selection,
                         onChipTap = onChipTap,
@@ -207,7 +206,7 @@ fun ExploreContent(
                 }
                 if (showFeatured) {
                     item(key = "featured") {
-                        SectionAppear {
+                        SectionAppear(Modifier.contentMaxWidth()) {
                             ExploreFeaturedTopicsSection(
                                 state = state.featuredTopics,
                                 onTopicClick = onFeaturedTopicClick,
@@ -218,6 +217,7 @@ fun ExploreContent(
                 }
                 item(key = EXPERTS_KEY) {
                     ExploreExpertsSection(
+                        modifier = Modifier.contentMaxWidth(),
                         state = state.experts,
                         hasFilter = state.hasFilter,
                         onExpertClick = onExpertClick,

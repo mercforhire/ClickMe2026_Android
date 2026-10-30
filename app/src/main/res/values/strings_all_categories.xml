@@ -9,5 +9,7 @@
     <string name="all_categories_error_heading">Couldn\'t load categories</string>
     <string name="all_categories_error_body">Check your connection and try again.</string>
     <string name="all_categories_no_match_heading">No categories match “%1$s”</string>
+    <string name="all_categories_empty_heading">No categories yet</string>
+    <string name="all_categories_empty_body">Check back soon.</string>
     <string name="all_categories_no_match_body">Try a different search term.</string>
 </resources>
