@@ -28,9 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
@@ -103,16 +108,30 @@ fun MakeABookingTimeSlotsCard(
     latestSelectableStart: Instant? = null,
 ) {
     val locale = LocalConfiguration.current.locales[0]
+    val title = stringResource(R.string.make_a_booking_slots_title)
+    val countText = slotsCountText(availability, selectedDate, selectedDateLoaded, now, latestSelectableStart)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        // Its own traversal group, apart from the calendar.
+        Column(
+            Modifier.padding(Spacing.md).semantics { isTraversalGroup = true },
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
             Text(
-                text = stringResource(R.string.make_a_booking_slots_title),
-                modifier = Modifier.semantics { heading() },
+                text = title,
+                modifier =
+                    Modifier.semantics {
+                        heading()
+                        // Choosing a day announces the result once: "{n} times available" or "No times this day".
+                        if (countText != null) {
+                            liveRegion = LiveRegionMode.Polite
+                            contentDescription = "$title, $countText"
+                        }
+                    },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -186,6 +205,24 @@ fun MakeABookingTimeSlotsCard(
                 }
             }
         }
+    }
+}
+
+/** The spoken result of choosing a day, or null while there is no result (loading, failed, day not loaded). */
+@Composable
+private fun slotsCountText(
+    availability: AvailabilityState,
+    selectedDate: LocalDate,
+    selectedDateLoaded: Boolean,
+    now: Instant,
+    latestSelectableStart: Instant?,
+): String? {
+    if (availability !is AvailabilityState.Loaded || !selectedDateLoaded) return null
+    val count = availability.slotsByDate[selectedDate].orEmpty().count { it.isSelectable(now, latestSelectableStart) }
+    return if (count == 0) {
+        stringResource(R.string.make_a_booking_slots_none_a11y)
+    } else {
+        pluralStringResource(R.plurals.make_a_booking_slots_available_a11y, count, count)
     }
 }
 

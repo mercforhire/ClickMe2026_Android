@@ -32,8 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.components.PriceText
-import com.uptrendinvestments.clickmeapp.components.SectionError
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingTopicUi
@@ -57,7 +57,7 @@ private const val SKELETON_SECONDARY_BAR_FRACTION = 0.25f
 /**
  * The "Topic of Discussion" row: a button showing the selected topic (or the placeholder) that opens the topic sheet.
  * States: skeleton while [topics] loads, the button when loaded, a non-clickable "no topics" card when the list is
- * empty, and a [SectionError] with Retry on failure. Server text is plain [Text] only (T-06-23). While [enabled] is
+ * empty, and an [ErrorState] named "Couldn't load topics" with Retry on failure. Server text is plain [Text] only (T-06-23). While [enabled] is
  * false (a booking is in flight) the button does not open the sheet.
  */
 @Composable
@@ -85,7 +85,12 @@ fun MakeABookingTopicPicker(
             }
         is TopicsState.Failed ->
             StaticCard(modifier) {
-                SectionError(message = topics.message.asString(), onRetry = onRetry)
+                ErrorState(
+                    onRetry = onRetry,
+                    heading = stringResource(R.string.make_a_booking_topics_error_heading),
+                    body = topics.message.asString(),
+                    retryLabel = stringResource(R.string.section_retry),
+                )
             }
     }
 }

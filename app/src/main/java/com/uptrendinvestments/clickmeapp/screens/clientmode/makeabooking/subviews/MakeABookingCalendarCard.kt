@@ -38,9 +38,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -97,7 +100,8 @@ fun MakeABookingCalendarCard(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.sm)) {
+        // Its own traversal group, so a swipe does not wander between the calendar and the time slots.
+        Column(Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.sm).semantics { isTraversalGroup = true }) {
             MonthRow(
                 label = formatMonthYear(displayedMonth, locale),
                 canGoToPreviousMonth = canGoToPreviousMonth,
@@ -147,7 +151,10 @@ private fun MonthRow(
     enabled: Boolean,
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().semantics { isTraversalGroup = true },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         IconButton(onClick = onPreviousMonth, enabled = enabled && canGoToPreviousMonth) {
             Icon(
                 imageVector = Icons.Outlined.ChevronLeft,
@@ -158,7 +165,13 @@ private fun MonthRow(
         }
         Text(
             text = label,
-            modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
+            // Read first (before Previous and Next month); a heading, and still announced when the month changes.
+            modifier =
+                Modifier.weight(1f).semantics {
+                    heading()
+                    liveRegion = LiveRegionMode.Polite
+                    traversalIndex = -1f
+                },
             style = MaterialTheme.typography.titleMedium,
             color = onSurface,
             textAlign = TextAlign.Center,
@@ -219,8 +232,13 @@ private fun CalendarDay(
     )
     val dayLabel = formatDayLabel(date, locale)
     val todayText = stringResource(R.string.make_a_booking_day_today)
-    val openText = stringResource(R.string.make_a_booking_day_open)
-    val state = listOfNotNull(todayText.takeIf { isToday }, openText.takeIf { isOpen }).joinToString(", ")
+    val selectedText = stringResource(R.string.make_a_booking_day_selected)
+    val availabilityText =
+        stringResource(if (isOpen) R.string.make_a_booking_day_open else R.string.make_a_booking_day_no_availability)
+    // "Today, Selected, Available": every day says whether it has times; no availability stays focusable (A7).
+    val state =
+        listOfNotNull(todayText.takeIf { isToday }, selectedText.takeIf { isSelected }, availabilityText)
+            .joinToString(", ")
     Column(
         modifier =
             Modifier
@@ -234,7 +252,7 @@ private fun CalendarDay(
                     onClick = onSelect,
                 ).semantics {
                     contentDescription = dayLabel
-                    if (state.isNotEmpty()) stateDescription = state
+                    stateDescription = state
                 },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
