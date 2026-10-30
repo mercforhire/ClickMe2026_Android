@@ -232,6 +232,64 @@ class ExpertDashboardViewModelTest {
             assertFalse(state.refreshFailed)
         }
 
+    // Phase 15 D-05: a realtime refetch failure flags the refresh-failed snackbar, a tab-return reload stays silent.
+
+    @Test
+    fun realtimeFailureFlags() =
+        runTest(main.testDispatcher) {
+            val h = harness(pending = requests("r1", "r2"))
+            val vm = vm(h)
+            runCurrent()
+
+            h.api.bookingRequestsHandler = { throw serverError(h, "Server down") }
+            realtime.emit(RealtimeEvent.BookingUpdate("x9", "cancelled"))
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals(DashboardLoad.Loaded, state.load)
+            assertEquals(2, state.pendingCount)
+            assertTrue(state.refreshFailed)
+            assertFalse(state.isRefreshing)
+        }
+
+    @Test
+    fun quietTabReturnFailureIsSilent() =
+        runTest(main.testDispatcher) {
+            val h = harness(pending = requests("r1", "r2"))
+            val vm = vm(h)
+            runCurrent()
+
+            h.api.expertBookingsHandler = { throw serverError(h, "Server down") }
+            vm.onScreenShown()
+            runCurrent()
+
+            assertEquals(DashboardLoad.Loaded, vm.uiState.value.load)
+            assertEquals(2, vm.uiState.value.pendingCount)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun realtimeDuringTheFirstLoadStaysLoud() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            val gate = CompletableDeferred<Unit>()
+            h.api.expertBookingsHandler = {
+                gate.await()
+                throw serverError(h, "Server down")
+            }
+            val vm = vm(h)
+            runCurrent()
+            assertEquals(DashboardLoad.Loading, vm.uiState.value.load)
+
+            realtime.emit(RealtimeEvent.BookingUpdate("x9", "confirmed"))
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertTrue(vm.uiState.value.load is DashboardLoad.Failed)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
     @Test
     fun pullFailureFlagsRefreshFailedAndKeepsData() =
         runTest(main.testDispatcher) {

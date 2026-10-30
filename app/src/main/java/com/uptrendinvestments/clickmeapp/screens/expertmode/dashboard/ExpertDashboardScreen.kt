@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -42,6 +41,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.EmptyState
 import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
 import com.uptrendinvestments.clickmeapp.components.NotificationBellButton
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.avatar.TopBarAvatarButton
 import com.uptrendinvestments.clickmeapp.components.web.rememberCustomTabLauncher
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
@@ -59,6 +59,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -166,7 +167,7 @@ fun ExpertDashboardContent(
     }
     val openTab =
         rememberCustomTabLauncher {
-            scope.launch { snackbarHostState.showSnackbar(payoutOpenFailedMessage, duration = SnackbarDuration.Short) }
+            scope.launch { snackbarHostState.showSnackbar(payoutOpenFailedMessage) }
         }
     // T-11-44: the single-use Stripe link is read once, cleared from the state right away, then opened.
     LaunchedEffect(state.onboardingUrl) {
@@ -181,13 +182,13 @@ fun ExpertDashboardContent(
             onDismiss = onDismissOnboardingError,
         )
     }
-    LaunchedEffect(state.refreshFailed) {
-        if (state.refreshFailed) {
-            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
-            scope.launch { snackbarHostState.showSnackbar(refreshFailedMessage, duration = SnackbarDuration.Short) }
-            onRefreshFailureShown()
-        }
-    }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureShown,
+        message = refreshFailedMessage,
+    )
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -242,6 +243,7 @@ fun ExpertDashboardContent(
                             Modifier
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
+                                .contentMaxWidth()
                                 .padding(horizontal = Spacing.md)
                                 .padding(top = Spacing.lg),
                         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
