@@ -30,10 +30,12 @@ import javax.inject.Inject
  *
  * `GET /chats?page=1&limit=50`, no paging (D-17). A load is Loud (first load and Retry: shows the skeleton and a
  * failure message), Pull (pull-to-refresh: shows the indicator and flags a failure for the snackbar) or Quiet
- * (silent: keeps the rows and swallows a failure). Quiet reloads never return to the skeleton (D-17).
+ * (silent: keeps the rows and swallows a failure). Quiet reloads never return to the skeleton (D-17). A Realtime
+ * load (reconnect, a message for an unknown thread) keeps the rows like Quiet but flags a failure, so the screen offers
+ * "Retry" (CONTEXT D-05); only the tab-return reload stays silent.
  *
  * Realtime (D-17): `message.new` moves the thread to the top, `user.status` flips the presence dot, and a reconnect
- * reloads quietly. The row badge shows [displayUnread] of the server count and a session-local count of peer
+ * reloads (Realtime). The row badge shows [displayUnread] of the server count and a session-local count of peer
  * messages that arrived while the thread was not open (A1; the backend does not maintain `unread_count`, Pitfall 1).
  * Blocked threads look like any other row (D-19), and a block leaves a one-time "Blocked {name}" notice (D-09).
  * Rows are keyed by thread id, so a page or an event for a listed thread updates it in place (Pitfall 10).
@@ -58,6 +60,9 @@ class ConversationsViewModel
 
             /** Pull-to-refresh: shows the refresh indicator and flags a failure. */
             Pull,
+
+            /** A reload the socket asked for (reconnect, unknown thread): keeps the rows like Quiet, flags a failure. */
+            Realtime,
         }
 
         private val _uiState =
@@ -98,7 +103,7 @@ class ConversationsViewModel
                     val before = previous
                     previous = current
                     if (before != null && before != ConnectionState.Connected && current == ConnectionState.Connected) {
-                        startLoad(quietOrLoud())
+                        startLoad(realtimeOrLoud())
                     }
                 }
             }
@@ -148,9 +153,9 @@ class ConversationsViewModel
             _uiState.update { it.copy(refreshFailed = false) }
         }
 
-        /** Quiet when the rows are loaded, else Loud: a quiet load over the skeleton would swallow its failure. */
-        private fun quietOrLoud(): LoadMode =
-            if (_uiState.value.load is ConversationsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud
+        /** Realtime when the rows are loaded, else Loud: a rows-keeping load over the skeleton would swallow its failure. */
+        private fun realtimeOrLoud(): LoadMode =
+            if (_uiState.value.load is ConversationsLoad.Loaded) LoadMode.Realtime else LoadMode.Loud
 
         /**
          * `message.new` (iOS `handleMessageNew`): the listed thread takes the new preview and time and moves to the
@@ -166,7 +171,7 @@ class ConversationsViewModel
             if (countsAsUnread) localUnread[key] = (localUnread[key] ?: 0) + 1
             val known = _uiState.value.conversations.any { it.threadId.equals(event.threadId, ignoreCase = true) }
             if (!known) {
-                startLoad(quietOrLoud())
+                startLoad(realtimeOrLoud())
                 return
             }
             _uiState.update { state ->
@@ -218,7 +223,7 @@ class ConversationsViewModel
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = ConversationsLoad.Loading)
                     LoadMode.Pull -> it.copy(isRefreshing = true)
-                    LoadMode.Quiet -> it
+                    LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }
             loadJob =
@@ -237,7 +242,8 @@ class ConversationsViewModel
                             when {
                                 mode == LoadMode.Loud || it.load is ConversationsLoad.Loading ->
                                     it.copy(load = ConversationsLoad.Failed(e.toSectionMessage()), isRefreshing = false)
-                                mode == LoadMode.Pull -> it.copy(refreshFailed = true, isRefreshing = false)
+                                mode == LoadMode.Pull || mode == LoadMode.Realtime ->
+                                    it.copy(refreshFailed = true, isRefreshing = false)
                                 else -> it.copy(isRefreshing = false)
                             }
                         }

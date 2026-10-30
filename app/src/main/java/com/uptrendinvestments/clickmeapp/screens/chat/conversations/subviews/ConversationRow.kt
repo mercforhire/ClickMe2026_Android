@@ -55,8 +55,10 @@ private val BadgeMinSize = 24.dp
 private const val BADGE_CAP = 99
 
 /**
- * One conversation: avatar with presence dot, name, time label and a two-line preview with the unread badge
- * (UI-SPEC surface 1, iOS `ChatConversationRow`). The whole row is one button and one merged accessibility node.
+ * One conversation: avatar with presence dot, name, time label and a one-line preview with the unread badge
+ * (UI-SPEC surface 1, iOS `ChatConversationRow`). The whole row is one button and one merged accessibility node that
+ * reads "{name}, {last message}, {time}" then ", {n} unread": the visible preview is one line, the node keeps the full
+ * last message (UI-SPEC Flow 4).
  *
  * [timeLabel] is computed by the caller (it needs the clock and locale). Blocked threads look like any other row
  * (D-19).
@@ -76,7 +78,7 @@ fun ConversationRow(
         if (row.unread > 0) pluralStringResource(R.plurals.chat_conversations_unread, row.unread, row.unread) else null
     val onlineText = if (row.isOnline) stringResource(R.string.chat_conversations_online) else null
     val description =
-        listOfNotNull(name, unreadText, preview, timeLabel.takeIf { it.isNotEmpty() }, onlineText)
+        listOfNotNull(name, preview, timeLabel.takeIf { it.isNotEmpty() }, unreadText, onlineText)
             .joinToString(", ")
 
     Surface(
@@ -134,7 +136,7 @@ fun ConversationRow(
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 },
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         UnreadBadge(count = row.unread)

@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -15,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
@@ -26,6 +29,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.conversations.subviews.CHA
 import com.uptrendinvestments.clickmeapp.screens.chat.conversations.subviews.CONVERSATION_BADGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.conversations.subviews.CONVERSATION_PRESENCE_TAG
 import com.uptrendinvestments.clickmeapp.screens.chat.conversations.subviews.CONVERSATION_ROW_TAG
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -44,6 +48,7 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneOffset
@@ -138,10 +143,12 @@ class ConversationsScreenTest {
         onQueryChange: (String) -> Unit = {},
         onNoticeConsumed: () -> Unit = {},
         onRefreshFailureConsumed: () -> Unit = {},
+        onRetry: () -> Unit = {},
+        onRefresh: () -> Unit = {},
     ) {
         rule.setContent {
             ClickMeTheme {
-                Content(state, mode, onQueryChange, onNoticeConsumed, onRefreshFailureConsumed)
+                Content(state, mode, onQueryChange, onNoticeConsumed, onRefreshFailureConsumed, onRetry, onRefresh)
             }
         }
     }
@@ -153,6 +160,8 @@ class ConversationsScreenTest {
         onQueryChange: (String) -> Unit,
         onNoticeConsumed: () -> Unit,
         onRefreshFailureConsumed: () -> Unit,
+        onRetry: () -> Unit = {},
+        onRefresh: () -> Unit = {},
     ) = ConversationsContent(
         state = state,
         mode = mode,
@@ -162,8 +171,8 @@ class ConversationsScreenTest {
         locale = Locale.US,
         timeFormat = SimpleDateFormat("h:mm a", Locale.US),
         onAvatarClick = {},
-        onRetry = {},
-        onRefresh = {},
+        onRetry = onRetry,
+        onRefresh = onRefresh,
         onQueryChange = onQueryChange,
         onOpen = {},
         onNoticeConsumed = onNoticeConsumed,
@@ -312,6 +321,36 @@ class ConversationsScreenTest {
     }
 
     @Test
+    fun rowIsOneFullNode() {
+        val long = "word ".repeat(60).trim()
+        assertEquals(299, long.length)
+        val full = long + "!"
+        assertEquals(300, full.length)
+        show(loaded(row(lastMessage = full, unread = 2, lastMsgAt = Instant.parse("2026-10-27T09:41:00Z"))))
+
+        assertEquals(1, rule.onAllNodesWithTag(CONVERSATION_ROW_TAG).fetchSemanticsNodes().size)
+        val description =
+            rule
+                .onNodeWithTag(CONVERSATION_ROW_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsProperties.ContentDescription)
+                .orEmpty()
+                .joinToString()
+        assertEquals("Ada Lovelace, $full, 9:41 AM, 2 unread", description)
+
+        // 300 characters cannot fit on one line, so a single laid-out line means the preview is truncated.
+        val layouts = mutableListOf<TextLayoutResult>()
+        rule
+            .onNodeWithText(full, useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult]
+            .action
+            ?.invoke(layouts)
+        assertEquals(1, layouts.single().lineCount)
+    }
+
+    @Test
     fun missingPartsAreHandled() {
         show(loaded(row(name = null, lastMessage = null, lastMsgAt = null)))
         rule.onNodeWithText("Chat").assertExists()
@@ -333,5 +372,47 @@ class ConversationsScreenTest {
         show(loaded(row()).copy(notice = ConversationsNotice.Blocked("Ada")), onNoticeConsumed = { consumed++ })
         rule.onNodeWithText("Blocked Ada").assertExists()
         assertEquals(1, consumed)
+    }
+
+    @Test
+    fun refreshFailedShowsRetryThatRefreshes() {
+        var refreshes = 0
+        var retries = 0
+        show(
+            loaded(row()).copy(refreshFailed = true),
+            onRetry = { retries++ },
+            onRefresh = { refreshes++ },
+        )
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, refreshes)
+        assertEquals(0, retries)
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+    }
+
+    @Test
+    fun firstLoadErrorNamedWithRetry() {
+        var retries = 0
+        show(
+            ConversationsUiState(load = ConversationsLoad.Failed(FieldError.Text("Boom"))),
+            onRetry = { retries++ },
+        )
+        rule.onNodeWithText("Couldn't load conversations").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun listCapped() {
+        show(loaded(row()))
+        val bounds = rule.onNodeWithTag(CONVERSATION_ROW_TAG).getUnclippedBoundsInRoot()
+        val width = bounds.right.value - bounds.left.value
+        assertTrue("row is $width dp wide", width <= LIST_COLUMN_MAX)
+    }
+
+    private companion object {
+        /** The 600 dp column, with half a dp of tolerance. */
+        const val LIST_COLUMN_MAX = 600.5f
     }
 }

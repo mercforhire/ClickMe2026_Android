@@ -73,6 +73,9 @@ class ChatThreadViewModel
 
             /** Pull-to-refresh: shows the refresh indicator and flags a failure. */
             Pull,
+
+            /** A reload a booking event or a socket reconnect asked for: keeps the rows like Quiet, flags a failure. */
+            Realtime,
         }
 
         private val threadId: String = key.threadId
@@ -469,9 +472,13 @@ class ChatThreadViewModel
             emitPendingReads()
         }
 
-        /** Loud while the first load has not finished (so a failure stays visible), quiet otherwise. */
+        /**
+         * Loud while the first load has not finished (so a failure stays visible). Otherwise [LoadMode.Realtime]: the
+         * messages and the unsent bubbles stay, and a failure raises `refreshFailed` for the snackbar with "Retry"
+         * (CONTEXT D-05). The screen-shown reload stays [LoadMode.Quiet].
+         */
         private fun reloadQuietly() {
-            startLoad(if (_uiState.value.load is ThreadLoad.Loading) LoadMode.Loud else LoadMode.Quiet)
+            startLoad(if (_uiState.value.load is ThreadLoad.Loading) LoadMode.Loud else LoadMode.Realtime)
         }
 
         /**
@@ -534,7 +541,7 @@ class ChatThreadViewModel
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = ThreadLoad.Loading, isLoadingEarlier = false)
                     LoadMode.Pull -> it.copy(isRefreshing = true)
-                    LoadMode.Quiet -> it
+                    LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }
             loadJob =
@@ -558,7 +565,7 @@ class ChatThreadViewModel
         ): ChatThreadUiState =
             when (mode) {
                 LoadMode.Loud -> state.copy(load = ThreadLoad.Failed(error.toSectionMessage()), isRefreshing = false)
-                LoadMode.Pull -> state.copy(refreshFailed = true, isRefreshing = false)
+                LoadMode.Pull, LoadMode.Realtime -> state.copy(refreshFailed = true, isRefreshing = false)
                 LoadMode.Quiet -> state.copy(isRefreshing = false)
             }
 

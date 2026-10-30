@@ -29,6 +29,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
+import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 /**
  * Report & Block screen for one chat thread (UI-SPEC surface 3). Navigation callbacks: [onBack] for the app-bar
@@ -104,6 +105,7 @@ fun ReportAndBlockContent(
                     .padding(innerPadding)
                     .imePadding()
                     .verticalScroll(rememberScrollState())
+                    .contentMaxWidth()
                     .padding(
                         start = Spacing.md,
                         end = Spacing.md,

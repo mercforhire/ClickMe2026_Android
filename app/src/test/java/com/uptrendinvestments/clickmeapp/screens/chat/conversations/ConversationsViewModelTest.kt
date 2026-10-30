@@ -282,6 +282,63 @@ class ConversationsViewModelTest {
         }
 
     @Test
+    fun reconnectReloadFailureFlags() =
+        runTest(main.testDispatcher) {
+            serve(t1())
+            realtime.setState(ConnectionState.Connected)
+            val vm = vm()
+            runCurrent()
+            api.chatsHandler = { _, _ -> throw api.httpError(500, """{"status":"error","message":"Boom"}""") }
+            realtime.setState(ConnectionState.Disconnected)
+            runCurrent()
+            realtime.setState(ConnectionState.Connected)
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertEquals(ConversationsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(listOf("t1"), vm.ids)
+        }
+
+    @Test
+    fun unknownThreadReloadFailureFlags() =
+        runTest(main.testDispatcher) {
+            serve(t1())
+            val vm = vm()
+            runCurrent()
+            api.chatsHandler = { _, _ -> throw api.httpError(500, """{"status":"error","message":"Boom"}""") }
+            realtime.emit(message(threadId = "t9"))
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertEquals(listOf("t1"), vm.ids)
+        }
+
+    @Test
+    fun quietTabReturnFailureIsSilent() =
+        runTest(main.testDispatcher) {
+            serve(t1())
+            val vm = vm()
+            runCurrent()
+            api.chatsHandler = { _, _ -> throw api.httpError(500, """{"status":"error","message":"Boom"}""") }
+            vm.onScreenShown()
+            runCurrent()
+            assertFalse(vm.uiState.value.refreshFailed)
+            assertEquals(listOf("t1"), vm.ids)
+        }
+
+    @Test
+    fun pullFailureStillFlags() =
+        runTest(main.testDispatcher) {
+            serve(t1())
+            val vm = vm()
+            runCurrent()
+            api.chatsHandler = { _, _ -> throw api.httpError(500, """{"status":"error","message":"Boom"}""") }
+            vm.refresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertEquals(listOf("t1"), vm.ids)
+        }
+
+    @Test
     fun loudFailureShowsFailedAndRetryRecovers() =
         runTest(main.testDispatcher) {
             api.chatsHandler = { _, _ -> throw api.httpError(500, """{"status":"error","message":"Boom"}""") }

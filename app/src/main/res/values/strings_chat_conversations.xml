@@ -20,7 +20,6 @@
         <item quantity="one">%d unread</item>
         <item quantity="other">%d unread</item>
     </plurals>
-    <string name="chat_conversations_refresh_failed">Couldn\'t refresh. Check your connection and try again.</string>
     <string name="chat_conversations_blocked_snackbar">Blocked %1$s</string>
     <string name="chat_conversations_blocked_snackbar_unnamed">Blocked</string>
 </resources>

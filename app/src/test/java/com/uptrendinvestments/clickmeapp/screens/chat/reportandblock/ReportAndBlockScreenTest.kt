@@ -5,9 +5,12 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -40,10 +43,12 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -242,5 +247,61 @@ class ReportAndBlockScreenTest {
     fun backWorksWhileIdle() {
         assertEquals(1, systemBacks(ReportAndBlockUiState()))
         rule.onNodeWithContentDescription("Back").assertIsEnabled()
+    }
+
+    @Test
+    fun inFlightAndErrorKept() {
+        showContent(
+            ReportAndBlockUiState(
+                peerName = "Ada",
+                reason = UserReportReason.Spam,
+                details = "keep me",
+                reportSubmitting = true,
+                dialog = SafetyDialog(R.string.report_error_title, FieldError.Res(R.string.report_error_rate_limited)),
+            ),
+        )
+
+        rule.onNodeWithTag(REPORT_SUBMIT_TAG).performScrollTo().assert(stateDescription("Submitting"))
+        rule.onNodeWithTag(REPORT_SUBMIT_TAG).assertIsNotEnabled()
+        rule.onNodeWithText("Couldn't send report").assertExists()
+        rule.onNodeWithTag(REPORT_DETAILS_FIELD_TAG).performScrollTo().assertTextContains("keep me")
+    }
+
+    @Test
+    fun blockInFlightLocksTheBlockButton() {
+        showContent(ReportAndBlockUiState(peerName = "Ada", blockInFlight = true))
+
+        rule.onNodeWithTag(BLOCK_BUTTON_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun unblockInFlightIsAnnouncedAndLocked() {
+        showContent(
+            ReportAndBlockUiState(
+                peerName = "Ada",
+                block = BlockState(isBlocked = true, blockedByMe = true),
+                unblockInFlight = true,
+            ),
+        )
+
+        rule.onNodeWithTag(UNBLOCK_BUTTON_TAG).assert(stateDescription("Unblocking")).assertIsNotEnabled()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h600dp")
+    fun capped() {
+        showContent(ReportAndBlockUiState(peerName = "Ada"))
+
+        val block = rule.onNodeWithTag(BLOCK_BUTTON_TAG).getUnclippedBoundsInRoot()
+        val details = rule.onNodeWithTag(REPORT_DETAILS_FIELD_TAG).performScrollTo().getUnclippedBoundsInRoot()
+        listOf(block, details).forEach {
+            val width = it.right.value - it.left.value
+            assertTrue("content is $width dp wide", width <= COLUMN_MAX)
+        }
+    }
+
+    private companion object {
+        /** The 600 dp column, with half a dp of tolerance. */
+        const val COLUMN_MAX = 600.5f
     }
 }
