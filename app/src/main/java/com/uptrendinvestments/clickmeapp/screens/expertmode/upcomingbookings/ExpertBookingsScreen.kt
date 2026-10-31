@@ -117,6 +117,7 @@ fun ExpertBookingsScreen(
         onUpdateAvailability = onUpdateAvailability,
         onNoticeConsumed = viewModel::consumeNotice,
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
+        onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         modifier = modifier,
         messageBusyPeerId = entryState.busyPeerId,
         onReschedule = onReschedule,
@@ -149,6 +150,7 @@ fun ExpertBookingsContent(
     onNoticeConsumed: () -> Unit,
     onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    onRescheduleSentConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -159,6 +161,7 @@ fun ExpertBookingsContent(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val refreshFailedMessage = stringResource(R.string.expert_refresh_failed)
+    val rescheduleSentMessage = stringResource(R.string.reschedule_start_sent)
     val noticeMessage =
         when (val notice = state.notice) {
             null -> null
@@ -172,6 +175,12 @@ fun ExpertBookingsContent(
             // Launched on the composition scope so consuming the notice does not cancel the Snackbar.
             scope.launch { snackbarHostState.showSnackbar(noticeMessage, duration = SnackbarDuration.Long) }
             onNoticeConsumed()
+        }
+    }
+    LaunchedEffect(state.rescheduleSent) {
+        if (state.rescheduleSent) {
+            scope.launch { snackbarHostState.showSnackbar(rescheduleSentMessage, duration = SnackbarDuration.Long) }
+            onRescheduleSentConsumed()
         }
     }
     RefreshFailedSnackbarEffect(

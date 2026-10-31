@@ -14,6 +14,8 @@ import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository.Companion.PAGE
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository.Companion.PAGE_SIZE
@@ -53,6 +55,12 @@ import javax.inject.Inject
  * `init` when posted before this ViewModel exists, and on every later emission otherwise; either way it selects its
  * tab, carries the notice for the snackbar, forces a fresh reload and is applied exactly once.
  *
+ * Phase 16.2 D-10 hand-off: when the expert Reschedule picker sends a request it posts to
+ * [RescheduleSentRequest.expertBookings] and pops back here. A notice posted before this ViewModel exists is consumed
+ * in `init` (the first load is already fresh); one posted while it lives (the list was only covered) raises
+ * [ExpertBookingsUiState.rescheduleSent] and reloads quietly. Nothing is optimistic: the pending state comes from the
+ * server's list.
+ *
  * Switching sub-tabs never fetches, since both buckets are always loaded together.
  *
  * Join (D-14): [join] starts the call through the one [CallStarter] with the client as the peer, and [joinNow] is the
@@ -70,6 +78,7 @@ class ExpertBookingsViewModel
         private val launchRequest: ExpertLaunchRequest,
         private val callStarter: CallStarter,
         joinClock: JoinClock,
+        private val sentRequest: RescheduleSentRequest,
     ) : ViewModel() {
         private enum class LoadMode {
             /** Shows the skeleton and a failure message. */
@@ -117,7 +126,23 @@ class ExpertBookingsViewModel
             // D-17: a launch posted before this ViewModel existed is applied now, before the first load, so the
             // first load is the fresh one and no second pair runs.
             launchRequest.bookings.consume()?.let { applyLaunch(it, reload = false) }
+            // D-10: a send that happened before this ViewModel existed is consumed now; the first load is fresh.
+            if (sentRequest.consumeFor(RescheduleOpener.ExpertBookings, null)) {
+                _uiState.update { it.copy(rescheduleSent = true) }
+            }
             startLoad(LoadMode.Loud)
+            // A send while this ViewModel lives (the list is covered by the picker) shows the notice once and
+            // reloads quietly so the booking's pending state appears.
+            viewModelScope.launch {
+                sentRequest.expertBookings.pending.filterNotNull().collect {
+                    if (sentRequest.consumeFor(RescheduleOpener.ExpertBookings, null)) {
+                        _uiState.update { it.copy(rescheduleSent = true) }
+                        startLoad(
+                            if (_uiState.value.load is ExpertBookingsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud,
+                        )
+                    }
+                }
+            }
             // A launch posted while this ViewModel lives (the Bookings stack is still on screen under the cancel
             // flow) selects its tab and forces a fresh reload.
             viewModelScope.launch {
@@ -172,6 +197,11 @@ class ExpertBookingsViewModel
 
         fun consumeNotice() {
             _uiState.update { it.copy(notice = null) }
+        }
+
+        /** The screen showed the "Reschedule request sent" snackbar, so the one-shot is spent. */
+        fun consumeRescheduleSent() {
+            _uiState.update { it.copy(rescheduleSent = false) }
         }
 
         fun consumeRefreshFailure() {

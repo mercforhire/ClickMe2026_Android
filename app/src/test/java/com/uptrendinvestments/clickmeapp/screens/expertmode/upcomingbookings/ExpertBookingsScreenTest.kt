@@ -31,6 +31,7 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_MESSAGE_TAG
@@ -91,6 +92,7 @@ class ExpertBookingsScreenTest {
             ExpertLaunchRequest(),
             callStarter,
             JoinClock(clock, CoroutineScope(Job())),
+            RescheduleSentRequest(),
         )
 
     private fun show(
@@ -408,6 +410,7 @@ class ExpertBookingsScreenTest {
         var refreshFailureConsumed = 0
         var refreshes = 0
         var retries = 0
+        var rescheduleSentConsumed = 0
     }
 
     private fun showContent(
@@ -427,6 +430,7 @@ class ExpertBookingsScreenTest {
                     onUpdateAvailability = {},
                     onNoticeConsumed = { calls.noticeConsumed++ },
                     onRefreshFailureConsumed = { calls.refreshFailureConsumed++ },
+                    onRescheduleSentConsumed = { calls.rescheduleSentConsumed++ },
                 )
             }
         }
@@ -442,6 +446,19 @@ class ExpertBookingsScreenTest {
         notice = notice,
         refreshFailed = refreshFailed,
     )
+
+    @Test
+    fun sentNoticeShowsSnackbarOnce() {
+        val calls = NoticeCalls()
+        showContent(
+            ExpertBookingsUiState(load = ExpertBookingsLoad.Loaded, rescheduleSent = true),
+            calls,
+        )
+        rule.onNodeWithText("Reschedule request sent").assertExists()
+        assertEquals(1, calls.rescheduleSentConsumed)
+        assertEquals(0, calls.noticeConsumed)
+        assertEquals(0, calls.refreshFailureConsumed)
+    }
 
     @Test
     fun cancelNoticeShowsOnce() {

@@ -25,6 +25,8 @@ sealed interface ExpertBookingsLoad {
  * @property isRefreshing a pull-to-refresh is running.
  * @property refreshFailed a pull-to-refresh failed; the screen shows a snackbar then calls `consumeRefreshFailure`.
  * @property notice a one-time message handed over by the cancel flow; cleared by `consumeNotice`.
+ * @property rescheduleSent Phase 16.2 D-10 one-time notice: the expert Reschedule picker sent a request and popped
+ *   back here; the screen shows "Reschedule request sent" then calls `consumeRescheduleSent`.
  */
 data class ExpertBookingsUiState(
     val selectedTab: BookingsTab = BookingsTab.Upcoming,
@@ -33,4 +35,5 @@ data class ExpertBookingsUiState(
     val isRefreshing: Boolean = false,
     val refreshFailed: Boolean = false,
     val notice: BookingsNotice? = null,
+    val rescheduleSent: Boolean = false,
 )
