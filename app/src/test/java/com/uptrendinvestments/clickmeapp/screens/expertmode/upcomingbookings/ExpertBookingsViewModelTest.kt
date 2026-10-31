@@ -11,6 +11,9 @@ import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
@@ -45,6 +48,7 @@ class ExpertBookingsViewModelTest {
     private val launchRequest = ExpertLaunchRequest()
     private val saved = SavedStateHandle()
     private val callStarter = FakeCallStarter()
+    private val sentRequest = RescheduleSentRequest()
 
     private val upcomingRows =
         listOf(expertBookingItem(id = "u1", start = Instant.parse("2026-10-24T18:00:00Z")))
@@ -80,6 +84,7 @@ class ExpertBookingsViewModelTest {
         launchRequest,
         callStarter,
         JoinClock(clock, joinScope),
+        sentRequest,
     )
 
     private fun expectedLists(
@@ -391,6 +396,59 @@ class ExpertBookingsViewModelTest {
             assertNull(vm.uiState.value.notice)
             runCurrent()
             assertEquals(4, api.expertBookingsCalls)
+        }
+
+    @Test
+    fun postedBeforeCreationConsumedOnce() =
+        runTest(main.testDispatcher) {
+            serve()
+            sentRequest.onSent(RescheduleOpener.ExpertBookings, "b1")
+            val vm = vm()
+            assertTrue(vm.uiState.value.rescheduleSent)
+            assertNull(sentRequest.expertBookings.pending.value)
+            runCurrent()
+            // The first load is already fresh: no second pair for the hand-off.
+            assertEquals(2, api.expertBookingsCalls)
+            vm.consumeRescheduleSent()
+            assertFalse(vm.uiState.value.rescheduleSent)
+        }
+
+    @Test
+    fun postedWhileAliveReloadsQuietly() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            assertEquals(2, api.expertBookingsCalls)
+            assertFalse(vm.uiState.value.rescheduleSent)
+
+            sentRequest.onSent(RescheduleOpener.ExpertBookings, "b3")
+
+            // The quiet reload never shows the skeleton.
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+            runCurrent()
+            assertTrue(vm.uiState.value.rescheduleSent)
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(2, api.expertBookingsQueries.count { it.first == "upcoming" })
+            assertEquals(4, api.expertBookingsCalls)
+            assertNull(sentRequest.expertBookings.pending.value)
+            vm.consumeRescheduleSent()
+            assertFalse(vm.uiState.value.rescheduleSent)
+            runCurrent()
+            assertEquals(4, api.expertBookingsCalls)
+        }
+
+    @Test
+    fun otherOpenerNotConsumed() =
+        runTest(main.testDispatcher) {
+            serve()
+            val vm = vm()
+            runCurrent()
+            sentRequest.onSent(RescheduleOpener.ExpertSummary, "b1")
+            runCurrent()
+            assertFalse(vm.uiState.value.rescheduleSent)
+            assertEquals(2, api.expertBookingsCalls)
+            assertEquals(RescheduleSent("b1"), sentRequest.expertSummary.pending.value)
         }
 
     @Test
