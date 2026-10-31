@@ -278,6 +278,7 @@ class MyBookingsScreenTest {
         var noticeConsumed = 0
         var refreshFailureConsumed = 0
         var reviewThanksShown = 0
+        var rescheduleSentShown = 0
         val reviewRequests = mutableListOf<WriteReviewKey>()
         val joined = mutableListOf<String>()
         val messaged = mutableListOf<String>()
@@ -309,6 +310,7 @@ class MyBookingsScreenTest {
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = { calls.reviewThanksShown++ },
         onReschedule = { calls.rescheduled += it },
+        onRescheduleSentShown = { calls.rescheduleSentShown++ },
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -326,6 +328,7 @@ class MyBookingsScreenTest {
         notice: BookingsNotice? = null,
         refreshFailed: Boolean = false,
         reviewThanks: Boolean = false,
+        rescheduleSent: Boolean = false,
     ) = MyBookingsUiState(
         load = MyBookingsLoad.Loaded,
         lists = BookingLists(upcoming, past),
@@ -333,6 +336,7 @@ class MyBookingsScreenTest {
         notice = notice,
         refreshFailed = refreshFailed,
         reviewThanks = reviewThanks,
+        rescheduleSent = rescheduleSent,
     )
 
     @Test
@@ -576,6 +580,14 @@ class MyBookingsScreenTest {
         show { Content(loaded(upcoming = upcoming)) }
         assertEquals(1, rule.onAllNodesWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNodes().size)
         assertEquals(2, rule.onAllNodesWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun rescheduleSentShowsSnackbarOnce() {
+        val calls = Callbacks()
+        show { Content(loaded(rescheduleSent = true), calls) }
+        rule.onNodeWithText("Reschedule request sent").assertExists()
+        assertEquals(1, calls.rescheduleSentShown)
     }
 
     @Test
