@@ -101,6 +101,7 @@
     <string name="call_action_edit_availability">edit your availability</string>
     <string name="call_action_set_up_payouts">set up payouts</string>
     <string name="call_action_respond_reschedule">respond to this reschedule</string>
+    <string name="call_action_reschedule_booking">reschedule this session</string>
     <string name="call_action_change_password">change your password</string>
     <string name="call_action_delete_account">delete your account</string>
 
