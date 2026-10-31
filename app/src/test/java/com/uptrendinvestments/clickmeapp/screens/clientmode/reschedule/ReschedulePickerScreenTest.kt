@@ -9,12 +9,15 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
 import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -203,5 +206,106 @@ class ReschedulePickerScreenTest {
 
         rule.assertActionablesNamed()
         rule.assertTouchTargets()
+    }
+
+    // ---- Loading, failed, dialogs, Back ----
+
+    @Test
+    fun loadingShowsSkeletonAndBack() {
+        show(pickerState(load = PickerLoad.Loading))
+
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onNodeWithContentDescription("Back").assertIsEnabled()
+        rule.onNodeWithTag(RESCHEDULE_SUBMIT_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun failedShowsErrorAndRetry() {
+        show(pickerState(load = PickerLoad.Failed(FieldError.Text("Booking gone"))))
+
+        rule.onNodeWithText("Couldn't load booking").assertExists()
+        rule.onNodeWithText("Booking gone").assertExists()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retryLoadCount)
+        rule.onNodeWithTag(RESCHEDULE_SUBMIT_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun disclosureWithCaveat() {
+        show(pickerState(dialog = ReschedulePickerDialog.Disclosure(chargesSoon = true)))
+
+        rule.onNodeWithText("Your card hold will be released").assertExists()
+        rule
+            .onNodeWithText("Because you're moving this session more than a few days out", substring = true)
+            .assertExists()
+        rule
+            .onNodeWithText(
+                "If your new session is coming up soon, your card may be charged sooner than 24 hours from now.",
+            ).assertExists()
+        rule.onNodeWithTag(RESCHEDULE_DISCLOSURE_CONTINUE_TAG).performClick()
+        assertEquals(1, confirmCount)
+        assertEquals(0, dismissed.size)
+    }
+
+    @Test
+    fun disclosureCancelOnlyDismisses() {
+        show(pickerState(dialog = ReschedulePickerDialog.Disclosure(chargesSoon = false)))
+
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals(1, dismissed.size)
+        assertEquals(0, confirmCount)
+        assertEquals(0, submitted.size)
+    }
+
+    @Test
+    fun disclosureWithoutCaveat() {
+        show(pickerState(dialog = ReschedulePickerDialog.Disclosure(chargesSoon = false)))
+
+        rule.onNodeWithText("Your card hold will be released").assertExists()
+        rule.onNodeWithText("charged sooner than 24 hours", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun paymentNeededUsesProposeCopy() {
+        show(pickerState(dialog = ReschedulePickerDialog.PaymentMethodNeeded))
+
+        rule.onNodeWithText("Add a payment method").assertExists()
+        rule.onNodeWithText("Please add a payment method before rescheduling this session.").assertExists()
+        rule.onNodeWithText("Not now").performClick()
+        assertEquals(1, dismissed.size)
+        rule.onNodeWithText("Add a Payment Method").performClick()
+        assertEquals(1, addPaymentCount)
+    }
+
+    @Test
+    fun cardUnusableCopy() {
+        show(pickerState(dialog = ReschedulePickerDialog.CardUnusable))
+
+        rule
+            .onNodeWithText(
+                "The card on file can't be used for this reschedule. Please add a new payment method and try again.",
+            ).assertExists()
+    }
+
+    @Test
+    fun errorDialogTitle() {
+        val message = FieldError.Res(R.string.reschedule_start_error_outside_window_client)
+        show(pickerState(dialog = ReschedulePickerDialog.Error(message)))
+
+        rule.onNodeWithText("Couldn't reschedule booking").assertExists()
+        rule
+            .onNodeWithText(
+                "This time is past the payment hold on your original booking. " +
+                    "Please cancel and book again to authorize a new payment.",
+            ).assertExists()
+        rule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissed.size)
+    }
+
+    @Test
+    fun backDisabledWhileSubmitting() {
+        show(pickerState(isSubmitting = true))
+
+        rule.onNodeWithContentDescription("Back").assertIsNotEnabled()
     }
 }

@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,20 +8,34 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.EmptyState
+import com.uptrendinvestments.clickmeapp.components.EmptyStateAction
+import com.uptrendinvestments.clickmeapp.components.PaymentMethodDialog
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.components.SectionHeader
+import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
+import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.canGoToPreviousMonth
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
@@ -30,8 +45,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subview
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTimeSlotsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.subviews.CurrentSessionBanner
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.subviews.RescheduleDisclosureDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.subviews.RescheduleSubmitButton
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import java.time.Instant
@@ -45,6 +63,9 @@ const val RESCHEDULE_MESSAGE_TAG = "reschedule_message"
 const val RESCHEDULE_SUBMIT_TAG = "reschedule_submit"
 const val RESCHEDULE_BANNER_TAG = "reschedule_current_banner"
 const val RESCHEDULE_DISCLOSURE_CONTINUE_TAG = "reschedule_disclosure_continue"
+
+/** Booking card, calendar, slots card, message field and button, as the loading skeleton (UI-SPEC E1). */
+private val SkeletonHeights = listOf(88.dp, 360.dp, 168.dp, 144.dp, 56.dp)
 
 /**
  * The reschedule picker shared by the client and the expert (Phase 16.2, UI-SPEC Screen 1). Port of iOS
@@ -88,23 +109,94 @@ fun ReschedulePickerScreen(
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            val booking = state.booking
-            if (booking != null) {
-                LoadedContent(
-                    state = state,
-                    booking = booking,
-                    onPreviousMonth = onPreviousMonth,
-                    onNextMonth = onNextMonth,
-                    onSelectDate = onSelectDate,
-                    onSelectSlot = onSelectSlot,
-                    onRetrySlots = onRetrySlots,
-                    onMessageChange = onMessageChange,
-                    onSubmit = onSubmit,
-                    timeFormat = timeFormat,
-                    locale = locale,
-                )
+            when (val load = state.load) {
+                PickerLoad.Loading -> LoadingContent()
+                is PickerLoad.Failed -> FailedContent(message = load.message.asString(), onRetry = onRetryLoad)
+                is PickerLoad.Loaded ->
+                    LoadedContent(
+                        state = state,
+                        booking = load.booking,
+                        onPreviousMonth = onPreviousMonth,
+                        onNextMonth = onNextMonth,
+                        onSelectDate = onSelectDate,
+                        onSelectSlot = onSelectSlot,
+                        onRetrySlots = onRetrySlots,
+                        onMessageChange = onMessageChange,
+                        onSubmit = onSubmit,
+                        timeFormat = timeFormat,
+                        locale = locale,
+                    )
             }
         }
+    }
+
+    // System Back is ignored while a send (including the card retry) is in flight, like the arrow (UI-SPEC Navigation).
+    BackHandler(enabled = state.isSubmitting) {}
+
+    when (val dialog = state.dialog) {
+        null -> Unit
+        is ReschedulePickerDialog.Disclosure ->
+            RescheduleDisclosureDialog(
+                chargesSoon = dialog.chargesSoon,
+                onContinue = onConfirmDisclosure,
+                onDismiss = onDismissDialog,
+            )
+        ReschedulePickerDialog.PaymentMethodNeeded ->
+            PaymentMethodDialog(
+                message = stringResource(R.string.reschedule_start_payment_needed_message),
+                onDismiss = onDismissDialog,
+                onAddPaymentMethod = onAddPaymentMethod,
+            )
+        ReschedulePickerDialog.CardUnusable ->
+            PaymentMethodDialog(
+                message = stringResource(R.string.reschedule_card_unusable_message),
+                onDismiss = onDismissDialog,
+                onAddPaymentMethod = onAddPaymentMethod,
+            )
+        is ReschedulePickerDialog.Error ->
+            AuthErrorDialog(
+                message = dialog.message.asString(),
+                onDismiss = onDismissDialog,
+                title = stringResource(R.string.reschedule_start_error_title),
+            )
+    }
+}
+
+/**
+ * The skeleton shown until the booking has loaded: it copies the booking card, calendar, slots card, message field and
+ * button, so nothing renders half-loaded (UI-SPEC E1/E2 loading). The app bar stays outside it.
+ */
+@Composable
+private fun LoadingContent() {
+    SkeletonGroup(
+        modifier =
+            Modifier
+                .contentMaxWidth()
+                .padding(PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.lg))
+                .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            SkeletonHeights.forEach { height ->
+                SkeletonBlock(Modifier.fillMaxWidth().height(height), MaterialTheme.shapes.medium)
+            }
+        }
+    }
+}
+
+/** "Couldn't load booking" with the server or network reason and a Retry that re-runs the load (UI-SPEC E1 error). */
+@Composable
+private fun FailedContent(
+    message: String,
+    onRetry: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        EmptyState(
+            icon = Icons.Outlined.ErrorOutline,
+            heading = stringResource(R.string.reschedule_start_load_error_title),
+            body = message,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            action = EmptyStateAction(stringResource(R.string.section_retry), onRetry),
+        )
     }
 }
 

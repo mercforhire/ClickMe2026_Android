@@ -568,8 +568,12 @@ fun RescheduleOutcomeDialog(
     }
 }
 
+/**
+ * "Add a payment method" with [message], offering "Add a Payment Method" and "Not now". Also used by the Phase 16.2
+ * reschedule picker with its propose message (D-06).
+ */
 @Composable
-private fun PaymentMethodDialog(
+fun PaymentMethodDialog(
     message: String,
     onDismiss: () -> Unit,
     onAddPaymentMethod: () -> Unit,
@@ -585,10 +589,12 @@ private fun PaymentMethodDialog(
             )
         },
         text = {
+            // Scrolls so both buttons stay visible at large font scales.
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
             )
         },
         dismissButton = {
