@@ -858,7 +858,7 @@ Plans:
 **Goal:** The client Search tab matches iOS SearchExpertView: debounced text search, category chips, sort row, result cards, empty and error states, via `/experts/search`; Explore's "See all" on Featured Experts and Featured Topics switches to the Search tab as on iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 15 code (Phase 16 is paused at 16-03; its sessions A/B run after 16.5 on a build containing all parity work)
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -874,7 +874,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 16.1-06-PLAN.md — Mount the Search tab: Hilt entry, shell searchRoot slot, header placement, StackOrigin.Search profile navigation, D-02/D-03 stack guarantees, phase gate
+- [x] 16.1-06-PLAN.md — Mount the Search tab: Hilt entry, shell searchRoot slot, header placement, StackOrigin.Search profile navigation, D-02/D-03 stack guarantees, phase gate
 
 ### Phase 16.2: iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)
 
