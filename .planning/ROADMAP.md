@@ -881,10 +881,38 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 0 plans
+**Plans:** 12 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16.2 to break down)
+**Wave 1**
+
+- [ ] 16.2-01-PLAN.md — Wire contract: client and expert `PATCH .../reschedule`, request DTOs, repository methods, `exclude_booking_id` on availability, expert `actions.can_reschedule`, fake and wire tests
+- [ ] 16.2-02-PLAN.md — Make a Booking cards parameterized in place for the picker (Current chip, hidden past slots, reschedule paid note, tags) and all `reschedule_start_*` strings (D-01, D-03, D-12)
+- [ ] 16.2-03-PLAN.md — Pure contracts: reschedule rules (D-04, paid cap, current slot, D-11 disclosure end, D-15), picker UI state, `RescheduleSentRequest` hand-off, `RestrictedAction.RescheduleBooking`
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16.2-04-PLAN.md — Proposers: client single saved-card retry with four outcomes, card-free expert propose, propose error mapping (D-06, D-07, D-13)
+- [ ] 16.2-05-PLAN.md — Stateless picker screen, banner, Submit, disclosure and payment dialogs, Reschedule action button and stacking pair (UI-SPEC Screen 1, surface 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16.2-06-PLAN.md — Shared picker controller and client `RescheduleViewModel` / `RescheduleKey`: months, selection rules, disclosure, recovery, no auto-retry, restore, hand-off (D-08, D-09, D-11, D-12)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16.2-07-PLAN.md — Client picker route and Nav3 entry, Reschedule on Upcoming Booking Details, return path and snackbar (D-04, D-05, D-09)
+- [ ] 16.2-08-PLAN.md — Expert picker: own availability, card-free PATCH, no disclosure, key, route and expert-shell entry (D-02, D-14)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 16.2-09-PLAN.md — Reschedule on My Bookings upcoming cards next to Message, My Bookings return path (D-04, D-05, D-09)
+- [ ] 16.2-10-PLAN.md — `can_reschedule`-gated Reschedule on Expert Booking Summary, summary return path (D-10)
+- [ ] 16.2-11-PLAN.md — `can_reschedule`-gated Reschedule on expert upcoming cards, Bookings-list return path (D-10)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 16.2-12-PLAN.md — Phase gate (full suite, ktlint, lint, design rules) and reschedule-start rows in the Phase 16 two-way matrix
 
 ### Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)
 
