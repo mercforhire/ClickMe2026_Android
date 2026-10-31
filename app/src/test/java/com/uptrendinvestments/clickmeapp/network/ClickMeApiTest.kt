@@ -561,6 +561,23 @@ class ClickMeApiTest {
         }
 
     @Test
+    fun getExpertAvailabilityOmitsExcludeBookingIdWhenNull() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"days":[]}}""")
+
+            api.getExpertAvailability("e1", "2026-10", null, null)
+
+            val request = server.takeRequest()
+            assertNull(request.url.queryParameter("exclude_booking_id"))
+            assertEquals(
+                false,
+                request.url.encodedQuery
+                    .orEmpty()
+                    .contains("exclude_booking_id"),
+            )
+        }
+
+    @Test
     fun requestBookingPostsExactStrictBodyAndDecodesBookingId() =
         runTest {
             enqueue(

@@ -189,6 +189,15 @@ class MakeABookingViewModelTest {
         }
 
     @Test
+    fun makeABookingLoadsNeverSendAnExcludeBookingId() =
+        runTest(main.testDispatcher) {
+            vm()
+            runCurrent()
+            assertEquals(3, api.availabilityExcludeBookingIds.size)
+            assertTrue(api.availabilityExcludeBookingIds.all { it == null })
+        }
+
+    @Test
     fun centerSlotsAreGroupedByLocalDateAndOpenDaysIgnorePastSlots() =
         runTest(main.testDispatcher) {
             api.expertAvailabilityHandler = { _, _ ->
