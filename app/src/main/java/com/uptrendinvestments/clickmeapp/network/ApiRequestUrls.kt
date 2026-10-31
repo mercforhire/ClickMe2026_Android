@@ -11,7 +11,7 @@ package com.uptrendinvestments.clickmeapp.network
  * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability. Phase 11 adds the
  * expert request, booking, earnings and payout groups (booking requests, expert bookings, weekly earnings, payout
  * summary and Stripe Connect). Phase 14 adds change password, account deletion, the help FAQ list, the earnings
- * transactions ledger and the expert tax profile.
+ * transactions ledger and the expert tax profile. Phase 16.1 adds the expert search (Search tab).
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -39,6 +39,9 @@ object ApiRequestUrls {
     const val CATEGORIES = "categories"
     const val EXPERT_DETAILS = "experts/{id}/details"
     const val EXPERT_REVIEWS = "experts/{id}/reviews"
+
+    /** Ports iOS `ClickMeAPI+Discovery.searchExperts` (Phase 16.1, Search tab). Authed: not in [publicPaths]. */
+    const val EXPERTS_SEARCH = "experts/search"
 
     // Phase 6: booking (availability, free booking request, client booking detail).
     const val EXPERT_AVAILABILITY = "experts/{id}/availability"
