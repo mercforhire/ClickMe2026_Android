@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 8/12 plans executed
+**Plans:** 11/12 plans executed
 
 Plans:
 **Wave 1**
@@ -906,9 +906,9 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 16.2-09-PLAN.md — Reschedule on My Bookings upcoming cards next to Message, My Bookings return path (D-04, D-05, D-09)
-- [ ] 16.2-10-PLAN.md — `can_reschedule`-gated Reschedule on Expert Booking Summary, summary return path (D-10)
-- [ ] 16.2-11-PLAN.md — `can_reschedule`-gated Reschedule on expert upcoming cards, Bookings-list return path (D-10)
+- [x] 16.2-09-PLAN.md — Reschedule on My Bookings upcoming cards next to Message, My Bookings return path (D-04, D-05, D-09)
+- [x] 16.2-10-PLAN.md — `can_reschedule`-gated Reschedule on Expert Booking Summary, summary return path (D-10)
+- [x] 16.2-11-PLAN.md — `can_reschedule`-gated Reschedule on expert upcoming cards, Bookings-list return path (D-10)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
