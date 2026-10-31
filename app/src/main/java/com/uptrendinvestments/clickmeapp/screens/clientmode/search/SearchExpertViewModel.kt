@@ -146,7 +146,16 @@ class SearchExpertViewModel
                                 sort = request.sort.apiValue,
                             )
                         val loaded = SearchResults.Loaded(rows.map { it.toSearchExpertUi() })
-                        _uiState.update { it.copy(results = loaded, isRefreshing = false) }
+                        // A Fresh search is a new result set, so the screen starts it at the top. A Refresh keeps the
+                        // same rows and so keeps the scroll position.
+                        val revisionStep = if (mode == SearchMode.Fresh) 1 else 0
+                        _uiState.update {
+                            it.copy(
+                                results = loaded,
+                                isRefreshing = false,
+                                searchRevision = it.searchRevision + revisionStep,
+                            )
+                        }
                     } catch (e: ApiException) {
                         if (mode == SearchMode.Refresh) {
                             _uiState.update { it.copy(isRefreshing = false, refreshFailed = true) }

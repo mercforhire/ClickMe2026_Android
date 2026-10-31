@@ -54,7 +54,8 @@ sealed interface SearchResults {
 /**
  * Search tab state. Ports the published properties of iOS `SearchExpertViewModel`. Lives only in the ViewModel and is
  * never written to saved state (D-02). [query] is the raw field text; the request trims it (D-10). [refreshFailed] is
- * one-shot and consumed by the screen (D-09).
+ * one-shot and consumed by the screen (D-09). [searchRevision] counts the Fresh searches that have landed, so the
+ * screen can scroll back to the top for a new result set but not for a tab switch or a pull-to-refresh.
  */
 data class SearchExpertUiState(
     val query: String = "",
@@ -64,6 +65,7 @@ data class SearchExpertUiState(
     val results: SearchResults = SearchResults.Loading,
     val isRefreshing: Boolean = false,
     val refreshFailed: Boolean = false,
+    val searchRevision: Int = 0,
 )
 
 /** Ports iOS `SearchExpertViewModel.map(_:)`: headline "", rating 0, tags []; the name stays null (D-05). */

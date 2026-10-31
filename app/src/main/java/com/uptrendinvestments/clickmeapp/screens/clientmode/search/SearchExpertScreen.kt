@@ -29,8 +29,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -139,6 +143,15 @@ fun SearchExpertContent(
     )
     // Hoisted outside the `when`, so the scroll position survives tab switches and loading cycles (D-03).
     val listState = rememberLazyListState()
+    // A new result set starts at the top. The last revision seen is saveable so that coming back to the tab (a new
+    // composition with the same revision) restores the scroll position instead of resetting it.
+    var seenRevision by rememberSaveable { mutableIntStateOf(state.searchRevision) }
+    LaunchedEffect(state.searchRevision) {
+        if (state.searchRevision != seenRevision) {
+            seenRevision = state.searchRevision
+            listState.scrollToItem(0)
+        }
+    }
 
     Box(modifier.fillMaxSize()) {
         GreenGlowBlobLayer()

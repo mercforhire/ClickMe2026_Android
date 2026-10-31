@@ -357,6 +357,43 @@ class SearchExpertViewModelTest {
         }
 
     @Test
+    fun freshSearchesBumpTheSearchRevisionButRefreshDoesNot() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            val afterFirstLoad = vm.uiState.value.searchRevision
+            assertEquals(1, afterFirstLoad)
+
+            vm.onSortSelected(SearchSort.HighestRated)
+            runCurrent()
+            assertEquals(afterFirstLoad + 1, vm.uiState.value.searchRevision)
+
+            vm.onCategorySelected("design")
+            runCurrent()
+            assertEquals(afterFirstLoad + 2, vm.uiState.value.searchRevision)
+
+            vm.onRefresh()
+            runCurrent()
+            assertEquals(afterFirstLoad + 2, vm.uiState.value.searchRevision)
+        }
+
+    @Test
+    fun failedFreshSearchAndFailedRefreshKeepTheSearchRevision() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            val before = vm.uiState.value.searchRevision
+            api.searchExpertsHandler = { throw IOException() }
+
+            vm.onRefresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertEquals(before, vm.uiState.value.searchRevision)
+
+            vm.onSortSelected(SearchSort.HighestRated)
+            runCurrent()
+            assertEquals(before, vm.uiState.value.searchRevision)
+        }
+
+    @Test
     fun refreshWithNoRowsBehavesAsANewSearch() =
         runTest(main.testDispatcher) {
             stubBrowse()
