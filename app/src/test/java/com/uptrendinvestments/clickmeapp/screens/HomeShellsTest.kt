@@ -53,6 +53,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Explor
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertContent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchResults
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_EXPERT_CARD_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.toProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -77,6 +82,7 @@ import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
+import com.uptrendinvestments.clickmeapp.testing.searchExpertUi
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -648,6 +654,46 @@ class HomeShellsTest {
         composeRule.onNodeWithTag(EXPLORE_EXPERTS_SEE_ALL_TAG).performClick()
         composeRule.onNode(tab("Search")).assertIsSelected()
         composeRule.onNode(tab("Explore")).assertIsNotSelected()
+    }
+
+    @Test
+    fun searchTabRendersTheSearchSlotAndOpensAProfileOnTheSearchStack() {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    searchRoot = { navigator ->
+                        SearchExpertContent(
+                            state = SearchExpertUiState(results = SearchResults.Loaded(listOf(searchExpertUi()))),
+                            onExpertClick = { navigator.navigate(it.toProfileKey("Expert")) },
+                            onRefresh = {},
+                            onRetry = {},
+                            onRefreshFailureConsumed = {},
+                        )
+                    },
+                    detailEntries = { entry<ExpertProfileKey> { Text("profile ${it.expertId} ${it.origin}") } },
+                )
+            }
+        }
+        tapTab("Search")
+        composeRule.onNodeWithTag(SEARCH_EXPERT_CARD_TAG).performClick()
+        composeRule.onNodeWithText("profile e1 Search").assertExists()
+        composeRule.onNode(tab("Search")).assertIsSelected()
+        tapTab("Explore")
+        composeRule.onNodeWithText("profile e1 Search").assertDoesNotExist()
+    }
+
+    @Test
+    fun defaultShellKeepsThePlaceholderOnTheSearchTab() {
+        setClient(showDebug = false)
+        tapTab("Search")
+        composeRule.onNode(tab("Search")).assertIsSelected()
+        composeRule.onNodeWithText("Nothing here yet.").assertExists()
     }
 
     @Test
