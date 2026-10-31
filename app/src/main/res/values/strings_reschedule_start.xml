@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Phase 16.2: starting a reschedule from a booking (client and expert). Every string of the phase lives here;
+        wording follows UI-SPEC's Copywriting Contract (iOS verbatim except the strings marked Android there).
+        Strings reused from other files, not duplicated here: make_a_booking_slots_title, make_a_booking_no_slots,
+        make_a_booking_pick_a_day, reschedule_accept_dialog_charges_soon, reschedule_dialog_cancel,
+        reschedule_payment_needed_title, reschedule_card_unusable_message, reschedule_add_payment_method,
+        reschedule_not_now, reschedule_error_cards_unavailable, reschedule_error_expert_unavailable,
+        expert_reschedule_error_slot_unavailable, reschedule_error_not_found, login_error_network,
+        login_error_unknown, a11y_in_progress.
+    -->
+    <string name="reschedule_start_title">Reschedule</string>
+    <string name="reschedule_start_action">Reschedule</string>
+    <string name="reschedule_start_action_a11y">Reschedule session with %1$s</string>
+    <string name="reschedule_start_submit">Submit Reschedule Request</string>
+    <string name="reschedule_start_submit_disabled_a11y">Choose a new time first</string>
+    <string name="reschedule_start_booking_detail">%1$s · %2$s</string>
+    <string name="reschedule_start_current_banner">Current: %1$s</string>
+    <string name="reschedule_start_current_chip">Current</string>
+    <string name="reschedule_start_current_chip_a11y">Current session time</string>
+    <string name="reschedule_start_paid_window_note">Paid sessions can be rescheduled up to 6 days ahead.</string>
+    <string name="reschedule_start_message_header">Message Text (optional)</string>
+    <string name="reschedule_start_message_hint_client">Let the expert know why you\'d like to move this session.</string>
+    <string name="reschedule_start_message_hint_expert">Let your client know why you\'d like to move this session.</string>
+    <string name="reschedule_start_sent">Reschedule request sent</string>
+    <string name="reschedule_start_load_error_title">Couldn\'t load booking</string>
+    <string name="reschedule_start_client_fallback">Client</string>
+    <string name="reschedule_start_session_fallback">Session</string>
+    <string name="reschedule_start_disclosure_title">Your card hold will be released</string>
+    <string name="reschedule_start_disclosure_message">Because you\'re moving this session more than a few days out, we\'ll release the current payment hold on your card and instead charge it automatically about 24 hours before your new session time. You won\'t be charged today.</string>
+    <string name="reschedule_start_disclosure_continue">Continue</string>
+    <string name="reschedule_start_payment_needed_message">Please add a payment method before rescheduling this session.</string>
+    <string name="reschedule_start_error_title">Couldn\'t reschedule booking</string>
+    <string name="reschedule_start_error_no_slot">Please choose a new time before rescheduling.</string>
+    <string name="reschedule_start_error_current_slot">Please choose a different time than the current session.</string>
+    <string name="reschedule_start_error_outside_window_client">This time is past the payment hold on your original booking. Please cancel and book again to authorize a new payment.</string>
+    <string name="reschedule_start_error_outside_window_expert">This time is past the payment hold on the original booking. Please cancel and ask the client to book a new session.</string>
+    <string name="reschedule_start_error_too_far_ahead">Paid sessions can be rescheduled up to 6 days ahead. Please choose a time within the next 6 days.</string>
+    <string name="reschedule_start_error_time_passed">That time has already passed. Please choose a new time.</string>
+    <string name="reschedule_start_error_invalid_status">This booking can\'t be rescheduled right now.</string>
+</resources>
