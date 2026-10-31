@@ -95,7 +95,7 @@ class SearchExpertViewModelTest {
             val vm = viewModel()
             runCurrent()
 
-            assertTrue(vm.uiState.value.categories.isEmpty())
+            assertEquals(emptyList<SearchCategoryChipUi>(), vm.uiState.value.categories)
             assertTrue(vm.uiState.value.results is SearchResults.Loaded)
         }
 
@@ -109,7 +109,7 @@ class SearchExpertViewModelTest {
             runCurrent()
 
             assertTrue(vm.uiState.value.results is SearchResults.Loaded)
-            assertTrue(vm.uiState.value.categories.isEmpty())
+            assertEquals(emptyList<SearchCategoryChipUi>(), vm.uiState.value.categories)
         }
 
     @Test
