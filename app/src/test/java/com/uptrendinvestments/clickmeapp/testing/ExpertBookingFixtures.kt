@@ -56,6 +56,7 @@ fun expertBookingItem(
     currency: String? = "USD",
     reschedule: RescheduleDto? = null,
     breakdown: EarningsBreakdownDto? = breakdown(),
+    canReschedule: Boolean = false,
 ): ExpertBookingItem =
     ExpertBookingItem(
         bookingId = id,
@@ -71,6 +72,7 @@ fun expertBookingItem(
             ),
         status = ExpertStatusMeta(label = null, code = statusCode),
         reschedule = reschedule,
+        actions = ExpertBookingActionsDto(canReschedule = canReschedule),
     )
 
 @Suppress("LongParameterList")
@@ -88,6 +90,7 @@ fun expertBookingDetail(
     topic: String? = "Algorithms",
     meetingType: String? = "in_app_voice",
     breakdown: EarningsBreakdownDto? = breakdown(),
+    canReschedule: Boolean = false,
 ): ExpertBookingDetail =
     ExpertBookingDetail(
         bookingId = id,
@@ -103,7 +106,7 @@ fun expertBookingDetail(
                 meetingType = meetingType,
             ),
         preparationNotes = notes?.let { PreparationNotesDto(text = it) },
-        actions = ExpertBookingActionsDto(canCancel = canCancel),
+        actions = ExpertBookingActionsDto(canCancel = canCancel, canReschedule = canReschedule),
     )
 
 @Suppress("LongParameterList")
