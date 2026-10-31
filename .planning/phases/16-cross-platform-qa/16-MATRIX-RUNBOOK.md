@@ -36,6 +36,8 @@ Commands may need adapting on One UI (RESEARCH A9); record the command actually 
 
 Later plans add the sessions `preflight`, `session-A`, `batch-A`, `session-B`, `batch-B` and `close-out`.
 
+Phase 16.2 adds rows D1.RS1-D1.RS8 and D2.RS1-D2.RS4; they run on the first Play build that contains Phase 16.2 (after Phase 16.5, per ROADMAP).
+
 ## 0. Pre-flight
 
 Direction `D1` unless stated. Run before any money row.
@@ -111,6 +113,21 @@ Samsung = B (client), iPhone = A (expert). Rows run in order. Amounts follow P0.
 | D1.23 | P7 SC-5 | D1 | Toggle dark mode (phones are portrait-locked, so this is the recreation) while the payment sheet and the challenge are open. | Neither launches twice. The JPY part is `[-] not run: no JPY topic in production`. | H5 log. | [ ] |
 | D1.24 | P8 SC-4 | D1 | A proposes a reschedule on iOS. B accepts one booking and declines another, with and without a reason. Then trigger `PAYMENT_METHOD_REQUIRED` recovery with a saved card and with none. | The booking leaves pending_reschedule; recovery works with a saved card and with none. | Error code and outcome only. | [ ] |
 
+### 2d-R Reschedule start (Phase 16.2)
+
+Android client B proposes; iOS expert A responds. Paid rows end in a void (cancel), never a capture.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D1.RS1 | PARITY #10, D-09 | D1 | Free booking. B taps Reschedule on Upcoming Booking Details, picks a new slot, adds a message and submits. A sees the proposal on iOS and accepts. | B is back on the details with "Reschedule request sent" and "Awaiting expert's response"; A sees the proposal; after the accept the booking shows the new time on both phones. | Outcome per step; booking id first 8. | [ ] |
+| D1.RS2 | D-05, D-09 | D1 | From a My Bookings card on another free booking, B proposes a new slot. A declines on iOS. | The request is sent from the card; after the decline the booking keeps its original time on both phones. | Outcome per step. | [ ] |
+| D1.RS3 | D-01, D-03 | D1 | Paid held booking (P0.9 amount). B opens the picker. Then B proposes a slot inside the 6-day window and inside the auth window; A accepts on iOS. Then B cancels the booking (void). | Days beyond now + 6 days show no dot and their chips are dimmed with "Paid sessions can be rescheduled up to 6 days ahead."; the in-window proposal is accepted; the cancel voids the hold. PAID line, expected end void. | Stripe dashboard status canceled; booking id first 8. | [ ] |
+| D1.RS4 | D-11, RESCHEDULE-PAYMENT-CONVERSION section 2 | D1 | A paid booking authorized at least one day earlier. B picks a slot whose session end is after the card hold expiry and within 6 days. Cancel at the dialog once and confirm nothing changed; propose again and Continue. A accepts on iOS. Then B cancels the converted booking (void). | The "Your card hold will be released" dialog shows before any request (with the sooner-than-24-hours line when under 48 h); Cancel changes nothing; Continue sends; on accept the booking converts and Stripe shows the original PaymentIntent canceled. PAID line, expected end void. Open item: the server's under-24 h conversion message says "choose a later time" while the app shows the fixed "cancel and book again" copy; record which text appears. | Stripe status of the original and any new PaymentIntent (last 6, status only); booking id first 8; the copy seen. | [ ] |
+| D1.RS5 | D-06, D-07, D-08, RESCHEDULE-PAYMENT-CONVERSION section 3.1 | D1 | A paid booking first paid with a one-off PaymentSheet card that was not saved, and B has no saved card. B proposes a reschedule that needs conversion. Follow the "Add a payment method" dialog to Payment Methods, add a card and return. Check that nothing is sent automatically. B taps Submit again. Then cancel the booking (void). | The "Add a payment method" dialog shows; "Add a Payment Method" opens Payment Methods; after returning nothing has been sent; the second Submit succeeds, or shows "The card on file can't be used for this reschedule…" on a second PAYMENT_METHOD_REQUIRED. PAID line, expected end void. | Error codes seen (PAYMENT_METHOD_REQUIRED once or twice) and the outcome; brand and last 4 at most; booking id first 8. | [ ] |
+| D1.RS6 | D-04 | D1 | Look at a booking starting in under 24 h, a pending-approval booking and a booking already pending reschedule, on Upcoming Details and on the My Bookings card. | The Reschedule button is absent in all three cases on both surfaces. | Yes or no per case and surface. | [ ] |
+| D1.RS7 | D-12 | D1 | Open the picker on a confirmed upcoming booking. | The picker opens on the current booking's day; the "Current" chip is disabled and the "Current:" banner shows; past slots are hidden. | Outcome per item. | [ ] |
+| D1.RS8 | RESEARCH Open Question 5 | D1 | A 60-minute booking: B proposes a slot inside a 30-minute gap; A accepts on iOS. | Record whether A's accept returns SLOT_UNAVAILABLE (known behavior, iOS parity). | Error code and outcome only. | [ ] |
+
 ### 2e Capture
 
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
@@ -184,6 +201,17 @@ Samsung = A (expert), iPhone = B (client). Rows run in order. Amounts follow P0.
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
 |---|---|---|---|---|---|---|
 | D2.13 | P11 (d) | D2 | B proposes a reschedule on iOS; A accepts one and declines another from Booking Summary. Then create two back-to-back bookings inside the 30-minute buffer. | Accept and decline both work; the second back-to-back booking fails with SLOT_UNAVAILABLE. | Error code and outcome. | [ ] |
+
+### 4e-R Reschedule start (Phase 16.2)
+
+Android expert A proposes; iOS client B responds. Paid rows end in a void (cancel), never a capture.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D2.RS1 | PARITY #11, D-10 | D2 | A free booking whose Expert Booking Summary shows Reschedule (`can_reschedule` true). A proposes a new slot with a message. B accepts on iOS. | A is back on the summary with "Reschedule request sent" and "Awaiting client's response"; B accepts and the booking shows the new time on both phones. | Outcome per step; booking id first 8. | [ ] |
+| D2.RS2 | PARITY #11, D-10 | D2 | From an expert upcoming card on a paid held booking inside 6 days, A proposes a new slot. B accepts on iOS, which triggers the iOS client-side saved-card recovery. Then A cancels the booking (void). | The proposal is sent from the card; record what the iOS accept does and any error code. PAID line, expected end void. | Error codes and outcome only; Stripe status canceled; booking id first 8. | [ ] |
+| D2.RS3 | locked `can_reschedule` | D2 | Compare a booking where the server reports `can_reschedule` false (for example a completed past booking) with a confirmed upcoming one. | A's Reschedule button is absent on the first and present on the second. | Yes or no per booking. | [ ] |
+| D2.RS4 | D-02 | D2 | On a paid booking A opens the reschedule calendar. | No dot and dimmed chips beyond now + 6 days, with the paid note. | Outcome one line. | [ ] |
 
 ### 4f Payouts (D-05, Android half)
 
