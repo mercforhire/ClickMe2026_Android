@@ -13,9 +13,13 @@ data class ExpertsSearchPayload(
 )
 
 /**
- * One search row. Ports iOS `ExpertSearchResultItem.swift`. Every field except [expertId] is nullable with a default
- * so one bad row cannot fail the list. The remaining RPC columns (experience years, relevance score, the favorite
- * flag owned by Phase 16.3, matched topic ids, total count) are intentionally undeclared and Moshi ignores them.
+ * One search row. Ports iOS `ExpertSearchResultItem.swift`. Every field except [expertId] is nullable with a default,
+ * so a row with a missing or null display field (name, headline, avatar, rating, tags) still decodes and the UI applies
+ * its fallback. [expertId] is required: the RPC returns it as the non-null primary-key `uuid`, and a row without it
+ * cannot be opened, so a row with a missing or null id fails the whole decode (the screen shows its inline error).
+ * [totalReviews] is parsed for iOS parity but the Search card does not show it. The remaining RPC columns (experience
+ * years, relevance score, the favorite flag owned by Phase 16.3, matched topic ids, total count) are intentionally
+ * undeclared and Moshi ignores them.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertSearchResultItem(
