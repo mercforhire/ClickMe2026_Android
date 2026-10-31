@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: "Phase 16 paused at 16-03 Task 3 (preflight session) for iOS parity work"
-last_updated: "2026-10-30T14:22:55.098Z"
+stopped_at: Phase 16.1 context gathered
+last_updated: "2026-10-31T01:30:26.116Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 16 paused for iOS parity phases (16.x)
-state_head: e3ba24acbd8305f1b6c600dac27cc0b0f60d373d
+state_head: 8638496133862e487f7bfcb2d40f3b1af6d889a8
 progress:
-  total_phases: 17
+  total_phases: 22
   completed_phases: 11
   total_plans: 245
-  completed_plans: 234
+  completed_plans: 236
 milestone_name: milestone
 ---
 
@@ -321,6 +321,14 @@ Recent decisions affecting current work:
 | 261028-to1 | Block new long-lead paid bookings (6-day paid window, 422 is an error), route booking/payment_actions push to the booking, dev BASE_URL override + debug localhost cleartext, local Stripe test runbook | 2026-10-28 | b2e3c4d | [261028-to1-block-new-long-lead-paid-bookings-route-](./quick/261028-to1-block-new-long-lead-paid-bookings-route-/) |
 | 261028-ve4 | Adopt backend 261028-uph: LONG_LEAD_NOT_AVAILABLE and RESCHEDULE_TOO_FAR_AHEAD codes, reschedule-accept mapping both sides, runbook sandbox expert done | 2026-10-28 | 3710e61 | [261028-ve4-adopt-backend-261028-uph-contract-new-er](./quick/261028-ve4-adopt-backend-261028-uph-contract-new-er/) |
 
+### Roadmap Evolution
+
+- Phase 16.1 inserted after Phase 16: iOS parity: Search tab and Explore See all (PARITY-AUDIT #1) (URGENT)
+- Phase 16.2 inserted after Phase 16: iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (URGENT)
+- Phase 16.3 inserted after Phase 16: iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (URGENT)
+- Phase 16.4 inserted after Phase 16: iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (URGENT)
+- Phase 16.5 inserted after Phase 16: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (URGENT)
+
 ## Deferred Items
 
 Items acknowledged and carried forward from previous milestone close:
@@ -331,10 +339,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-30T03:36:02.565Z
-Stopped at: 16-03 Task 3 (checkpoint:human-action, preflight session P0.1-P0.10, R1.1-R1.5), paused by the user on 2026-10-30.
+Last session: 2026-10-31T01:30:24.261Z
+Stopped at: Phase 16.1 context gathered
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
 Resume: after the parity phases ship in a new internal-track build, `/gsd-execute-phase 16` (re-run preflight on that build; Task 1 harness re-check).
-Resume file: .planning/phases/16-cross-platform-qa/16-03-PLAN.md
+Resume file: .planning/phases/16.1-ios-parity-search-tab-and-explore-see-all-parity-audit-1/16.1-CONTEXT.md
