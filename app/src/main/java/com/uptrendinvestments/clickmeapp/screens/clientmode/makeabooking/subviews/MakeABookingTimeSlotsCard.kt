@@ -59,11 +59,13 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 private const val DISABLED_ALPHA = 0.38f
+private const val CURRENT_BORDER_ALPHA = 0.55f
 private const val SKELETON_CHIP_COUNT = 4
 private val ChipMinHeight = 48.dp
 private val SkeletonChipWidth = 96.dp
@@ -71,8 +73,29 @@ private val SkeletonChipWidth = 96.dp
 /** Test tag of the paid-window note (quick 261028-to1). */
 const val PAID_WINDOW_NOTE_TEST_TAG = "make_a_booking_paid_window_note"
 
+/** Default test tag prefix of the time slot chips (Make a Booking). */
+const val SLOT_CHIP_TAG_PREFIX = "make_a_booking_slot_"
+
 /** Test tag of the time slot chip that starts at [start]. */
-fun slotChipTestTag(start: Instant): String = "make_a_booking_slot_${start.toEpochMilli()}"
+fun slotChipTestTag(
+    start: Instant,
+    prefix: String = SLOT_CHIP_TAG_PREFIX,
+): String = "$prefix${start.toEpochMilli()}"
+
+/** A slot is the booking's current one when its start is within a second of it (iOS `abs(delta) < 1`). */
+private fun isCurrentSlot(
+    slot: BookingTimeSlot,
+    currentSlotStart: Instant?,
+): Boolean =
+    currentSlotStart != null &&
+        Duration.between(slot.start, currentSlotStart).abs() < Duration.ofSeconds(1)
+
+/** The slots to draw: with [hidePastSlots] the ones that already started are dropped (Make a Booking dims them). */
+private fun visibleSlots(
+    slots: List<BookingTimeSlot>,
+    now: Instant,
+    hidePastSlots: Boolean,
+): List<BookingTimeSlot> = if (hidePastSlots) slots.filter { it.start.isAfter(now) } else slots
 
 /**
  * The time slots card (D-04, D-05, D-07, BOOK-02).
@@ -90,6 +113,12 @@ fun slotChipTestTag(start: Instant): String = "make_a_booking_slot_${start.toEpo
  *
  * After a 409 the ViewModel reloads with the data kept visible, so the list refreshes in place and the taken slot
  * turns dimmed with no skeleton (D-09). [AvailabilityState.Failed] only ever describes the center month (D-07).
+ *
+ * The trailing parameters exist for the Phase 16.2 reschedule picker, the second caller; their defaults keep Make a
+ * Booking unchanged. [title] and [paidWindowNote] / [paidWindowNoteTag] swap the copy and tag. [hidePastSlots] drops
+ * slots that already started instead of dimming them. [currentSlotStart] marks the booking's current time as a shown,
+ * never selectable "Current" chip; it is never synthesized when the availability does not contain it. [slotTagPrefix]
+ * replaces the chip test tag prefix.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -107,10 +136,24 @@ fun MakeABookingTimeSlotsCard(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     latestSelectableStart: Instant? = null,
+    title: String = stringResource(R.string.make_a_booking_slots_title),
+    paidWindowNote: String = stringResource(R.string.make_a_booking_paid_window_note),
+    paidWindowNoteTag: String = PAID_WINDOW_NOTE_TEST_TAG,
+    hidePastSlots: Boolean = false,
+    currentSlotStart: Instant? = null,
+    slotTagPrefix: String = SLOT_CHIP_TAG_PREFIX,
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    val title = stringResource(R.string.make_a_booking_slots_title)
-    val countText = slotsCountText(availability, selectedDate, selectedDateLoaded, now, latestSelectableStart)
+    val countText =
+        slotsCountText(
+            availability,
+            selectedDate,
+            selectedDateLoaded,
+            now,
+            latestSelectableStart,
+            hidePastSlots,
+            currentSlotStart,
+        )
     val dateLabel = formatSlotDateLine(selectedDate, locale)
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -161,8 +204,8 @@ fun MakeABookingTimeSlotsCard(
             )
             if (latestSelectableStart != null) {
                 Text(
-                    text = stringResource(R.string.make_a_booking_paid_window_note),
-                    modifier = Modifier.testTag(PAID_WINDOW_NOTE_TEST_TAG),
+                    text = paidWindowNote,
+                    modifier = Modifier.testTag(paidWindowNoteTag),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.extras.onSurfaceMuted,
                 )
@@ -172,7 +215,7 @@ fun MakeABookingTimeSlotsCard(
                 is AvailabilityState.Failed ->
                     SectionError(message = availability.message.asString(), onRetry = onRetry)
                 is AvailabilityState.Loaded -> {
-                    val slots = availability.slotsByDate[selectedDate].orEmpty()
+                    val slots = visibleSlots(availability.slotsByDate[selectedDate].orEmpty(), now, hidePastSlots)
                     if (!selectedDateLoaded) {
                         Text(
                             text = stringResource(R.string.make_a_booking_pick_a_day),
@@ -194,12 +237,15 @@ fun MakeABookingTimeSlotsCard(
                             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                         ) {
                             slots.forEach { slot ->
+                                val isCurrent = isCurrentSlot(slot, currentSlotStart)
                                 SlotChip(
                                     slot = slot,
                                     label = formatSlotTime(slot.start, zone, timeFormat),
-                                    isSelected = slot.start == selectedSlotStart,
-                                    enabled = slot.isSelectable(now, latestSelectableStart),
+                                    isSelected = slot.start == selectedSlotStart && !isCurrent,
+                                    enabled = !isCurrent && slot.isSelectable(now, latestSelectableStart),
                                     interactive = enabled,
+                                    isCurrent = isCurrent,
+                                    tagPrefix = slotTagPrefix,
                                     onSelect = { onSelectSlot(slot.start) },
                                 )
                             }
@@ -219,13 +265,17 @@ private fun slotsCountText(
     selectedDateLoaded: Boolean,
     now: Instant,
     latestSelectableStart: Instant?,
+    hidePastSlots: Boolean,
+    currentSlotStart: Instant?,
 ): String? {
     if (availability !is AvailabilityState.Loaded || !selectedDateLoaded) return null
     // The clock ticks, but a slot expiring must not re-announce unprompted: count at the moment the day or the
     // availability last changed.
     val countedAt = remember(availability, selectedDate, latestSelectableStart) { now }
     val count =
-        availability.slotsByDate[selectedDate].orEmpty().count { it.isSelectable(countedAt, latestSelectableStart) }
+        visibleSlots(availability.slotsByDate[selectedDate].orEmpty(), countedAt, hidePastSlots).count {
+            !isCurrentSlot(it, currentSlotStart) && it.isSelectable(countedAt, latestSelectableStart)
+        }
     return if (count == 0) {
         stringResource(R.string.make_a_booking_slots_none_a11y)
     } else {
@@ -255,31 +305,39 @@ private fun SlotChip(
     isSelected: Boolean,
     enabled: Boolean,
     interactive: Boolean,
+    isCurrent: Boolean,
+    tagPrefix: String,
     onSelect: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val unavailable = stringResource(R.string.make_a_booking_slot_unavailable)
+    val currentState = stringResource(R.string.reschedule_start_current_chip_a11y)
     val spec = tween<Color>(Motion.CONTROL_STATE_DURATION_MS)
     val fill by animateColorAsState(if (isSelected) colors.primary else Color.Transparent, spec, label = "slotFill")
     val textColor by animateColorAsState(
         targetValue =
             when {
                 isSelected -> colors.onPrimary
-                enabled -> colors.onSurface
+                enabled || isCurrent -> colors.onSurface
                 else -> colors.onSurface.copy(alpha = DISABLED_ALPHA)
             },
         animationSpec = spec,
         label = "slotText",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (enabled) colors.outline else colors.outline.copy(alpha = DISABLED_ALPHA),
+        targetValue =
+            when {
+                isCurrent -> colors.tertiary.copy(alpha = CURRENT_BORDER_ALPHA)
+                enabled -> colors.outline
+                else -> colors.outline.copy(alpha = DISABLED_ALPHA)
+            },
         animationSpec = spec,
         label = "slotBorder",
     )
     Box(
         modifier =
             Modifier
-                .testTag(slotChipTestTag(slot.start))
+                .testTag(slotChipTestTag(slot.start, tagPrefix))
                 .heightIn(min = ChipMinHeight)
                 .widthIn(min = ChipMinHeight)
                 .background(fill, CircleShape)
@@ -289,15 +347,30 @@ private fun SlotChip(
                     enabled = enabled && interactive,
                     role = Role.RadioButton,
                     onClick = onSelect,
-                ).semantics { if (!enabled) stateDescription = unavailable }
-                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                ).semantics {
+                    if (isCurrent) {
+                        stateDescription = currentState
+                    } else if (!enabled) {
+                        stateDescription = unavailable
+                    }
+                }.padding(horizontal = Spacing.md, vertical = Spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = if (isSelected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-            color = textColor,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = label,
+                style = if (isSelected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                color = textColor,
+            )
+            if (isCurrent) {
+                Text(
+                    text = stringResource(R.string.reschedule_start_current_chip),
+                    modifier = Modifier.padding(top = Spacing.xs),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.tertiary,
+                )
+            }
+        }
     }
 }
 
