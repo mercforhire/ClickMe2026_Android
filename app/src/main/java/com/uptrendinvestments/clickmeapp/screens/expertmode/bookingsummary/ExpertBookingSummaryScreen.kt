@@ -129,6 +129,7 @@ fun ExpertBookingSummaryScreen(
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
+    val rescheduleSent by viewModel.rescheduleSent.collectAsStateWithLifecycle()
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
@@ -148,6 +149,8 @@ fun ExpertBookingSummaryScreen(
         onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onReschedule = onReschedule,
+        rescheduleSent = rescheduleSent,
+        onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         onAcceptReschedule = viewModel::acceptReschedule,
         onDeclineReschedule = viewModel::declineReschedule,
         onDismissRescheduleDialog = viewModel::dismissRescheduleDialog,
@@ -182,6 +185,8 @@ fun ExpertBookingSummaryContent(
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
     onReschedule: () -> Unit = {},
+    rescheduleSent: Boolean = false,
+    onRescheduleSentConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -194,6 +199,7 @@ fun ExpertBookingSummaryContent(
     val scope = rememberCoroutineScope()
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
+    val sentMessage = stringResource(R.string.reschedule_start_sent)
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -204,6 +210,13 @@ fun ExpertBookingSummaryContent(
             )
         }
         onRescheduleNoticeConsumed()
+    }
+
+    // D-10: the picker sent a request. Shown once, on the composition scope so consuming the flag keeps the Snackbar.
+    LaunchedEffect(rescheduleSent) {
+        if (!rescheduleSent) return@LaunchedEffect
+        scope.launch { snackbarHostState.showSnackbar(sentMessage) }
+        onRescheduleSentConsumed()
     }
 
     RefreshFailedSnackbarEffect(

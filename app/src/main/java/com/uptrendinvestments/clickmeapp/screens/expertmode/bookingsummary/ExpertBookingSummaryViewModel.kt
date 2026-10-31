@@ -17,6 +17,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isNotFo
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponseController
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -51,6 +54,11 @@ import java.util.Locale
  *
  * Join (D-14): [join] starts the call through the one [CallStarter] with the client as the peer. Cancel is guarded
  * while this booking's call is live ([attemptCancel], D-17).
+ *
+ * Phase 16.2 D-10: when the expert Reschedule picker sends a request it posts to [RescheduleSentRequest.expertSummary]
+ * and pops back here. The notice is consumed in `init` (this ViewModel was recreated) and while alive (the screen was
+ * only covered); either way [rescheduleSent] is raised once and a covered screen reloads quietly so "Awaiting
+ * client's response" shows. Nothing is optimistic: the pending state comes from the server's booking.
  */
 @HiltViewModel(assistedFactory = ExpertBookingSummaryViewModel.Factory::class)
 class ExpertBookingSummaryViewModel
@@ -65,6 +73,7 @@ class ExpertBookingSummaryViewModel
         val callGuard: CallGuard,
         joinClock: JoinClock,
         resumeNotice: CallResumeNotice,
+        private val sentRequest: RescheduleSentRequest,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -101,8 +110,28 @@ class ExpertBookingSummaryViewModel
         /** In-flight, dialog and notice state of the reschedule response. */
         val rescheduleState: StateFlow<RescheduleUiState> = controller.state
 
+        private val _rescheduleSent = MutableStateFlow(false)
+
+        /** True once after the expert picker sent a request for this booking (D-10); the screen shows the snackbar. */
+        val rescheduleSent: StateFlow<Boolean> = _rescheduleSent.asStateFlow()
+
         init {
             startLoad(quiet = false)
+            // D-10: a request sent before this ViewModel existed is consumed here, and the first load is already fresh.
+            // One posted while the screen is covered by the picker forces a quiet reload so the pending state shows.
+            // Only this booking's notice is taken (a summary for another booking leaves it).
+            if (sentRequest.consumeFor(RescheduleOpener.ExpertSummary, bookingId)) {
+                _rescheduleSent.value = true
+            }
+            viewModelScope.launch {
+                sentRequest.expertSummary.pending.filterNotNull().collect {
+                    if (sentRequest.consumeFor(RescheduleOpener.ExpertSummary, bookingId)) {
+                        _rescheduleSent.value = true
+                        // Not optimistic: nothing on screen changes until the server's booking arrives.
+                        startLoad(quiet = _uiState.value.load is ExpertSummaryLoad.Loaded, flagFailure = true)
+                    }
+                }
+            }
             // Only this booking's updates reload; startLoad cancels the previous load, so a burst of events ends with
             // one latest-wins result.
             viewModelScope.launch {
@@ -194,6 +223,11 @@ class ExpertBookingSummaryViewModel
         fun dismissRescheduleDialog() = controller.dismissDialog()
 
         fun consumeRescheduleNotice() = controller.consumeNotice()
+
+        /** The screen showed the "Reschedule request sent" snackbar, so the one-shot is spent. */
+        fun consumeRescheduleSent() {
+            _rescheduleSent.value = false
+        }
 
         /** True when Cancel may open; false (with the guard dialog queued) while this booking's call is live (D-17). */
         fun attemptCancel(): Boolean = callGuard.attemptModifyBooking(bookingId, RestrictedAction.CancelBooking)

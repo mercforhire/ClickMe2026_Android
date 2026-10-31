@@ -38,6 +38,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.RescheduleDto
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -111,6 +112,7 @@ class ExpertBookingSummaryScreenTest {
                 callGuard,
                 JoinClock(clock, CoroutineScope(Job())),
                 CallResumeNotice(),
+                RescheduleSentRequest(),
             )
         val chatEntry = testChatEntryViewModel(api, launch)
         rule.setContent {
@@ -693,5 +695,34 @@ class ExpertBookingSummaryScreenTest {
         rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo().assertIsNotEnabled()
         gate.complete(RescheduleResponseData(bookingId = "b1", status = "confirmed"))
         rule.waitForIdle()
+    }
+
+    @Test
+    fun sentNoticeShowsSnackbarOnce() {
+        var consumed = 0
+        val details = expertBookingDetail(start = start, canReschedule = true).toSummaryDetails(now, Locale.US)
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingSummaryContent(
+                    state = ExpertBookingSummaryUiState(ExpertSummaryLoad.Loaded(details)),
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = now,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAcceptReschedule = {},
+                    onDeclineReschedule = {},
+                    onDismissRescheduleDialog = {},
+                    onRescheduleNoticeConsumed = {},
+                    rescheduleSent = true,
+                    onRescheduleSentConsumed = { consumed++ },
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Reschedule request sent").assertExists()
+        assertEquals(1, consumed)
     }
 }

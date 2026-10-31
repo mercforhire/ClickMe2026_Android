@@ -14,6 +14,9 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingSt
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleSubmitting
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -53,6 +56,7 @@ class ExpertBookingSummaryViewModelTest {
     private val callStarter = FakeCallStarter()
     private val callGuard = FakeCallGuard()
     private val notice = CallResumeNotice()
+    private val sentRequest = RescheduleSentRequest()
 
     private val repository = ExpertBookingsRepository(api)
 
@@ -67,6 +71,7 @@ class ExpertBookingSummaryViewModelTest {
             callGuard,
             JoinClock(clock, joinScope),
             notice,
+            sentRequest,
         )
 
     private fun loaded(vm: ExpertBookingSummaryViewModel): ExpertSummaryDetails =
@@ -92,6 +97,13 @@ class ExpertBookingSummaryViewModelTest {
         assertEquals("Please review my CV", details.preparationNotes)
         assertTrue(details.canCancel)
         assertTrue(details.showsJoin)
+    }
+
+    @Test
+    fun canRescheduleFollowsTheServerFlagOnly() {
+        assertFalse(detail().toSummaryDetails(now, Locale.US).canReschedule)
+        val withFlag = expertBookingDetail(start = start, statusCode = "pending_approval", canReschedule = true)
+        assertTrue(withFlag.toSummaryDetails(now, Locale.US).canReschedule)
     }
 
     @Test
@@ -726,5 +738,59 @@ class ExpertBookingSummaryViewModelTest {
             vm.consumeRescheduleNotice()
 
             assertNull(vm.rescheduleState.value.notice)
+        }
+
+    // ---- Reschedule sent hand-off (Phase 16.2, D-10) ----
+
+    @Test
+    fun postedBeforeCreationConsumedOnce() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            sentRequest.onSent(RescheduleOpener.ExpertSummary, "b1")
+
+            val vm = vm()
+            runCurrent()
+
+            assertTrue(vm.rescheduleSent.value)
+            assertNull(sentRequest.expertSummary.pending.value)
+            assertEquals(1, api.expertBookingDetailsCalls)
+            vm.consumeRescheduleSent()
+            assertFalse(vm.rescheduleSent.value)
+        }
+
+    @Test
+    fun postedWhileAliveReloadsQuietly() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+            assertEquals(1, api.expertBookingDetailsCalls)
+            assertFalse(vm.rescheduleSent.value)
+
+            sentRequest.onSent(RescheduleOpener.ExpertSummary, "b1")
+            // The reload is quiet: the details stay on screen, never the skeleton.
+            assertTrue(vm.uiState.value.load is ExpertSummaryLoad.Loaded)
+            runCurrent()
+
+            assertEquals(2, api.expertBookingDetailsCalls)
+            assertTrue(vm.uiState.value.load is ExpertSummaryLoad.Loaded)
+            assertTrue(vm.rescheduleSent.value)
+            assertNull(sentRequest.expertSummary.pending.value)
+        }
+
+    @Test
+    fun otherBookingOrOpenerNotConsumed() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            sentRequest.onSent(RescheduleOpener.ExpertSummary, "b2")
+            sentRequest.onSent(RescheduleOpener.ExpertBookings, "b1")
+
+            val vm = vm()
+            runCurrent()
+
+            assertFalse(vm.rescheduleSent.value)
+            assertEquals(RescheduleSent("b2"), sentRequest.expertSummary.pending.value)
+            assertEquals(RescheduleSent("b1"), sentRequest.expertBookings.pending.value)
+            assertEquals(1, api.expertBookingDetailsCalls)
         }
 }
