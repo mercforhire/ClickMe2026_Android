@@ -14,6 +14,8 @@ import com.uptrendinvestments.clickmeapp.realtime.RealtimeEvent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository.Companion.TYPE_PAST
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository.Companion.TYPE_UPCOMING
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -53,6 +55,10 @@ import javax.inject.Inject
  * `reviewThanks`. Only that slot is read: a review from Booking Summary belongs to the Booking Summary screen.
  * [reviewedBookingIds] lets the list hide the Past pill for ids reviewed this session.
  *
+ * D-09 reschedule hand-off: a request sent from the picker opened on this screen posts to the `myBookings` slot of
+ * [RescheduleSentRequest]. It is consumed like the review hand-off: raises `rescheduleSent` and, when this ViewModel
+ * is already alive, starts a quiet reload so the card shows its pending state. Not optimistic.
+ *
  * Switching sub-tabs never fetches, since both buckets are always loaded together.
  *
  * Join Call (CALL-01, D-01): [join] starts the call through the one [CallStarter] and [joinNow] is the shared 30 s
@@ -71,6 +77,7 @@ class MyBookingsViewModel
         private val reviewLaunch: ReviewLaunchRequest,
         private val callStarter: CallStarter,
         joinClock: JoinClock,
+        private val sentRequest: RescheduleSentRequest,
     ) : ViewModel() {
         private enum class LoadMode {
             /** Shows the spinner and a failure message. */
@@ -142,6 +149,19 @@ class MyBookingsViewModel
                     }
                 }
             }
+            // D-09: same shape for a reschedule request sent from a card on this screen. Posted before this
+            // ViewModel existed the first load is already fresh; otherwise it forces a quiet reload.
+            if (sentRequest.consumeFor(RescheduleOpener.MyBookings, null)) {
+                _uiState.update { it.copy(rescheduleSent = true) }
+            }
+            viewModelScope.launch {
+                sentRequest.myBookings.pending.filterNotNull().collect {
+                    if (sentRequest.consumeFor(RescheduleOpener.MyBookings, null)) {
+                        _uiState.update { it.copy(rescheduleSent = true) }
+                        startLoad(if (_uiState.value.load is MyBookingsLoad.Loaded) LoadMode.Quiet else LoadMode.Loud)
+                    }
+                }
+            }
         }
 
         /** Starts the call for [item]. The server has the final say on `/join`, so the window is not re-checked (D-02). */
@@ -189,6 +209,10 @@ class MyBookingsViewModel
 
         fun consumeReviewThanks() {
             _uiState.update { it.copy(reviewThanks = false) }
+        }
+
+        fun consumeRescheduleSent() {
+            _uiState.update { it.copy(rescheduleSent = false) }
         }
 
         private fun applyLaunch(

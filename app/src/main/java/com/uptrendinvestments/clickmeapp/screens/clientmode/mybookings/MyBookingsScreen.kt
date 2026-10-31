@@ -55,6 +55,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.PastBookingCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.UpcomingBookingCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.canClientStartReschedule
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -84,6 +85,7 @@ fun MyBookingsScreen(
     onOpenPast: (String) -> Unit,
     onExploreExperts: () -> Unit,
     onLeaveReview: (WriteReviewKey) -> Unit,
+    onReschedule: (bookingId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MyBookingsViewModel = hiltViewModel(),
     chatEntry: ChatEntryViewModel = hiltViewModel(),
@@ -115,6 +117,8 @@ fun MyBookingsScreen(
         onLeaveReview = onLeaveReview,
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = viewModel::consumeReviewThanks,
+        onReschedule = onReschedule,
+        onRescheduleSentShown = viewModel::consumeRescheduleSent,
         messageBusyPeerId = entryState.busyPeerId,
         onMessage = { item ->
             chatEntry.open(ChatPeer(item.expert.id, item.expert.fullName, item.expert.avatarUrl, isExpert = true))
@@ -152,6 +156,8 @@ fun MyBookingsContent(
     onLeaveReview: (WriteReviewKey) -> Unit = {},
     reviewedBookingIds: Set<String> = emptySet(),
     onReviewThanksShown: () -> Unit = {},
+    onReschedule: (String) -> Unit = {},
+    onRescheduleSentShown: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -162,6 +168,7 @@ fun MyBookingsContent(
     val pastListState = rememberLazyListState()
     val refreshFailedMessage = stringResource(R.string.my_bookings_refresh_failed)
     val reviewThanksMessage = stringResource(R.string.review_thanks_snackbar)
+    val rescheduleSentMessage = stringResource(R.string.reschedule_start_sent)
     val noticeMessage =
         when (val notice = state.notice) {
             null -> null
@@ -182,6 +189,13 @@ fun MyBookingsContent(
             // D-19: Short, and launched on the composition scope so consuming the flag does not cancel it.
             scope.launch { snackbarHostState.showSnackbar(reviewThanksMessage, duration = SnackbarDuration.Short) }
             onReviewThanksShown()
+        }
+    }
+    LaunchedEffect(state.rescheduleSent) {
+        if (state.rescheduleSent) {
+            // D-09: Short, launched on the composition scope so consuming the flag does not cancel it.
+            scope.launch { snackbarHostState.showSnackbar(rescheduleSentMessage, duration = SnackbarDuration.Short) }
+            onRescheduleSentShown()
         }
     }
     RefreshFailedSnackbarEffect(
@@ -271,6 +285,7 @@ fun MyBookingsContent(
                         onMessage = onMessage,
                         onLeaveReview = onLeaveReview,
                         reviewedBookingIds = reviewedBookingIds,
+                        onReschedule = onReschedule,
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -297,6 +312,7 @@ private fun TabBody(
     onMessage: (ClientBookingItem) -> Unit,
     onLeaveReview: (WriteReviewKey) -> Unit,
     reviewedBookingIds: Set<String>,
+    onReschedule: (String) -> Unit,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
@@ -341,6 +357,12 @@ private fun TabBody(
                                     zone = zone,
                                     timeFormat = timeFormat,
                                     locale = locale,
+                                    onReschedule =
+                                        if (canClientStartReschedule(item.status, item.startTime, joinNow)) {
+                                            { onReschedule(item.bookingId) }
+                                        } else {
+                                            null
+                                        },
                                 )
                             }
                         BookingsTab.Past ->

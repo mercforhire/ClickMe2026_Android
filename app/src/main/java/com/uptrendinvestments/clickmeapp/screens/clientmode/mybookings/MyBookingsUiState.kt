@@ -25,6 +25,8 @@ sealed interface MyBookingsLoad {
  * @property notice a one-time message handed over by the cancel flow; cleared by `consumeNotice`.
  * @property reviewThanks a review submitted from a Past card brought the user back (D-19); the screen shows the
  *   thank-you snackbar then calls `consumeReviewThanks`.
+ * @property rescheduleSent one-time "Reschedule request sent" notice (Phase 16.2 D-09); cleared by
+ *   `consumeRescheduleSent`.
  */
 data class MyBookingsUiState(
     val load: MyBookingsLoad = MyBookingsLoad.Loading,
@@ -34,4 +36,5 @@ data class MyBookingsUiState(
     val refreshFailed: Boolean = false,
     val notice: BookingsNotice? = null,
     val reviewThanks: Boolean = false,
+    val rescheduleSent: Boolean = false,
 )
