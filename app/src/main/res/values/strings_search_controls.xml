@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Search tab header controls (Phase 16.1): copy from iOS SearchExpertSearchBar, SearchExpertCategoryChips and SearchExpertSortRow. -->
+    <string name="search_field_placeholder">Search for experts</string>
+    <string name="search_field_clear">Clear search</string>
+    <string name="search_chip_all">All</string>
+    <string name="search_sort_by">Sort by</string>
+    <string name="search_sort_most_popular">Most popular</string>
+    <string name="search_sort_highest_rated">Highest rated</string>
+    <string name="search_sort_button_semantics">Sort by %1$s</string>
+</resources>

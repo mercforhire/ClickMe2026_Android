@@ -1,5 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.search
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,7 +88,12 @@ class SearchExpertControlsTest {
         compose.setContent {
             ClickMeTheme {
                 var q by remember { mutableStateOf("") }
-                SearchExpertSearchBar(query = q, onQueryChange = { q = it })
+                // A second focusable, as on the real tab: with the field as the only focusable, Compose hands the
+                // focus straight back to it once the field lets go.
+                Column {
+                    Button(onClick = {}) { Text("Other focusable") }
+                    SearchExpertSearchBar(query = q, onQueryChange = { q = it })
+                }
             }
         }
 
@@ -93,6 +101,7 @@ class SearchExpertControlsTest {
         compose.onNodeWithTag(SEARCH_FIELD_TAG).assertIsFocused()
 
         compose.onNodeWithTag(SEARCH_FIELD_TAG).performImeAction()
+        compose.waitForIdle()
 
         compose.onNodeWithTag(SEARCH_FIELD_TAG).assertIsNotFocused()
     }
