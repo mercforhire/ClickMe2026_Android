@@ -40,6 +40,7 @@ import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
@@ -62,6 +63,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Explor
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchResults
@@ -837,12 +840,13 @@ class HomeShellsTest {
                         )
                         clientBookingManagementEntries(
                             navigator = nav,
-                            upcoming = { key, onBack, onCancel, onOpenPaymentMethods ->
+                            upcoming = { key, onBack, onCancel, onOpenPaymentMethods, onReschedule ->
                                 Column {
                                     Text("fake upcoming ${key.bookingId}")
                                     Button(onClick = onBack) { Text("upcoming back") }
                                     Button(onClick = onCancel) { Text("upcoming cancel") }
                                     Button(onClick = onOpenPaymentMethods) { Text("upcoming add card") }
+                                    Button(onClick = onReschedule) { Text("upcoming reschedule") }
                                 }
                             },
                             cancel = { key, onBack, onCancelled ->
@@ -863,6 +867,13 @@ class HomeShellsTest {
                                         onClick = { onBookAgain(BookingKey("e1", "Ada Lovelace", "Engineer", null)) },
                                     ) { Text("summary book again") }
                                     Button(onClick = onOpenPaymentMethods) { Text("summary add card") }
+                                }
+                            },
+                            reschedule = { key, onBack, onOpenPaymentMethods ->
+                                Column {
+                                    Text("reschedule-stub:${key.bookingId}")
+                                    Button(onClick = onBack) { Text("reschedule back") }
+                                    Button(onClick = onOpenPaymentMethods) { Text("reschedule add card") }
                                 }
                             },
                         )
@@ -954,6 +965,72 @@ class HomeShellsTest {
         composeRule.onNodeWithText("upcoming cancel").performClick()
         composeRule.onNodeWithText("cancel back").performClick()
         composeRule.onNodeWithText("fake upcoming b1").assertExists()
+    }
+
+    @Test
+    fun rescheduleKeyHidesBottomBarAndPops() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open upcoming").performClick()
+        composeRule.onNodeWithText("upcoming reschedule").performClick()
+        composeRule.onNodeWithText("reschedule-stub:b1").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        composeRule.onNodeWithText("reschedule back").performClick()
+        composeRule.onNodeWithText("reschedule-stub:b1").assertDoesNotExist()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+    }
+
+    @Test
+    fun rescheduleOpenPaymentMethodsPushesOnTop() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open upcoming").performClick()
+        composeRule.onNodeWithText("upcoming reschedule").performClick()
+        composeRule.onNodeWithText("reschedule add card").performClick()
+        composeRule.onNodeWithText("fake payment methods").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+        composeRule.onNodeWithText("pm back").performClick()
+        composeRule.onNodeWithText("reschedule-stub:b1").assertExists()
+    }
+
+    @Test
+    fun upcomingOnReschedulePushesPickerWithOriginAndOpener() {
+        var seen: RescheduleKey? = null
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Button(onClick = { navigator.navigate(UpcomingBookingKey("b1", StackOrigin.Chats)) }) {
+                            Text("open chat origin upcoming")
+                        }
+                    },
+                    detailEntries = { nav ->
+                        clientBookingManagementEntries(
+                            navigator = nav,
+                            upcoming = { _, _, _, _, onReschedule ->
+                                Button(onClick = onReschedule) { Text("upcoming reschedule") }
+                            },
+                            cancel = { _, _, _ -> },
+                            summary = { _, _, _, _, _ -> },
+                            reschedule = { key, _, _ ->
+                                seen = key
+                                Text("reschedule-stub:${key.bookingId}")
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        composeRule.onNodeWithText("open chat origin upcoming").performClick()
+        composeRule.onNodeWithText("upcoming reschedule").performClick()
+        composeRule.onNodeWithText("reschedule-stub:b1").assertExists()
+        assertEquals(RescheduleKey("b1", RescheduleOpener.UpcomingDetails, StackOrigin.Chats), seen)
     }
 
     @Test

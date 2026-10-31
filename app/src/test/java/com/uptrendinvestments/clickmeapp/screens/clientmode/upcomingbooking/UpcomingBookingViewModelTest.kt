@@ -18,6 +18,9 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.rescheduleDto
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -56,6 +59,7 @@ class UpcomingBookingViewModelTest {
     private val callStarter = FakeCallStarter()
     private val callGuard = FakeCallGuard()
     private val notice = CallResumeNotice()
+    private val sentRequest = RescheduleSentRequest()
 
     private fun vm(joinScope: CoroutineScope = CoroutineScope(Job() + main.testDispatcher)): UpcomingBookingViewModel {
         val bookings = ClientBookingsRepository(api)
@@ -69,6 +73,7 @@ class UpcomingBookingViewModelTest {
             callGuard,
             JoinClock(clock, joinScope),
             notice,
+            sentRequest,
         )
     }
 
@@ -664,5 +669,70 @@ class UpcomingBookingViewModelTest {
             val vm = vm(backgroundScope)
             runCurrent()
             assertEquals(now, vm.joinNow.value)
+        }
+
+    // ---- Reschedule sent hand-off (Phase 16.2, D-09) ----
+
+    @Test
+    fun postedBeforeCreationIsConsumedOnce() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            sentRequest.onSent(RescheduleOpener.UpcomingDetails, "b1")
+
+            val vm = vm()
+            runCurrent()
+
+            assertTrue(vm.rescheduleSent.value)
+            assertNull(sentRequest.upcomingDetails.pending.value)
+            assertEquals(1, api.clientBookingDetailCalls)
+            vm.consumeRescheduleSent()
+            assertFalse(vm.rescheduleSent.value)
+        }
+
+    @Test
+    fun postedWhileAliveReloadsQuietly() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            val vm = vm()
+            runCurrent()
+            assertEquals(1, api.clientBookingDetailCalls)
+            assertFalse(vm.rescheduleSent.value)
+
+            sentRequest.onSent(RescheduleOpener.UpcomingDetails, "b1")
+            // The reload is quiet: the details stay on screen, never the skeleton.
+            assertTrue(vm.uiState.value is UpcomingBookingUiState.Loaded)
+            runCurrent()
+
+            assertEquals(2, api.clientBookingDetailCalls)
+            assertTrue(vm.uiState.value is UpcomingBookingUiState.Loaded)
+            assertTrue(vm.rescheduleSent.value)
+            assertNull(sentRequest.upcomingDetails.pending.value)
+        }
+
+    @Test
+    fun otherBookingNotConsumed() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            sentRequest.onSent(RescheduleOpener.UpcomingDetails, "b2")
+
+            val vm = vm()
+            runCurrent()
+
+            assertFalse(vm.rescheduleSent.value)
+            assertEquals(RescheduleSent("b2"), sentRequest.upcomingDetails.pending.value)
+            assertEquals(1, api.clientBookingDetailCalls)
+        }
+
+    @Test
+    fun otherOpenersUntouched() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail() }
+            sentRequest.onSent(RescheduleOpener.MyBookings, "b1")
+
+            val vm = vm()
+            runCurrent()
+
+            assertFalse(vm.rescheduleSent.value)
+            assertEquals(RescheduleSent("b1"), sentRequest.myBookings.pending.value)
         }
 }

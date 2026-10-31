@@ -56,7 +56,9 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleOutcomeDialog
 import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
@@ -68,6 +70,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.canClientStartReschedule
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingDateTimeCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingExpertCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingJoinCard
@@ -90,6 +93,9 @@ import java.util.Locale
 /** Test tag on the Cancel Booking button. */
 const val UPCOMING_BOOKING_CANCEL_TAG = "upcoming_booking_cancel"
 
+/** Test tag on the Reschedule button (Phase 16.2). */
+const val UPCOMING_BOOKING_RESCHEDULE_TAG = "upcoming_booking_reschedule"
+
 /** Test tag on the Message Expert button. */
 const val MESSAGE_EXPERT_TAG = "message_expert"
 
@@ -109,7 +115,10 @@ private val DateSkeletonHeight = 128.dp
 
 /**
  * Upcoming Booking Details (BOOK-06), opened from a Today's Sessions or Upcoming card. Port of iOS
- * `UpcomingBookingView` without Reschedule and the private note (DEF-1, Phase 13). Message Expert is present (D-14): it
+ * `UpcomingBookingView` without the private note (DEF-1, Phase 13). Phase 16.2 adds Reschedule: a button at the start of
+ * the row with Cancel Booking at the end (D-05), shown only while [canClientStartReschedule] allows it (D-04: not for
+ * pending approval or pending reschedule, nor within 24 hours of the start) and opening the picker through
+ * [onReschedule]. Message Expert is present (D-14): it
  * opens the chat with the booking's expert through [ChatEntryViewModel].
  *
  * D-01: a pending reschedule proposal shows the shared reschedule card first, which fixes the iOS dead end where the
@@ -126,12 +135,14 @@ fun UpcomingBookingScreen(
     onBack: () -> Unit,
     onCancel: () -> Unit,
     onOpenPaymentMethods: () -> Unit,
+    onReschedule: () -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+    val rescheduleSent by viewModel.rescheduleSent.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 
@@ -156,6 +167,9 @@ fun UpcomingBookingScreen(
         onDismissRescheduleDialog = viewModel::dismissRescheduleDialog,
         onOpenPaymentMethods = onOpenPaymentMethods,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
+        onReschedule = onReschedule,
+        rescheduleSent = rescheduleSent,
+        onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         modifier = modifier,
         messageBusy = entryState.busyPeerId != null,
         onMessage = {
@@ -184,6 +198,9 @@ fun UpcomingBookingContent(
     onOpenPaymentMethods: () -> Unit,
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    onReschedule: () -> Unit = {},
+    rescheduleSent: Boolean = false,
+    onRescheduleSentConsumed: () -> Unit = {},
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -196,6 +213,7 @@ fun UpcomingBookingContent(
     val scope = rememberCoroutineScope()
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
+    val sentMessage = stringResource(R.string.reschedule_start_sent)
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -212,6 +230,13 @@ fun UpcomingBookingContent(
             )
         }
         onRescheduleNoticeConsumed()
+    }
+
+    // D-09: the picker sent a request. Shown once, on the composition scope so consuming the flag keeps the Snackbar.
+    LaunchedEffect(rescheduleSent) {
+        if (!rescheduleSent) return@LaunchedEffect
+        scope.launch { snackbarHostState.showSnackbar(sentMessage) }
+        onRescheduleSentConsumed()
     }
 
     RefreshFailedSnackbarEffect(
@@ -258,6 +283,7 @@ fun UpcomingBookingContent(
                         joinNow = joinNow,
                         onJoin = onJoin,
                         onCancel = onCancel,
+                        onReschedule = onReschedule,
                         onAccept = onAccept,
                         onDecline = onDecline,
                         messageBusy = messageBusy,
@@ -336,6 +362,7 @@ private fun LoadedBody(
     joinNow: Instant,
     onJoin: () -> Unit,
     onCancel: () -> Unit,
+    onReschedule: () -> Unit,
     onAccept: () -> Unit,
     onDecline: (reason: String) -> Unit,
     messageBusy: Boolean,
@@ -418,21 +445,49 @@ private fun LoadedBody(
             enabled = details.expertId != null,
             modifier = Modifier.fillMaxWidth().testTag(MESSAGE_EXPERT_TAG),
         )
-        if (details.canCancel) {
+        // D-04: hidden live at the 24 h mark because it reads the shared 30 s join clock.
+        val showReschedule = canClientStartReschedule(details.status.raw, details.start, joinNow)
+        if (showReschedule || details.canCancel) {
             Spacer(Modifier.height(Spacing.lg))
-            DestructiveOutlinedButton(
-                onClick = onCancel,
-                enabled = !rescheduleState.isSubmitting,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = CancelMinHeight)
-                        .testTag(UPCOMING_BOOKING_CANCEL_TAG),
-            ) {
-                Icon(Icons.Outlined.Cancel, contentDescription = null, modifier = Modifier.size(CancelIconSize))
-                Spacer(Modifier.width(Spacing.sm))
-                Text(stringResource(R.string.upcoming_booking_cancel))
-            }
+            // D-05: Reschedule at the start, Cancel at the end; one alone fills the width.
+            ActionButtonPair(
+                start =
+                    if (showReschedule) {
+                        { buttonModifier ->
+                            RescheduleActionButton(
+                                onClick = onReschedule,
+                                enabled = !rescheduleState.isSubmitting,
+                                modifier = buttonModifier.testTag(UPCOMING_BOOKING_RESCHEDULE_TAG),
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                end =
+                    if (details.canCancel) {
+                        { buttonModifier ->
+                            DestructiveOutlinedButton(
+                                onClick = onCancel,
+                                enabled = !rescheduleState.isSubmitting,
+                                modifier =
+                                    buttonModifier
+                                        .heightIn(min = CancelMinHeight)
+                                        .testTag(UPCOMING_BOOKING_CANCEL_TAG),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Cancel,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(CancelIconSize),
+                                )
+                                Spacer(Modifier.width(Spacing.sm))
+                                Text(stringResource(R.string.upcoming_booking_cancel))
+                            }
+                        }
+                    } else {
+                        null
+                    },
+                gap = Spacing.md,
+            )
         }
     }
 }

@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.StatusTone
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.detailStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_COPY_LINK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_PAYMENT_PILL_TAG
@@ -81,6 +82,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -328,6 +330,7 @@ class UpcomingBookingScreenTest {
         calls: Calls = Calls(),
         joinNow: Instant = detailsStart.minusSeconds(600),
         messageBusy: Boolean = false,
+        rescheduleSent: Boolean = false,
     ): Calls {
         rule.setContent {
             ClickMeTheme {
@@ -344,6 +347,9 @@ class UpcomingBookingScreenTest {
                     onDismissRescheduleDialog = { calls.events += "dismiss" },
                     onOpenPaymentMethods = { calls.events += "paymentMethods" },
                     onRescheduleNoticeConsumed = { calls.events += "consumed" },
+                    onReschedule = { calls.events += "reschedule" },
+                    rescheduleSent = rescheduleSent,
+                    onRescheduleSentConsumed = { calls.events += "sentConsumed" },
                     messageBusy = messageBusy,
                     onMessage = { calls.events += "message" },
                     onRefresh = { calls.events += "refresh" },
@@ -401,6 +407,126 @@ class UpcomingBookingScreenTest {
         rule.onNodeWithText("Waiting for expert to accept").assertExists()
         rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
         rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+    }
+
+    // ---- Reschedule button (Phase 16.2, D-04 / D-05) ----
+
+    @Test
+    fun sentNoticeShowsSnackbarOnce() {
+        val calls = setScreen(loaded(), rescheduleSent = true)
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Reschedule request sent").assertExists()
+        assertEquals(listOf("sentConsumed"), calls.events)
+    }
+
+    @Test
+    fun noSentNoticeShowsNoSnackbar() {
+        val calls = setScreen(loaded())
+        rule.waitForIdle()
+
+        rule.onAllNodesWithText("Reschedule request sent").assertCountEquals(0)
+        assertTrue(calls.events.isEmpty())
+    }
+
+    private val sixHours = Duration.ofHours(6)
+    private val clientNow = detailsStart.minus(Duration.ofDays(3))
+
+    private fun detailsAt(
+        lead: Duration,
+        status: String = "confirmed",
+    ): UpcomingBookingDetails {
+        val start = clientNow.plus(lead)
+        return details(status = status, start = start, end = start.plus(Duration.ofHours(1)))
+    }
+
+    /** Wide enough (411 dp) that the pair shares one row; the default 320 dp window stacks it. */
+    @Test
+    @Config(qualifiers = "w411dp-h900dp")
+    fun confirmedFarOutShowsRescheduleAndCancel() {
+        val calls = setScreen(loaded(detailsAt(Duration.ofDays(3))), joinNow = clientNow)
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertIsEnabled()
+        rule.onNodeWithText("Reschedule").assertExists()
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+
+        val reschedule = rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).getUnclippedBoundsInRoot()
+        val cancel = rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).getUnclippedBoundsInRoot()
+        assertEquals(reschedule.top, cancel.top)
+        assertTrue("Reschedule ends ${reschedule.right}, Cancel starts ${cancel.left}", reschedule.right <= cancel.left)
+
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performClick()
+        assertEquals(listOf("reschedule"), calls.events)
+    }
+
+    @Test
+    fun exactly24hShows() {
+        setScreen(loaded(detailsAt(Duration.ofHours(24))), joinNow = clientNow)
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun under24hHidesAndCancelFillsTheRow() {
+        setScreen(loaded(detailsAt(Duration.ofHours(24).minusMinutes(1))), joinNow = clientNow)
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+        val cancel = rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().getUnclippedBoundsInRoot()
+        val message = rule.onNodeWithTag(MESSAGE_EXPERT_TAG).getUnclippedBoundsInRoot()
+        assertEquals(message.left, cancel.left)
+        assertEquals(message.right, cancel.right)
+    }
+
+    @Test
+    fun hidesLiveWhenTheJoinClockPassesThe24hMark() {
+        var now by mutableStateOf(clientNow)
+        val d = detailsAt(Duration.ofHours(24).plus(sixHours))
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingContent(
+                    state = loaded(d),
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = now,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAccept = {},
+                    onDecline = {},
+                    onDismissRescheduleDialog = {},
+                    onOpenPaymentMethods = {},
+                    onRescheduleNoticeConsumed = {},
+                    zone = zone,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
+        now = clientNow.plus(sixHours).plusSeconds(1)
+        rule.waitForIdle()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun pendingRescheduleHides() {
+        setScreen(loaded(detailsAt(Duration.ofDays(3), status = "pending_reschedule")), joinNow = clientNow)
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun pendingApprovalHides() {
+        setScreen(loaded(detailsAt(Duration.ofDays(3), status = "pending_approval")), joinNow = clientNow)
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun disabledWhileResponseInFlight() {
+        setScreen(
+            loaded(detailsAt(Duration.ofDays(3))),
+            RescheduleUiState(submitting = RescheduleSubmitting.Accepting),
+            joinNow = clientNow,
+        )
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertIsNotEnabled()
     }
 
     @Test
@@ -623,6 +749,7 @@ class UpcomingBookingScreenTest {
             guard,
             JoinClock(MutableClock(detailsStart.minusSeconds(600)), CoroutineScope(Job())),
             CallResumeNotice(),
+            RescheduleSentRequest(),
         )
     }
 
@@ -640,6 +767,7 @@ class UpcomingBookingScreenTest {
                     onBack = {},
                     onCancel = { calls.events += "cancel" },
                     onOpenPaymentMethods = {},
+                    onReschedule = {},
                     chatEntry = chatEntry,
                 )
             }
@@ -716,6 +844,7 @@ class UpcomingBookingScreenTest {
                     onBack = {},
                     onCancel = {},
                     onOpenPaymentMethods = {},
+                    onReschedule = {},
                     chatEntry = chatEntry,
                 )
             }

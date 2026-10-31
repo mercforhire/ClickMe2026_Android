@@ -60,6 +60,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCa
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.profileHubVersionLabel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingViewModel
@@ -182,7 +184,7 @@ fun HomeClientScreen(
                     )
                     clientBookingManagementEntries(
                         navigator = navigator,
-                        upcoming = { key, onBack, onCancel, onOpenPaymentMethods ->
+                        upcoming = { key, onBack, onCancel, onOpenPaymentMethods, onReschedule ->
                             val upcomingViewModel =
                                 hiltViewModel<UpcomingBookingViewModel, UpcomingBookingViewModel.Factory>(
                                     creationCallback = { it.create(key) },
@@ -192,6 +194,7 @@ fun HomeClientScreen(
                                 onBack = onBack,
                                 onCancel = onCancel,
                                 onOpenPaymentMethods = onOpenPaymentMethods,
+                                onReschedule = onReschedule,
                             )
                         },
                         cancel = { key, onBack, onCancelled ->
@@ -216,6 +219,17 @@ fun HomeClientScreen(
                                 onBookAgain = onBookAgain,
                                 onOpenPaymentMethods = onOpenPaymentMethods,
                                 onLeaveReview = onLeaveReview,
+                            )
+                        },
+                        reschedule = { key, onBack, onOpenPaymentMethods ->
+                            val rescheduleViewModel =
+                                hiltViewModel<RescheduleViewModel, RescheduleViewModel.Factory>(
+                                    creationCallback = { it.create(key) },
+                                )
+                            RescheduleScreen(
+                                viewModel = rescheduleViewModel,
+                                onBack = onBack,
+                                onOpenPaymentMethods = onOpenPaymentMethods,
                             )
                         },
                     )
