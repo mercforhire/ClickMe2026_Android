@@ -4,10 +4,10 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: Phase 16 context gathered
+stopped_at: "Phase 16 paused at 16-03 Task 3 (preflight session) for iOS parity work"
 last_updated: "2026-10-30T14:22:55.098Z"
 last_activity: 2026-10-30
-last_activity_desc: Phase 16 execution started
+last_activity_desc: Phase 16 paused for iOS parity phases (16.x)
 state_head: e3ba24acbd8305f1b6c600dac27cc0b0f60d373d
 progress:
   total_phases: 17
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 ## Current Position
 
 Phase: 16 (Cross-Platform QA) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 16
-Last activity: 2026-10-30 — Phase 16 execution started
+Plan: 3 of 8 (16-01, 16-02 complete; 16-03 paused at Task 3)
+Status: PAUSED — Phase 16 waits for the inserted iOS-parity phases (16.x)
+Last activity: 2026-10-30 — preflight paused by the user; full iOS feature parity now required before release, deadline disregarded
 
 Progress: [███████░░░] 65%
 
@@ -332,5 +332,9 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-10-30T03:36:02.565Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-cross-platform-qa/16-CONTEXT.md
+Stopped at: 16-03 Task 3 (checkpoint:human-action, preflight session P0.1-P0.10, R1.1-R1.5), paused by the user on 2026-10-30.
+Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
+Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
+Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
+Resume: after the parity phases ship in a new internal-track build, `/gsd-execute-phase 16` (re-run preflight on that build; Task 1 harness re-check).
+Resume file: .planning/phases/16-cross-platform-qa/16-03-PLAN.md
