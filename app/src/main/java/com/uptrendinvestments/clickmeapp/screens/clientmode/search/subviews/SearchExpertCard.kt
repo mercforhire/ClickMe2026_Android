@@ -65,6 +65,11 @@ internal val SearchAvatarFallbackColor = Color(0xFF1F2E24)
  * Port of iOS `SearchExpertCard`: 80 dp avatar, bold name with the star rating on the right, the headline, the bio
  * only when it is not blank, and at most three tag pills. The whole card is one button for TalkBack with a merged
  * description. Server text renders as plain [Text] only. No fixed height, so it grows with the font scale.
+ *
+ * The bio slot is intentional parity scaffolding: `/experts/search` rows carry no bio today (D-05), so
+ * [SearchExpertUi.bio] is always empty and the bio line never renders. It mirrors the iOS card, which shows the bio
+ * when non-empty, so it is kept rather than deleted. When a backend field appears, map it in `toSearchExpertUi` and add
+ * the bio to the merged TalkBack description below.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

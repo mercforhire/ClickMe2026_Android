@@ -8,8 +8,10 @@ const val ALL_CATEGORIES_SLUG = ""
 
 /**
  * One result row. Ports iOS `ExpertSearchResult`. [name] stays nullable so the UI applies the shared Expert
- * fallback (`R.string.explore_expert_name_fallback`), like `ExpertCardUi`. [bio] is always empty because search rows
- * carry none (D-05).
+ * fallback (`R.string.explore_expert_name_fallback`), like `ExpertCardUi`. [bio] is always empty today because search
+ * rows carry none (D-05). It is kept as parity scaffolding: iOS `ExpertSearchResult` has a `bio` and the iOS card shows
+ * it when non-empty, so the card keeps its (currently unreachable) bio slot and a future backend field only needs to
+ * be mapped in [toSearchExpertUi]. Nothing else depends on it.
  */
 data class SearchExpertUi(
     val expertId: String,
