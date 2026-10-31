@@ -40,6 +40,7 @@ import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
@@ -803,9 +804,6 @@ class HomeShellsTest {
         composeRule.onNode(tab("Explore")).assertIsSelected()
     }
 
-    /** The navigator the shell hands to `detailEntries`, so a test can push a key a fake slot has no button for. */
-    private var shellNavigator: Navigator? = null
-
     private fun setClientWithBookingManagement() {
         composeRule.setContent {
             ClickMeTheme {
@@ -830,7 +828,6 @@ class HomeShellsTest {
                         }
                     },
                     detailEntries = { nav ->
-                        shellNavigator = nav
                         clientBookingFlowEntries(
                             navigator = nav,
                             booking = { _, onBack, _, _ ->
@@ -843,12 +840,13 @@ class HomeShellsTest {
                         )
                         clientBookingManagementEntries(
                             navigator = nav,
-                            upcoming = { key, onBack, onCancel, onOpenPaymentMethods ->
+                            upcoming = { key, onBack, onCancel, onOpenPaymentMethods, onReschedule ->
                                 Column {
                                     Text("fake upcoming ${key.bookingId}")
                                     Button(onClick = onBack) { Text("upcoming back") }
                                     Button(onClick = onCancel) { Text("upcoming cancel") }
                                     Button(onClick = onOpenPaymentMethods) { Text("upcoming add card") }
+                                    Button(onClick = onReschedule) { Text("upcoming reschedule") }
                                 }
                             },
                             cancel = { key, onBack, onCancelled ->
@@ -974,7 +972,7 @@ class HomeShellsTest {
         setClientWithBookingManagement()
         tapTab("Bookings")
         composeRule.onNodeWithText("open upcoming").performClick()
-        composeRule.runOnIdle { shellNavigator!!.navigate(RescheduleKey("b1", RescheduleOpener.UpcomingDetails)) }
+        composeRule.onNodeWithText("upcoming reschedule").performClick()
         composeRule.onNodeWithText("reschedule-stub:b1").assertExists()
         composeRule.onNode(tab("Bookings")).assertDoesNotExist()
         composeRule.onNodeWithText("reschedule back").performClick()
@@ -987,12 +985,52 @@ class HomeShellsTest {
         setClientWithBookingManagement()
         tapTab("Bookings")
         composeRule.onNodeWithText("open upcoming").performClick()
-        composeRule.runOnIdle { shellNavigator!!.navigate(RescheduleKey("b1", RescheduleOpener.UpcomingDetails)) }
+        composeRule.onNodeWithText("upcoming reschedule").performClick()
         composeRule.onNodeWithText("reschedule add card").performClick()
         composeRule.onNodeWithText("fake payment methods").assertExists()
         composeRule.onNode(tab("Bookings")).assertDoesNotExist()
         composeRule.onNodeWithText("pm back").performClick()
         composeRule.onNodeWithText("reschedule-stub:b1").assertExists()
+    }
+
+    @Test
+    fun upcomingOnReschedulePushesPickerWithOriginAndOpener() {
+        var seen: RescheduleKey? = null
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Button(onClick = { navigator.navigate(UpcomingBookingKey("b1", StackOrigin.Chats)) }) {
+                            Text("open chat origin upcoming")
+                        }
+                    },
+                    detailEntries = { nav ->
+                        clientBookingManagementEntries(
+                            navigator = nav,
+                            upcoming = { _, _, _, _, onReschedule ->
+                                Button(onClick = onReschedule) { Text("upcoming reschedule") }
+                            },
+                            cancel = { _, _, _ -> },
+                            summary = { _, _, _, _, _ -> },
+                            reschedule = { key, _, _ ->
+                                seen = key
+                                Text("reschedule-stub:${key.bookingId}")
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        composeRule.onNodeWithText("open chat origin upcoming").performClick()
+        composeRule.onNodeWithText("upcoming reschedule").performClick()
+        composeRule.onNodeWithText("reschedule-stub:b1").assertExists()
+        assertEquals(RescheduleKey("b1", RescheduleOpener.UpcomingDetails, StackOrigin.Chats), seen)
     }
 
     @Test

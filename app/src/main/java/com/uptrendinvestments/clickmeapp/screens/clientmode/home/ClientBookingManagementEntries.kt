@@ -12,6 +12,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Explor
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.SearchRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
@@ -52,6 +53,8 @@ fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot, Sea
  *   screen; Back pops to it and it reloads quietly. [PaymentMethodsKey] stays registered once by
  *   [clientPaymentMethodsEntry], so it is not registered here.
  * - D-12: [upcoming]'s `onCancel` opens the cancel screen for the same booking.
+ * - Phase 16.2 RS-C1: [upcoming]'s `onReschedule` opens the picker with opener `UpcomingDetails` and the details key's
+ *   origin, so a chat-opened booking stays a distinct key.
  * - D-13: [summary]'s `onBookAgain` opens Make a Booking in the same stack.
  * - D-18: [summary]'s `onLeaveReview` pushes Write Review on the same stack as the summary; Back returns to it.
  * - Phase 16.2 D-09: [reschedule] (the picker) pops to its opener.
@@ -64,6 +67,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
         onBack: () -> Unit,
         onCancel: () -> Unit,
         onOpenPaymentMethods: () -> Unit,
+        onReschedule: () -> Unit,
     ) -> Unit,
     cancel: @Composable (
         key: CancelBookingKey,
@@ -92,6 +96,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
             navigator::goBack,
             { navigator.navigate(CancelBookingKey(key.bookingId)) },
             { navigator.navigate(PaymentMethodsKey) },
+            { navigator.navigate(RescheduleKey(key.bookingId, RescheduleOpener.UpcomingDetails, key.origin)) },
         )
     }
     entry<CancelBookingKey>(metadata = BottomBar.hidden()) { key ->

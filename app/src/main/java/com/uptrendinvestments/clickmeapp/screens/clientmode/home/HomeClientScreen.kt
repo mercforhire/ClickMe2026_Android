@@ -184,7 +184,7 @@ fun HomeClientScreen(
                     )
                     clientBookingManagementEntries(
                         navigator = navigator,
-                        upcoming = { key, onBack, onCancel, onOpenPaymentMethods ->
+                        upcoming = { key, onBack, onCancel, onOpenPaymentMethods, onReschedule ->
                             val upcomingViewModel =
                                 hiltViewModel<UpcomingBookingViewModel, UpcomingBookingViewModel.Factory>(
                                     creationCallback = { it.create(key) },
@@ -194,6 +194,7 @@ fun HomeClientScreen(
                                 onBack = onBack,
                                 onCancel = onCancel,
                                 onOpenPaymentMethods = onOpenPaymentMethods,
+                                onReschedule = onReschedule,
                             )
                         },
                         cancel = { key, onBack, onCancelled ->
