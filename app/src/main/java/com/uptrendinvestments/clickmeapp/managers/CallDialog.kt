@@ -16,6 +16,7 @@ enum class RestrictedAction {
     EditAvailability,
     SetUpPayouts,
     RespondToReschedule,
+    RescheduleBooking,
     ChangePassword,
     DeleteAccount,
 }
