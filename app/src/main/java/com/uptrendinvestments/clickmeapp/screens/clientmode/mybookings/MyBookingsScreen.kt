@@ -118,6 +118,7 @@ fun MyBookingsScreen(
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = viewModel::consumeReviewThanks,
         onReschedule = onReschedule,
+        onRescheduleSentShown = viewModel::consumeRescheduleSent,
         messageBusyPeerId = entryState.busyPeerId,
         onMessage = { item ->
             chatEntry.open(ChatPeer(item.expert.id, item.expert.fullName, item.expert.avatarUrl, isExpert = true))
@@ -156,6 +157,7 @@ fun MyBookingsContent(
     reviewedBookingIds: Set<String> = emptySet(),
     onReviewThanksShown: () -> Unit = {},
     onReschedule: (String) -> Unit = {},
+    onRescheduleSentShown: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -166,6 +168,7 @@ fun MyBookingsContent(
     val pastListState = rememberLazyListState()
     val refreshFailedMessage = stringResource(R.string.my_bookings_refresh_failed)
     val reviewThanksMessage = stringResource(R.string.review_thanks_snackbar)
+    val rescheduleSentMessage = stringResource(R.string.reschedule_start_sent)
     val noticeMessage =
         when (val notice = state.notice) {
             null -> null
@@ -186,6 +189,13 @@ fun MyBookingsContent(
             // D-19: Short, and launched on the composition scope so consuming the flag does not cancel it.
             scope.launch { snackbarHostState.showSnackbar(reviewThanksMessage, duration = SnackbarDuration.Short) }
             onReviewThanksShown()
+        }
+    }
+    LaunchedEffect(state.rescheduleSent) {
+        if (state.rescheduleSent) {
+            // D-09: Short, launched on the composition scope so consuming the flag does not cancel it.
+            scope.launch { snackbarHostState.showSnackbar(rescheduleSentMessage, duration = SnackbarDuration.Short) }
+            onRescheduleSentShown()
         }
     }
     RefreshFailedSnackbarEffect(
