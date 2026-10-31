@@ -123,6 +123,35 @@ class SearchApiTest {
         }
 
     @Test
+    fun nullHeavyRowDecodes() =
+        runTest {
+            enqueue(
+                200,
+                """
+                {"status":"success","data":{"experts":[{
+                  "expert_id":"e9",
+                  "full_name":null,
+                  "headline":null,
+                  "avatar_url":null,
+                  "avg_rating":null,
+                  "total_reviews":null,
+                  "expertise_tags":null
+                }]}}
+                """.trimIndent(),
+            )
+
+            val row = repository.search("", null, "relevance").single()
+
+            assertEquals("e9", row.expertId)
+            assertNull(row.fullName)
+            assertNull(row.headline)
+            assertNull(row.avatarUrl)
+            assertNull(row.avgRating)
+            assertNull(row.totalReviews)
+            assertNull(row.expertiseTags)
+        }
+
+    @Test
     fun emptyExpertsDecodesToEmptyList() =
         runTest {
             enqueue(200, """{"status":"success","data":{"experts":[]}}""")

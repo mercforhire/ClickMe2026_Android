@@ -103,6 +103,12 @@ class ApiRequestUrlsTest {
     }
 
     @Test
+    fun phaseSixteenOneSearchConstant_isAuthed() {
+        assertEquals("experts/search", ApiRequestUrls.EXPERTS_SEARCH)
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/experts/search"))
+    }
+
+    @Test
     fun phaseSixConstants_haveExactRelativeValues() {
         assertEquals("experts/{id}/availability", ApiRequestUrls.EXPERT_AVAILABILITY)
         assertEquals("bookings/request", ApiRequestUrls.BOOKING_REQUEST)
