@@ -8,12 +8,16 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/** iOS `searchDebounce`: how long typing must pause before the text search is sent (D-10). */
+internal const val SEARCH_DEBOUNCE_MS = 300L
 
 /**
  * Search tab state machine. Port of iOS `SearchExpertViewModel`.
@@ -47,6 +51,31 @@ class SearchExpertViewModel
         }
 
         /**
+         * Text change from the field (iOS `onSearchTextChanged`). The field keeps the raw [text]; only the request
+         * trims it. The search waits [SEARCH_DEBOUNCE_MS] and every change restarts the wait. There is no check
+         * against the previous query, so a trailing-space edit re-searches as on iOS (D-10).
+         */
+        fun onQueryChange(text: String) {
+            _uiState.update { it.copy(query = text) }
+            runSearch(SearchMode.Fresh, debounce = true)
+        }
+
+        /**
+         * Chip tap (iOS `onCategoryChanged`): single select, searches at once and cancels a pending debounce.
+         * Re-selecting the selected chip re-runs and keeps it selected, with no toggle (D-11).
+         */
+        fun onCategorySelected(slug: String) {
+            _uiState.update { it.copy(selectedCategorySlug = slug) }
+            runSearch(SearchMode.Fresh, debounce = false)
+        }
+
+        /** Sort pick (iOS `onSortChanged`): searches at once, including when the current sort is picked again (D-10). */
+        fun onSortSelected(sort: SearchSort) {
+            _uiState.update { it.copy(sort = sort) }
+            runSearch(SearchMode.Fresh, debounce = false)
+        }
+
+        /**
          * Fills the chip vocabulary from the cached category store. Like iOS, a failure is swallowed so that only the
          * All chip remains (D-11). It never touches `results`.
          */
@@ -65,10 +94,15 @@ class SearchExpertViewModel
         }
 
         /** iOS `performSearch`: every new search shows the skeleton first (D-07) and reads the request at send time. */
-        private fun runSearch(mode: SearchMode) {
+        private fun runSearch(
+            mode: SearchMode,
+            debounce: Boolean = false,
+        ) {
             searchJob?.cancel()
             searchJob =
                 viewModelScope.launch {
+                    // The request values are read after the wait, so the latest trimmed text always wins.
+                    if (debounce) delay(SEARCH_DEBOUNCE_MS)
                     if (mode == SearchMode.Fresh) _uiState.update { it.copy(results = SearchResults.Loading) }
                     val request = _uiState.value
                     try {
