@@ -93,6 +93,35 @@ class ExpertBookingsViewModelTest {
     ) = buildExpertBookingLists(upcoming, past, clock.instant())
 
     @Test
+    fun loadMakesNoPerCardDetailRequests() =
+        runTest(main.testDispatcher) {
+            serve(
+                upcoming =
+                    listOf(
+                        expertBookingItem(
+                            id = "u1",
+                            start = Instant.parse("2026-10-24T18:00:00Z"),
+                            canReschedule = true,
+                        ),
+                        expertBookingItem(
+                            id = "u2",
+                            start = Instant.parse("2026-10-25T18:00:00Z"),
+                            canReschedule = true,
+                        ),
+                    ),
+            )
+            val vm = vm()
+            runCurrent()
+
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+            assertEquals(2, api.expertBookingsCalls)
+            assertEquals(0, api.expertBookingDetailsCalls)
+            assertEquals(0, api.expertAvailabilityCalls)
+            assertEquals(0, api.myAvailabilityCalls)
+            assertEquals(0, api.clientBookingDetailCalls)
+        }
+
+    @Test
     fun loadsBothBucketsTogether() =
         runTest(main.testDispatcher) {
             serve()

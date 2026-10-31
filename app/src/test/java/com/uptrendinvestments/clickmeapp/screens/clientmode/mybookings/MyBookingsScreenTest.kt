@@ -549,6 +549,21 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    fun hidesRescheduleLiveWhenJoinClockPasses24h() {
+        val firstNow = defaultStart.minusSeconds(600)
+        val start = firstNow.plusSeconds(25L * 3600)
+        var now by mutableStateOf(firstNow)
+        show { Content(loaded(upcoming = listOf(bookingItem("b1", start = start))), joinNow = now) }
+        rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).assertExists()
+
+        now = start.minusSeconds(24L * 3600).plusSeconds(1)
+        rule.waitForIdle()
+
+        assertTrue(!existsTag(BOOKING_CARD_RESCHEDULE_TAG))
+        rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).assertExists()
+    }
+
+    @Test
     fun under24hCardUnchanged() {
         val start = defaultStart.minusSeconds(600).plusSeconds(23L * 3600)
         show { Content(loaded(upcoming = listOf(bookingItem("b1", start = start)))) }
