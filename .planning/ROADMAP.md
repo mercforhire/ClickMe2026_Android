@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 11/12 plans executed
+**Plans:** 12/12 plans executed
 
 Plans:
 **Wave 1**
@@ -912,7 +912,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 16.2-12-PLAN.md — Phase gate (full suite, ktlint, lint, design rules) and reschedule-start rows in the Phase 16 two-way matrix
+- [x] 16.2-12-PLAN.md — Phase gate (full suite, ktlint, lint, design rules) and reschedule-start rows in the Phase 16 two-way matrix
 
 ### Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)
 
