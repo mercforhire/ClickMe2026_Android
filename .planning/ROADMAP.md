@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 6/12 plans executed
+**Plans:** 8/12 plans executed
 
 Plans:
 **Wave 1**
@@ -901,8 +901,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 16.2-07-PLAN.md — Client picker route and Nav3 entry, Reschedule on Upcoming Booking Details, return path and snackbar (D-04, D-05, D-09)
-- [ ] 16.2-08-PLAN.md — Expert picker: own availability, card-free PATCH, no disclosure, key, route and expert-shell entry (D-02, D-14)
+- [x] 16.2-07-PLAN.md — Client picker route and Nav3 entry, Reschedule on Upcoming Booking Details, return path and snackbar (D-04, D-05, D-09)
+- [x] 16.2-08-PLAN.md — Expert picker: own availability, card-free PATCH, no disclosure, key, route and expert-shell entry (D-02, D-14)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
