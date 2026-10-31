@@ -29,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,12 +42,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ErrorState
 import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.backgrounds.GreenGlowBlobLayer
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertGlowingIllustration
 import com.uptrendinvestments.clickmeapp.screens.login.asString
@@ -76,6 +80,29 @@ private val EmptyVerticalPadding = 40.dp
 private val EmptyBodyHorizontalPadding = 32.dp
 private val EmptyTextSpacing = 8.dp
 private val EmptyColumnSpacing = 20.dp
+
+/**
+ * Hilt entry of the Search tab root, a port of iOS `SearchExpertView`. The ViewModel is scoped to the SearchRoot Nav3
+ * entry and loads once, so there is deliberately no effect that reloads on appearance: state survives tab switches and
+ * re-taps (D-02, D-03).
+ */
+@Composable
+fun SearchExpertScreen(
+    onOpenExpert: (ExpertProfileKey) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SearchExpertViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val nameFallback = stringResource(R.string.explore_expert_name_fallback)
+    SearchExpertContent(
+        state = state,
+        onExpertClick = { onOpenExpert(it.toProfileKey(nameFallback)) },
+        onRefresh = viewModel::onRefresh,
+        onRetry = viewModel::onRetry,
+        onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
+        modifier = modifier,
+    )
+}
 
 /**
  * Port of iOS `SearchExpertView.content`: the green glow layer, a 20 dp top spacer under the status-bar inset (no app
