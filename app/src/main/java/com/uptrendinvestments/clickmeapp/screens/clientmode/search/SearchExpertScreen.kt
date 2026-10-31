@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -23,9 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -39,10 +43,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ErrorState
+import com.uptrendinvestments.clickmeapp.components.RefreshFailedSnackbarEffect
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.backgrounds.GreenGlowBlobLayer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertGlowingIllustration
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
@@ -69,6 +75,7 @@ private val TopSpacing = 20.dp
 private val EmptyVerticalPadding = 40.dp
 private val EmptyBodyHorizontalPadding = 32.dp
 private val EmptyTextSpacing = 8.dp
+private val EmptyColumnSpacing = 20.dp
 
 /**
  * Port of iOS `SearchExpertView.content`: the green glow layer, a 20 dp top spacer under the status-bar inset (no app
@@ -82,8 +89,16 @@ fun SearchExpertContent(
     onExpertClick: (SearchExpertUi) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
+    onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    RefreshFailedSnackbarEffect(
+        refreshFailed = state.refreshFailed,
+        snackbarHostState = snackbarHostState,
+        onRetry = onRefresh,
+        onShown = onRefreshFailureConsumed,
+    )
     // Hoisted outside the `when`, so the scroll position survives tab switches and loading cycles (D-03).
     val listState = rememberLazyListState()
 
@@ -123,6 +138,9 @@ fun SearchExpertContent(
                 }
             }
         }
+        // In the content, not a shell slot: the slot is offset by the system bars only, so while the search field has
+        // focus the refresh-failed Retry would sit under the keyboard.
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).imePadding())
     }
 }
 
@@ -193,23 +211,29 @@ private fun SearchEmptyResults() {
                 .padding(vertical = EmptyVerticalPadding)
                 .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(EmptyTextSpacing),
+        verticalArrangement = Arrangement.spacedBy(EmptyColumnSpacing),
     ) {
-        Text(
-            text = stringResource(R.string.search_empty_title),
-            modifier = Modifier.semantics { heading() },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = stringResource(R.string.search_empty_body),
-            modifier = Modifier.padding(horizontal = EmptyBodyHorizontalPadding),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.extras.onSurfaceMuted,
-            textAlign = TextAlign.Center,
-        )
+        SearchExpertGlowingIllustration()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(EmptyTextSpacing),
+        ) {
+            Text(
+                text = stringResource(R.string.search_empty_title),
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(R.string.search_empty_body),
+                modifier = Modifier.padding(horizontal = EmptyBodyHorizontalPadding),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.extras.onSurfaceMuted,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
