@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: "16.1"
 current_phase_name: "iOS parity: Search tab and Explore See all (PARITY-AUDIT #1) (INSERTED)"
 status: executing
-stopped_at: Phase 16.1 context gathered
-last_updated: "2026-10-31T02:58:50.341Z"
+stopped_at: Phase 16.2 context gathered
+last_updated: "2026-10-31T04:55:45.237Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 16.1 execution started
-state_head: fc6af6b2442c53181d59b5016b540880ceae9bc9
+state_head: 6ac252f4821ac26fbfe4fa188a0515616e87f131
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 251
-  completed_plans: 236
+  completed_plans: 242
 milestone_name: milestone
 ---
 
@@ -339,10 +339,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-31T01:30:24.261Z
-Stopped at: Phase 16.1 context gathered
+Last session: 2026-10-31T04:55:43.413Z
+Stopped at: Phase 16.2 context gathered
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
 Resume: after the parity phases ship in a new internal-track build, `/gsd-execute-phase 16` (re-run preflight on that build; Task 1 harness re-check).
-Resume file: .planning/phases/16.1-ios-parity-search-tab-and-explore-see-all-parity-audit-1/16.1-CONTEXT.md
+Resume file: .planning/phases/16.2-ios-parity-client-and-expert-reschedule-start-parity-audit-1/16.2-CONTEXT.md
