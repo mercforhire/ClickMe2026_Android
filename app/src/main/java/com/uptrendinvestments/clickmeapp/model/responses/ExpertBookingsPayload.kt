@@ -18,8 +18,9 @@ data class ExpertBookingsPayload(
 /**
  * One expert booking row. Unlike the client feed, [status] is an object and the topic, times and money live under
  * [session]. [reschedule] is non-null only while the booking is `pending_reschedule` and carries the slim block
- * (`proposed_start`, `initiated_by`). The server's private-note preview, action flags and accent color are
- * deliberately not declared; unknown keys are ignored.
+ * (`proposed_start`, `initiated_by`). The server's private-note preview and accent color are deliberately not
+ * declared; unknown keys are ignored. [actions] is declared (Phase 16.2, `can_reschedule`) and defaults to all
+ * false when the key is absent.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertBookingItem(
@@ -28,6 +29,7 @@ data class ExpertBookingItem(
     val session: ExpertBookingSessionDto,
     val status: ExpertStatusMeta,
     val reschedule: RescheduleDto? = null,
+    val actions: ExpertBookingActionsDto = ExpertBookingActionsDto(),
 ) {
     val startTime: Instant get() = session.startTime
     val endTime: Instant get() = session.endTime
@@ -77,9 +79,9 @@ data class ConsultationFeeDto(
 }
 
 /**
- * `GET /expert/bookings/{id}/details`. The private note, the server join flag, the reschedule flag and the message
- * flag are deliberately not declared (the join window is computed on the device, reschedule is deferred and
- * messaging is a later phase).
+ * `GET /expert/bookings/{id}/details`. The private note, the server join flag and the message flag are
+ * deliberately not declared (the join window is computed on the device and messaging is a later phase). The
+ * cancel and reschedule flags are declared on [actions].
  */
 @JsonClass(generateAdapter = true)
 data class ExpertBookingDetail(
@@ -120,8 +122,13 @@ data class PreparationNotesDto(
     val text: String? = null,
 )
 
-/** Only the cancel permission is declared; it gates the Cancel button (RESEARCH C8). */
+/**
+ * The cancel flag gates Cancel Booking (RESEARCH C8) and the reschedule flag gates the expert Reschedule button on
+ * Expert Booking Summary and the expert upcoming card (Phase 16.2, locked). The server is the authority; a missing
+ * key hides the button.
+ */
 @JsonClass(generateAdapter = true)
 data class ExpertBookingActionsDto(
     @Json(name = "can_cancel") val canCancel: Boolean = false,
+    @Json(name = "can_reschedule") val canReschedule: Boolean = false,
 )

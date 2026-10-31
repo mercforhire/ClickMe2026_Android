@@ -93,6 +93,70 @@ class ExpertBookingsApiTest {
             """"can_cancel":true,"can_message":true}}}"""
     }
 
+    private fun feedPayload(item: String) =
+        """{"status":"success","data":{"view_state":"populated","bookings":[$item],""" +
+            """"pagination":{"total_count":1,"total_pages":1,"current_page":1}}}"""
+
+    @Test
+    fun listRowDecodesCanReschedule() =
+        runTest {
+            val withActions =
+                feedItem.replace(
+                    """"actions":{"can_join":false,"can_reschedule":true,"can_message":true}""",
+                    """"actions":{"can_cancel":true,"can_reschedule":true,"can_message":true}""",
+                )
+            enqueue(200, feedPayload(withActions))
+
+            val item = repository.list(ExpertBookingsRepository.TYPE_UPCOMING).bookings.single()
+
+            assertTrue(item.actions.canReschedule)
+            assertTrue(item.actions.canCancel)
+        }
+
+    @Test
+    fun listRowWithoutActionsDefaultsToFalse() =
+        runTest {
+            val withoutActions =
+                feedItem.replace(
+                    """"actions":{"can_join":false,"can_reschedule":true,"can_message":true},""",
+                    "",
+                )
+            enqueue(200, feedPayload(withoutActions))
+
+            val item = repository.list(ExpertBookingsRepository.TYPE_UPCOMING).bookings.single()
+
+            assertFalse(item.actions.canReschedule)
+            assertFalse(item.actions.canCancel)
+        }
+
+    @Test
+    fun detailDecodesCanReschedule() =
+        runTest {
+            enqueue(
+                200,
+                detailJson().replace(
+                    """"actions":{"can_join":false,"can_reschedule":true,""" +
+                        """"can_cancel":true,"can_message":true}""",
+                    """"actions":{"can_cancel":false,"can_reschedule":true}""",
+                ),
+            )
+            enqueue(
+                200,
+                detailJson().replace(
+                    """"actions":{"can_join":false,"can_reschedule":true,""" +
+                        """"can_cancel":true,"can_message":true}""",
+                    """"actions":{"can_cancel":false}""",
+                ),
+            )
+
+            val withFlag = repository.detail("abc")
+            val withoutFlag = repository.detail("abc")
+
+            assertTrue(withFlag.actions.canReschedule)
+            assertFalse(withFlag.actions.canCancel)
+            assertFalse(withoutFlag.actions.canReschedule)
+        }
+
     @Test
     fun feedSendsTypePageLimitAndDecodesStatusObject() =
         runTest {

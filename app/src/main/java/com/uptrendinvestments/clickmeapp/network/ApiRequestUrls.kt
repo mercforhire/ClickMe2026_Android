@@ -61,6 +61,9 @@ object ApiRequestUrls {
     const val CLIENT_BOOKING_ACCEPT_RESCHEDULE = "client/bookings/{id}/accept-reschedule"
     const val CLIENT_BOOKING_DECLINE_RESCHEDULE = "client/bookings/{id}/decline-reschedule"
 
+    // Phase 16.2: start a reschedule (PARITY-AUDIT #10 / #11).
+    const val CLIENT_BOOKING_RESCHEDULE = "client/bookings/{id}/reschedule"
+
     // Phase 9: calls (join, confirm connection, end).
     const val BOOKING_JOIN = "bookings/{id}/join"
     const val BOOKING_CONFIRM_CONNECTION = "bookings/{id}/confirm-connection"
@@ -90,6 +93,9 @@ object ApiRequestUrls {
     const val EXPERT_BOOKING_CANCEL = "expert/bookings/{id}/cancel"
     const val EXPERT_BOOKING_ACCEPT_RESCHEDULE = "expert/bookings/{id}/accept-reschedule"
     const val EXPERT_BOOKING_DECLINE_RESCHEDULE = "expert/bookings/{id}/decline-reschedule"
+
+    // Phase 16.2: start a reschedule (PARITY-AUDIT #10 / #11).
+    const val EXPERT_BOOKING_RESCHEDULE = "expert/bookings/{id}/reschedule"
     const val EXPERT_EARNINGS_WEEKLY = "expert/earnings/weekly"
     const val EXPERT_PAYOUTS_SUMMARY = "expert/payouts/summary"
     const val EXPERT_CONNECT_STATUS = "expert/connect/status"

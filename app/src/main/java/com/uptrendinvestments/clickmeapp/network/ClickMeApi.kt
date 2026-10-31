@@ -13,12 +13,14 @@ import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBod
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeleteAccountRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ExpertRescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
+import com.uptrendinvestments.clickmeapp.model.requests.RescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
@@ -113,7 +115,8 @@ import retrofit2.http.Query
  * Phase 9 adds the call group (join, confirm connection, end). Phase 10 adds expert topics (create, update, delete),
  * the expert's own weekly availability and the profile-tags update. Phase 14 adds nine endpoints: the profile
  * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
- * earnings transactions ledger and the expert tax profile (get and save). Other API groups arrive with their
+ * earnings transactions ledger and the expert tax profile (get and save). Phase 16.2 adds the two
+ * reschedule-propose PATCH calls. Other API groups arrive with their
  * features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -245,13 +248,17 @@ interface ClickMeApi {
     /**
      * Ports iOS ClickMeAPI+Availability getExpertAvailability. [month] is `YearMonth.toString()`
      * (`yyyy-MM`). [topicId] null omits the parameter; Phase 6 always passes null (D-07 iOS parity). The
-     * backend narrows the grid to the topic duration when it is present.
+     * backend narrows the grid to the topic duration when it is present. [excludeBookingId] null omits the
+     * parameter; the reschedule pickers pass the booking being moved so its own cell and buffer cells are not
+     * grayed (backend quick 260804-qo6; an iOS deviation recorded in 16.2 RESEARCH Open Question 3). Make a
+     * Booking passes null.
      */
     @GET(ApiRequestUrls.EXPERT_AVAILABILITY)
     suspend fun getExpertAvailability(
         @Path("id") expertId: String,
         @Query("month") month: String,
         @Query("topic_id") topicId: String?,
+        @Query("exclude_booking_id") excludeBookingId: String?,
     ): SuccessDataResponse<ExpertAvailabilityData>
 
     /** Ports iOS ClickMeAPI+Booking requestBooking. Free path only (the paid path is [confirmBooking]); 201 on success. */
@@ -330,6 +337,17 @@ interface ClickMeApi {
     suspend fun declineClientReschedule(
         @Path("id") bookingId: String,
         @Body body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports the iOS client propose-a-reschedule call. The backend `rescheduleSchema` is `.strict()` (unknown keys
+     * are a 422), so [RescheduleProposalRequest] holds only the four schema keys. The response data is
+     * `{booking_id, status}`.
+     */
+    @PATCH(ApiRequestUrls.CLIENT_BOOKING_RESCHEDULE)
+    suspend fun rescheduleClientBooking(
+        @Path("id") bookingId: String,
+        @Body body: RescheduleProposalRequest,
     ): SuccessDataResponse<RescheduleResponseData>
 
     /**
@@ -480,6 +498,17 @@ interface ClickMeApi {
     suspend fun declineExpertReschedule(
         @Path("id") bookingId: String,
         @Body body: DeclineRescheduleRequest,
+    ): SuccessDataResponse<RescheduleResponseData>
+
+    /**
+     * Ports the iOS expert propose-a-reschedule call. The backend `rescheduleSchema` is `.strict()` and
+     * [ExpertRescheduleProposalRequest] has no card property (experts are never charged). The response data is
+     * `{booking_id, status}`.
+     */
+    @PATCH(ApiRequestUrls.EXPERT_BOOKING_RESCHEDULE)
+    suspend fun rescheduleExpertBooking(
+        @Path("id") bookingId: String,
+        @Body body: ExpertRescheduleProposalRequest,
     ): SuccessDataResponse<RescheduleResponseData>
 
     /**
