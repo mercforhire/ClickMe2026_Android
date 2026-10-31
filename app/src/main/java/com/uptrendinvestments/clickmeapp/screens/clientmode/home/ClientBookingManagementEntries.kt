@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.Booki
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.SearchRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
@@ -24,11 +25,20 @@ fun Navigator.openBookingSummary(bookingId: String) = navigate(BookingSummaryKey
  * Mirrors iOS `showMyBookings`: resets the Explore and Bookings stacks, then selects Bookings. Both stacks are
  * cleared so no details or cancel screen of a cancelled booking stays reachable by Back, whichever tab the flow
  * started from (D-07, RESEARCH Pattern 3, Pitfall 10).
+ *
+ * Also resets the Search stack, a deliberate Android deviation (user decision 2026-10-30): iOS leaves `searchPath`
+ * alone, which would park Request Sent (bottom bar hidden) or an Expert Profile on the Search stack after a booking
+ * started from Search. [SearchRoot] itself is kept, so the Search ViewModel and its query survive (D-02).
  */
-fun Navigator.showMyBookings() = resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, ClientBookingsRoot))
+fun Navigator.showMyBookings() = resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, SearchRoot, ClientBookingsRoot))
 
-/** Mirrors iOS `returnToHome`: resets Explore to its root, then selects Explore (D-11, "Explore Experts"). */
-fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot))
+/**
+ * Mirrors iOS `returnToHome`: resets Explore to its root, then selects Explore (D-11, "Explore Experts").
+ *
+ * Also resets the Search stack, the same deliberate Android deviation as [showMyBookings] (user decision
+ * 2026-10-30): a booking started from Search must not leave Request Sent parked there. [SearchRoot] is kept (D-02).
+ */
+fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot, SearchRoot))
 
 /**
  * Registers the booking-management routes ([UpcomingBookingKey], [CancelBookingKey], [BookingSummaryKey]) in the
