@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ExpertRescheduleBadge
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
@@ -67,6 +69,9 @@ const val EXPERT_BOOKINGS_JOIN_TAG = "expert_bookings_join"
 /** Test tag on the Message icon button of an expert Upcoming card. */
 const val EXPERT_BOOKINGS_MESSAGE_TAG = "expert_bookings_message"
 
+/** Test tag on the Reschedule button of an expert Upcoming card (shown when the list row allows it). */
+const val EXPERT_BOOKINGS_RESCHEDULE_TAG = "expert_bookings_reschedule"
+
 private val MessageIconTarget = 56.dp
 private val IconSize = 20.dp
 private val AvatarSize = 56.dp
@@ -85,14 +90,17 @@ internal fun ExpertBookingItem.netEarningsText(locale: Locale): String? {
 
 /**
  * An expert Upcoming booking card (iOS expert session card, UI-SPEC surface 5). The card body opens the expert Booking
- * Summary; Join is its own target, live within the join window (D-14), with the icon-form Message beside it (Phase 12
- * D-14). There is no Reschedule or Private Note control (DEF-1, Phase 8 D-16).
+ * Summary; Join is its own target, live within the join window (D-14). By default the icon-form Message sits beside
+ * Join (Phase 12 D-14). Reschedule is shown when the caller passes [onReschedule] (Phase 16.2, gated by the list
+ * row's `actions.can_reschedule`): Join then fills the first row and the second row holds the text-form Message at the
+ * start and Reschedule at the end (iOS expert order). Private Note is still not on the card (Phase 8 D-16).
  *
  * @param now the shared join clock value; drives the Join button and the "Starting now" badge.
  * @param onOpen opens the summary; tapping Join does not.
  * @param onJoin starts the call with the client as the peer.
  * @param messageBusy true while the chat with this client is being opened; Message shows a spinner and ignores taps.
  * @param onMessage opens the chat with the client; tapping it does not open the summary.
+ * @param onReschedule opens the expert Reschedule picker; null hides the control. Tapping it does not open the summary.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
  */
@@ -109,6 +117,7 @@ fun ExpertUpcomingCard(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
+    onReschedule: (() -> Unit)? = null,
 ) {
     val earnings = item.netEarningsText(locale)
     Surface(
@@ -190,25 +199,52 @@ fun ExpertUpcomingCard(
                     initiatedByClient = item.reschedule?.initiatedBy == RESCHEDULE_INITIATED_BY_CLIENT,
                 )
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            val clientName = clientDisplayName(item.client.name)
+            val joinEnabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now)
+            if (onReschedule == null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    JoinCallButton(
+                        enabled = joinEnabled,
+                        onClick = onJoin,
+                        modifier = Modifier.weight(1f).testTag(EXPERT_BOOKINGS_JOIN_TAG),
+                    )
+                    val messageLabel = stringResource(R.string.chat_entry_message_name, clientName)
+                    MessageButton(
+                        label = messageLabel,
+                        onClick = onMessage,
+                        modifier = Modifier.testTag(EXPERT_BOOKINGS_MESSAGE_TAG),
+                        busy = messageBusy,
+                        variant = MessageButtonVariant.Icon,
+                        contentDescription = messageLabel,
+                        iconTarget = MessageIconTarget,
+                    )
+                }
+            } else {
                 JoinCallButton(
-                    enabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now),
+                    enabled = joinEnabled,
                     onClick = onJoin,
-                    modifier = Modifier.weight(1f).testTag(EXPERT_BOOKINGS_JOIN_TAG),
+                    modifier = Modifier.fillMaxWidth().testTag(EXPERT_BOOKINGS_JOIN_TAG),
                 )
-                val messageLabel =
-                    stringResource(R.string.chat_entry_message_name, clientDisplayName(item.client.name))
-                MessageButton(
-                    label = messageLabel,
-                    onClick = onMessage,
-                    modifier = Modifier.testTag(EXPERT_BOOKINGS_MESSAGE_TAG),
-                    busy = messageBusy,
-                    variant = MessageButtonVariant.Icon,
-                    contentDescription = messageLabel,
-                    iconTarget = MessageIconTarget,
+                ActionButtonPair(
+                    start = {
+                        MessageButton(
+                            label = stringResource(R.string.chat_entry_message),
+                            onClick = onMessage,
+                            modifier = it.testTag(EXPERT_BOOKINGS_MESSAGE_TAG),
+                            busy = messageBusy,
+                        )
+                    },
+                    end = {
+                        RescheduleActionButton(
+                            onClick = onReschedule,
+                            modifier = it.testTag(EXPERT_BOOKINGS_RESCHEDULE_TAG),
+                            contentDescription = stringResource(R.string.reschedule_start_action_a11y, clientName),
+                        )
+                    },
+                    gap = Spacing.sm,
                 )
             }
         }

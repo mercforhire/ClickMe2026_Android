@@ -85,11 +85,14 @@ private val TabMinHeight = 48.dp
  *
  * @param onOpenBooking opens the expert Booking Summary for a booking id.
  * @param onUpdateAvailability opens Availability from the empty Upcoming state.
+ * @param onReschedule opens the expert Reschedule picker for a booking id (Phase 16.2); only called for rows whose
+ *   `actions.can_reschedule` is true.
  */
 @Composable
 fun ExpertBookingsScreen(
     onOpenBooking: (String) -> Unit,
     onUpdateAvailability: () -> Unit,
+    onReschedule: (bookingId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertBookingsViewModel = hiltViewModel(),
     chatEntry: ChatEntryViewModel = hiltViewModel(),
@@ -116,6 +119,7 @@ fun ExpertBookingsScreen(
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
         modifier = modifier,
         messageBusyPeerId = entryState.busyPeerId,
+        onReschedule = onReschedule,
         onMessage = { item ->
             chatEntry.open(ChatPeer(item.client.id, item.client.name, item.client.avatarUrl, isExpert = false))
         },
@@ -125,9 +129,10 @@ fun ExpertBookingsScreen(
 
 /**
  * Stateless expert Bookings tab: app bar, full-width Upcoming / Past tabs, pull-to-refresh and the list of the
- * selected tab (UI-SPEC surface 5). Cards offer the D-14 and D-15 actions only: tapping opens the summary, Join is
- * live within the join window and Upcoming cards carry the Message icon. [messageBusyPeerId] is the client whose chat
- * is being opened; [onMessage] opens it.
+ * selected tab (UI-SPEC surface 5). Cards offer the D-14 and D-15 actions: tapping opens the summary, Join is live
+ * within the join window and Upcoming cards carry Message. [messageBusyPeerId] is the client whose chat is being
+ * opened; [onMessage] opens it. An Upcoming card also offers Reschedule ([onReschedule]) when the list row's
+ * `actions.can_reschedule` is true (Phase 16.2); the server flag is the only gate.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Suppress("LongParameterList")
@@ -149,6 +154,7 @@ fun ExpertBookingsContent(
     locale: Locale = LocalConfiguration.current.locales[0],
     messageBusyPeerId: String? = null,
     onMessage: (ExpertBookingItem) -> Unit = {},
+    onReschedule: (String) -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -243,6 +249,7 @@ fun ExpertBookingsContent(
                         locale = locale,
                         messageBusyPeerId = messageBusyPeerId,
                         onMessage = onMessage,
+                        onReschedule = onReschedule,
                     )
                 }
             }
@@ -266,6 +273,7 @@ private fun ExpertBookingsTabBody(
     locale: Locale,
     messageBusyPeerId: String?,
     onMessage: (ExpertBookingItem) -> Unit,
+    onReschedule: (String) -> Unit,
 ) {
     when (val load = state.load) {
         ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = tab == BookingsTab.Past)
@@ -292,6 +300,7 @@ private fun ExpertBookingsTabBody(
                     locale = locale,
                     messageBusyPeerId = messageBusyPeerId,
                     onMessage = onMessage,
+                    onReschedule = onReschedule,
                 )
             }
         }
@@ -311,6 +320,7 @@ private fun ExpertBookingsList(
     locale: Locale,
     messageBusyPeerId: String?,
     onMessage: (ExpertBookingItem) -> Unit,
+    onReschedule: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
@@ -332,6 +342,8 @@ private fun ExpertBookingsList(
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
+                        onReschedule =
+                            if (item.actions.canReschedule) ({ onReschedule(item.bookingId) }) else null,
                     )
                 }
             BookingsTab.Past ->

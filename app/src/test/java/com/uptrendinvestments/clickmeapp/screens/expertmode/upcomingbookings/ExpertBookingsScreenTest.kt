@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -33,6 +34,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsT
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_MESSAGE_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_RESCHEDULE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -91,7 +93,10 @@ class ExpertBookingsScreenTest {
             JoinClock(clock, CoroutineScope(Job())),
         )
 
-    private fun show(onOpenBooking: (String) -> Unit = {}) {
+    private fun show(
+        onOpenBooking: (String) -> Unit = {},
+        onReschedule: (String) -> Unit = {},
+    ) {
         val vm = viewModel()
         val chatEntry = testChatEntryViewModel(api, chatLaunch)
         rule.setContent {
@@ -99,6 +104,7 @@ class ExpertBookingsScreenTest {
                 ExpertBookingsScreen(
                     onOpenBooking = onOpenBooking,
                     onUpdateAvailability = {},
+                    onReschedule = onReschedule,
                     viewModel = vm,
                     chatEntry = chatEntry,
                 )
@@ -134,6 +140,64 @@ class ExpertBookingsScreenTest {
         assertEquals("c1", key?.peerId)
         assertEquals(false, key?.peerIsExpert)
         assertEquals(0, opened)
+    }
+
+    @Test
+    fun flaggedCardShowsMessageThenReschedule() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)))
+        show()
+
+        rule.onNodeWithTag(EXPERT_BOOKINGS_JOIN_TAG).assertExists()
+        rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).assertExists()
+        rule.onNodeWithText("Message").assertExists()
+        rule.onNodeWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).assertExists()
+        rule.onNodeWithText("Reschedule").assertExists()
+        rule.onNodeWithContentDescription("Reschedule session with Ada Lovelace").assertExists()
+
+        val join = rule.onNodeWithTag(EXPERT_BOOKINGS_JOIN_TAG).getBoundsInRoot()
+        val message = rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).getBoundsInRoot()
+        val reschedule = rule.onNodeWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).getBoundsInRoot()
+        assertTrue("Message sits below Join", message.top >= join.bottom)
+        assertTrue("Message is left of Reschedule", message.right <= reschedule.left)
+        assertEquals(message.top, reschedule.top)
+    }
+
+    @Test
+    fun rescheduleClickDoesNotOpenSummary() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)))
+        val opened = mutableListOf<String>()
+        val rescheduled = mutableListOf<String>()
+        show(onOpenBooking = { opened += it }, onReschedule = { rescheduled += it })
+
+        rule.onNodeWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).performClick()
+
+        assertEquals(listOf("b1"), rescheduled)
+        assertEquals(emptyList<String>(), opened)
+    }
+
+    @Test
+    fun unflaggedCardUnchanged() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), canReschedule = false)))
+        show()
+
+        rule.onAllNodesWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).assertCountEquals(0)
+        rule.onNodeWithContentDescription("Message Ada Lovelace").assertExists()
+        assertEquals(0, rule.onAllNodesWithText("Message").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun mixedListShowsOneReschedule() {
+        serve(
+            upcoming =
+                listOf(
+                    expertBookingItem(id = "b1", start = now.plusSeconds(1800), canReschedule = true),
+                    expertBookingItem(id = "b2", start = now.plusSeconds(7200), canReschedule = false),
+                ),
+        )
+        show()
+
+        rule.onAllNodesWithTag(EXPERT_UPCOMING_CARD_TAG).assertCountEquals(2)
+        rule.onAllNodesWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).assertCountEquals(1)
     }
 
     @Test
@@ -291,6 +355,7 @@ class ExpertBookingsScreenTest {
                 ExpertBookingsScreen(
                     onOpenBooking = {},
                     onUpdateAvailability = { availability++ },
+                    onReschedule = {},
                     viewModel = vm,
                     chatEntry = chatEntry,
                 )
