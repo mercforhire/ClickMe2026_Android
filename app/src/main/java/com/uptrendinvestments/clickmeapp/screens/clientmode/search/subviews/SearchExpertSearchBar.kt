@@ -19,8 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,8 +62,11 @@ fun SearchExpertSearchBar(
                 .fillMaxWidth()
                 .testTag(SEARCH_FIELD_TAG)
                 .semantics {
-                    // The placeholder disappears once the user types, so keep it as the field's name (never the value).
-                    if (query.isNotEmpty()) contentDescription = placeholderText
+                    // The placeholder leaves the tree once the user types, so keep it as the field's name. It goes in
+                    // the Text property, never contentDescription: on an editable node a contentDescription replaces
+                    // the typed text in TalkBack output and disables per-character traversal, whereas the delegate
+                    // prefers EditableText over Text, so the typed value stays what is read back.
+                    if (query.isNotEmpty()) text = AnnotatedString(placeholderText)
                 },
         placeholder = {
             Text(
