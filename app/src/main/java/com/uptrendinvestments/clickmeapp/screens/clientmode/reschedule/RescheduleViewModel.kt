@@ -69,6 +69,10 @@ class RescheduleViewModel
 
         fun retryLoad() = controller.retryLoad()
 
+        fun previousMonth() = controller.previousMonth()
+
+        fun nextMonth() = controller.nextMonth()
+
         fun selectDate(date: LocalDate) = controller.selectDate(date)
 
         fun selectSlot(start: Instant) = controller.selectSlot(start)
@@ -78,6 +82,8 @@ class RescheduleViewModel
         fun updateMessage(text: String) = controller.updateMessage(text)
 
         fun submit() = controller.submit()
+
+        fun refreshClock() = controller.refreshClock()
 
         fun consumeSent() = controller.consumeSent()
 

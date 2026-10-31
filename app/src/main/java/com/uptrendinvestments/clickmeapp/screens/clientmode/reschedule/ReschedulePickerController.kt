@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.AvailabilityState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingTimeSlot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.NOTES_MAX_CHARS
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.canGoToPreviousMonth
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.capNotes
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.groupSlots
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isInLoadedWindow
@@ -29,6 +30,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeParseException
 
 /**
  * The reschedule picker's state holder, shared by the client ViewModel and (plan 08) the expert ViewModel. A plain
@@ -53,6 +55,8 @@ class ReschedulePickerController(
     private val sentRequest: RescheduleSentRequest,
     @Suppress("unused") private val callGuard: CallGuard,
 ) {
+    /** True until the calendar has been seeded from the booking, or restored from [savedState]. */
+    private var needsSeed = true
     private val _state = MutableStateFlow(initialState())
     val state: StateFlow<ReschedulePickerUiState> = _state.asStateFlow()
 
@@ -60,15 +64,35 @@ class ReschedulePickerController(
     private var availabilityJob: Job? = null
     private var loadedDays: List<AvailabilityDayDto> = emptyList()
 
+    /**
+     * Restores month, date, slot and message after process death. Only these are ever saved (T-16.2-18): never
+     * `isSubmitting`, a result dialog or a card id. A restored slot is re-validated by [applyAvailability].
+     */
     private fun initialState(): ReschedulePickerUiState {
         val zone = zoneProvider()
         val now = clock.instant()
         val today = now.atZone(zone).toLocalDate()
+        val savedDate =
+            savedState
+                .get<String>(KEY_SELECTED_DATE)
+                ?.let { parseOrNull { LocalDate.parse(it) } }
+                ?.takeUnless { isPastDay(it, today) }
+        needsSeed = savedDate == null
+        val date = savedDate ?: today
+        val savedMonth =
+            savedState
+                .get<String>(KEY_DISPLAYED_MONTH)
+                ?.let { parseOrNull { YearMonth.parse(it) } }
+                ?.takeUnless { it.isBefore(YearMonth.from(today)) }
+        val month = if (savedDate != null && savedMonth != null) savedMonth else YearMonth.from(date)
         return ReschedulePickerUiState(
             zone = zone,
             now = now,
-            displayedMonth = YearMonth.from(today),
-            selectedDate = today,
+            displayedMonth = month,
+            selectedDate = date,
+            selectedDateLoaded = isInLoadedWindow(date, month),
+            selectedSlotStart = savedDate?.let { savedState.get<Long>(KEY_SLOT_START) }?.let(Instant::ofEpochMilli),
+            message = capNotes(savedState.get<String>(KEY_MESSAGE).orEmpty(), NOTES_MAX_CHARS),
         )
     }
 
@@ -92,22 +116,26 @@ class ReschedulePickerController(
                 }
                 val zone = zoneProvider()
                 val now = clock.instant()
-                val today = now.atZone(zone).toLocalDate()
-                val date = pickerSeedDate(booking.currentStart, zone, today)
-                val month = YearMonth.from(date)
-                _state.update {
-                    it.copy(
-                        zone = zone,
-                        now = now,
-                        load = PickerLoad.Loaded(booking),
-                        selectedDate = date,
-                        displayedMonth = month,
-                        selectedDateLoaded = true,
-                    )
+                if (needsSeed) {
+                    needsSeed = false
+                    val date = pickerSeedDate(booking.currentStart, zone, now.atZone(zone).toLocalDate())
+                    val month = YearMonth.from(date)
+                    _state.update {
+                        it.copy(
+                            zone = zone,
+                            now = now,
+                            load = PickerLoad.Loaded(booking),
+                            selectedDate = date,
+                            displayedMonth = month,
+                            selectedDateLoaded = true,
+                        )
+                    }
+                    savedState[KEY_SELECTED_DATE] = date.toString()
+                    savedState[KEY_DISPLAYED_MONTH] = month.toString()
+                } else {
+                    _state.update { it.copy(zone = zone, now = now, load = PickerLoad.Loaded(booking)) }
                 }
-                savedState[KEY_SELECTED_DATE] = date.toString()
-                savedState[KEY_DISPLAYED_MONTH] = month.toString()
-                loadMonths(month, keepVisible = false)
+                loadMonths(_state.value.displayedMonth, keepVisible = false)
             }
     }
 
@@ -162,15 +190,90 @@ class ReschedulePickerController(
             null
         }
 
-    /** Groups [loadedDays] by the viewer's zone and publishes them. */
+    /**
+     * Groups [loadedDays] by the viewer's zone and publishes them, then reconciles the selected slot: it stays only
+     * if that loaded slot is still pickable now (a restored or carried-over slot that is gone, held, past or the
+     * current one is dropped). While a send is in flight a late response only refreshes the list.
+     */
     private fun applyAvailability() {
         val now = clock.instant()
+        val grouped = groupSlots(loadedDays, _state.value.zone)
+        if (_state.value.isSubmitting) {
+            _state.update { it.copy(availability = AvailabilityState.Loaded(grouped), now = now) }
+            return
+        }
         _state.update { s ->
+            val latest = s.booking?.let { latestPaidStart(it.isPaid, now) }
+            val todays = grouped[s.selectedDate].orEmpty()
+            val kept =
+                s.selectedSlotStart?.takeIf { start ->
+                    todays.any { it.start == start && it.isPickable(now, latest, s.currentStart) }
+                }
             s.copy(
-                availability = AvailabilityState.Loaded(groupSlots(loadedDays, s.zone)),
+                availability = AvailabilityState.Loaded(grouped),
                 now = now,
                 selectedDateLoaded = isInLoadedWindow(s.selectedDate, s.displayedMonth),
+                selectedSlotStart = kept,
             )
+        }
+        persistSlot()
+    }
+
+    private fun persistSlot() {
+        val slot = _state.value.selectedSlotStart
+        if (slot == null) savedState.remove<Long>(KEY_SLOT_START) else savedState[KEY_SLOT_START] = slot.toEpochMilli()
+    }
+
+    /** D-06: ignored on the current month. */
+    fun previousMonth() {
+        if (_state.value.isSubmitting) return
+        _state.update { it.copy(now = clock.instant()) }
+        val s = _state.value
+        if (!canGoToPreviousMonth(s.displayedMonth, s.today)) return
+        moveToMonth(s.displayedMonth.minusMonths(1))
+    }
+
+    fun nextMonth() {
+        if (_state.value.isSubmitting) return
+        _state.update { it.copy(now = clock.instant()) }
+        moveToMonth(_state.value.displayedMonth.plusMonths(1))
+    }
+
+    /**
+     * Moves the calendar. The selected date is kept however far the month moves. Its slot is kept only while the
+     * date's month stays in the loaded window (and is re-validated when the months arrive); outside it there is
+     * nothing on screen to confirm, so the slot is cleared and Submit stays disabled until a day is picked again.
+     */
+    private fun moveToMonth(month: YearMonth) {
+        _state.update {
+            val inWindow = isInLoadedWindow(it.selectedDate, month)
+            it.copy(
+                displayedMonth = month,
+                selectedDateLoaded = inWindow,
+                selectedSlotStart = it.selectedSlotStart.takeIf { inWindow },
+            )
+        }
+        savedState[KEY_DISPLAYED_MONTH] = month.toString()
+        persistSlot()
+        loadMonths(month, keepVisible = false)
+    }
+
+    /**
+     * Called on every resume. Re-reads the clock and the device zone, regroups the loaded days when the zone changed,
+     * and clears a selected slot that has started meanwhile. It never re-evaluates the paid cap for a slot already
+     * selected (the server backstop covers it) and never submits (D-08). Ignored while a send is in flight.
+     */
+    fun refreshClock() {
+        if (_state.value.isSubmitting) return
+        val zone = zoneProvider()
+        val now = clock.instant()
+        val zoneChanged = zone != _state.value.zone
+        _state.update { it.copy(zone = zone, now = now) }
+        if (zoneChanged && _state.value.availability is AvailabilityState.Loaded) applyAvailability()
+        val held = _state.value.selectedSlotStart ?: return
+        if (!held.isAfter(now)) {
+            _state.update { it.copy(selectedSlotStart = null) }
+            persistSlot()
         }
     }
 
@@ -187,7 +290,7 @@ class ReschedulePickerController(
             )
         }
         savedState[KEY_SELECTED_DATE] = date.toString()
-        savedState.remove<Long>(KEY_SLOT_START)
+        persistSlot()
     }
 
     /** Selects [start] only when that loaded slot is pickable now (D-01, D-12). */
@@ -198,7 +301,7 @@ class ReschedulePickerController(
         val slot: BookingTimeSlot = s.slotsForSelectedDate.firstOrNull { it.start == start } ?: return
         if (!slot.isPickable(s.now, s.latestSelectableStart, s.currentStart)) return
         _state.update { it.copy(selectedSlotStart = start) }
-        savedState[KEY_SLOT_START] = start.toEpochMilli()
+        persistSlot()
     }
 
     fun updateMessage(text: String) {
@@ -243,3 +346,10 @@ class ReschedulePickerController(
         const val KEY_DISCLOSURE_OPEN = "reschedule_disclosure_open"
     }
 }
+
+private inline fun <T> parseOrNull(parse: () -> T): T? =
+    try {
+        parse()
+    } catch (_: DateTimeParseException) {
+        null
+    }

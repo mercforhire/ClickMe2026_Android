@@ -8,6 +8,7 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.model.requests.RescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.AvailabilityState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.availabilityOf
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.slotDto
@@ -20,6 +21,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -70,6 +72,10 @@ class RescheduleViewModelTest {
         api.clientBookingDetailHandler = { detail }
     }
 
+    private fun stubSlots(vararg starts: String) {
+        api.expertAvailabilityHandler = { _, _ -> availabilityOf(*starts.map { slotDto(it) }.toTypedArray()) }
+    }
+
     private fun vm(
         savedState: SavedStateHandle = SavedStateHandle(),
         opener: RescheduleOpener = RescheduleOpener.UpcomingDetails,
@@ -83,6 +89,12 @@ class RescheduleViewModelTest {
         callGuard,
         clock,
     )
+
+    private fun TestScope.loaded(savedState: SavedStateHandle = SavedStateHandle()): RescheduleViewModel {
+        val vm = vm(savedState)
+        advanceUntilIdle()
+        return vm
+    }
 
     // ---- Task 1: tracer ----
 
@@ -183,5 +195,243 @@ class RescheduleViewModelTest {
                 PickerLoad.Failed(FieldError.Res(R.string.login_error_unknown)),
                 vm.uiState.value.load,
             )
+        }
+
+    // ---- Task 2: selection rules, month moves, clock, restore ----
+
+    @Test
+    fun paidBookingCapsAtSixDays() =
+        runTest(main.testDispatcher) {
+            stubBooking(
+                bookingDetail(
+                    start = bookingStart,
+                    paymentStatus = "held",
+                    authorizationExpiresAt = clock.instant().plus(Duration.ofDays(1)),
+                ),
+            )
+            stubSlots("2026-11-08T13:00:00Z", "2026-11-08T13:00:01Z")
+            val vm = loaded()
+            val cap = clock.instant().plus(Duration.ofDays(6))
+            assertEquals(cap, vm.uiState.value.latestSelectableStart)
+
+            vm.selectDate(LocalDate.of(2026, 11, 8))
+            vm.selectSlot(cap.plusSeconds(1))
+            assertNull(vm.uiState.value.selectedSlotStart)
+            vm.selectSlot(cap)
+            assertEquals(cap, vm.uiState.value.selectedSlotStart)
+        }
+
+    @Test
+    fun freeBookingHasNoCap() =
+        runTest(main.testDispatcher) {
+            stubBooking(bookingDetail(start = bookingStart, isFree = true, paymentStatus = "none"))
+            stubSlots("2026-11-22T15:00:00Z")
+            val vm = loaded()
+            assertNull(vm.uiState.value.latestSelectableStart)
+
+            vm.selectDate(LocalDate.of(2026, 11, 22))
+            vm.selectSlot(Instant.parse("2026-11-22T15:00:00Z"))
+            assertEquals(Instant.parse("2026-11-22T15:00:00Z"), vm.uiState.value.selectedSlotStart)
+        }
+
+    @Test
+    fun currentSlotCannotBeSelected() =
+        runTest(main.testDispatcher) {
+            stubBooking(
+                bookingDetail(
+                    start = bookingStart,
+                    authorizationExpiresAt = clock.instant().plus(Duration.ofDays(1)),
+                ),
+            )
+            stubSlots("2026-11-06T15:00:00Z", "2026-11-06T16:00:00Z")
+            val vm = loaded()
+
+            vm.selectSlot(bookingStart)
+            assertNull(vm.uiState.value.selectedSlotStart)
+            vm.selectSlot(Instant.parse("2026-11-06T16:00:00Z"))
+            assertEquals(Instant.parse("2026-11-06T16:00:00Z"), vm.uiState.value.selectedSlotStart)
+        }
+
+    @Test
+    fun pastAndHeldSlotsIgnored() =
+        runTest(main.testDispatcher) {
+            api.expertAvailabilityHandler = { _, _ ->
+                availabilityOf(
+                    slotDto("2026-11-02T12:00:00Z"),
+                    slotDto("2026-11-02T18:00:00Z", held = true),
+                    slotDto("2026-11-02T20:00:00Z"),
+                )
+            }
+            val vm = loaded()
+            vm.selectDate(LocalDate.of(2026, 11, 2))
+
+            vm.selectSlot(Instant.parse("2026-11-02T12:00:00Z"))
+            assertNull(vm.uiState.value.selectedSlotStart)
+            vm.selectSlot(Instant.parse("2026-11-02T18:00:00Z"))
+            assertNull(vm.uiState.value.selectedSlotStart)
+            vm.selectSlot(Instant.parse("2026-11-02T20:00:00Z"))
+            assertEquals(Instant.parse("2026-11-02T20:00:00Z"), vm.uiState.value.selectedSlotStart)
+        }
+
+    @Test
+    fun changingDayClearsSlot() =
+        runTest(main.testDispatcher) {
+            val savedState = SavedStateHandle()
+            val vm = loaded(savedState)
+            vm.selectDate(LocalDate.of(2026, 11, 5))
+            vm.selectSlot(slotNov5)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+            assertTrue(savedState.contains(ReschedulePickerController.KEY_SLOT_START))
+
+            vm.selectDate(LocalDate.of(2026, 11, 6))
+
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertFalse(savedState.contains(ReschedulePickerController.KEY_SLOT_START))
+        }
+
+    @Test
+    fun monthRoundTripKeepsDate() =
+        runTest(main.testDispatcher) {
+            val vm = loaded()
+            vm.selectDate(LocalDate.of(2026, 11, 5))
+            vm.selectSlot(slotNov5)
+            val date = vm.uiState.value.selectedDate
+
+            vm.nextMonth()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.selectedDateLoaded)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+
+            vm.nextMonth()
+            advanceUntilIdle()
+            assertEquals(YearMonth.of(2027, 1), vm.uiState.value.displayedMonth)
+            assertFalse(vm.uiState.value.selectedDateLoaded)
+            assertEquals(date, vm.uiState.value.selectedDate)
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertFalse(vm.uiState.value.canSubmit)
+
+            vm.previousMonth()
+            advanceUntilIdle()
+            vm.previousMonth()
+            advanceUntilIdle()
+            assertEquals(YearMonth.of(2026, 11), vm.uiState.value.displayedMonth)
+            assertTrue(vm.uiState.value.selectedDateLoaded)
+            assertEquals(date, vm.uiState.value.selectedDate)
+        }
+
+    @Test
+    fun previousMonthBlockedAtCurrentMonth() =
+        runTest(main.testDispatcher) {
+            val vm = loaded()
+            val calls = api.expertAvailabilityCalls
+
+            vm.previousMonth()
+            advanceUntilIdle()
+
+            assertEquals(YearMonth.of(2026, 11), vm.uiState.value.displayedMonth)
+            assertEquals(calls, api.expertAvailabilityCalls)
+        }
+
+    @Test
+    fun pastBookingSeedsToday() =
+        runTest(main.testDispatcher) {
+            stubBooking(bookingDetail(start = Instant.parse("2026-11-01T15:00:00Z")))
+            val vm = loaded()
+
+            assertEquals(LocalDate.of(2026, 11, 2), vm.uiState.value.selectedDate)
+            assertEquals(YearMonth.of(2026, 11), vm.uiState.value.displayedMonth)
+        }
+
+    @Test
+    fun retrySlotsReloadsAfterCentreFailure() =
+        runTest(main.testDispatcher) {
+            api.expertAvailabilityHandler = { _, month ->
+                if (month == "2026-11") throw IOException("offline") else availabilityOf()
+            }
+            val vm = loaded()
+            assertEquals(
+                AvailabilityState.Failed(FieldError.Res(R.string.login_error_network)),
+                vm.uiState.value.availability,
+            )
+
+            stubSlots("2026-11-05T16:00:00Z")
+            vm.retrySlots()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.availability is AvailabilityState.Loaded)
+        }
+
+    @Test
+    fun refreshClockClearsStartedSlot() =
+        runTest(main.testDispatcher) {
+            val vm = loaded()
+            vm.selectDate(LocalDate.of(2026, 11, 5))
+            vm.selectSlot(slotNov5)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+
+            clock.instant = slotNov5.plusSeconds(60)
+            vm.refreshClock()
+
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertEquals(clock.instant, vm.uiState.value.now)
+        }
+
+    @Test
+    fun messageCappedAt500() =
+        runTest(main.testDispatcher) {
+            val vm = loaded()
+            vm.updateMessage("a".repeat(600))
+
+            assertEquals(500, vm.uiState.value.message.length)
+        }
+
+    @Test
+    fun restoresSelectionAfterProcessDeath() =
+        runTest(main.testDispatcher) {
+            val savedState =
+                SavedStateHandle(
+                    mapOf(
+                        ReschedulePickerController.KEY_DISPLAYED_MONTH to "2026-11",
+                        ReschedulePickerController.KEY_SELECTED_DATE to "2026-11-05",
+                        ReschedulePickerController.KEY_SLOT_START to slotNov5.toEpochMilli(),
+                        ReschedulePickerController.KEY_MESSAGE to "hi",
+                    ),
+                )
+            val vm = vm(savedState)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+            advanceUntilIdle()
+
+            val s = vm.uiState.value
+            assertEquals(YearMonth.of(2026, 11), s.displayedMonth)
+            assertEquals(LocalDate.of(2026, 11, 5), s.selectedDate)
+            assertEquals(slotNov5, s.selectedSlotStart)
+            assertEquals("hi", s.message)
+            val allowed =
+                setOf(
+                    ReschedulePickerController.KEY_DISPLAYED_MONTH,
+                    ReschedulePickerController.KEY_SELECTED_DATE,
+                    ReschedulePickerController.KEY_SLOT_START,
+                    ReschedulePickerController.KEY_MESSAGE,
+                    ReschedulePickerController.KEY_DISCLOSURE_OPEN,
+                )
+            assertTrue(savedState.keys().all { it in allowed })
+        }
+
+    @Test
+    fun restoredSlotThatIsNoLongerPickableIsDropped() =
+        runTest(main.testDispatcher) {
+            val gone = Instant.parse("2026-11-05T18:00:00Z")
+            val savedState =
+                SavedStateHandle(
+                    mapOf(
+                        ReschedulePickerController.KEY_DISPLAYED_MONTH to "2026-11",
+                        ReschedulePickerController.KEY_SELECTED_DATE to "2026-11-05",
+                        ReschedulePickerController.KEY_SLOT_START to gone.toEpochMilli(),
+                    ),
+                )
+            val vm = loaded(savedState)
+
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertFalse(savedState.contains(ReschedulePickerController.KEY_SLOT_START))
         }
 }
