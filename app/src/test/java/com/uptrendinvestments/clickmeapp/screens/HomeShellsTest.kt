@@ -670,6 +670,9 @@ class HomeShellsTest {
                     searchRoot = { navigator ->
                         SearchExpertContent(
                             state = SearchExpertUiState(results = SearchResults.Loaded(listOf(searchExpertUi()))),
+                            onQueryChange = {},
+                            onCategorySelected = {},
+                            onSortSelected = {},
                             onExpertClick = { navigator.navigate(it.toProfileKey("Expert")) },
                             onRefresh = {},
                             onRetry = {},

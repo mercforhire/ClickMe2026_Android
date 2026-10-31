@@ -4,8 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -38,7 +38,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 /** Test tag on the "Sort by" trigger button. */
 const val SEARCH_SORT_BUTTON_TAG = "search_sort_button"
 
-private val TriggerMinHeight = 48.dp
+private val TriggerMinHeight = 48.dp // also the minimum width: a short label must still be a 48 dp touch target
 private val TriggerSpacing = 4.dp
 
 /** The user-facing name of a sort option (iOS `sortOptions`). */
@@ -77,7 +77,7 @@ fun SearchExpertSortRow(
             Row(
                 modifier =
                     Modifier
-                        .heightIn(min = TriggerMinHeight)
+                        .defaultMinSize(minWidth = TriggerMinHeight, minHeight = TriggerMinHeight)
                         .clickable(role = Role.Button) { expanded = true }
                         .semantics(mergeDescendants = true) { contentDescription = buttonDescription }
                         .testTag(SEARCH_SORT_BUTTON_TAG),

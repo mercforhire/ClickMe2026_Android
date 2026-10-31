@@ -9,8 +9,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
@@ -262,6 +262,7 @@ class SearchExpertScreenTest {
                 )
             }
         }
+
         fun assertControls() {
             rule.onNodeWithTag(SEARCH_FIELD_TAG).assertIsDisplayed()
             rule.onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG)).assertIsDisplayed()
@@ -284,10 +285,27 @@ class SearchExpertScreenTest {
     fun headerOrderMatchesIos() {
         show(loaded(ada).copy(categories = categories))
 
-        val field = rule.onNodeWithTag(SEARCH_FIELD_TAG).fetchSemanticsNode().boundsInRoot.top
-        val chip = rule.onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG)).fetchSemanticsNode().boundsInRoot.top
-        val sort = rule.onNodeWithText("Sort by").fetchSemanticsNode().boundsInRoot.top
-        val card = rule.onAllNodesWithTag(SEARCH_EXPERT_CARD_TAG).onFirst().fetchSemanticsNode().boundsInRoot.top
+        val field =
+            rule
+                .onNodeWithTag(SEARCH_FIELD_TAG)
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        val chip =
+            rule
+                .onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG))
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        val sort =
+            rule
+                .onNodeWithText("Sort by")
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        val card =
+            rule
+                .onAllNodesWithTag(SEARCH_EXPERT_CARD_TAG)
+                .onFirst()
+                .fetchSemanticsNode()
+                .boundsInRoot.top
         assertTrue("field above chips", field < chip)
         assertTrue("chips above sort", chip < sort)
         assertTrue("sort above first card", sort < card)

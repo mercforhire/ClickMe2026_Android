@@ -52,7 +52,10 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.backgrounds.GreenGlowBlobLayer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertCategoryChips
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertGlowingIllustration
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertSearchBar
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SearchExpertSortRow
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
@@ -76,6 +79,8 @@ private val ListHorizontalPadding = 20.dp
 private val ListBottomPadding = 40.dp
 private val CardSpacing = 12.dp
 private val TopSpacing = 20.dp
+private val HeaderSpacing = 14.dp
+private val HeaderBottomPadding = 8.dp
 private val EmptyVerticalPadding = 40.dp
 private val EmptyBodyHorizontalPadding = 32.dp
 private val EmptyTextSpacing = 8.dp
@@ -96,6 +101,9 @@ fun SearchExpertScreen(
     val nameFallback = stringResource(R.string.explore_expert_name_fallback)
     SearchExpertContent(
         state = state,
+        onQueryChange = viewModel::onQueryChange,
+        onCategorySelected = viewModel::onCategorySelected,
+        onSortSelected = viewModel::onSortSelected,
         onExpertClick = { onOpenExpert(it.toProfileKey(nameFallback)) },
         onRefresh = viewModel::onRefresh,
         onRetry = viewModel::onRetry,
@@ -107,12 +115,15 @@ fun SearchExpertScreen(
 /**
  * Port of iOS `SearchExpertView.content`: the green glow layer, a 20 dp top spacer under the status-bar inset (no app
  * bar, D-06) and the results area with pull-to-refresh. Stateless and Hilt-free so it renders under Robolectric and
- * in the shell tests. 16.1-06 places the search field, chips and sort row right after the spacer.
+ * in the shell tests. The search field, category chips and sort row sit right after the spacer, in the iOS order.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchExpertContent(
     state: SearchExpertUiState,
+    onQueryChange: (String) -> Unit,
+    onCategorySelected: (String) -> Unit,
+    onSortSelected: (SearchSort) -> Unit,
     onExpertClick: (SearchExpertUi) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -139,6 +150,27 @@ fun SearchExpertContent(
                 ),
         ) {
             Spacer(Modifier.height(TopSpacing))
+            // Outside the PullToRefreshBox so the controls stay visible and usable in every results state (D-07).
+            Column(
+                modifier = Modifier.padding(bottom = HeaderBottomPadding),
+                verticalArrangement = Arrangement.spacedBy(HeaderSpacing),
+            ) {
+                SearchExpertSearchBar(
+                    query = state.query,
+                    onQueryChange = onQueryChange,
+                    modifier = Modifier.padding(horizontal = ListHorizontalPadding),
+                )
+                SearchExpertCategoryChips(
+                    categories = state.categories,
+                    selectedSlug = state.selectedCategorySlug,
+                    onSelect = onCategorySelected,
+                )
+                SearchExpertSortRow(
+                    sort = state.sort,
+                    onSortSelected = onSortSelected,
+                    modifier = Modifier.padding(horizontal = ListHorizontalPadding),
+                )
+            }
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = onRefresh,
