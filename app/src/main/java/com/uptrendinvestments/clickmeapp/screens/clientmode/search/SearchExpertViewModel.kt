@@ -124,7 +124,8 @@ class SearchExpertViewModel
         /**
          * iOS `performSearch`. A Fresh search shows the skeleton first (D-07) and a failure replaces the rows (D-08).
          * A Refresh keeps the rows on screen. Both clear the refresh flags before launching, so a new search that
-         * cancels an in-flight refresh never leaves the spinner on or a stale snackbar request behind.
+         * cancels an in-flight refresh never leaves the spinner on or a stale snackbar request behind. The screen
+         * dismisses a snackbar that is already visible when the query, filters or rows change.
          */
         private fun runSearch(
             mode: SearchMode,

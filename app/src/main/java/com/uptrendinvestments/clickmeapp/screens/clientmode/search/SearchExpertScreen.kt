@@ -141,6 +141,11 @@ fun SearchExpertContent(
         onRetry = onRefresh,
         onShown = onRefreshFailureConsumed,
     )
+    // The ViewModel only clears the one-shot flag, so a snackbar that is already visible must be dismissed here once
+    // the query, filters or rows change. Otherwise its Retry would re-run a search the user has moved past.
+    LaunchedEffect(state.query, state.selectedCategorySlug, state.sort, state.results) {
+        snackbarHostState.currentSnackbarData?.dismiss()
+    }
     // Hoisted outside the `when`, so the scroll position survives tab switches and loading cycles (D-03).
     val listState = rememberLazyListState()
     // A new result set starts at the top. The last revision seen is saveable so that coming back to the tab (a new
