@@ -68,8 +68,14 @@ private val DayCellHeight = 48.dp
 private val DayCircleSize = 36.dp
 private val OpenDotSize = 4.dp
 
+/** Default test tag prefix of the calendar cells (Make a Booking). */
+const val CALENDAR_DAY_TAG_PREFIX = "make_a_booking_day_"
+
 /** Test tag of the calendar cell for [date]. Out-of-month cells have no node. */
-fun calendarDayTestTag(date: LocalDate): String = "make_a_booking_day_$date"
+fun calendarDayTestTag(
+    date: LocalDate,
+    prefix: String = CALENDAR_DAY_TAG_PREFIX,
+): String = "$prefix$date"
 
 /**
  * The month calendar card (D-03, D-06, BOOK-01).
@@ -78,6 +84,9 @@ fun calendarDayTestTag(date: LocalDate): String = "make_a_booking_day_$date"
  * Days before [today] are dimmed and not selectable, a 4 dp dot marks days in [openDays], and the previous-month arrow
  * is controlled by [canGoToPreviousMonth]. Forward navigation has no limit. While [enabled] is false (a booking is in
  * flight) neither the arrows nor the days respond; nothing is restyled.
+ *
+ * The Phase 16.2 reschedule picker is the second caller; it passes its own [tagPrefix] for the day cells and nothing
+ * else changes.
  */
 @Composable
 fun MakeABookingCalendarCard(
@@ -91,6 +100,7 @@ fun MakeABookingCalendarCard(
     onSelectDate: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    tagPrefix: String = CALENDAR_DAY_TAG_PREFIX,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val firstDay = remember(locale) { firstDayOfWeek(locale) }
@@ -129,6 +139,7 @@ fun MakeABookingCalendarCard(
                                             isOpen = date in openDays,
                                             locale = locale,
                                             interactive = enabled,
+                                            tagPrefix = tagPrefix,
                                             onSelect = { onSelectDate(date) },
                                         )
                                     }
@@ -213,6 +224,7 @@ private fun CalendarDay(
     isOpen: Boolean,
     locale: java.util.Locale,
     interactive: Boolean,
+    tagPrefix: String,
     onSelect: () -> Unit,
 ) {
     val isPast = isPastDay(date, today)
@@ -244,7 +256,7 @@ private fun CalendarDay(
             Modifier
                 // The whole grid cell is the touch target, not just the 36 dp circle (48 dp rule, Phase 15 POL-04).
                 .fillMaxSize()
-                .testTag(calendarDayTestTag(date))
+                .testTag(calendarDayTestTag(date, tagPrefix))
                 .selectable(
                     selected = isSelected,
                     enabled = interactive && !isPast,

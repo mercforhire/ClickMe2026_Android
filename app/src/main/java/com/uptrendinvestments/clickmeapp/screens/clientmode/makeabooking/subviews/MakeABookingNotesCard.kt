@@ -51,6 +51,9 @@ private val FocusedBorder = 2.dp
  * Stateless: [notes] is the whole value and every edit goes to [onNotesChange]; the ViewModel applies `capNotes`, so
  * pasted text over the limit is cut there. Enter inserts a newline, and the field scrolls into view when focused.
  * [readOnly] is set while a booking is in flight: the text can still be read and keeps focus, but not edited.
+ *
+ * The Phase 16.2 reschedule picker is the second caller: it passes its own [hint] (the placeholder) and [tag]; the
+ * defaults keep Make a Booking unchanged.
  */
 @Composable
 fun MakeABookingNotesCard(
@@ -58,6 +61,8 @@ fun MakeABookingNotesCard(
     onNotesChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     readOnly: Boolean = false,
+    hint: String = stringResource(R.string.make_a_booking_notes_placeholder),
+    tag: String = NOTES_FIELD_TAG,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
@@ -85,7 +90,7 @@ fun MakeABookingNotesCard(
                     .bringIntoViewRequester(bringIntoViewRequester)
                     .background(colorScheme.surfaceContainer, shape)
                     .border(borderWidth, if (focused) colorScheme.primary else colorScheme.outline, shape)
-                    .testTag(NOTES_FIELD_TAG),
+                    .testTag(tag),
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurface),
             keyboardOptions =
                 KeyboardOptions(
@@ -99,7 +104,7 @@ fun MakeABookingNotesCard(
             Box(modifier = Modifier.padding(Spacing.md)) {
                 if (notes.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.make_a_booking_notes_placeholder),
+                        text = hint,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.extras.onSurfaceMuted,
                     )

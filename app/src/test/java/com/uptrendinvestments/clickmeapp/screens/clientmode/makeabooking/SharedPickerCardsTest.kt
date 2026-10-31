@@ -13,8 +13,13 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingCalendarCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingExpertCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingNotesCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.MakeABookingTimeSlotsCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.NOTES_FIELD_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.PAID_WINDOW_NOTE_TEST_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -25,6 +30,7 @@ import org.robolectric.RobolectricTestRunner
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Locale
 
@@ -207,5 +213,105 @@ class SharedPickerCardsTest {
         rule.onNodeWithText("Available Time Slots").assertExists()
         rule.onNodeWithTag(slotChipTestTag(early)).assertExists()
         assertEquals("make_a_booking_slot_${early.toEpochMilli()}", slotChipTestTag(early))
+    }
+
+    // ---- Calendar, notes and expert cards ----
+
+    private fun setCalendar(tagPrefix: String?) {
+        rule.setContent {
+            ClickMeTheme {
+                if (tagPrefix == null) {
+                    MakeABookingCalendarCard(
+                        displayedMonth = YearMonth.of(2026, 11),
+                        today = day,
+                        selectedDate = day,
+                        openDays = emptySet(),
+                        canGoToPreviousMonth = false,
+                        onPreviousMonth = {},
+                        onNextMonth = {},
+                        onSelectDate = {},
+                    )
+                } else {
+                    MakeABookingCalendarCard(
+                        displayedMonth = YearMonth.of(2026, 11),
+                        today = day,
+                        selectedDate = day,
+                        openDays = emptySet(),
+                        canGoToPreviousMonth = false,
+                        onPreviousMonth = {},
+                        onNextMonth = {},
+                        onSelectDate = {},
+                        tagPrefix = tagPrefix,
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun calendarUsesGivenTagPrefix() {
+        setCalendar("reschedule_day_")
+
+        rule.onNodeWithTag("reschedule_day_2026-11-02").assertExists()
+        rule.onNodeWithTag("make_a_booking_day_2026-11-02").assertDoesNotExist()
+    }
+
+    @Test
+    fun calendarDefaultTagPrefixIsMakeABooking() {
+        setCalendar(null)
+
+        rule.onNodeWithTag("make_a_booking_day_2026-11-02").assertExists()
+        assertEquals("make_a_booking_day_2026-11-02", calendarDayTestTag(LocalDate.of(2026, 11, 2)))
+    }
+
+    @Test
+    fun notesUseGivenHintAndTag() {
+        val hint = "Let the expert know why you'd like to move this session."
+        rule.setContent {
+            ClickMeTheme {
+                MakeABookingNotesCard(notes = "", onNotesChange = {}, hint = hint, tag = "reschedule_message")
+            }
+        }
+
+        rule.onNodeWithTag("reschedule_message").assertExists()
+        rule.onNodeWithTag(NOTES_FIELD_TAG).assertDoesNotExist()
+        rule.onNodeWithText(hint).assertExists()
+    }
+
+    @Test
+    fun notesDefaultsKeepMakeABookingTagAndHint() {
+        rule.setContent { ClickMeTheme { MakeABookingNotesCard(notes = "", onNotesChange = {}) } }
+
+        rule.onNodeWithTag(NOTES_FIELD_TAG).assertExists()
+        rule.onNodeWithText("Add context for the expert", substring = true).assertExists()
+    }
+
+    @Test
+    fun expertCardShowsDetailLine() {
+        rule.setContent {
+            ClickMeTheme {
+                MakeABookingExpertCard(
+                    name = "Ada Lovelace",
+                    title = "Engineer",
+                    imageUrl = null,
+                    detail = "Wed, Oct 28 · 2:00 – 2:30 PM",
+                )
+            }
+        }
+
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        rule.onNodeWithText("Engineer").assertExists()
+        rule.onNodeWithText("Wed, Oct 28 · 2:00 – 2:30 PM").assertExists()
+    }
+
+    @Test
+    fun expertCardWithoutDetailShowsTwoLines() {
+        rule.setContent {
+            ClickMeTheme { MakeABookingExpertCard(name = "Ada Lovelace", title = "Engineer", imageUrl = null) }
+        }
+
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        rule.onNodeWithText("Engineer").assertExists()
+        rule.onAllNodes(hasText("·", substring = true)).assertCountEquals(0)
     }
 }

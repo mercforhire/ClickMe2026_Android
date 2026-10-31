@@ -28,6 +28,9 @@ private const val EXPERT_TEXT_MAX_LINES = 2
 /**
  * The expert being booked: avatar, name and (when not blank) title, all taken from the route key so there is no
  * loading state. Not clickable. Server text is plain [Text] only (T-06-23).
+ *
+ * The Phase 16.2 reschedule picker is the second caller: it passes [detail], a third line (the booking's date and
+ * time) under the title. Null or blank draws nothing.
  */
 @Composable
 fun MakeABookingExpertCard(
@@ -35,6 +38,7 @@ fun MakeABookingExpertCard(
     title: String,
     imageUrl: String?,
     modifier: Modifier = Modifier,
+    detail: String? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -61,6 +65,16 @@ fun MakeABookingExpertCard(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.extras.onSurfaceMuted,
+                        maxLines = EXPERT_TEXT_MAX_LINES,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (!detail.isNullOrBlank()) {
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.extras.onSurfaceMuted,
                         maxLines = EXPERT_TEXT_MAX_LINES,
                         overflow = TextOverflow.Ellipsis,
