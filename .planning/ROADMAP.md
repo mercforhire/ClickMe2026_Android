@@ -858,19 +858,19 @@ Plans:
 **Goal:** The client Search tab matches iOS SearchExpertView: debounced text search, category chips, sort row, result cards, empty and error states, via `/experts/search`; Explore's "See all" on Featured Experts and Featured Topics switches to the Search tab as on iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 15 code (Phase 16 is paused at 16-03; its sessions A/B run after 16.5 on a build containing all parity work)
-**Plans:** 6 plans
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 16.1-01-PLAN.md — `/experts/search` wire contract (URL, Retrofit, DTOs, SearchRepository, fake, wire tests) and the Search UI-state contract with the iOS map() fallbacks
-- [ ] 16.1-02-PLAN.md — Explore "See all" on Recommended Experts and Featured Topics switches to the Search tab (D-01); View My Bookings / Explore Experts also reset the Search stack (user decision)
+- [x] 16.1-01-PLAN.md — `/experts/search` wire contract (URL, Retrofit, DTOs, SearchRepository, fake, wire tests) and the Search UI-state contract with the iOS map() fallbacks
+- [x] 16.1-02-PLAN.md — Explore "See all" on Recommended Experts and Featured Topics switches to the Search tab (D-01); View My Bookings / Explore Experts also reset the Search stack (user decision)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16.1-03-PLAN.md — SearchExpertViewModel: first load, chips, 300 ms debounce, immediate chip/sort, latest wins, refresh/retry rules (D-02, D-04, D-07..D-11)
-- [ ] 16.1-04-PLAN.md — SearchExpertContent results area: iOS card, 3 skeletons, glowing empty state, inline error, refresh snackbar; Avatar fallbackColor (D-05..D-09)
-- [ ] 16.1-05-PLAN.md — Header controls: search field, category chips (FilterChip, single select), Sort by row with menu
+- [x] 16.1-03-PLAN.md — SearchExpertViewModel: first load, chips, 300 ms debounce, immediate chip/sort, latest wins, refresh/retry rules (D-02, D-04, D-07..D-11)
+- [x] 16.1-04-PLAN.md — SearchExpertContent results area: iOS card, 3 skeletons, glowing empty state, inline error, refresh snackbar; Avatar fallbackColor (D-05..D-09)
+- [x] 16.1-05-PLAN.md — Header controls: search field, category chips (FilterChip, single select), Sort by row with menu
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
