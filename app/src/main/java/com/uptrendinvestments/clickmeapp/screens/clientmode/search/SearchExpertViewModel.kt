@@ -170,4 +170,4 @@ class SearchExpertViewModel
 
 /** iOS `message(for:)`: the server's message when there is one, else the generic connection copy (D-08). */
 private fun ApiException.toSearchMessage(): FieldError =
-    (this as? ApiException.Http)?.userMessage?.let { FieldError.Text(it) } ?: FieldError.Res(R.string.error_state_body)
+    userMessage?.let(FieldError::Text) ?: FieldError.Res(R.string.error_state_body)
