@@ -34,6 +34,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButtonVariant
@@ -60,6 +62,9 @@ const val MY_BOOKINGS_JOIN_TAG = "my_bookings_join"
 /** Test tag on the Message control of an Upcoming card, in both its icon and its text form (D-14). */
 const val BOOKING_CARD_MESSAGE_TAG = "booking_card_message"
 
+/** Test tag on the Reschedule button of an Upcoming card (Phase 16.2, D-05). */
+const val BOOKING_CARD_RESCHEDULE_TAG = "booking_card_reschedule"
+
 private val IconSize = 20.dp
 private val MessageIconTarget = 56.dp
 private val SmallIconSize = 16.dp
@@ -72,7 +77,9 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
  * An Upcoming booking card (iOS `UpcomingBookingCard`). The whole card opens Upcoming Booking Details (D-12). The
  * actions are Join Call, live within the join window (Android goes beyond iOS here, whose card passes an empty
  * `onJoinCall`, D-01), and Message (D-14): a 56 dp icon button beside Join, or the full-width text form on a
- * pending-approval card, which has no Join. Reschedule and Private Note are not on the card (D-12, D-16).
+ * pending-approval card, which has no Join. Reschedule is offered when the caller passes [onReschedule] (Phase 16.2,
+ * D-04/D-05): Join then goes full width and a second row holds Reschedule at the start and the text-form Message at
+ * the end (iOS arrangement). Private Note is still not on the card (D-16).
  *
  * @param joinEnabled whether the booking is inside the join window (`isWithinJoinWindow`).
  * @param onJoin starts the call; tapping Join does not open the details.
@@ -80,6 +87,8 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
  * @param onMessage opens the chat with the expert; tapping Message does not open the details.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
+ * @param onReschedule opens the reschedule picker; null (the default) means Reschedule is not offered for this card.
+ *   Tapping it does not open the details.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -94,6 +103,7 @@ fun UpcomingBookingCard(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
+    onReschedule: (() -> Unit)? = null,
 ) {
     val expertName = item.expert.fullName ?: stringResource(R.string.explore_expert_name_fallback)
     val messageEnabled = item.expert.id.isNotBlank()
@@ -174,7 +184,7 @@ fun UpcomingBookingCard(
                     enabled = messageEnabled,
                     modifier = Modifier.fillMaxWidth().testTag(BOOKING_CARD_MESSAGE_TAG),
                 )
-            } else {
+            } else if (onReschedule == null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.Top) {
                     JoinCallButton(joinEnabled, onJoin, Modifier.weight(1f).testTag(MY_BOOKINGS_JOIN_TAG))
                     MessageButton(
@@ -188,6 +198,27 @@ fun UpcomingBookingCard(
                         modifier = Modifier.testTag(BOOKING_CARD_MESSAGE_TAG),
                     )
                 }
+            } else {
+                JoinCallButton(joinEnabled, onJoin, Modifier.fillMaxWidth().testTag(MY_BOOKINGS_JOIN_TAG))
+                ActionButtonPair(
+                    start = {
+                        RescheduleActionButton(
+                            onClick = onReschedule,
+                            contentDescription = stringResource(R.string.reschedule_start_action_a11y, expertName),
+                            modifier = it.testTag(BOOKING_CARD_RESCHEDULE_TAG),
+                        )
+                    },
+                    end = {
+                        MessageButton(
+                            label = stringResource(R.string.chat_entry_message),
+                            onClick = onMessage,
+                            busy = messageBusy,
+                            enabled = messageEnabled,
+                            modifier = it.testTag(BOOKING_CARD_MESSAGE_TAG),
+                        )
+                    },
+                    gap = Spacing.sm,
+                )
             }
         }
     }

@@ -60,6 +60,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCa
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.profileHubVersionLabel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertScreen
@@ -126,6 +128,7 @@ fun HomeClientScreen(
                         onOpenPast = navigator::openBookingSummary,
                         onExploreExperts = navigator::showExplore,
                         onLeaveReview = { navigator.navigate(it) },
+                        onReschedule = { navigator.navigate(RescheduleKey(it, RescheduleOpener.MyBookings)) },
                     )
                 },
                 chatsRoot = { navigator ->

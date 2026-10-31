@@ -518,6 +518,7 @@ class MyBookingsScreenTest {
     private val farOutStart: Instant = defaultStart.plusSeconds(3L * 24 * 3600)
 
     @Test
+    @Config(qualifiers = "w411dp-h1200dp")
     fun farOutConfirmedCardShowsRescheduleRow() {
         show { Content(loaded(upcoming = listOf(bookingItem("b1", start = farOutStart)))) }
         rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertExists()
@@ -565,6 +566,7 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h1200dp")
     fun mixedListRendersBothLayouts() {
         val upcoming =
             listOf(

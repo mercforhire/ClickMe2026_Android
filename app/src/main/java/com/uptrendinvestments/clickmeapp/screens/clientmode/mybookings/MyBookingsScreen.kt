@@ -55,6 +55,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.PastBookingCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.UpcomingBookingCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.canClientStartReschedule
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -84,6 +85,7 @@ fun MyBookingsScreen(
     onOpenPast: (String) -> Unit,
     onExploreExperts: () -> Unit,
     onLeaveReview: (WriteReviewKey) -> Unit,
+    onReschedule: (bookingId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MyBookingsViewModel = hiltViewModel(),
     chatEntry: ChatEntryViewModel = hiltViewModel(),
@@ -115,6 +117,7 @@ fun MyBookingsScreen(
         onLeaveReview = onLeaveReview,
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = viewModel::consumeReviewThanks,
+        onReschedule = onReschedule,
         messageBusyPeerId = entryState.busyPeerId,
         onMessage = { item ->
             chatEntry.open(ChatPeer(item.expert.id, item.expert.fullName, item.expert.avatarUrl, isExpert = true))
@@ -152,6 +155,7 @@ fun MyBookingsContent(
     onLeaveReview: (WriteReviewKey) -> Unit = {},
     reviewedBookingIds: Set<String> = emptySet(),
     onReviewThanksShown: () -> Unit = {},
+    onReschedule: (String) -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -271,6 +275,7 @@ fun MyBookingsContent(
                         onMessage = onMessage,
                         onLeaveReview = onLeaveReview,
                         reviewedBookingIds = reviewedBookingIds,
+                        onReschedule = onReschedule,
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -297,6 +302,7 @@ private fun TabBody(
     onMessage: (ClientBookingItem) -> Unit,
     onLeaveReview: (WriteReviewKey) -> Unit,
     reviewedBookingIds: Set<String>,
+    onReschedule: (String) -> Unit,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
@@ -341,6 +347,12 @@ private fun TabBody(
                                     zone = zone,
                                     timeFormat = timeFormat,
                                     locale = locale,
+                                    onReschedule =
+                                        if (canClientStartReschedule(item.status, item.startTime, joinNow)) {
+                                            { onReschedule(item.bookingId) }
+                                        } else {
+                                            null
+                                        },
                                 )
                             }
                         BookingsTab.Past ->
