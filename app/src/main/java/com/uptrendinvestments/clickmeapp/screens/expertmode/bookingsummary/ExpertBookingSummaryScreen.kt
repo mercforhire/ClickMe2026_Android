@@ -56,7 +56,9 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
@@ -90,6 +92,9 @@ const val MESSAGE_CLIENT_TAG = "message_client"
 /** Test tag on the Cancel Booking button. */
 const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
 
+/** Test tag on the Reschedule button (Phase 16.2). */
+const val EXPERT_SUMMARY_RESCHEDULE_TAG = "expert_summary_reschedule"
+
 /** Test tag on the progress bar shown under the app bar while a Retry of a failed refresh runs. */
 const val EXPERT_SUMMARY_REFRESH_PROGRESS_TAG = "expert_summary_refresh_progress"
 
@@ -101,9 +106,13 @@ private val ButtonSkeletonHeight = 56.dp
 
 /**
  * Expert Booking Summary (EXP-08 / EXP-09), opened from the Bookings tab or the Dashboard. Port of iOS
- * `ExpertBookingSummaryView` with Message Client (D-14) but without Reschedule, the meeting-link row and the private
- * note (DEF-1, RESEARCH C11, Phase 8 D-16). It has no Report or Block control: experts report and block clients only
- * from the chat (D-11).
+ * `ExpertBookingSummaryView` with Message Client (D-14) but without the meeting-link row and the private note (DEF-1,
+ * RESEARCH C11, Phase 8 D-16). It has no Report or Block control: experts report and block clients only from the chat
+ * (D-11).
+ *
+ * Phase 16.2 adds Reschedule at the start of the action row with Cancel Booking at the end, shown only when the
+ * server's `actions.can_reschedule` is true (no client-side time or status rule). [onReschedule] opens the expert
+ * picker; the caller pushes its route.
  *
  * [onCancel] runs only when the call guard allows it (D-17); the caller pushes the Cancel route.
  */
@@ -112,6 +121,7 @@ fun ExpertBookingSummaryScreen(
     viewModel: ExpertBookingSummaryViewModel,
     onBack: () -> Unit,
     onCancel: () -> Unit,
+    onReschedule: () -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
@@ -119,6 +129,7 @@ fun ExpertBookingSummaryScreen(
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
+    val rescheduleSent by viewModel.rescheduleSent.collectAsStateWithLifecycle()
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshQuietly() }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { viewModel.onScreenHidden() }
@@ -137,6 +148,9 @@ fun ExpertBookingSummaryScreen(
         onRefresh = viewModel::refresh,
         onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
+        onReschedule = onReschedule,
+        rescheduleSent = rescheduleSent,
+        onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         onAcceptReschedule = viewModel::acceptReschedule,
         onDeclineReschedule = viewModel::declineReschedule,
         onDismissRescheduleDialog = viewModel::dismissRescheduleDialog,
@@ -170,6 +184,9 @@ fun ExpertBookingSummaryContent(
     onDismissRescheduleDialog: () -> Unit,
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
+    onReschedule: () -> Unit = {},
+    rescheduleSent: Boolean = false,
+    onRescheduleSentConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
     locale: Locale = LocalConfiguration.current.locales[0],
@@ -182,6 +199,7 @@ fun ExpertBookingSummaryContent(
     val scope = rememberCoroutineScope()
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
+    val sentMessage = stringResource(R.string.reschedule_start_sent)
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -192,6 +210,13 @@ fun ExpertBookingSummaryContent(
             )
         }
         onRescheduleNoticeConsumed()
+    }
+
+    // D-10: the picker sent a request. Shown once, on the composition scope so consuming the flag keeps the Snackbar.
+    LaunchedEffect(rescheduleSent) {
+        if (!rescheduleSent) return@LaunchedEffect
+        scope.launch { snackbarHostState.showSnackbar(sentMessage) }
+        onRescheduleSentConsumed()
     }
 
     RefreshFailedSnackbarEffect(
@@ -238,6 +263,7 @@ fun ExpertBookingSummaryContent(
                         joinNow = joinNow,
                         onJoin = onJoin,
                         onCancel = onCancel,
+                        onReschedule = onReschedule,
                         onAcceptReschedule = onAcceptReschedule,
                         onDeclineReschedule = onDeclineReschedule,
                         modifier = bodyModifier,
@@ -296,6 +322,7 @@ private fun LoadedBody(
     joinNow: Instant,
     onJoin: () -> Unit,
     onCancel: () -> Unit,
+    onReschedule: () -> Unit,
     onAcceptReschedule: () -> Unit,
     onDeclineReschedule: (reason: String) -> Unit,
     modifier: Modifier,
@@ -357,21 +384,46 @@ private fun LoadedBody(
                 modifier = Modifier.fillMaxWidth().testTag(MESSAGE_CLIENT_TAG),
                 busy = messageBusy,
             )
-            if (details.canCancel) {
-                DestructiveOutlinedButton(
-                    onClick = onCancel,
-                    enabled = !rescheduleState.isSubmitting,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = CancelMinHeight)
-                            .testTag(EXPERT_SUMMARY_CANCEL_TAG),
-                ) {
-                    Icon(Icons.Outlined.Cancel, contentDescription = null, modifier = Modifier.size(CancelIconSize))
-                    Spacer(Modifier.width(Spacing.sm))
-                    Text(stringResource(R.string.expert_summary_cancel))
-                }
-            }
+            // The server flag is the only gate for Reschedule (locked). Reschedule at the start, Cancel at the end; one
+            // alone fills the width and neither leaves no row.
+            ActionButtonPair(
+                start =
+                    if (details.canReschedule) {
+                        { buttonModifier ->
+                            RescheduleActionButton(
+                                onClick = onReschedule,
+                                enabled = !rescheduleState.isSubmitting,
+                                modifier = buttonModifier.testTag(EXPERT_SUMMARY_RESCHEDULE_TAG),
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                end =
+                    if (details.canCancel) {
+                        { buttonModifier ->
+                            DestructiveOutlinedButton(
+                                onClick = onCancel,
+                                enabled = !rescheduleState.isSubmitting,
+                                modifier =
+                                    buttonModifier
+                                        .heightIn(min = CancelMinHeight)
+                                        .testTag(EXPERT_SUMMARY_CANCEL_TAG),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Cancel,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(CancelIconSize),
+                                )
+                                Spacer(Modifier.width(Spacing.sm))
+                                Text(stringResource(R.string.expert_summary_cancel))
+                            }
+                        }
+                    } else {
+                        null
+                    },
+                gap = Spacing.md,
+            )
         }
     }
 }
