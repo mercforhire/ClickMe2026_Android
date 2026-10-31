@@ -13,12 +13,14 @@ import com.uptrendinvestments.clickmeapp.model.requests.DeclineBookingRequestBod
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeleteAccountRequest
 import com.uptrendinvestments.clickmeapp.model.requests.EndCallRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ExpertRescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ForgotPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.InitiateChatRequest
 import com.uptrendinvestments.clickmeapp.model.requests.LoginRequest
 import com.uptrendinvestments.clickmeapp.model.requests.PaymentIntentRequest
 import com.uptrendinvestments.clickmeapp.model.requests.RegisterDeviceTokenRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ReportUserRequest
+import com.uptrendinvestments.clickmeapp.model.requests.RescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ResetPasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
@@ -149,6 +151,10 @@ class FakeClickMeApi : ClickMeApi {
     var acceptClientRescheduleHandler: suspend (String, AcceptRescheduleRequest) -> RescheduleResponseData =
         { _, _ -> notStubbed() }
     var declineClientRescheduleHandler: suspend (String, DeclineRescheduleRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
+    var rescheduleClientBookingHandler: suspend (String, RescheduleProposalRequest) -> RescheduleResponseData =
+        { _, _ -> notStubbed() }
+    var rescheduleExpertBookingHandler: suspend (String, ExpertRescheduleProposalRequest) -> RescheduleResponseData =
         { _, _ -> notStubbed() }
     var joinCallHandler: suspend (String) -> JoinCallResponse = { notStubbed() }
     var confirmCallConnectionHandler: suspend (String, ConfirmConnectionRequest) -> ConfirmConnectionData =
@@ -302,6 +308,12 @@ class FakeClickMeApi : ClickMeApi {
     @Volatile var declineClientRescheduleCalls = 0
         private set
 
+    @Volatile var rescheduleClientBookingCalls = 0
+        private set
+
+    @Volatile var rescheduleExpertBookingCalls = 0
+        private set
+
     @Volatile var joinCallCalls = 0
         private set
 
@@ -423,6 +435,18 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /client/bookings/{id}/decline-reschedule call (id, body), in call order. */
     val declineClientRescheduleRequests: List<Pair<String, DeclineRescheduleRequest>>
         get() = synchronized(_declineClientRescheduleRequests) { _declineClientRescheduleRequests.toList() }
+
+    private val _rescheduleClientBookingRequests = mutableListOf<RescheduleProposalRequest>()
+
+    /** Every PATCH /client/bookings/{id}/reschedule body, in call order. */
+    val rescheduleClientBookingRequests: List<RescheduleProposalRequest>
+        get() = synchronized(_rescheduleClientBookingRequests) { _rescheduleClientBookingRequests.toList() }
+
+    private val _rescheduleExpertBookingRequests = mutableListOf<ExpertRescheduleProposalRequest>()
+
+    /** Every PATCH /expert/bookings/{id}/reschedule body, in call order. */
+    val rescheduleExpertBookingRequests: List<ExpertRescheduleProposalRequest>
+        get() = synchronized(_rescheduleExpertBookingRequests) { _rescheduleExpertBookingRequests.toList() }
 
     private val _joinCallRequests = mutableListOf<String>()
 
@@ -814,6 +838,24 @@ class FakeClickMeApi : ClickMeApi {
         declineClientRescheduleCalls++
         synchronized(_declineClientRescheduleRequests) { _declineClientRescheduleRequests += bookingId to body }
         return ok(declineClientRescheduleHandler(bookingId, body))
+    }
+
+    override suspend fun rescheduleClientBooking(
+        bookingId: String,
+        body: RescheduleProposalRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        rescheduleClientBookingCalls++
+        synchronized(_rescheduleClientBookingRequests) { _rescheduleClientBookingRequests += body }
+        return ok(rescheduleClientBookingHandler(bookingId, body))
+    }
+
+    override suspend fun rescheduleExpertBooking(
+        bookingId: String,
+        body: ExpertRescheduleProposalRequest,
+    ): SuccessDataResponse<RescheduleResponseData> {
+        rescheduleExpertBookingCalls++
+        synchronized(_rescheduleExpertBookingRequests) { _rescheduleExpertBookingRequests += body }
+        return ok(rescheduleExpertBookingHandler(bookingId, body))
     }
 
     override suspend fun joinCall(bookingId: String): SuccessDataResponse<JoinCallResponse> {

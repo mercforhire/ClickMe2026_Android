@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.DeclineRescheduleRequest
+import com.uptrendinvestments.clickmeapp.model.requests.ExpertRescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.responses.CancelBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
@@ -14,7 +15,7 @@ import javax.inject.Singleton
 
 /**
  * The signed-in expert's own bookings (`/expert/bookings`). Reads: [list] and [detail] (which loads
- * `.../details`, never the bare booking id). Writes: [cancel], [acceptReschedule] and [declineReschedule]. Mirrors
+ * `.../details`, never the bare booking id). Writes: [cancel], [acceptReschedule], [declineReschedule] and [reschedule]. Mirrors
  * iOS `Expert Mode/Upcoming Bookings`. Every call throws [com.uptrendinvestments.clickmeapp.network.ApiException]
  * only.
  *
@@ -53,6 +54,12 @@ class ExpertBookingsRepository
             reason: String?,
         ): RescheduleResponseData =
             apiCall { api.declineExpertReschedule(bookingId, DeclineRescheduleRequest(reason)) }.data
+
+        /** Proposes a new time (Phase 16.2). The body has no card property; the note is never logged. */
+        suspend fun reschedule(
+            bookingId: String,
+            body: ExpertRescheduleProposalRequest,
+        ): RescheduleResponseData = apiCall { api.rescheduleExpertBooking(bookingId, body) }.data
 
         companion object {
             const val TYPE_UPCOMING = "upcoming"
