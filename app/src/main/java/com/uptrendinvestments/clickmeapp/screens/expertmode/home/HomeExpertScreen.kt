@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.profile.ExpertProfil
 import com.uptrendinvestments.clickmeapp.screens.expertmode.profile.ExpertProfileHomeScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.profile.ExpertProfileHubActions
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.requestDecisionEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.reschedule.expertRescheduleEntries
 import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.ExpertProfileSettingsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.taxprofile.TaxProfileKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.TopicsScreen
@@ -79,9 +80,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
  * Hilt-aware entry for the expert shell: supplies the avatar URL, session actions and the debug gate.
  *
  * Phase 11 features register their routes from their own packages (`incomingRequestsEntries`,
- * `requestDecisionEntries`, `bookingConfirmedEntries`, `expertBookingSummaryEntries`, `expertCancelEntries`), and the
- * Dashboard and Bookings tab roots come from `ExpertDashboardRoute` / `ExpertBookingsRoute`, so a feature plan never
- * edits this file.
+ * `requestDecisionEntries`, `bookingConfirmedEntries`, `expertBookingSummaryEntries`, `expertCancelEntries`,
+ * `expertRescheduleEntries`), and the Dashboard and Bookings tab roots come from `ExpertDashboardRoute` /
+ * `ExpertBookingsRoute`, so a feature plan never edits this file.
  */
 @Composable
 fun HomeExpertScreen(
@@ -150,6 +151,7 @@ fun HomeExpertScreen(
             bookingConfirmedEntries(navigator)
             expertBookingSummaryEntries(navigator)
             expertCancelEntries(navigator)
+            expertRescheduleEntries(navigator)
             chatEntries(navigator, AppMode.Expert)
             notificationsEntries(navigator, AppMode.Expert)
             expertProfileEntry(navigator)

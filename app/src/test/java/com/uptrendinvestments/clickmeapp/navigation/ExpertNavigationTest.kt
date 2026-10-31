@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.navigation
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
@@ -16,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.Expert
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.TopicsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.reschedule.ExpertRescheduleKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.showDashboard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.showExpertBookings
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -106,6 +108,32 @@ class ExpertNavigationTest {
         )
         assertNotEquals(AvailabilityKey(AvailabilityOrigin.Dashboard), AvailabilityKey(AvailabilityOrigin.Topics))
         assertNotEquals(AvailabilityKey(AvailabilityOrigin.Bookings), AvailabilityKey(AvailabilityOrigin.Profile))
+    }
+
+    @Test
+    fun rescheduleFromSummaryPopsBackToSummary() {
+        val navigator = newNavigator()
+        val summary = ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Bookings)
+        navigator.navigate(summary)
+        navigator.navigate(ExpertRescheduleKey("b1", ExpertBookingOrigin.Bookings, RescheduleOpener.ExpertSummary))
+        navigator.goBack()
+        assertEquals(listOf<NavKey>(DashboardRoot, summary), navigator.stack(DashboardRoot))
+    }
+
+    @Test
+    fun rescheduleKeysDistinctAcrossOriginAndOpener() {
+        val dashboardSummary = ExpertRescheduleKey("b1", ExpertBookingOrigin.Dashboard, RescheduleOpener.ExpertSummary)
+        val bookingsSummary = ExpertRescheduleKey("b1", ExpertBookingOrigin.Bookings, RescheduleOpener.ExpertSummary)
+        val bookingsList = ExpertRescheduleKey("b1", ExpertBookingOrigin.Bookings, RescheduleOpener.ExpertBookings)
+        assertNotEquals(dashboardSummary, bookingsSummary)
+        assertNotEquals(bookingsSummary, bookingsList)
+        assertNotEquals(dashboardSummary, bookingsList)
+    }
+
+    @Test
+    fun rescheduleKeyRoundTrips() {
+        val key = ExpertRescheduleKey("b1", ExpertBookingOrigin.Chats, RescheduleOpener.ExpertBookings)
+        assertEquals(key, roundTrip(ExpertRescheduleKey.serializer(), key))
     }
 
     @Test
