@@ -10,6 +10,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSumm
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showExplore
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showMyBookings
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showSearch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
@@ -69,8 +70,9 @@ class BookingFlowNavigationTest {
     fun viewMyBookingsClearsExploreAndSelectsBookings() {
         val navigator = navigatorAtBookingForm()
         navigator.replaceTop(RequestSentKey("b1"))
-        navigator.resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, ClientBookingsRoot))
+        navigator.showMyBookings()
         assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
+        assertEquals(listOf<NavKey>(SearchRoot), navigator.stack(SearchRoot))
         assertEquals(ClientBookingsRoot, navigator.state.topLevelRoute)
     }
 
@@ -78,7 +80,7 @@ class BookingFlowNavigationTest {
     fun backToHomePopsExploreToRoot() {
         val navigator = navigatorAtBookingForm()
         navigator.replaceTop(RequestSentKey("b1"))
-        navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot))
+        navigator.showExplore()
         assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
         assertEquals(ExploreRoot, navigator.state.topLevelRoute)
         assertEquals(NavTransition.Pop, navigator.state.lastTransition)
@@ -90,9 +92,50 @@ class BookingFlowNavigationTest {
         // Explore, not on that tab's Request Sent.
         val navigator = navigatorAtBookingForm()
         navigator.navigateInTab(ClientBookingsRoot, RequestSentKey("b1"))
-        navigator.resetAndSelect(ExploreRoot, setOf(ExploreRoot))
+        navigator.showExplore()
         assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
         assertEquals(ExploreRoot, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
+    }
+
+    // A booking started from Search ends on Request Sent in the Search stack. Unlike iOS (which leaves searchPath
+    // alone), View My Bookings and Explore Experts also reset Search so nothing stays parked there (user decision
+    // 2026-10-30); SearchRoot itself stays so its ViewModel and query survive (D-02).
+    private fun navigatorAtRequestSentFromSearch(): Navigator =
+        newNavigator().also {
+            it.navigate(SearchRoot)
+            it.navigate(profile)
+            it.navigate(booking)
+            it.replaceTop(RequestSentKey("b1"))
+        }
+
+    @Test
+    fun bookingStartedFromSearchLeavesNothingOnTheSearchStackAfterViewMyBookings() {
+        val navigator = navigatorAtRequestSentFromSearch()
+        assertEquals(listOf<NavKey>(SearchRoot, profile, RequestSentKey("b1")), navigator.stack(SearchRoot))
+        navigator.showMyBookings()
+        assertEquals(listOf<NavKey>(SearchRoot), navigator.stack(SearchRoot))
+        assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
+        assertEquals(ClientBookingsRoot, navigator.state.topLevelRoute)
+    }
+
+    @Test
+    fun bookingStartedFromSearchBackToHomeResetsSearchAndSelectsExplore() {
+        val navigator = navigatorAtRequestSentFromSearch()
+        navigator.showExplore()
+        assertEquals(listOf<NavKey>(SearchRoot), navigator.stack(SearchRoot))
+        assertEquals(ExploreRoot, navigator.state.topLevelRoute)
+    }
+
+    @Test
+    fun seeAllSelectsSearchWithoutResettingItsStack() {
+        // D-01: See all is a pure tab switch, exactly like iOS `selectedTab = .search`.
+        val navigator = newNavigator()
+        navigator.navigateInTab(SearchRoot, profile)
+        navigator.navigate(ExploreRoot)
+        navigator.showSearch()
+        assertEquals(SearchRoot, navigator.state.topLevelRoute)
+        assertEquals(listOf<NavKey>(SearchRoot, profile), navigator.stack(SearchRoot))
         assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
     }
 
@@ -129,6 +172,7 @@ class BookingFlowNavigationTest {
         navigator.navigateInTab(ClientBookingsRoot, UpcomingBookingKey("b9"))
         navigator.showMyBookings()
         assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
+        assertEquals(listOf<NavKey>(SearchRoot), navigator.stack(SearchRoot))
         assertEquals(listOf<NavKey>(ClientBookingsRoot), navigator.stack(ClientBookingsRoot))
         assertEquals(ClientBookingsRoot, navigator.state.topLevelRoute)
     }

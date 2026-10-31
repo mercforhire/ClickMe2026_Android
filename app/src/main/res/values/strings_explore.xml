@@ -7,6 +7,7 @@
     <string name="explore_section_trending_categories">Trending Categories</string>
     <string name="explore_section_featured_topics">Featured Topics</string>
     <string name="explore_section_recommended_experts">Recommended Experts</string>
+    <string name="explore_see_all">See all</string>
     <string name="explore_view_all">View all</string>
     <string name="explore_view_all_count">View all (%1$d)</string>
     <string name="explore_join_call">Join Call</string>

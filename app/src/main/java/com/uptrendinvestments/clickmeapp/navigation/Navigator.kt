@@ -95,10 +95,10 @@ class Navigator(
 
     /**
      * Pop every tab in [reset] to its root, then select [tab] (D-13). Mirrors iOS `showMyBookings`
-     * (explorePath.reset, bookingsPath.reset, selectedTab = .bookings; the caller passes
-     * `setOf(ExploreRoot, ClientBookingsRoot)`) and `returnToHome` (explorePath.reset, selectedTab = .explore;
-     * the caller passes `setOf(ExploreRoot)`). When [tab] is already selected this animates as a pop, since
-     * only its stack changes.
+     * (explorePath.reset, bookingsPath.reset, selectedTab = .bookings) and `returnToHome` (explorePath.reset,
+     * selectedTab = .explore); see the client callers `showMyBookings` and `showExplore` in
+     * ClientBookingManagementEntries for the exact sets. Both also reset the Search stack (Phase 16.1, a deliberate
+     * deviation from iOS). When [tab] is already selected this animates as a pop, since only its stack changes.
      */
     fun resetAndSelect(
         tab: NavKey,

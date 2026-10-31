@@ -58,6 +58,7 @@ fun ExploreScreen(
     onOpenExpert: (ExpertProfileKey) -> Unit,
     onOpenBooking: (bookingId: String) -> Unit,
     onOpenNotifications: () -> Unit,
+    onSeeAll: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExploreViewModel = hiltViewModel(),
     sheetViewModel: CategoriesSheetViewModel = hiltViewModel(),
@@ -87,6 +88,7 @@ fun ExploreScreen(
         onJoinSession = viewModel::join,
         onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         modifier = modifier,
+        onSeeAll = onSeeAll,
     )
 
     if (showSheet) {
@@ -101,7 +103,10 @@ fun ExploreScreen(
     }
 }
 
-/** Stateless Explore home: app bar, pull-to-refresh and the five sections in iOS order (DISC-01). */
+/**
+ * Stateless Explore home: app bar, pull-to-refresh and the five sections in iOS order (DISC-01). [onSeeAll] is the
+ * "See all" hand-off to the Search tab; it takes no arguments, so Explore's category selection never crosses (D-01).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreContent(
@@ -121,6 +126,7 @@ fun ExploreContent(
     onRefreshFailureConsumed: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenNotifications: () -> Unit = {},
+    onSeeAll: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
@@ -211,6 +217,7 @@ fun ExploreContent(
                                 state = state.featuredTopics,
                                 onTopicClick = onFeaturedTopicClick,
                                 onRetry = onRetry,
+                                onSeeAll = onSeeAll,
                             )
                         }
                     }
@@ -223,6 +230,7 @@ fun ExploreContent(
                         onExpertClick = onExpertClick,
                         onClearFilter = onClearFilter,
                         onRetry = onRetry,
+                        onSeeAll = onSeeAll,
                     )
                 }
             }

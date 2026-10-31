@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -34,12 +35,17 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
+/** Test tag on the Recommended Experts "See all" action. */
+const val EXPLORE_EXPERTS_SEE_ALL_TAG = "explore_experts_see_all"
+
 private const val SKELETON_CARD_COUNT = 3
 private val SkeletonCardHeight = 128.dp
 
 /**
- * Recommended Experts (D-03, D-16, D-17). The heading is always shown and has no action. Zero experts shows an
- * explicit empty state, with a Clear filter button when a category filter is active.
+ * Recommended Experts (D-03, D-16, D-17). The heading is always shown and carries "See all", which switches to the
+ * Search tab (D-01, iOS `ExploreExpertsSection.onSeeAll`); a null [onSeeAll] hides the action (previews and isolated
+ * section tests only). Zero experts shows an explicit empty state, with a Clear filter button when a category filter
+ * is active.
  */
 @Composable
 fun ExploreExpertsSection(
@@ -49,9 +55,15 @@ fun ExploreExpertsSection(
     onClearFilter: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    onSeeAll: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        SectionHeader(title = stringResource(R.string.explore_section_recommended_experts))
+        SectionHeader(
+            title = stringResource(R.string.explore_section_recommended_experts),
+            actionLabel = stringResource(R.string.explore_see_all),
+            onAction = onSeeAll,
+            actionModifier = Modifier.testTag(EXPLORE_EXPERTS_SEE_ALL_TAG),
+        )
         Spacer(Modifier.height(Spacing.md))
         when (state) {
             SectionState.Loading ->

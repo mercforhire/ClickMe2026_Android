@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -24,8 +25,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RATING_STAR_EMPTY_TAG
 import com.uptrendinvestments.clickmeapp.components.RATING_STAR_FILLED_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.EXPLORE_EXPERTS_SEE_ALL_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.EXPLORE_FEATURED_SEE_ALL_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreCategoriesSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreExpertsSection
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.ExploreFeaturedTopicsSection
@@ -36,6 +40,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.Sta
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_TIME_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
+import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import org.junit.Assert.assertEquals
@@ -316,9 +322,15 @@ class ExploreSectionsTest {
         state: SectionState<List<FeaturedTopicUi>>,
         onTopicClick: (FeaturedTopicUi) -> Unit = {},
         onRetry: () -> Unit = {},
+        onSeeAll: (() -> Unit)? = null,
     ) {
         show {
-            ExploreFeaturedTopicsSection(state = state, onTopicClick = onTopicClick, onRetry = onRetry)
+            ExploreFeaturedTopicsSection(
+                state = state,
+                onTopicClick = onTopicClick,
+                onRetry = onRetry,
+                onSeeAll = onSeeAll,
+            )
         }
     }
 
@@ -358,6 +370,45 @@ class ExploreSectionsTest {
         assertEquals(1, retries)
     }
 
+    private fun assertSeeAllClickedOnce(
+        tag: String,
+        clicks: () -> Int,
+    ) {
+        val action = rule.onNodeWithTag(tag)
+        action.assert(hasText("See all"))
+        action.assertHasClickAction()
+        action.performClick()
+        assertEquals(1, clicks())
+    }
+
+    @Test
+    fun featured_seeAll_loadedWithTopicsCallsOnSeeAll() {
+        var seeAll = 0
+        showFeatured(SectionState.Loaded(listOf(t1, t2)), onSeeAll = { seeAll++ })
+        assertSeeAllClickedOnce(EXPLORE_FEATURED_SEE_ALL_TAG) { seeAll }
+    }
+
+    @Test
+    fun featured_seeAll_errorStateCallsOnSeeAll() {
+        var seeAll = 0
+        showFeatured(SectionState.Error(FieldError.Res(R.string.error_state_body)), onSeeAll = { seeAll++ })
+        assertSeeAllClickedOnce(EXPLORE_FEATURED_SEE_ALL_TAG) { seeAll }
+    }
+
+    @Test
+    fun featured_seeAll_loadingAndEmptyRenderNoHeadingAndNoAction() {
+        showFeatured(SectionState.Loading, onSeeAll = {})
+        assertEquals(false, exists("Featured Topics"))
+        assertEquals(0, countWithTag(EXPLORE_FEATURED_SEE_ALL_TAG))
+    }
+
+    @Test
+    fun featured_seeAll_emptyRendersNoHeadingAndNoAction() {
+        showFeatured(SectionState.Loaded(emptyList()), onSeeAll = {})
+        assertEquals(false, exists("Featured Topics"))
+        assertEquals(0, countWithTag(EXPLORE_FEATURED_SEE_ALL_TAG))
+    }
+
     // Recommended Experts
 
     private val adaExpert =
@@ -377,6 +428,7 @@ class ExploreSectionsTest {
         onExpertClick: (ExpertCardUi) -> Unit = {},
         onClearFilter: () -> Unit = {},
         onRetry: () -> Unit = {},
+        onSeeAll: (() -> Unit)? = null,
     ) {
         show {
             ExploreExpertsSection(
@@ -385,6 +437,7 @@ class ExploreSectionsTest {
                 onExpertClick = onExpertClick,
                 onClearFilter = onClearFilter,
                 onRetry = onRetry,
+                onSeeAll = onSeeAll,
             )
         }
     }
@@ -456,5 +509,47 @@ class ExploreSectionsTest {
         rule.onNodeWithText("Down").assertExists()
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retries)
+    }
+
+    @Test
+    fun experts_seeAll_loadingCallsOnSeeAll() {
+        var seeAll = 0
+        showExperts(SectionState.Loading, onSeeAll = { seeAll++ })
+        assertSeeAllClickedOnce(EXPLORE_EXPERTS_SEE_ALL_TAG) { seeAll }
+    }
+
+    @Test
+    fun experts_seeAll_emptyCallsOnSeeAll() {
+        var seeAll = 0
+        showExperts(SectionState.Loaded(emptyList()), onSeeAll = { seeAll++ })
+        assertSeeAllClickedOnce(EXPLORE_EXPERTS_SEE_ALL_TAG) { seeAll }
+    }
+
+    @Test
+    fun experts_seeAll_loadedCallsOnSeeAll() {
+        var seeAll = 0
+        showExperts(SectionState.Loaded(listOf(adaExpert)), onSeeAll = { seeAll++ })
+        assertSeeAllClickedOnce(EXPLORE_EXPERTS_SEE_ALL_TAG) { seeAll }
+    }
+
+    @Test
+    fun experts_seeAll_errorCallsOnSeeAll() {
+        var seeAll = 0
+        showExperts(SectionState.Error(FieldError.Res(R.string.error_state_body)), onSeeAll = { seeAll++ })
+        assertSeeAllClickedOnce(EXPLORE_EXPERTS_SEE_ALL_TAG) { seeAll }
+    }
+
+    @Test
+    fun experts_withoutOnSeeAll_showsNoAction() {
+        showExperts(SectionState.Loaded(listOf(adaExpert)))
+        assertEquals(0, countWithTag(EXPLORE_EXPERTS_SEE_ALL_TAG))
+        assertEquals(false, exists("See all"))
+    }
+
+    @Test
+    fun seeAll_meetsTouchTargetAndIsNamed() {
+        showExperts(SectionState.Loaded(listOf(adaExpert)), onSeeAll = {})
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
     }
 }
