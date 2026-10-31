@@ -2,14 +2,18 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.explore
 
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.EXPLORE_EXPERTS_SEE_ALL_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.EXPLORE_FEATURED_SEE_ALL_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.TODAYS_SESSION_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -61,6 +65,7 @@ class ExploreScreenTest {
     private var consumedCount = 0
     private var refreshCount = 0
     private var retryCount = 0
+    private var seeAllCount = 0
     private var sessionClicked: String? = null
     private var sessionJoined: TodaysSessionUi? = null
 
@@ -82,6 +87,7 @@ class ExploreScreenTest {
                     joinNow = Instant.parse("2026-10-21T18:50:00Z"),
                     onJoinSession = { sessionJoined = it },
                     onRefreshFailureConsumed = { consumedCount++ },
+                    onSeeAll = { seeAllCount++ },
                 )
             }
         }
@@ -267,5 +273,19 @@ class ExploreScreenTest {
         assertTrue("heading left ${heading.left}", heading.left >= 150.dp)
         val list = rule.onNodeWithTag(EXPLORE_LIST_TAG).getUnclippedBoundsInRoot()
         assertTrue(list.right - list.left > 600.dp)
+    }
+
+    @Test
+    fun seeAllOnBothHeadersCallsOnSeeAllOnly() {
+        show(fullState.copy(selection = setOf("ai")))
+        rule.onNodeWithTag(EXPLORE_LIST_TAG).performScrollToNode(hasTestTag(EXPLORE_EXPERTS_SEE_ALL_TAG))
+        rule.onNodeWithTag(EXPLORE_EXPERTS_SEE_ALL_TAG).performClick()
+        assertEquals(1, seeAllCount)
+        rule.onNodeWithTag(EXPLORE_LIST_TAG).performScrollToNode(hasTestTag(EXPLORE_FEATURED_SEE_ALL_TAG))
+        rule.onNodeWithTag(EXPLORE_FEATURED_SEE_ALL_TAG).performClick()
+        assertEquals(2, seeAllCount)
+        assertEquals(null, chipTapped)
+        assertEquals(0, viewAllCount)
+        assertEquals(0, retryCount)
     }
 }
