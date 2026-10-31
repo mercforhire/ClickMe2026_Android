@@ -9,15 +9,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation3.runtime.EntryProviderScope
@@ -30,6 +35,10 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.EXPLORE_LIST_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreContent
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.EXPLORE_EXPERTS_SEE_ALL_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
@@ -38,6 +47,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientProfileHubActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showSearch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
@@ -76,6 +86,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 class HomeShellsTest {
@@ -596,6 +607,47 @@ class HomeShellsTest {
         tapTab("Explore")
         composeRule.onNodeWithText("open booking", substring = true).assertExists()
         composeRule.onNodeWithText("sent b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun exploreSeeAllSelectsTheSearchTab() {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, url ->
+                        ExploreContent(
+                            state = ExploreUiState(),
+                            avatarUrl = url,
+                            onAvatarClick = {},
+                            onRefresh = {},
+                            onRetry = {},
+                            onChipTap = {},
+                            onViewAll = {},
+                            onClearFilter = {},
+                            onExpertClick = {},
+                            onFeaturedTopicClick = {},
+                            onSessionClick = {},
+                            joinNow = Instant.EPOCH,
+                            onJoinSession = {},
+                            onRefreshFailureConsumed = {},
+                            onSeeAll = navigator::showSearch,
+                        )
+                    },
+                )
+            }
+        }
+        composeRule.onNodeWithTag(EXPLORE_LIST_TAG).performScrollToNode(hasTestTag(EXPLORE_EXPERTS_SEE_ALL_TAG))
+        composeRule.onNodeWithTag(EXPLORE_EXPERTS_SEE_ALL_TAG).assertHasClickAction()
+        composeRule.onNodeWithTag(EXPLORE_EXPERTS_SEE_ALL_TAG).assert(hasText("See all"))
+        composeRule.onNodeWithTag(EXPLORE_EXPERTS_SEE_ALL_TAG).performClick()
+        composeRule.onNode(tab("Search")).assertIsSelected()
+        composeRule.onNode(tab("Explore")).assertIsNotSelected()
     }
 
     @Test
