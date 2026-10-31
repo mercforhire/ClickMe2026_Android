@@ -62,6 +62,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
@@ -96,6 +97,15 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 
+/** The wire arguments of one `GET /experts/search` call, recorded by [FakeClickMeApi]. */
+data class SearchExpertsQuery(
+    val q: String,
+    val category: String?,
+    val sort: String,
+    val page: Int,
+    val limit: Int,
+)
+
 /**
  * Scriptable [ClickMeApi] for session tests. Each endpoint delegates to a `var` handler (default: throws
  * `IllegalStateException("not stubbed")`) and counts its calls. Handlers may throw (use [httpError] or an
@@ -120,6 +130,7 @@ class FakeClickMeApi : ClickMeApi {
     var deleteAvatarHandler: suspend () -> SuccessMessageResponse = { notStubbed() }
     var clientHomeHandler: suspend (String?) -> ClientHomeData = { notStubbed() }
     var clientBookingsHandler: suspend (String) -> ClientBookingsPayload = { notStubbed() }
+    var searchExpertsHandler: suspend (SearchExpertsQuery) -> ExpertsSearchPayload = { notStubbed() }
     var categoriesHandler: suspend () -> CategoriesPayload = { notStubbed() }
     var expertDetailsHandler: suspend (String) -> PublicProfileDetailsData = { notStubbed() }
     var expertReviewsHandler: suspend (String) -> ExpertReviewsPayload = { notStubbed() }
@@ -241,6 +252,9 @@ class FakeClickMeApi : ClickMeApi {
         private set
 
     @Volatile var clientBookingsCalls = 0
+        private set
+
+    @Volatile var searchExpertsCalls = 0
         private set
 
     @Volatile var categoriesCalls = 0
@@ -566,6 +580,12 @@ class FakeClickMeApi : ClickMeApi {
     val clientBookingsQueries: List<Triple<String, Int, Int>>
         get() = synchronized(_clientBookingsQueries) { _clientBookingsQueries.toList() }
 
+    private val _searchExpertsQueries = mutableListOf<SearchExpertsQuery>()
+
+    /** The wire arguments of every searchExperts call, in call order. */
+    val searchExpertsQueries: List<SearchExpertsQuery>
+        get() = synchronized(_searchExpertsQueries) { _searchExpertsQueries.toList() }
+
     private val _deletedPaymentMethodIds = mutableListOf<String>()
 
     /** The id of every DELETE /me/payment-methods/{id} call, in call order. */
@@ -673,6 +693,19 @@ class FakeClickMeApi : ClickMeApi {
         clientBookingsCalls++
         synchronized(_clientBookingsQueries) { _clientBookingsQueries += Triple(type, page, limit) }
         return ok(clientBookingsHandler(type))
+    }
+
+    override suspend fun searchExperts(
+        q: String,
+        category: String?,
+        sort: String,
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ExpertsSearchPayload> {
+        searchExpertsCalls++
+        val query = SearchExpertsQuery(q, category, sort, page, limit)
+        synchronized(_searchExpertsQueries) { _searchExpertsQueries += query }
+        return ok(searchExpertsHandler(query))
     }
 
     override suspend fun getCategories(): SuccessDataResponse<CategoriesPayload> {

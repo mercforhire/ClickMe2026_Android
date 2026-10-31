@@ -61,6 +61,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
@@ -199,6 +200,21 @@ interface ClickMeApi {
     suspend fun getClientHome(
         @Query("category") category: String?,
     ): SuccessDataResponse<ClientHomeData>
+
+    /**
+     * Ports iOS ClickMeAPI+Discovery searchExperts. [q] is always sent: an empty string returns the default
+     * browse set (the RPC treats it as no search). A null [category] omits the parameter (the All chip). [sort] is
+     * `relevance` or `rating`. The backend schema is strict, so only these five parameters may ever be declared
+     * (the old iOS rate filters were dropped server-side).
+     */
+    @GET(ApiRequestUrls.EXPERTS_SEARCH)
+    suspend fun searchExperts(
+        @Query("q") q: String,
+        @Query("category") category: String?,
+        @Query("sort") sort: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ExpertsSearchPayload>
 
     /** Ports iOS ClickMeAPI+ClientBookings list. [type] is the server filter, e.g. `upcoming`. */
     @GET(ApiRequestUrls.CLIENT_BOOKINGS)
