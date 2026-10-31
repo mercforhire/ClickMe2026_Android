@@ -4,17 +4,21 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.AvailabilityState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.calendarDayTestTag
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.subviews.slotChipTestTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -47,6 +51,7 @@ class ReschedulePickerScreenTest {
     private val selectedSlots = mutableListOf<Instant>()
     private val selectedDates = mutableListOf<LocalDate>()
     private var retryLoadCount = 0
+    private var retrySlotsCount = 0
     private var confirmCount = 0
     private val dismissed = mutableListOf<Unit>()
     private var addPaymentCount = 0
@@ -63,7 +68,7 @@ class ReschedulePickerScreenTest {
                     onNextMonth = {},
                     onSelectDate = { selectedDates += it },
                     onSelectSlot = { selectedSlots += it },
-                    onRetrySlots = {},
+                    onRetrySlots = { retrySlotsCount++ },
                     onMessageChange = {},
                     onSubmit = { submitted += Unit },
                     onConfirmDisclosure = { confirmCount++ },
@@ -228,6 +233,38 @@ class ReschedulePickerScreenTest {
         rule.onNodeWithText("Retry").performClick()
         assertEquals(1, retryLoadCount)
         rule.onNodeWithTag(RESCHEDULE_SUBMIT_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun monthLoadingShowsSkeletonChipsAndNoDots() {
+        val booking = pickerBooking()
+        show(pickerState(booking = booking, availability = AvailabilityState.Loading, selectedSlotStart = null))
+
+        // The slots card shows the skeleton instead of any chip.
+        assertTrue(rule.onAllNodesWithContentDescription("Loading").fetchSemanticsNodes().isNotEmpty())
+        rule
+            .onAllNodes(hasTestTag(slotChipTestTag(booking.currentStart, RESCHEDULE_SLOT_TAG_PREFIX)))
+            .assertCountEquals(0)
+        // No day is marked open (the dot) while the month loads.
+        val day = calendarDayTestTag(booking.currentStart.atZone(zone).toLocalDate(), RESCHEDULE_DAY_TAG_PREFIX)
+        rule.onNodeWithTag(day).assert(
+            SemanticsMatcher("no open dot") {
+                it.config.getOrNull(SemanticsProperties.StateDescription)?.contains("Available") == false
+            },
+        )
+        rule.onNodeWithTag(RESCHEDULE_SUBMIT_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun slotsErrorShowsRetryInsideSlotsCard() {
+        show(pickerState(availability = AvailabilityState.Failed(FieldError.Text("Slots unavailable"))))
+
+        rule.onNodeWithText("Slots unavailable").assertExists()
+        rule.onNodeWithTag(RESCHEDULE_SUBMIT_TAG).assertIsNotEnabled()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retrySlotsCount)
+        assertEquals(0, retryLoadCount)
+        rule.onNodeWithTag(RESCHEDULE_SUBMIT_TAG).assertIsNotEnabled()
     }
 
     @Test

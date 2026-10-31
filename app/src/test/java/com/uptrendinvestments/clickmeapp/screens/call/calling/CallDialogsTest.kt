@@ -208,6 +208,15 @@ class CallDialogsTest {
     }
 
     @Test
+    fun guard_rescheduleThisSession() {
+        assertDialog(
+            CallDialog.Guard(GuardMessage.SessionInProgress(RestrictedAction.RescheduleBooking)),
+            "Can't do that during a call",
+            "This session is in progress. End the call to reschedule this session.",
+        )
+    }
+
+    @Test
     fun guard_alreadyOnCall() {
         assertDialog(
             CallDialog.Guard(GuardMessage.AlreadyOnCall),
