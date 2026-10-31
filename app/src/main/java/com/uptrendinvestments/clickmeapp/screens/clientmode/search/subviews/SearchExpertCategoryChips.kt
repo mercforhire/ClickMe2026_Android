@@ -26,8 +26,12 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 /** Test tag on the category chip row. */
 const val SEARCH_CHIPS_ROW_TAG = "search_category_chips"
 
-/** Test tag of the chip for [slug]; the All chip (empty slug) is `search_chip_all`. */
-fun searchChipTag(slug: String): String = "search_chip_" + slug.ifEmpty { "all" }
+/**
+ * Test tag of the chip for [slug]. The All chip (the [ALL_CATEGORIES_SLUG] sentinel) is `search_chip_all`; a category
+ * chip is `search_chip_cat_<slug>`, so a category whose slug happens to be "all" can never share the All chip's tag.
+ */
+fun searchChipTag(slug: String): String =
+    if (slug == ALL_CATEGORIES_SLUG) "search_chip_all" else "search_chip_cat_$slug"
 
 private val RowHorizontalPadding = 20.dp
 private val ChipSpacing = 10.dp
@@ -61,7 +65,7 @@ fun SearchExpertCategoryChips(
                 onSelect = onSelect,
             )
         }
-        items(categories, key = { it.slug }) { category ->
+        items(categories, key = { categoryChipKey(it.slug) }) { category ->
             SearchCategoryChip(
                 name = category.name,
                 slug = category.slug,
@@ -72,8 +76,14 @@ fun SearchExpertCategoryChips(
     }
 }
 
-/** Key of the All item; a category slug is never empty, so it cannot collide with one. */
-private const val ALL_CHIP_KEY = "all"
+/**
+ * `LazyRow` key of the All item. Category keys are built by [categoryChipKey] with a `cat_` prefix, and this key has a
+ * different prefix, so no category slug (including "all" or "") can produce the same key and crash the row.
+ */
+private const val ALL_CHIP_KEY = "__all__"
+
+/** `LazyRow` key of the chip for the category [slug]; the `cat_` prefix keeps it disjoint from [ALL_CHIP_KEY]. */
+private fun categoryChipKey(slug: String): String = "cat_$slug"
 
 @Composable
 private fun SearchCategoryChip(

@@ -182,6 +182,29 @@ class SearchExpertControlsTest {
     }
 
     @Test
+    fun categoryNamedAllNeverCollidesWithTheAllChip() {
+        val selected = mutableListOf<String>()
+        compose.setContent {
+            ClickMeTheme {
+                Box(Modifier.requiredWidth(800.dp)) {
+                    SearchExpertCategoryChips(
+                        categories = listOf(SearchCategoryChipUi(slug = "all", name = "Everything")),
+                        selectedSlug = "all",
+                        onSelect = { selected += it },
+                    )
+                }
+            }
+        }
+
+        // Same slug as the All chip's tag word: both chips still compose (no duplicate LazyRow key) and stay distinct.
+        compose.onNodeWithTag(searchChipTag("all")).assertIsSelected()
+        compose.onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG)).assertIsNotSelected()
+        compose.onNodeWithTag(searchChipTag("all")).performClick()
+        compose.onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG)).performClick()
+        assertEquals(listOf("all", ""), selected)
+    }
+
+    @Test
     fun tappingAChipReportsItsSlug() {
         val selected = mutableListOf<String>()
         compose.setContent {
