@@ -113,8 +113,8 @@ class SearchExpertScreenTest {
         val card = rule.onAllNodesWithTag(SEARCH_EXPERT_CARD_TAG).onFirst()
         card.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         card.assert(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick))
-        val description =
-            card.fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString()
+        val config = card.fetchSemanticsNode().config
+        val description = config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString()
         listOf("Ada Lovelace", "Engineer", "Rated 4.5", "Expertise: AI, Math, Tax").forEach {
             assertTrue("'$it' missing from '$description'", description.contains(it))
         }

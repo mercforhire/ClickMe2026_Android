@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -41,6 +42,9 @@ const val AVATAR_LOCAL_IMAGE_TAG = "avatar_local_image"
  *
  * Allowed sizes per UI-SPEC: 32, 40, 56, 96 and 160 dp (Profile Photo preview). Pass a null
  * [contentDescription] for decorative avatars.
+ *
+ * [fallbackColor] paints the fallback disc. The default (null) keeps surfaceContainerLow, so every existing caller
+ * renders unchanged; the Search result cards pass the iOS dark green (user decision 2026-10-30).
  */
 @Composable
 fun Avatar(
@@ -49,6 +53,7 @@ fun Avatar(
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
     image: ImageBitmap? = null,
+    fallbackColor: Color? = null,
 ) {
     val semanticsModifier =
         if (contentDescription != null) {
@@ -61,7 +66,7 @@ fun Avatar(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .background(fallbackColor ?: MaterialTheme.colorScheme.surfaceContainerLow)
                     .testTag(AVATAR_FALLBACK_TAG),
             contentAlignment = Alignment.Center,
         ) {

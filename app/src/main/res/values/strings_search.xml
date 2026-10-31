@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Search tab (Phase 16.1): copy from iOS SearchExpertView. Also uses: explore_expert_name_fallback,
+         rating_value, expert_card_tags_semantics, section_retry, common_refresh_failed, content_loading. -->
+    <string name="search_empty_title">No Experts Found</string>
+    <string name="search_empty_body">Try adjusting your search or picking a different category.</string>
+    <string name="search_error_heading">Couldn\'t load results</string>
+    <string name="search_card_rating_semantics">Rated %1$s</string>
+</resources>
