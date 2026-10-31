@@ -5,13 +5,17 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.requests.RescheduleProposalRequest
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
+import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodsData
 import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.AvailabilityState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.availabilityOf
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.cardDto
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.slotDto
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.stubCards
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -20,6 +24,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -433,5 +438,320 @@ class RescheduleViewModelTest {
 
             assertNull(vm.uiState.value.selectedSlotStart)
             assertFalse(savedState.contains(ReschedulePickerController.KEY_SLOT_START))
+        }
+
+    // ---- Task 3: submit guards, disclosure, saved-card outcomes, error actions ----
+
+    private fun serverError(
+        code: String,
+        status: Int = 422,
+    ) = api.httpError(status, """{"code":"$code","message":"Server says no"}""")
+
+    private fun TestScope.withSlotChosen(
+        savedState: SavedStateHandle = SavedStateHandle(),
+        message: String = "",
+    ): RescheduleViewModel {
+        val vm = loaded(savedState)
+        vm.selectDate(LocalDate.of(2026, 11, 5))
+        vm.selectSlot(slotNov5)
+        if (message.isNotEmpty()) vm.updateMessage(message)
+        return vm
+    }
+
+    private fun stubDisclosureBooking(expiresAt: String? = "2026-11-05T16:45:00Z") {
+        stubBooking(bookingDetail(start = bookingStart, authorizationExpiresAt = expiresAt?.let(Instant::parse)))
+    }
+
+    private fun errorOf(vm: RescheduleViewModel) = vm.uiState.value.dialog as ReschedulePickerDialog.Error
+
+    @Test
+    fun submitWithoutSlotIsLocalError() =
+        runTest(main.testDispatcher) {
+            val vm = loaded()
+
+            vm.submit()
+
+            assertEquals(
+                ReschedulePickerDialog.Error(FieldError.Res(R.string.reschedule_start_error_no_slot)),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(0, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun submitCurrentSlotIsLocalError() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.expertAvailabilityHandler = { _, _ ->
+                gate.await()
+                availabilityOf(slotDto("2026-11-06T15:00:00Z"))
+            }
+            val savedState =
+                SavedStateHandle(
+                    mapOf(
+                        ReschedulePickerController.KEY_DISPLAYED_MONTH to "2026-11",
+                        ReschedulePickerController.KEY_SELECTED_DATE to "2026-11-06",
+                        ReschedulePickerController.KEY_SLOT_START to bookingStart.toEpochMilli(),
+                    ),
+                )
+            val vm = vm(savedState)
+            advanceUntilIdle()
+            assertEquals(AvailabilityState.Loading, vm.uiState.value.availability)
+
+            vm.submit()
+
+            assertEquals(
+                ReschedulePickerDialog.Error(FieldError.Res(R.string.reschedule_start_error_current_slot)),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(0, api.rescheduleClientBookingCalls)
+            gate.complete(Unit)
+            advanceUntilIdle()
+        }
+
+    @Test
+    fun liveCallBlocks() =
+        runTest(main.testDispatcher) {
+            val vm = withSlotChosen()
+            callGuard.blocked = true
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(0, api.rescheduleClientBookingCalls)
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(listOf("b1" to RestrictedAction.RescheduleBooking), callGuard.modifyAttempts)
+        }
+
+    @Test
+    fun singleFlight() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            api.rescheduleClientBookingHandler = { _, _ ->
+                gate.await()
+                RescheduleResponseData(bookingId = "b1", status = "pending")
+            }
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.isSubmitting)
+            vm.submit()
+            advanceUntilIdle()
+            assertEquals(1, api.rescheduleClientBookingCalls)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(1, api.rescheduleClientBookingCalls)
+            assertEquals(1, callGuard.modifyAttempts.size)
+            assertTrue(vm.uiState.value.sent)
+            assertFalse(vm.uiState.value.isSubmitting)
+        }
+
+    @Test
+    fun disclosureBeforeAnyRequest() =
+        runTest(main.testDispatcher) {
+            stubDisclosureBooking()
+            val vm = withSlotChosen(message = "hello")
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(ReschedulePickerDialog.Disclosure(chargesSoon = false), vm.uiState.value.dialog)
+            assertEquals(0, api.rescheduleClientBookingCalls)
+
+            vm.dismissDialog()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(0, api.rescheduleClientBookingCalls)
+            assertEquals(LocalDate.of(2026, 11, 5), vm.uiState.value.selectedDate)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+            assertEquals("hello", vm.uiState.value.message)
+
+            vm.submit()
+            vm.confirmDisclosure()
+            advanceUntilIdle()
+
+            assertEquals(1, api.rescheduleClientBookingCalls)
+            assertTrue(vm.uiState.value.sent)
+        }
+
+    @Test
+    fun disclosureChargesSoonUnder48h() =
+        runTest(main.testDispatcher) {
+            clock.instant = Instant.parse("2026-11-04T10:00:00Z")
+            stubDisclosureBooking()
+            val vm = withSlotChosen()
+
+            vm.submit()
+
+            assertEquals(ReschedulePickerDialog.Disclosure(chargesSoon = true), vm.uiState.value.dialog)
+            assertEquals(0, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun noDisclosureWithoutExpiry() =
+        runTest(main.testDispatcher) {
+            stubDisclosureBooking(expiresAt = null)
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(1, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun disclosureFlagSurvivesProcessDeath() =
+        runTest(main.testDispatcher) {
+            stubDisclosureBooking()
+            val savedState = SavedStateHandle()
+            withSlotChosen(savedState).submit()
+            assertEquals(true, savedState.get<Boolean>(ReschedulePickerController.KEY_DISCLOSURE_OPEN))
+
+            val restored = vm(savedState)
+            advanceUntilIdle()
+
+            assertEquals(ReschedulePickerDialog.Disclosure(chargesSoon = false), restored.uiState.value.dialog)
+            assertEquals(slotNov5, restored.uiState.value.selectedSlotStart)
+            assertEquals(0, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun needsPaymentMethodDialog() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("PAYMENT_METHOD_REQUIRED") }
+            api.getPaymentMethodsHandler = { PaymentMethodsData(emptyList()) }
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(ReschedulePickerDialog.PaymentMethodNeeded, vm.uiState.value.dialog)
+            assertFalse(vm.uiState.value.isSubmitting)
+            assertFalse(vm.uiState.value.sent)
+        }
+
+    @Test
+    fun cardUnusableDialog() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("PAYMENT_METHOD_REQUIRED") }
+            api.stubCards(cardDto("pm_a", isDefault = true))
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(ReschedulePickerDialog.CardUnusable, vm.uiState.value.dialog)
+            assertEquals(2, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun cardsUnavailableError() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("PAYMENT_METHOD_REQUIRED") }
+            api.getPaymentMethodsHandler = { throw IOException("offline") }
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(
+                ReschedulePickerDialog.Error(FieldError.Res(R.string.reschedule_error_cards_unavailable)),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(1, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun noAutoRetryAfterPaymentMethods() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("PAYMENT_METHOD_REQUIRED") }
+            api.stubCards(cardDto("pm_a", isDefault = true))
+            val vm = withSlotChosen(message = "keep me")
+            vm.submit()
+            advanceUntilIdle()
+            assertEquals(2, api.rescheduleClientBookingCalls)
+
+            vm.dismissDialog()
+            vm.refreshClock()
+            advanceUntilIdle()
+
+            assertEquals(2, api.rescheduleClientBookingCalls)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+            assertEquals(LocalDate.of(2026, 11, 5), vm.uiState.value.selectedDate)
+            assertEquals("keep me", vm.uiState.value.message)
+
+            vm.submit()
+            advanceUntilIdle()
+            assertEquals(4, api.rescheduleClientBookingCalls)
+        }
+
+    @Test
+    fun tooFarAheadClearsSlotKeepsDateAndMessage() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("RESCHEDULE_TOO_FAR_AHEAD") }
+            val vm = withSlotChosen(message = "keep me")
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(ReschedulePickerDialog.Error(FieldError.Text("Server says no")), vm.uiState.value.dialog)
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertEquals(LocalDate.of(2026, 11, 5), vm.uiState.value.selectedDate)
+            assertEquals("keep me", vm.uiState.value.message)
+        }
+
+    @Test
+    fun invalidStatusLeaves() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("INVALID_STATUS", status = 409) }
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertTrue(errorOf(vm).leaveOnDismiss)
+            assertFalse(vm.uiState.value.leave)
+            vm.dismissDialog()
+            assertTrue(vm.uiState.value.leave)
+            vm.consumeLeave()
+            assertFalse(vm.uiState.value.leave)
+        }
+
+    @Test
+    fun expertUnavailableReloadsMonths() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("EXPERT_UNAVAILABLE", status = 409) }
+            val vm = withSlotChosen()
+            val before = api.expertAvailabilityCalls
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.selectedSlotStart)
+            assertEquals(before + 3, api.expertAvailabilityCalls)
+            assertEquals(
+                ReschedulePickerDialog.Error(FieldError.Res(R.string.reschedule_error_expert_unavailable)),
+                vm.uiState.value.dialog,
+            )
+        }
+
+    @Test
+    fun outsideAuthWindowShowsFixedCopy() =
+        runTest(main.testDispatcher) {
+            api.rescheduleClientBookingHandler = { _, _ -> throw serverError("RESCHEDULE_OUTSIDE_AUTH_WINDOW") }
+            val vm = withSlotChosen()
+
+            vm.submit()
+            advanceUntilIdle()
+
+            assertEquals(
+                ReschedulePickerDialog.Error(FieldError.Res(R.string.reschedule_start_error_outside_window_client)),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
         }
 }

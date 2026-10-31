@@ -1,8 +1,11 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.managers.CallGuard
+import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.AvailabilityDayDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.network.ApiException
@@ -15,6 +18,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.groupSl
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isInLoadedWindow
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isPastDay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDisclosure
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -39,6 +43,12 @@ import java.time.format.DateTimeParseException
  *
  * Loads the booking, then the displayed month and both neighbours from [loadMonth] (Make a Booking's shape), applies
  * the selection rules, and sends through [proposer] exactly once per tap.
+ *
+ * Money rules: a send starts only from a Submit or Continue tap (D-08, never on resume or after returning from Payment
+ * Methods); the saved-card recovery lives in the [proposer] (D-06, D-07); the payment disclosure precedes the send when
+ * the new session would end after the card authorization (D-11); local refusals come first, then the live-call guard
+ * (D-12); every failure maps through [mapFailure] to a dialog and its after-OK action (D-13). The expert ViewModel
+ * (plan 08) reuses this with `authorizationExpiresAt = null` (so no disclosure) and the expert proposer and mapper.
  */
 @Suppress("LongParameterList", "TooManyFunctions")
 class ReschedulePickerController(
@@ -51,12 +61,15 @@ class ReschedulePickerController(
     private val loadBooking: suspend () -> PickerBooking?,
     private val loadMonth: suspend (expertId: String, month: YearMonth) -> ExpertAvailabilityData,
     private val proposer: RescheduleProposing,
-    @Suppress("unused") private val mapFailure: (ApiException) -> ProposeFailure,
+    private val mapFailure: (ApiException) -> ProposeFailure,
     private val sentRequest: RescheduleSentRequest,
-    @Suppress("unused") private val callGuard: CallGuard,
+    private val callGuard: CallGuard,
 ) {
     /** True until the calendar has been seeded from the booking, or restored from [savedState]. */
     private var needsSeed = true
+
+    /** An open payment disclosure was saved; it is re-opened after the first availability load validates the slot. */
+    private var disclosureRestorePending = false
     private val _state = MutableStateFlow(initialState())
     val state: StateFlow<ReschedulePickerUiState> = _state.asStateFlow()
 
@@ -78,6 +91,7 @@ class ReschedulePickerController(
                 ?.let { parseOrNull { LocalDate.parse(it) } }
                 ?.takeUnless { isPastDay(it, today) }
         needsSeed = savedDate == null
+        disclosureRestorePending = savedDate != null && savedState.get<Boolean>(KEY_DISCLOSURE_OPEN) == true
         val date = savedDate ?: today
         val savedMonth =
             savedState
@@ -217,6 +231,10 @@ class ReschedulePickerController(
             )
         }
         persistSlot()
+        if (disclosureRestorePending) {
+            disclosureRestorePending = false
+            restoreDisclosure()
+        }
     }
 
     private fun persistSlot() {
@@ -304,14 +322,90 @@ class ReschedulePickerController(
         persistSlot()
     }
 
+    /** Stores the message capped at [NOTES_MAX_CHARS] (a longer paste is cut). Ignored while a send is in flight. */
     fun updateMessage(text: String) {
+        if (_state.value.isSubmitting) return
         val capped = capNotes(text, NOTES_MAX_CHARS)
         _state.update { it.copy(message = capped) }
         savedState[KEY_MESSAGE] = capped
     }
 
-    /** Sends the proposal for the selected slot, once, then hands the success to the opener (D-09). */
+    /**
+     * The Submit tap. Refuses locally with no request when there is no slot or the slot is the current one, then asks
+     * the call guard (a live call on this booking blocks it, T-16.2-36), then shows the payment disclosure first when
+     * the new session would end after the card authorization (D-11). Otherwise it sends.
+     */
     fun submit() {
+        val s = _state.value
+        if (s.isSubmitting) return
+        val booking = s.booking ?: return
+        val slotStart = s.selectedSlotStart
+        if (slotStart == null) {
+            showError(R.string.reschedule_start_error_no_slot)
+            return
+        }
+        if (BookingTimeSlot(slotStart, null, true).isCurrent(booking.currentStart)) {
+            showError(R.string.reschedule_start_error_current_slot)
+            return
+        }
+        if (!callGuard.attemptModifyBooking(bookingId, RestrictedAction.RescheduleBooking)) return
+        _state.update { it.copy(now = clock.instant()) }
+        val disclosure = disclosureFor(slotStart)
+        if (disclosure != null) {
+            _state.update { it.copy(dialog = ReschedulePickerDialog.Disclosure(disclosure.chargesSoon)) }
+            savedState[KEY_DISCLOSURE_OPEN] = true
+            return
+        }
+        send()
+    }
+
+    /** Continue on the payment disclosure: the one way past it. */
+    fun confirmDisclosure() {
+        if (_state.value.dialog !is ReschedulePickerDialog.Disclosure) return
+        _state.update { it.copy(dialog = null) }
+        savedState.remove<Boolean>(KEY_DISCLOSURE_OPEN)
+        send()
+    }
+
+    /**
+     * Closes the open dialog. Cancel on the disclosure makes no request and keeps the date, slot and message. OK on
+     * an error that ends the move (`leaveOnDismiss`) asks the route to pop. Nothing here ever sends (D-08).
+     */
+    fun dismissDialog() {
+        val dialog = _state.value.dialog
+        val leaving = dialog is ReschedulePickerDialog.Error && dialog.leaveOnDismiss
+        _state.update { it.copy(dialog = null, leave = it.leave || leaving) }
+        savedState.remove<Boolean>(KEY_DISCLOSURE_OPEN)
+    }
+
+    /** The payment disclosure for [slotStart] when the client must confirm it first (D-11), else null. */
+    private fun disclosureFor(slotStart: Instant): RescheduleDisclosure? {
+        val s = _state.value
+        val booking = s.booking ?: return null
+        if (booking.viewer != RescheduleViewer.Client) return null
+        val slotEnd = s.slotsForSelectedDate.firstOrNull { it.start == slotStart }?.end
+        val disclosure =
+            proposeDisclosure(slotStart, slotEnd, booking.originalDuration, booking.authorizationExpiresAt, s.now)
+        return disclosure.takeIf { it.showsPaymentDisclosure }
+    }
+
+    /** Re-opens a disclosure that was open when the process died, with `chargesSoon` recomputed (D-11). */
+    private fun restoreDisclosure() {
+        val slot = _state.value.selectedSlotStart
+        val disclosure = slot?.let(::disclosureFor)
+        if (disclosure == null) {
+            savedState.remove<Boolean>(KEY_DISCLOSURE_OPEN)
+            return
+        }
+        _state.update { it.copy(dialog = ReschedulePickerDialog.Disclosure(disclosure.chargesSoon)) }
+    }
+
+    /**
+     * The single send. Single flight: [ReschedulePickerUiState.isSubmitting] spans the whole proposer call (PATCH, card
+     * list and retry), so a second tap does nothing (T-16.2-17). Only [submit] and [confirmDisclosure] reach it, always
+     * from a tap, never on resume or after returning from Payment Methods (D-08, T-16.2-19).
+     */
+    private fun send() {
         val s = _state.value
         if (s.isSubmitting) return
         val slotStart = s.selectedSlotStart ?: return
@@ -320,14 +414,41 @@ class ReschedulePickerController(
         val zone = zoneProvider()
         scope.launch {
             try {
-                if (proposer.propose(bookingId, slotStart, zone, note) is ProposeOutcome.Sent) {
-                    sentRequest.onSent(opener, bookingId)
-                    _state.update { it.copy(sent = true) }
+                when (val outcome = proposer.propose(bookingId, slotStart, zone, note)) {
+                    ProposeOutcome.Sent -> {
+                        // Post before the signal so a cleared ViewModel never loses the hand-off (D-09).
+                        sentRequest.onSent(opener, bookingId)
+                        _state.update { it.copy(sent = true) }
+                    }
+                    ProposeOutcome.NeedsPaymentMethod -> showDialog(ReschedulePickerDialog.PaymentMethodNeeded)
+                    ProposeOutcome.CardUnusable -> showDialog(ReschedulePickerDialog.CardUnusable)
+                    ProposeOutcome.CardsUnavailable -> showError(R.string.reschedule_error_cards_unavailable)
+                    is ProposeOutcome.Failed -> fail(outcome.error)
                 }
             } finally {
                 _state.update { it.copy(isSubmitting = false) }
             }
         }
+    }
+
+    /** Maps a failed send to its dialog, applying the clear-slot and reload parts of its after-OK action now. */
+    private fun fail(error: ApiException) {
+        val failure = mapFailure(error)
+        if (failure !is ProposeFailure.Show) return
+        if (failure.clearSlot) {
+            _state.update { it.copy(selectedSlotStart = null, now = clock.instant()) }
+            persistSlot()
+        }
+        if (failure.reloadSlots) loadMonths(_state.value.displayedMonth, keepVisible = true)
+        showDialog(ReschedulePickerDialog.Error(failure.message, leaveOnDismiss = failure.leave))
+    }
+
+    private fun showError(
+        @StringRes message: Int,
+    ) = showDialog(ReschedulePickerDialog.Error(FieldError.Res(message)))
+
+    private fun showDialog(dialog: ReschedulePickerDialog) {
+        _state.update { it.copy(dialog = dialog) }
     }
 
     fun consumeSent() {

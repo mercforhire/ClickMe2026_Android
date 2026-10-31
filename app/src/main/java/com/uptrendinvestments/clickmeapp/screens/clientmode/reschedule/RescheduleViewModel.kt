@@ -83,6 +83,10 @@ class RescheduleViewModel
 
         fun submit() = controller.submit()
 
+        fun confirmDisclosure() = controller.confirmDisclosure()
+
+        fun dismissDialog() = controller.dismissDialog()
+
         fun refreshClock() = controller.refreshClock()
 
         fun consumeSent() = controller.consumeSent()
