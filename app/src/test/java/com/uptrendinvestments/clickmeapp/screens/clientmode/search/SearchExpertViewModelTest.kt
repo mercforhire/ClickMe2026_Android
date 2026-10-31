@@ -23,6 +23,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -307,5 +308,178 @@ class SearchExpertViewModelTest {
             advanceTimeBy(300)
             runCurrent()
             assertEquals(SearchResults.Loading, vm.uiState.value.results)
+        }
+
+    // ---- Task 3: refresh, retry and failure rules ---------------------------------------------------------------
+
+    private fun rows(vararg ids: String): SearchResults.Loaded =
+        SearchResults.Loaded(ids.map { searchResultItem(it).toSearchExpertUi() })
+
+    @Test
+    fun refreshFailureKeepsRowsAndRaisesFlagOnce() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            vm.onCategorySelected("design")
+            runCurrent()
+            val before = vm.uiState.value.results
+            val gate = suspendSearches()
+
+            vm.onRefresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.isRefreshing)
+            assertEquals(before, vm.uiState.value.results)
+            assertEquals(SearchExpertsQuery("", "design", "relevance", 1, 20), lastQuery())
+
+            gate.completeExceptionally(IOException())
+            runCurrent()
+            assertEquals(before, vm.uiState.value.results)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertTrue(vm.uiState.value.refreshFailed)
+
+            vm.onRefreshFailureConsumed()
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun refreshSuccessReplacesRows() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            val gate = suspendSearches()
+
+            vm.onRefresh()
+            runCurrent()
+            gate.complete(searchPayload(searchResultItem("e9")))
+            runCurrent()
+
+            assertEquals(rows("e9"), vm.uiState.value.results)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun refreshWithNoRowsBehavesAsANewSearch() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            api.searchExpertsHandler = { throw IOException() }
+            val vm = viewModel()
+            runCurrent()
+            assertTrue(vm.uiState.value.results is SearchResults.Failed)
+
+            val gate = suspendSearches()
+            vm.onRefresh()
+            runCurrent()
+            assertEquals(SearchResults.Loading, vm.uiState.value.results)
+            assertFalse(vm.uiState.value.isRefreshing)
+
+            gate.completeExceptionally(IOException())
+            runCurrent()
+            assertEquals(
+                SearchResults.Failed(FieldError.Res(R.string.error_state_body)),
+                vm.uiState.value.results,
+            )
+            assertFalse(vm.uiState.value.refreshFailed)
+
+            // Same rule from an empty list.
+            api.searchExpertsHandler = { searchPayload() }
+            vm.onRetry()
+            runCurrent()
+            assertEquals(SearchResults.Loaded(emptyList()), vm.uiState.value.results)
+            val emptyGate = suspendSearches()
+            vm.onRefresh()
+            runCurrent()
+            assertEquals(SearchResults.Loading, vm.uiState.value.results)
+            assertFalse(vm.uiState.value.isRefreshing)
+            emptyGate.complete(searchPayload())
+        }
+
+    @Test
+    fun newSearchInterruptingARefreshClearsTheFlags() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            val refreshGate = CompletableDeferred<ExpertsSearchPayload>()
+            api.searchExpertsHandler = { query ->
+                if (query.category == null) refreshGate.await() else searchPayload(searchResultItem("z1"))
+            }
+
+            vm.onRefresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.isRefreshing)
+
+            vm.onCategorySelected("design")
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertFalse(vm.uiState.value.refreshFailed)
+
+            runCurrent()
+            refreshGate.completeExceptionally(IOException())
+            runCurrent()
+            assertEquals(rows("z1"), vm.uiState.value.results)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun freshFailureNeverKeepsOlderRows() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            api.searchExpertsHandler = { searchPayload(searchResultItem("ada1")) }
+            vm.onQueryChange("ada")
+            advanceTimeBy(300)
+            runCurrent()
+            assertEquals(rows("ada1"), vm.uiState.value.results)
+
+            api.searchExpertsHandler = { throw IOException() }
+            vm.onQueryChange("zz")
+            advanceTimeBy(300)
+            runCurrent()
+
+            assertEquals(
+                SearchResults.Failed(FieldError.Res(R.string.error_state_body)),
+                vm.uiState.value.results,
+            )
+        }
+
+    @Test
+    fun retryRunsAFreshSearchAndRepairsMissingChips() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            api.categoriesHandler = { throw IOException() }
+            val vm = viewModel()
+            runCurrent()
+            vm.onCategorySelected("design")
+            runCurrent()
+            assertEquals(1, api.categoriesCalls)
+
+            api.categoriesHandler = { CategoriesPayload(searchCategoryItems()) }
+            val gate = suspendSearches()
+            vm.onRetry()
+            runCurrent()
+
+            assertEquals(SearchResults.Loading, vm.uiState.value.results)
+            assertEquals(SearchExpertsQuery("", "design", "relevance", 1, 20), lastQuery())
+            assertEquals(2, api.categoriesCalls)
+            assertEquals(2, vm.uiState.value.categories.size)
+            gate.complete(searchPayload())
+            runCurrent()
+
+            vm.onRetry()
+            runCurrent()
+            assertEquals(2, api.categoriesCalls)
+        }
+
+    @Test
+    fun refreshAlsoRepairsMissingChips() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            api.categoriesHandler = { throw IOException() }
+            val vm = viewModel()
+            runCurrent()
+            assertEquals(1, api.categoriesCalls)
+
+            api.categoriesHandler = { CategoriesPayload(searchCategoryItems()) }
+            vm.onRefresh()
+            runCurrent()
+
+            assertEquals(2, api.categoriesCalls)
+            assertEquals(2, vm.uiState.value.categories.size)
         }
 }
