@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_MESSAGE_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_RESCHEDULE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MY_BOOKINGS_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsEmptyState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsError
@@ -93,6 +94,7 @@ class MyBookingsScreenTest {
         onJoin: () -> Unit = {},
         messageBusy: Boolean = false,
         onMessage: () -> Unit = {},
+        onReschedule: (() -> Unit)? = null,
     ) = UpcomingBookingCard(
         item,
         onClick,
@@ -100,6 +102,7 @@ class MyBookingsScreenTest {
         onJoin,
         messageBusy = messageBusy,
         onMessage = onMessage,
+        onReschedule = onReschedule,
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -278,6 +281,7 @@ class MyBookingsScreenTest {
         val reviewRequests = mutableListOf<WriteReviewKey>()
         val joined = mutableListOf<String>()
         val messaged = mutableListOf<String>()
+        val rescheduled = mutableListOf<String>()
     }
 
     @Composable
@@ -304,6 +308,7 @@ class MyBookingsScreenTest {
         onLeaveReview = { calls.reviewRequests += it },
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = { calls.reviewThanksShown++ },
+        onReschedule = { calls.rescheduled += it },
         zone = zone,
         timeFormat = timeFormat(),
         locale = locale,
@@ -506,6 +511,81 @@ class MyBookingsScreenTest {
         show { Content(loaded(upcoming = listOf(bookingItem("b1", status = STATUS_PENDING_APPROVAL)))) }
         rule.onNodeWithText("Waiting for expert to accept").assertExists()
         assertTrue(!existsTag(MY_BOOKINGS_JOIN_TAG))
+    }
+
+    // Reschedule entry on the card (Phase 16.2 D-04, D-05, RS-C1)
+
+    private val farOutStart: Instant = defaultStart.plusSeconds(3L * 24 * 3600)
+
+    @Test
+    fun farOutConfirmedCardShowsRescheduleRow() {
+        show { Content(loaded(upcoming = listOf(bookingItem("b1", start = farOutStart)))) }
+        rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).assertExists()
+        rule.onNodeWithContentDescription("Reschedule session with Ada Lovelace").assertExists()
+        rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).assertExists()
+        rule.onNodeWithText("Message").assertExists()
+        val join = rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNode()
+        val reschedule = rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNode()
+        val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
+        // Join is on its own, wider row; Reschedule sits at the start and Message at the end of the second row.
+        assertTrue(join.boundsInRoot.bottom <= reschedule.boundsInRoot.top)
+        assertTrue(join.size.width > reschedule.size.width)
+        assertTrue(reschedule.boundsInRoot.right <= message.boundsInRoot.left)
+        assertTrue(message.size.width > message.size.height)
+    }
+
+    @Test
+    fun rescheduleClickDoesNotOpenDetails() {
+        val calls = Callbacks()
+        show { Content(loaded(upcoming = listOf(bookingItem("b1", start = farOutStart))), calls) }
+        rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).performScrollTo().performClick()
+        assertEquals(listOf("b1"), calls.rescheduled)
+        assertEquals(null, calls.openedUpcoming)
+    }
+
+    @Test
+    fun under24hCardUnchanged() {
+        val start = defaultStart.minusSeconds(600).plusSeconds(23L * 3600)
+        show { Content(loaded(upcoming = listOf(bookingItem("b1", start = start)))) }
+        assertTrue(!existsTag(BOOKING_CARD_RESCHEDULE_TAG))
+        val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
+        assertEquals(message.size.width, message.size.height)
+        rule.onNodeWithContentDescription("Message Ada Lovelace").assertExists()
+    }
+
+    @Test
+    fun pendingApprovalAndPendingRescheduleCardsUnchanged() {
+        val upcoming =
+            listOf(
+                bookingItem("b1", status = STATUS_PENDING_APPROVAL, start = farOutStart),
+                rescheduleItem("expert").copy(bookingId = "b2", startTime = farOutStart),
+            )
+        show { Content(loaded(upcoming = upcoming)) }
+        assertTrue(!existsTag(BOOKING_CARD_RESCHEDULE_TAG))
+    }
+
+    @Test
+    fun mixedListRendersBothLayouts() {
+        val upcoming =
+            listOf(
+                bookingItem("b1", start = farOutStart),
+                bookingItem("b2", start = defaultStart),
+            )
+        show { Content(loaded(upcoming = upcoming)) }
+        assertEquals(1, rule.onAllNodesWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNodes().size)
+        assertEquals(2, rule.onAllNodesWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun largeFontStacksRescheduleAndMessage() {
+        show {
+            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 1.6f)) {
+                Content(loaded(upcoming = listOf(bookingItem("b1", start = farOutStart))))
+            }
+        }
+        val reschedule = rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNode()
+        val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
+        assertTrue(reschedule.boundsInRoot.bottom <= message.boundsInRoot.top)
     }
 
     // Message (D-14)
