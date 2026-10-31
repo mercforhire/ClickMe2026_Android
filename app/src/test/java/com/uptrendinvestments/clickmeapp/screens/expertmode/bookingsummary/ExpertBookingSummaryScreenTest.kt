@@ -23,6 +23,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_REASON_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_TAG
@@ -77,6 +78,7 @@ class ExpertBookingSummaryScreenTest {
     private val callGuard = FakeCallGuard()
     private val ids = mutableListOf<String>()
     private val cancels = mutableListOf<String>()
+    private val reschedules = mutableListOf<String>()
     private var backs = 0
 
     /** The clock sits 30 minutes before [start], so a session starting at [start] is inside the join window. */
@@ -117,6 +119,7 @@ class ExpertBookingSummaryScreenTest {
                     viewModel = viewModel,
                     onBack = { backs++ },
                     onCancel = { cancels += bookingId },
+                    onReschedule = { reschedules += bookingId },
                     chatEntry = chatEntry,
                 )
             }
@@ -485,8 +488,15 @@ class ExpertBookingSummaryScreenTest {
             initiatedBy = initiatedBy,
         )
 
-    private fun pendingReschedule(initiatedBy: String) =
-        expertBookingDetail(start = start, statusCode = "pending_reschedule", reschedule = proposal(initiatedBy))
+    private fun pendingReschedule(
+        initiatedBy: String,
+        canReschedule: Boolean = false,
+    ) = expertBookingDetail(
+        start = start,
+        statusCode = "pending_reschedule",
+        reschedule = proposal(initiatedBy),
+        canReschedule = canReschedule,
+    )
 
     private fun inDialog(text: String) = hasText(text) and hasAnyAncestor(isDialog())
 
@@ -609,5 +619,79 @@ class ExpertBookingSummaryScreenTest {
         rule.onNodeWithText("OK").performClick()
         rule.waitForIdle()
         assertEquals(1, backs)
+    }
+
+    // ---- Reschedule entry point (Phase 16.2, RS-E1) ----
+
+    // The default 320 dp Robolectric screen is narrower than the pair's 320 dp content threshold and would stack.
+    @Config(qualifiers = "w411dp-h891dp")
+    @Test
+    fun bothFlagsShowRescheduleThenCancel() {
+        showScreen(expertBookingDetail(start = start, canReschedule = true, canCancel = true))
+
+        val reschedule = rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo()
+        reschedule.assertExists()
+        rule.onNodeWithText("Reschedule").assertExists()
+        rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).assertExists()
+        val rescheduleNode = rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).fetchSemanticsNode()
+        val cancelNode = rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).fetchSemanticsNode()
+        // One row: same top, Reschedule on the left (iOS order).
+        assertEquals(rescheduleNode.positionInRoot.y, cancelNode.positionInRoot.y, 1f)
+        assertTrue(rescheduleNode.positionInRoot.x < cancelNode.positionInRoot.x)
+
+        reschedule.performClick()
+        assertEquals(listOf("b1"), reschedules)
+    }
+
+    @Test
+    fun onlyRescheduleFillsWidth() {
+        showScreen(expertBookingDetail(start = start, canReschedule = true, canCancel = false))
+
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_CANCEL_TAG).assertCountEquals(0)
+        val reschedule = rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo().getUnclippedBoundsInRoot()
+        val message = rule.onNodeWithTag(MESSAGE_CLIENT_TAG).getUnclippedBoundsInRoot()
+        assertEquals(message.width.value, reschedule.width.value, 1f)
+    }
+
+    @Test
+    fun onlyCancelUnchanged() {
+        showScreen(expertBookingDetail(start = start, canReschedule = false, canCancel = true))
+
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).assertCountEquals(0)
+        val cancel = rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).performScrollTo().getUnclippedBoundsInRoot()
+        val message = rule.onNodeWithTag(MESSAGE_CLIENT_TAG).getUnclippedBoundsInRoot()
+        assertEquals(message.width.value, cancel.width.value, 1f)
+    }
+
+    @Test
+    fun neitherFlagNoRow() {
+        showScreen(expertBookingDetail(start = start, canReschedule = false, canCancel = false))
+
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).assertCountEquals(0)
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun noClientTimeRulesForExpert() {
+        // 30 minutes before the start and awaiting approval: the client rules would hide it, the server flag decides.
+        showScreen(expertBookingDetail(start = start, statusCode = "pending_approval", canReschedule = true))
+
+        rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun disabledWhileResponseInFlight() {
+        val gate = CompletableDeferred<RescheduleResponseData>()
+        api.acceptExpertRescheduleHandler = { _, _ -> gate.await() }
+        showScreen(pendingReschedule("client", canReschedule = true))
+        rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo().assertIsEnabled()
+
+        rule.onNodeWithTag(RESCHEDULE_ACCEPT_TAG).performScrollTo().performClick()
+        rule.onNode(inDialog("Accept")).performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo().assertIsNotEnabled()
+        gate.complete(RescheduleResponseData(bookingId = "b1", status = "confirmed"))
+        rule.waitForIdle()
     }
 }
