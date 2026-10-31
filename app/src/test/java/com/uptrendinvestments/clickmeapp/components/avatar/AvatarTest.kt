@@ -1,8 +1,11 @@
 package com.uptrendinvestments.clickmeapp.components.avatar
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
@@ -12,6 +15,7 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -113,6 +117,44 @@ class AvatarTest {
         button.assertHeightIsAtLeast(48.dp)
         button.performClick()
         assertEquals(1, clicks)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun fallbackColor_paintsTheFallbackDisc() {
+        val green = Color(0xFF1F2E24)
+        rule.setContent {
+            ClickMeTheme { Avatar(url = null, contentDescription = null, size = 80.dp, fallbackColor = green) }
+        }
+
+        assertDiscPixelMatches(green)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun noFallbackColor_keepsSurfaceContainerLow() {
+        var expected = Color.Unspecified
+        rule.setContent {
+            ClickMeTheme {
+                expected = MaterialTheme.colorScheme.surfaceContainerLow
+                Avatar(url = null, contentDescription = null, size = 80.dp)
+            }
+        }
+
+        assertDiscPixelMatches(expected)
+    }
+
+    private fun assertDiscPixelMatches(expected: Color) {
+        val pixels = rule.onNodeWithTag(AVATAR_FALLBACK_TAG).captureToImage().toPixelMap()
+        // Inside the disc but above the person icon.
+        val actual = pixels[pixels.width / 2, pixels.height / 10]
+        listOf(
+            Triple("red", actual.red, expected.red),
+            Triple("green", actual.green, expected.green),
+            Triple("blue", actual.blue, expected.blue),
+        ).forEach { (channel, got, want) ->
+            assertEquals("$channel channel", want * 255f, got * 255f, 2f)
+        }
     }
 
     @Test
