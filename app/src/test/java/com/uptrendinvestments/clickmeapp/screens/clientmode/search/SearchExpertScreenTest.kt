@@ -23,8 +23,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_EMPTY_ILLUSTRATION_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_EXPERT_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
+import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
 import com.uptrendinvestments.clickmeapp.testing.searchExpertUi
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -44,6 +47,7 @@ class SearchExpertScreenTest {
     private val clicked = mutableListOf<SearchExpertUi>()
     private var refreshes = 0
     private var retries = 0
+    private var refreshFailureConsumed = 0
 
     private val ada =
         searchExpertUi(
@@ -64,6 +68,7 @@ class SearchExpertScreenTest {
                     onExpertClick = { clicked += it },
                     onRefresh = { refreshes++ },
                     onRetry = { retries++ },
+                    onRefreshFailureConsumed = { refreshFailureConsumed++ },
                 )
             }
         }
@@ -177,5 +182,45 @@ class SearchExpertScreenTest {
         rule.waitForIdle()
 
         assertTrue(refreshes > 0)
+    }
+
+    @Test
+    fun emptyResultsShowTheGlowingIllustrationAboveTheCopy() {
+        show(loaded())
+
+        val illustration = rule.onNodeWithTag(SEARCH_EMPTY_ILLUSTRATION_TAG, useUnmergedTree = true)
+        val node = illustration.fetchSemanticsNode()
+        val title = rule.onNodeWithText("No Experts Found").fetchSemanticsNode()
+        assertTrue(node.boundsInRoot.top < title.boundsInRoot.top)
+        assertTrue(node.config.getOrNull(SemanticsProperties.ContentDescription) == null)
+        assertTrue(node.config.getOrNull(SemanticsActions.OnClick) == null)
+    }
+
+    @Test
+    fun refreshFailureShowsSnackbarAndConsumesOnce() {
+        show(loaded(ada).copy(refreshFailed = true))
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Couldn't refresh. Check your connection and try again.").assertExists()
+        rule.onNodeWithText("Retry").assertExists()
+        assertEquals(1, refreshFailureConsumed)
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, refreshes)
+        rule.onAllNodesWithTag(SEARCH_EXPERT_CARD_TAG).assertCountEquals(1)
+    }
+
+    @Test
+    fun loadedAndFailedPassTheA11yAudit() {
+        show(loaded(ada, anonymous))
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
+    }
+
+    @Test
+    fun failedPassesTheA11yAudit() {
+        show(SearchExpertUiState(results = SearchResults.Failed(FieldError.Text("Boom"))))
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
     }
 }
