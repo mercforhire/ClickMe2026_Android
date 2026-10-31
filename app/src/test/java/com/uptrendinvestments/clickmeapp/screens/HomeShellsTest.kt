@@ -4,15 +4,21 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
@@ -23,8 +29,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
@@ -697,6 +706,91 @@ class HomeShellsTest {
         tapTab("Search")
         composeRule.onNode(tab("Search")).assertIsSelected()
         composeRule.onNodeWithText("Nothing here yet.").assertExists()
+    }
+
+    @Test
+    fun sameExpertOpenOnExploreAndSearchDoesNotCollide() {
+        setClientWithSearchStandIn()
+        composeRule.onNodeWithText("open explore profile").performClick()
+        composeRule.onNodeWithText("profile e1 Default").assertExists()
+
+        tapTab("Search")
+        composeRule.onNodeWithText("open search profile").performClick()
+        composeRule.onNodeWithText("profile e1 Search").assertExists()
+        composeRule.onNode(tab("Search")).assertIsSelected()
+
+        tapTab("Explore")
+        composeRule.onNodeWithText("profile e1 Default").assertExists()
+    }
+
+    @Test
+    fun searchStateSurvivesATabSwitch() {
+        setClientWithSearchStandIn()
+        tapTab("Search")
+        composeRule.onNodeWithTag(SEARCH_STAND_IN_FIELD_TAG).performTextInput("ada")
+
+        tapTab("Bookings")
+        tapTab("Search")
+
+        composeRule.onNodeWithTag(SEARCH_STAND_IN_FIELD_TAG).assertTextContains("ada")
+    }
+
+    @Test
+    fun retappingSearchPopsToRootAndKeepsItsState() {
+        setClientWithSearchStandIn()
+        tapTab("Search")
+        composeRule.onNodeWithTag(SEARCH_STAND_IN_FIELD_TAG).performTextInput("ada")
+        composeRule.onNodeWithText("open search profile").performClick()
+        composeRule.onNodeWithText("profile e1 Search").assertExists()
+
+        tapTab("Search")
+
+        composeRule.onNodeWithText("profile e1 Search").assertDoesNotExist()
+        composeRule.onNodeWithTag(SEARCH_STAND_IN_FIELD_TAG).assertTextContains("ada")
+        composeRule.onNode(tab("Search")).assertIsSelected()
+    }
+
+    /**
+     * Explore and Search roots that each push the same expert, the Explore one with the Default origin and the Search one
+     * through the real [toProfileKey]. The Search root keeps its text in a [SearchStandInViewModel] scoped to the Nav3
+     * entry, the same scoping the Hilt SearchExpertScreen relies on (D-02).
+     */
+    private fun setClientWithSearchStandIn() {
+        composeRule.setContent {
+            ClickMeTheme {
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Button(
+                            onClick = {
+                                navigator.navigate(
+                                    ExpertProfileKey("e1", "Ada Lovelace", "Engineer", null, 4.5, null, listOf("AI")),
+                                )
+                            },
+                        ) { Text("open explore profile") }
+                    },
+                    searchRoot = { navigator ->
+                        val holder: SearchStandInViewModel = viewModel { SearchStandInViewModel() }
+                        Column {
+                            OutlinedTextField(
+                                value = holder.text,
+                                onValueChange = { holder.text = it },
+                                modifier = Modifier.testTag(SEARCH_STAND_IN_FIELD_TAG),
+                            )
+                            Button(onClick = { navigator.navigate(searchExpertUi().toProfileKey("Expert")) }) {
+                                Text("open search profile")
+                            }
+                        }
+                    },
+                    detailEntries = { entry<ExpertProfileKey> { Text("profile ${it.expertId} ${it.origin}") } },
+                )
+            }
+        }
     }
 
     @Test
@@ -1389,4 +1483,10 @@ class HomeShellsTest {
         pressSystemBack()
         composeRule.onNodeWithText("summary-stub:B1").assertExists()
     }
+}
+
+private const val SEARCH_STAND_IN_FIELD_TAG = "stand-in query"
+
+private class SearchStandInViewModel : ViewModel() {
+    var text by mutableStateOf("")
 }
