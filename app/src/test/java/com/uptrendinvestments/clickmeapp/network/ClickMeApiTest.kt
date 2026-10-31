@@ -524,7 +524,7 @@ class ClickMeApiTest {
                 """{"status":"success","data":{"expert_timezone":"Pacific/Auckland","month":"2026-10","days":[]}}""",
             )
 
-            val data = api.getExpertAvailability("e1", "2026-10", null).data
+            val data = api.getExpertAvailability("e1", "2026-10", null, null).data
 
             val request = server.takeRequest()
             assertEquals("GET", request.method)
@@ -540,11 +540,24 @@ class ClickMeApiTest {
         runTest {
             enqueue(200, """{"status":"success","data":{"days":[]}}""")
 
-            api.getExpertAvailability("e1", "2026-10", "t1")
+            api.getExpertAvailability("e1", "2026-10", "t1", null)
 
             val request = server.takeRequest()
             assertEquals("2026-10", request.url.queryParameter("month"))
             assertEquals("t1", request.url.queryParameter("topic_id"))
+        }
+
+    @Test
+    fun getExpertAvailabilitySendsExcludeBookingIdWhenGiven() =
+        runTest {
+            enqueue(200, """{"status":"success","data":{"days":[]}}""")
+
+            api.getExpertAvailability("e1", "2026-10", null, "b1")
+
+            val request = server.takeRequest()
+            assertEquals("2026-10", request.url.queryParameter("month"))
+            assertEquals("b1", request.url.queryParameter("exclude_booking_id"))
+            assertNull(request.url.queryParameter("topic_id"))
         }
 
     @Test

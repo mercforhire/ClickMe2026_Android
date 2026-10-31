@@ -226,6 +226,14 @@ class ApiRequestUrlsTest {
     }
 
     @Test
+    fun phaseSixteenTwoRescheduleConstants_areAuthed() {
+        assertEquals("client/bookings/{id}/reschedule", ApiRequestUrls.CLIENT_BOOKING_RESCHEDULE)
+        assertEquals("expert/bookings/{id}/reschedule", ApiRequestUrls.EXPERT_BOOKING_RESCHEDULE)
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/client/bookings/b1/reschedule"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/expert/bookings/b1/reschedule"))
+    }
+
+    @Test
     fun phaseElevenPaths_needAuthToken() {
         listOf(
             "/api/v1/expert/booking-requests",

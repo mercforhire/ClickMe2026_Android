@@ -248,13 +248,17 @@ interface ClickMeApi {
     /**
      * Ports iOS ClickMeAPI+Availability getExpertAvailability. [month] is `YearMonth.toString()`
      * (`yyyy-MM`). [topicId] null omits the parameter; Phase 6 always passes null (D-07 iOS parity). The
-     * backend narrows the grid to the topic duration when it is present.
+     * backend narrows the grid to the topic duration when it is present. [excludeBookingId] null omits the
+     * parameter; the reschedule pickers pass the booking being moved so its own cell and buffer cells are not
+     * grayed (backend quick 260804-qo6; an iOS deviation recorded in 16.2 RESEARCH Open Question 3). Make a
+     * Booking passes null.
      */
     @GET(ApiRequestUrls.EXPERT_AVAILABILITY)
     suspend fun getExpertAvailability(
         @Path("id") expertId: String,
         @Query("month") month: String,
         @Query("topic_id") topicId: String?,
+        @Query("exclude_booking_id") excludeBookingId: String?,
     ): SuccessDataResponse<ExpertAvailabilityData>
 
     /** Ports iOS ClickMeAPI+Booking requestBooking. Free path only (the paid path is [confirmBooking]); 201 on success. */

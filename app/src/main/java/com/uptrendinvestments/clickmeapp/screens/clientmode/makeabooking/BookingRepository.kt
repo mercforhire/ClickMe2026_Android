@@ -19,6 +19,7 @@ import javax.inject.Singleton
  * `topic_id` is never sent on the availability call: the backend would narrow the grid to the topic duration,
  * but iOS never sends it (D-07 iOS parity, user decision on research Open Question 2), so the grid always
  * shows the expert's base slots and the server re-checks the duration when the booking is requested.
+ * Phase 16.2: the reschedule pickers pass `excludeBookingId`.
  *
  * Three booking writes: the free request ([requestBooking]), the payment-intent call for short-lead paid
  * bookings ([paymentIntent], PAY-03; a 422 LONG_LEAD_REQUIRES_SAVED_CARD is now shown as an error, quick
@@ -30,11 +31,16 @@ class BookingRepository
     constructor(
         private val api: ClickMeApi,
     ) {
-        /** One month of the expert's availability grid (`yyyy-MM`), without a topic filter. */
+        /**
+         * One month of the expert's availability grid (`yyyy-MM`), without a topic filter. [excludeBookingId] is
+         * null for Make a Booking (request unchanged); the reschedule pickers pass the booking being moved.
+         */
         suspend fun availability(
             expertId: String,
             month: YearMonth,
-        ): ExpertAvailabilityData = apiCall { api.getExpertAvailability(expertId, month.toString(), null) }.data
+            excludeBookingId: String? = null,
+        ): ExpertAvailabilityData =
+            apiCall { api.getExpertAvailability(expertId, month.toString(), null, excludeBookingId) }.data
 
         /** `POST /bookings/request`, free path. Paid bookings go through [paymentIntent] and [confirm]. */
         suspend fun requestBooking(body: BookingRequestBody): BookingRequestData =

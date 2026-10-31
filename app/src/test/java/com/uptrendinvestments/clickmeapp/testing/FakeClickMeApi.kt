@@ -403,6 +403,11 @@ class FakeClickMeApi : ClickMeApi {
     /** The `topicId` argument of every getExpertAvailability call, in call order (null means omitted). */
     val availabilityTopicIds: List<String?> get() = _availabilityTopicIds
 
+    private val _availabilityExcludeBookingIds = mutableListOf<String?>()
+
+    /** The `excludeBookingId` argument of every getExpertAvailability call, in call order (null means omitted). */
+    val availabilityExcludeBookingIds: List<String?> get() = _availabilityExcludeBookingIds
+
     private val _requestBookingRequests = mutableListOf<BookingRequestBody>()
 
     /** Every POST /bookings/request body received, in call order. */
@@ -755,10 +760,12 @@ class FakeClickMeApi : ClickMeApi {
         expertId: String,
         month: String,
         topicId: String?,
+        excludeBookingId: String?,
     ): SuccessDataResponse<ExpertAvailabilityData> {
         expertAvailabilityCalls++
         _availabilityMonths += month
         _availabilityTopicIds += topicId
+        _availabilityExcludeBookingIds += excludeBookingId
         return ok(expertAvailabilityHandler(expertId, month))
     }
 
