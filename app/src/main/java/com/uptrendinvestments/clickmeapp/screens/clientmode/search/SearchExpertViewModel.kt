@@ -76,6 +76,34 @@ class SearchExpertViewModel
         }
 
         /**
+         * Pull-to-refresh. With rows on screen it keeps them and only raises `isRefreshing`, and a failure raises the
+         * one-shot `refreshFailed` instead of replacing them. With no rows (empty, failed or loading) it behaves as
+         * a new search (D-09). A deliberate departure from iOS, whose `reload()` wipes to the error view. Missing
+         * chips are fetched again, which repairs a failed first fetch (iOS `reload() -> load()`).
+         */
+        fun onRefresh() {
+            val results = _uiState.value.results
+            val hasRows = results is SearchResults.Loaded && results.experts.isNotEmpty()
+            runSearch(if (hasRows) SearchMode.Refresh else SearchMode.Fresh)
+            repairMissingChips()
+        }
+
+        /** Retry from the inline error: a new search with the current query and filters, plus the chip repair. */
+        fun onRetry() {
+            runSearch(SearchMode.Fresh)
+            repairMissingChips()
+        }
+
+        /** The screen calls this right after showing the refresh-failed snackbar, so the flag fires once. */
+        fun onRefreshFailureConsumed() {
+            _uiState.update { it.copy(refreshFailed = false) }
+        }
+
+        private fun repairMissingChips() {
+            if (_uiState.value.categories.isEmpty()) loadCategories()
+        }
+
+        /**
          * Fills the chip vocabulary from the cached category store. Like iOS, a failure is swallowed so that only the
          * All chip remains (D-11). It never touches `results`.
          */
@@ -93,12 +121,17 @@ class SearchExpertViewModel
                 }
         }
 
-        /** iOS `performSearch`: every new search shows the skeleton first (D-07) and reads the request at send time. */
+        /**
+         * iOS `performSearch`. A Fresh search shows the skeleton first (D-07) and a failure replaces the rows (D-08).
+         * A Refresh keeps the rows on screen. Both clear the refresh flags before launching, so a new search that
+         * cancels an in-flight refresh never leaves the spinner on or a stale snackbar request behind.
+         */
         private fun runSearch(
             mode: SearchMode,
             debounce: Boolean = false,
         ) {
             searchJob?.cancel()
+            _uiState.update { it.copy(isRefreshing = mode == SearchMode.Refresh, refreshFailed = false) }
             searchJob =
                 viewModelScope.launch {
                     // The request values are read after the wait, so the latest trimmed text always wins.
@@ -113,9 +146,13 @@ class SearchExpertViewModel
                                 sort = request.sort.apiValue,
                             )
                         val loaded = SearchResults.Loaded(rows.map { it.toSearchExpertUi() })
-                        _uiState.update { it.copy(results = loaded) }
+                        _uiState.update { it.copy(results = loaded, isRefreshing = false) }
                     } catch (e: ApiException) {
-                        _uiState.update { it.copy(results = SearchResults.Failed(e.toSearchMessage())) }
+                        if (mode == SearchMode.Refresh) {
+                            _uiState.update { it.copy(isRefreshing = false, refreshFailed = true) }
+                        } else {
+                            _uiState.update { it.copy(results = SearchResults.Failed(e.toSearchMessage())) }
+                        }
                     }
                 }
         }
