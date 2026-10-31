@@ -29,6 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 14: Payouts & Account Settings** - Stripe Connect onboarding and earnings, profile hubs, edit profile, change password, delete account, help (Week 7)
 - [ ] **Phase 15: Polish & Hardening** - Loading/empty/error states everywhere, process death, edge-to-edge, TalkBack (Week 7)
 - [ ] **Phase 16: Cross-Platform QA** - Internal-testing bug fixes and the two-way Android/iOS matrix (Week 8)
+- [ ] **Phase 16.1: iOS parity: Search tab and Explore See all** (INSERTED) - iOS feature parity before release
+- [ ] **Phase 16.2: iOS parity: client and expert reschedule start** (INSERTED) - iOS feature parity before release
+- [ ] **Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list** (INSERTED) - iOS feature parity before release
+- [ ] **Phase 16.4: iOS parity: private booking notes and expert-side Client Profile** (INSERTED) - iOS feature parity before release
+- [ ] **Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card** (INSERTED) - iOS feature parity before release
 - [ ] **Phase 17: Play Store Release** - Play Console policy items and production release (Week 8)
 
 ## Phase Details
@@ -847,6 +852,69 @@ Plans:
 **Wave 7** *(blocked on Wave 6 completion)*
 
 - [ ] 16-08-PLAN.md — Close-out: write-back to sources, money sweep (voids and refunds), D-10 record, user sign-off (D-09, user checkpoints)
+
+### Phase 16.1: iOS parity: Search tab and Explore See all (PARITY-AUDIT #1) (INSERTED)
+
+**Goal:** The client Search tab matches iOS SearchExpertView: debounced text search, category chips, sort row, result cards, empty and error states, via `/experts/search`; Explore's "See all" on Featured Experts and Featured Topics switches to the Search tab as on iOS.
+**Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
+**Depends on:** Phase 15 code (Phase 16 is paused at 16-03; its sessions A/B run after 16.5 on a build containing all parity work)
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 16.1-01-PLAN.md — `/experts/search` wire contract (URL, Retrofit, DTOs, SearchRepository, fake, wire tests) and the Search UI-state contract with the iOS map() fallbacks
+- [ ] 16.1-02-PLAN.md — Explore "See all" on Recommended Experts and Featured Topics switches to the Search tab (D-01); View My Bookings / Explore Experts also reset the Search stack (user decision)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16.1-03-PLAN.md — SearchExpertViewModel: first load, chips, 300 ms debounce, immediate chip/sort, latest wins, refresh/retry rules (D-02, D-04, D-07..D-11)
+- [ ] 16.1-04-PLAN.md — SearchExpertContent results area: iOS card, 3 skeletons, glowing empty state, inline error, refresh snackbar; Avatar fallbackColor (D-05..D-09)
+- [ ] 16.1-05-PLAN.md — Header controls: search field, category chips (FilterChip, single select), Sort by row with menu
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16.1-06-PLAN.md — Mount the Search tab: Hilt entry, shell searchRoot slot, header placement, StackOrigin.Search profile navigation, D-02/D-03 stack guarantees, phase gate
+
+### Phase 16.2: iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)
+
+**Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
+**Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
+**Depends on:** Phase 16.1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16.2 to break down)
+
+### Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)
+
+**Goal:** Clients can favorite an expert from Expert Profile (optimistic toggle with rollback), see Saved Experts from the client Profile hub, and open the full Reviews list from "See all" on Expert Profile, matching iOS.
+**Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
+**Depends on:** Phase 16.1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16.3 to break down)
+
+### Phase 16.4: iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)
+
+**Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
+**Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
+**Depends on:** Phase 16.1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16.4 to break down)
+
+### Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)
+
+**Goal:** Client Payment History (`/client/transactions`), notification preferences with quiet hours and debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button, an animated splash icon and the Delete Account "Before you go" card all match iOS. After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
+**Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
+**Depends on:** Phase 16.1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16.5 to break down)
 
 ### Phase 17: Play Store Release
 
