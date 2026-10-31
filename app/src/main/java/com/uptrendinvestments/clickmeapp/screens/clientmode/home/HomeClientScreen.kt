@@ -60,6 +60,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCa
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.profileHubVersionLabel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.BookingRequestSentViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.writeReviewEntries
@@ -113,6 +114,9 @@ fun HomeClientScreen(
                         onOpenNotifications = { navigator.navigate(notificationsKeyFor(AppMode.Client)) },
                         onSeeAll = navigator::showSearch,
                     )
+                },
+                searchRoot = { navigator ->
+                    SearchExpertScreen(onOpenExpert = { navigator.navigate(it) })
                 },
                 bookingsRoot = { navigator ->
                     MyBookingsScreen(
@@ -259,8 +263,9 @@ private const val ONBOARDING_FADE_MS = 200
  * The client 5-tab shell. Stateless apart from navigation state, with no Hilt or BuildConfig
  * access, so it renders under Robolectric.
  *
- * Six slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
+ * Seven slots let [HomeClientScreen] inject Hilt-backed screens without the shell depending on Hilt:
  * [exploreRoot] renders the Explore tab root (default: the placeholder with the avatar button),
+ * [searchRoot] renders the Search tab root (default: the placeholder, so Robolectric shell tests need no Hilt),
  * [bookingsRoot] renders the Bookings tab root (default: the placeholder), [chatsRoot] renders the Chats tab root
  * (default: the placeholder), [profileRoot] renders the Profile hub (default: the stateless hub with the real
  * navigation actions; the shell hands it the debug affordances to show below the version footer), and [detailEntries] registers extra
@@ -286,6 +291,7 @@ fun HomeClientShell(
             actions = { TopBarAvatarButton(url, onClick = { navigator.navigate(ModeSwitchKey) }) },
         )
     },
+    searchRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(SearchRoot) },
     bookingsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientBookingsRoot) },
     chatsRoot: @Composable (navigator: Navigator) -> Unit = { ClientTabRoot(ClientChatsRoot) },
     profileRoot: @Composable (navigator: Navigator, debugContent: @Composable () -> Unit) -> Unit =
@@ -341,7 +347,7 @@ fun HomeClientShell(
         entryProvider =
             entryProvider<NavKey> {
                 entry<ExploreRoot> { exploreRoot(navigator, avatarUrl) }
-                entry<SearchRoot> { ClientTabRoot(SearchRoot) }
+                entry<SearchRoot> { searchRoot(navigator) }
                 entry<ClientBookingsRoot> { bookingsRoot(navigator) }
                 entry<ClientChatsRoot> { chatsRoot(navigator) }
                 entry<ClientProfileRoot> { profileRoot(navigator, debugContent) }

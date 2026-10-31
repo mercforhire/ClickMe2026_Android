@@ -1,5 +1,8 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.search
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -7,10 +10,12 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -20,11 +25,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onParent
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_EMPTY_ILLUSTRATION_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_EXPERT_CARD_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_FIELD_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.SEARCH_SORT_BUTTON_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.search.subviews.searchChipTag
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
 import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
@@ -48,6 +57,9 @@ class SearchExpertScreenTest {
     private var refreshes = 0
     private var retries = 0
     private var refreshFailureConsumed = 0
+    private val queries = mutableListOf<String>()
+    private val categoryPicks = mutableListOf<String>()
+    private val sortPicks = mutableListOf<SearchSort>()
 
     private val ada =
         searchExpertUi(
@@ -65,6 +77,9 @@ class SearchExpertScreenTest {
             ClickMeTheme {
                 SearchExpertContent(
                     state = state,
+                    onQueryChange = { queries += it },
+                    onCategorySelected = { categoryPicks += it },
+                    onSortSelected = { sortPicks += it },
                     onExpertClick = { clicked += it },
                     onRefresh = { refreshes++ },
                     onRetry = { retries++ },
@@ -76,7 +91,7 @@ class SearchExpertScreenTest {
 
     private fun loaded(vararg rows: SearchExpertUi) = SearchExpertUiState(results = SearchResults.Loaded(rows.toList()))
 
-    private fun hasText(text: String) = rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+    private fun hasVisibleText(text: String) = rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
     @Test
     fun loadedRowsRenderAsIosCards() {
@@ -89,7 +104,7 @@ class SearchExpertScreenTest {
         rule.onNodeWithText("AI").assertExists()
         rule.onNodeWithText("Math").assertExists()
         rule.onNodeWithText("Tax").assertExists()
-        assertTrue(!hasText("Law"))
+        assertTrue(!hasVisibleText("Law"))
         rule.onNodeWithText("Expert").assertExists()
         rule.onNodeWithText("0.0").assertExists()
     }
@@ -220,6 +235,103 @@ class SearchExpertScreenTest {
     @Test
     fun failedPassesTheA11yAudit() {
         show(SearchExpertUiState(results = SearchResults.Failed(FieldError.Text("Boom"))))
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
+    }
+
+    private val categories =
+        listOf(
+            SearchCategoryChipUi(slug = "business", name = "Business"),
+            SearchCategoryChipUi(slug = "design", name = "Design"),
+        )
+
+    @Test
+    fun controlsStayVisibleWhileLoadingFailedAndEmpty() {
+        var state by mutableStateOf(SearchExpertUiState(categories = categories, results = SearchResults.Loading))
+        rule.setContent {
+            ClickMeTheme {
+                SearchExpertContent(
+                    state = state,
+                    onQueryChange = {},
+                    onCategorySelected = {},
+                    onSortSelected = {},
+                    onExpertClick = {},
+                    onRefresh = {},
+                    onRetry = {},
+                    onRefreshFailureConsumed = {},
+                )
+            }
+        }
+
+        fun assertControls() {
+            rule.onNodeWithTag(SEARCH_FIELD_TAG).assertIsDisplayed()
+            rule.onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG)).assertIsDisplayed()
+            rule.onNodeWithText("Sort by").assertIsDisplayed()
+        }
+
+        assertControls()
+        rule.onAllNodesWithTag(SEARCH_SKELETON_CARD_TAG, useUnmergedTree = true).assertCountEquals(3)
+
+        rule.runOnIdle { state = state.copy(results = SearchResults.Failed(FieldError.Text("Boom"))) }
+        assertControls()
+        rule.onNodeWithTag(SEARCH_ERROR_STATE_TAG).assertExists()
+
+        rule.runOnIdle { state = state.copy(results = SearchResults.Loaded(emptyList())) }
+        assertControls()
+        rule.onNodeWithText("No Experts Found").assertExists()
+    }
+
+    @Test
+    fun headerOrderMatchesIos() {
+        show(loaded(ada).copy(categories = categories))
+
+        val field =
+            rule
+                .onNodeWithTag(SEARCH_FIELD_TAG)
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        val chip =
+            rule
+                .onNodeWithTag(searchChipTag(ALL_CATEGORIES_SLUG))
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        val sort =
+            rule
+                .onNodeWithText("Sort by")
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        val card =
+            rule
+                .onAllNodesWithTag(SEARCH_EXPERT_CARD_TAG)
+                .onFirst()
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        assertTrue("field above chips", field < chip)
+        assertTrue("chips above sort", chip < sort)
+        assertTrue("sort above first card", sort < card)
+    }
+
+    @Test
+    fun controlsReachTheirCallbacks() {
+        show(loaded(ada).copy(categories = categories))
+
+        rule.onNodeWithTag(SEARCH_FIELD_TAG).performTextInput("ada")
+        assertEquals("ada", queries.last())
+
+        rule.onNodeWithText("Design").performClick()
+        assertEquals(listOf("design"), categoryPicks)
+
+        rule.onNodeWithTag(SEARCH_SORT_BUTTON_TAG).performClick()
+        rule
+            .onNode(hasText("Highest rated") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected))
+            .performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(SearchSort.HighestRated), sortPicks)
+    }
+
+    @Test
+    fun fullScreenPassesTheA11yAudit() {
+        show(loaded(ada, anonymous).copy(categories = categories))
         rule.assertActionablesNamed()
         rule.assertTouchTargets()
     }
