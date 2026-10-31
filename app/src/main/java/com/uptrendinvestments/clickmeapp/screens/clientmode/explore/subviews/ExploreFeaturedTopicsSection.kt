@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -47,6 +48,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 
+/** Test tag on the Featured Topics "See all" action. */
+const val EXPLORE_FEATURED_SEE_ALL_TAG = "explore_featured_see_all"
+
 private val TopicCardWidth = 224.dp
 private val TopicCardMinHeight = 176.dp
 private val AccentBarWidth = 4.dp
@@ -54,7 +58,8 @@ private val TopicAvatarSize = 32.dp
 
 /**
  * Featured Topics (D-03, D-21). Absent while loading or empty (iOS shows no skeleton); an error keeps the heading
- * with Retry. The header has no action: "See all" waits for Search.
+ * with Retry. Whenever the header shows it carries "See all", the same Search hand-off as Recommended Experts (D-01,
+ * iOS `ExploreFeaturedTopicsSection.onSeeAll`); a null [onSeeAll] hides the action.
  */
 @Composable
 fun ExploreFeaturedTopicsSection(
@@ -62,6 +67,7 @@ fun ExploreFeaturedTopicsSection(
     onTopicClick: (FeaturedTopicUi) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    onSeeAll: (() -> Unit)? = null,
 ) {
     when (state) {
         SectionState.Loading -> return
@@ -69,7 +75,12 @@ fun ExploreFeaturedTopicsSection(
         is SectionState.Error -> Unit
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        SectionHeader(title = stringResource(R.string.explore_section_featured_topics))
+        SectionHeader(
+            title = stringResource(R.string.explore_section_featured_topics),
+            actionLabel = stringResource(R.string.explore_see_all),
+            onAction = onSeeAll,
+            actionModifier = Modifier.testTag(EXPLORE_FEATURED_SEE_ALL_TAG),
+        )
         Spacer(Modifier.height(Spacing.md))
         when (state) {
             is SectionState.Error -> SectionError(message = state.message.asString(), onRetry = onRetry)

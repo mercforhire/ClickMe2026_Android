@@ -217,6 +217,7 @@ fun ExploreContent(
                                 state = state.featuredTopics,
                                 onTopicClick = onFeaturedTopicClick,
                                 onRetry = onRetry,
+                                onSeeAll = onSeeAll,
                             )
                         }
                     }
