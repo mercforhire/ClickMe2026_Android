@@ -142,6 +142,7 @@ fun UpcomingBookingScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val rescheduleState by viewModel.rescheduleState.collectAsStateWithLifecycle()
     val joinNow by viewModel.joinNow.collectAsStateWithLifecycle()
+    val rescheduleSent by viewModel.rescheduleSent.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
 
@@ -167,6 +168,8 @@ fun UpcomingBookingScreen(
         onOpenPaymentMethods = onOpenPaymentMethods,
         onRescheduleNoticeConsumed = viewModel::consumeRescheduleNotice,
         onReschedule = onReschedule,
+        rescheduleSent = rescheduleSent,
+        onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         modifier = modifier,
         messageBusy = entryState.busyPeerId != null,
         onMessage = {
@@ -196,6 +199,8 @@ fun UpcomingBookingContent(
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
     onReschedule: () -> Unit = {},
+    rescheduleSent: Boolean = false,
+    onRescheduleSentConsumed: () -> Unit = {},
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -208,6 +213,7 @@ fun UpcomingBookingContent(
     val scope = rememberCoroutineScope()
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
+    val sentMessage = stringResource(R.string.reschedule_start_sent)
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -224,6 +230,13 @@ fun UpcomingBookingContent(
             )
         }
         onRescheduleNoticeConsumed()
+    }
+
+    // D-09: the picker sent a request. Shown once, on the composition scope so consuming the flag keeps the Snackbar.
+    LaunchedEffect(rescheduleSent) {
+        if (!rescheduleSent) return@LaunchedEffect
+        scope.launch { snackbarHostState.showSnackbar(sentMessage) }
+        onRescheduleSentConsumed()
     }
 
     RefreshFailedSnackbarEffect(

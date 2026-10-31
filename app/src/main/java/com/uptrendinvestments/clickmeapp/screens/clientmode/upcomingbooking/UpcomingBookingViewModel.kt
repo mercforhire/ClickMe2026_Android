@@ -18,6 +18,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBoo
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponseController
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -55,6 +58,11 @@ import java.time.Instant
  * the refresh-failed snackbar (D-05); [refresh] is that Retry. The resume note (D-11) is consumed once at construction
  * from [CallResumeNotice]; nothing here touches the call engine, starter or permission gate. A 404 first load is
  * [UpcomingBookingUiState.Unavailable], not a failure.
+ *
+ * Phase 16.2 D-09: when the client Reschedule picker sends a request it posts to [RescheduleSentRequest.upcomingDetails]
+ * and pops back here. The notice is consumed in `init` (this ViewModel was recreated) and while alive (the screen was
+ * only covered); either way [rescheduleSent] is raised once and a covered screen reloads quietly. Nothing is
+ * optimistic: the pending state comes from the server's booking.
  */
 @HiltViewModel(assistedFactory = UpcomingBookingViewModel.Factory::class)
 class UpcomingBookingViewModel
@@ -69,6 +77,7 @@ class UpcomingBookingViewModel
         private val callGuard: CallGuard,
         joinClock: JoinClock,
         resumeNotice: CallResumeNotice,
+        private val sentRequest: RescheduleSentRequest,
     ) : ViewModel() {
         @AssistedFactory
         interface Factory {
@@ -99,8 +108,28 @@ class UpcomingBookingViewModel
         /** Shared 30 s wall clock that turns the Join button on without leaving the screen (D-03). */
         val joinNow: StateFlow<Instant> = joinClock.now
 
+        private val _rescheduleSent = MutableStateFlow(false)
+
+        /** True once after the client picker sent a request for this booking (D-09); the screen shows the snackbar. */
+        val rescheduleSent: StateFlow<Boolean> = _rescheduleSent.asStateFlow()
+
         init {
             startLoad(quiet = false)
+            // D-09: a request sent before this ViewModel existed is consumed here, and the first load is already fresh.
+            // One posted while the screen is covered by the picker forces a quiet reload so "Awaiting expert's
+            // response" shows. Only this booking's notice is taken (a details screen for another booking leaves it).
+            if (sentRequest.consumeFor(RescheduleOpener.UpcomingDetails, bookingId)) {
+                _rescheduleSent.value = true
+            }
+            viewModelScope.launch {
+                sentRequest.upcomingDetails.pending.filterNotNull().collect {
+                    if (sentRequest.consumeFor(RescheduleOpener.UpcomingDetails, bookingId)) {
+                        _rescheduleSent.value = true
+                        // Not optimistic: nothing on screen changes until the server's booking arrives.
+                        startLoad(quiet = _uiState.value is UpcomingBookingUiState.Loaded, flagFailure = true)
+                    }
+                }
+            }
             // Only this booking's updates reload (T-08-35); startLoad cancels the previous load, so a burst of
             // events ends with one latest-wins result.
             viewModelScope.launch {
@@ -177,6 +206,11 @@ class UpcomingBookingViewModel
         fun dismissRescheduleDialog() = controller.dismissDialog()
 
         fun consumeRescheduleNotice() = controller.consumeNotice()
+
+        /** The screen showed the "Reschedule request sent" snackbar, so the one-shot is spent. */
+        fun consumeRescheduleSent() {
+            _rescheduleSent.value = false
+        }
 
         /**
          * [flagFailure] makes a failed quiet load raise `refreshFailed` for the snackbar (realtime refetch and

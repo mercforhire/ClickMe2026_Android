@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.StatusTone
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.detailStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_COPY_LINK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UPCOMING_BOOKING_PAYMENT_PILL_TAG
@@ -329,6 +330,7 @@ class UpcomingBookingScreenTest {
         calls: Calls = Calls(),
         joinNow: Instant = detailsStart.minusSeconds(600),
         messageBusy: Boolean = false,
+        rescheduleSent: Boolean = false,
     ): Calls {
         rule.setContent {
             ClickMeTheme {
@@ -346,6 +348,8 @@ class UpcomingBookingScreenTest {
                     onOpenPaymentMethods = { calls.events += "paymentMethods" },
                     onRescheduleNoticeConsumed = { calls.events += "consumed" },
                     onReschedule = { calls.events += "reschedule" },
+                    rescheduleSent = rescheduleSent,
+                    onRescheduleSentConsumed = { calls.events += "sentConsumed" },
                     messageBusy = messageBusy,
                     onMessage = { calls.events += "message" },
                     onRefresh = { calls.events += "refresh" },
@@ -406,6 +410,24 @@ class UpcomingBookingScreenTest {
     }
 
     // ---- Reschedule button (Phase 16.2, D-04 / D-05) ----
+
+    @Test
+    fun sentNoticeShowsSnackbarOnce() {
+        val calls = setScreen(loaded(), rescheduleSent = true)
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Reschedule request sent").assertExists()
+        assertEquals(listOf("sentConsumed"), calls.events)
+    }
+
+    @Test
+    fun noSentNoticeShowsNoSnackbar() {
+        val calls = setScreen(loaded())
+        rule.waitForIdle()
+
+        rule.onAllNodesWithText("Reschedule request sent").assertCountEquals(0)
+        assertTrue(calls.events.isEmpty())
+    }
 
     private val sixHours = Duration.ofHours(6)
     private val clientNow = detailsStart.minus(Duration.ofDays(3))
@@ -727,6 +749,7 @@ class UpcomingBookingScreenTest {
             guard,
             JoinClock(MutableClock(detailsStart.minusSeconds(600)), CoroutineScope(Job())),
             CallResumeNotice(),
+            RescheduleSentRequest(),
         )
     }
 
