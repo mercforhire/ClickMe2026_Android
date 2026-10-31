@@ -268,10 +268,4 @@ class ExploreScreenTest {
         val list = rule.onNodeWithTag(EXPLORE_LIST_TAG).getUnclippedBoundsInRoot()
         assertTrue(list.right - list.left > 600.dp)
     }
-
-    @Test
-    fun noSeeAllAnywhere() {
-        show(fullState)
-        assertFalse(exists("See all"))
-    }
 }

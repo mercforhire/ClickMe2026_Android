@@ -111,6 +111,7 @@ fun HomeClientScreen(
                         onOpenExpert = { navigator.navigate(it) },
                         onOpenBooking = navigator::openUpcomingBooking,
                         onOpenNotifications = { navigator.navigate(notificationsKeyFor(AppMode.Client)) },
+                        onSeeAll = navigator::showSearch,
                     )
                 },
                 bookingsRoot = { navigator ->
@@ -358,6 +359,13 @@ fun HomeClientShell(
             },
     )
 }
+
+/**
+ * Explore "See all" (D-01): mirrors iOS `onSeeAllExperts: { selectedTab = .search }`. Selects the Search tab only; it
+ * never resets that tab's stack and never passes Explore's filter. A re-tap of the Search tab is the bottom bar's
+ * `reselect` (D-03).
+ */
+internal fun Navigator.showSearch() = navigate(SearchRoot)
 
 /** Maps the client hub's callbacks to destinations (PROF-01); shared by the Hilt hub and the shell default. */
 internal fun clientProfileHubActions(
