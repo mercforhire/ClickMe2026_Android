@@ -32,10 +32,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.subviews.ExpertReviewsCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.subviews.ExpertReviewsOverallCard
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 
 private val ListBottomPadding = 48.dp
+private const val OVERALL_ITEM_KEY = "overall"
 
 /**
  * Full Reviews screen over [viewModel] (iOS `ExpertReviewsView`, Phase 16.3 D-16). The route is registered by the
@@ -94,6 +96,9 @@ fun ExpertReviewsContent(
                             ),
                         verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
+                        item(key = OVERALL_ITEM_KEY) {
+                            ExpertReviewsOverallCard(load.overallRating, load.totalReviews, Modifier.contentMaxWidth())
+                        }
                         items(items = load.reviews, key = { it.id }) { review ->
                             ExpertReviewsCard(review, Modifier.contentMaxWidth())
                         }

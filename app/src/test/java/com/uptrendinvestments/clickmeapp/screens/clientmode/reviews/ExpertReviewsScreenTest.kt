@@ -2,6 +2,8 @@
 
 package com.uptrendinvestments.clickmeapp.screens.clientmode.reviews
 
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,6 +18,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -84,6 +87,45 @@ class ExpertReviewsScreenTest {
         rule.onNodeWithText("Great session").assertExists()
         rule.onNodeWithText("Anonymous").assertExists()
         assertEquals(1, rule.onAllNodesWithText("Topic:", substring = true).fetchSemanticsNodes().size)
+    }
+
+    private fun shownText(text: String) =
+        rule.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
+    @Test
+    fun overallCardShowsRatingStarsAndCount() {
+        api.expertReviewsHandler = { reviewsPayload(4.5, 12, listOf(reviewItem())) }
+        show(vm())
+        assertTrue(shownText("Overall Rating"))
+        assertTrue(shownText("4.5"))
+        assertTrue(shownText("12 Total Reviews"))
+        val overallTop = rule.onNodeWithText("Overall Rating", useUnmergedTree = true).getUnclippedBoundsInRoot().top
+        val cardTop = rule.onNodeWithText("Sam Lee", useUnmergedTree = true).getUnclippedBoundsInRoot().top
+        assertTrue(overallTop < cardTop)
+    }
+
+    @Test
+    fun singularCount() {
+        api.expertReviewsHandler = { reviewsPayload(5.0, 1, listOf(reviewItem())) }
+        show(vm())
+        assertTrue(shownText("1 Total Review"))
+    }
+
+    @Test
+    fun nullOverallReadsZero() {
+        api.expertReviewsHandler = { reviewsPayload(null, 0) }
+        show(vm())
+        assertTrue(shownText("0.0"))
+        assertTrue(shownText("0 Total Reviews"))
+    }
+
+    @Test
+    fun overallCardIsOneTalkBackNode() {
+        api.expertReviewsHandler = { reviewsPayload(4.5, 12, listOf(reviewItem())) }
+        show(vm())
+        rule
+            .onNodeWithContentDescription("Overall rating 4.5 out of 5, 12 Total Reviews")
+            .assertContentDescriptionEquals("Overall rating 4.5 out of 5, 12 Total Reviews")
     }
 
     @Test
