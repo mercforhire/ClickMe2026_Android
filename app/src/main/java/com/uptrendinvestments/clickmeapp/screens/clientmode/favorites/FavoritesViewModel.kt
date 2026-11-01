@@ -2,6 +2,8 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.favorites
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunchRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -52,13 +54,54 @@ class FavoritesViewModel
             loadIsCurrent = false
         }
 
+        /** D-11: the Retry button on the first-load error (and any explicit reload). Shows the spinner again. */
+        fun retry() = startLoad(LoadMode.Loud)
+
+        /**
+         * D-11: pull-to-refresh. Over rows it keeps them and shows the indicator; with no rows (Failed or Loading) it
+         * behaves as a first load.
+         */
+        fun refresh() = startLoad(if (_uiState.value.load is FavoritesLoad.Loaded) LoadMode.Pull else LoadMode.Loud)
+
+        /** The refresh-failed snackbar was shown; clears the one-shot flag. */
+        fun consumeRefreshFailure() {
+            _uiState.update { it.copy(refreshFailed = false) }
+        }
+
         private fun startLoad(mode: LoadMode) {
             loadJob?.cancel()
             loadIsCurrent = true
+            // A new load clears a stale refreshing or refresh-failed flag (RESEARCH Pitfall 6): a cancelled pull
+            // never reaches its own cleanup.
+            _uiState.update {
+                when (mode) {
+                    LoadMode.Loud ->
+                        it.copy(load = FavoritesLoad.Loading, isRefreshing = false, refreshFailed = false)
+                    LoadMode.Pull -> it.copy(isRefreshing = true, refreshFailed = false)
+                    LoadMode.Quiet -> it
+                }
+            }
             loadJob =
                 viewModelScope.launch {
-                    val payload = repository.list()
-                    _uiState.update { it.copy(load = FavoritesLoad.Loaded(payload.experts.map { e -> e.toUi() })) }
+                    try {
+                        val payload = repository.list()
+                        _uiState.update {
+                            it.copy(
+                                load = FavoritesLoad.Loaded(payload.experts.map { e -> e.toUi() }),
+                                isRefreshing = false,
+                            )
+                        }
+                    } catch (e: ApiException) {
+                        _uiState.update {
+                            when (mode) {
+                                LoadMode.Loud ->
+                                    it.copy(load = FavoritesLoad.Failed(e.toSectionMessage()), isRefreshing = false)
+                                LoadMode.Pull -> it.copy(refreshFailed = true, isRefreshing = false)
+                                // D-09: a failed return reload is silent and keeps the rows.
+                                LoadMode.Quiet -> it.copy(isRefreshing = false)
+                            }
+                        }
+                    }
                 }
         }
     }
