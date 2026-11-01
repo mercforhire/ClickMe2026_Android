@@ -54,7 +54,7 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
             key,
             navigator::goBack,
             { navigator.viewBookingsFromRequestSent(key) },
-            navigator::showExplore,
+            { navigator.backToHomeFromRequestSent(key) },
         )
     }
 }
@@ -65,8 +65,9 @@ internal fun Navigator.viewBookingsFromRequestSent(key: RequestSentKey) {
     showMyBookings()
 }
 
-/** [showExplore] after a finished booking (RED stub: Profile reset added in the GREEN step). */
+/** [showExplore] after a finished booking, also returning the Profile tab to the hub. */
 internal fun Navigator.backToHomeFromRequestSent(key: RequestSentKey) {
+    resetProfileStackHolding(key)
     showExplore()
 }
 
