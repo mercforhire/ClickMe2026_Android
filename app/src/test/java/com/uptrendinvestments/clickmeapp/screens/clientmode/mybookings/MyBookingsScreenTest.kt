@@ -365,6 +365,7 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h1200dp")
     fun content_upcomingTabShowsCardsAndOpensDetails() {
         val calls = Callbacks()
         show { Content(loaded(upcoming = listOf(bookingItem("b1"), bookingItem("b3"))), calls) }
@@ -467,11 +468,13 @@ class MyBookingsScreenTest {
         val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
         var tab by mutableStateOf(BookingsTab.Upcoming)
         show { Content(state.copy(selectedTab = tab)) }
-        val forbidden = listOf("Reschedule", "Message Expert", "Private Note")
-        forbidden.forEach { assertTrue("$it on Upcoming", !exists(it)) }
+        // Reschedule is offered on Upcoming cards (Phase 16.2 D-04 amended), never on Past.
+        listOf("Message Expert", "Private Note").forEach { assertTrue("$it on Upcoming", !exists(it)) }
         rule.runOnIdle { tab = BookingsTab.Past }
         rule.waitForIdle()
-        (forbidden + "Message").forEach { assertTrue("$it on Past", !exists(it)) }
+        listOf("Reschedule", "Message Expert", "Private Note", "Message").forEach {
+            assertTrue("$it on Past", !exists(it))
+        }
         assertTrue(!existsTag(BOOKING_CARD_MESSAGE_TAG))
     }
 
@@ -549,7 +552,7 @@ class MyBookingsScreenTest {
     }
 
     @Test
-    fun hidesRescheduleLiveWhenJoinClockPasses24h() {
+    fun keepsRescheduleWhenJoinClockPasses24h() {
         val firstNow = defaultStart.minusSeconds(600)
         val start = firstNow.plusSeconds(25L * 3600)
         var now by mutableStateOf(firstNow)
@@ -559,29 +562,51 @@ class MyBookingsScreenTest {
         now = start.minusSeconds(24L * 3600).plusSeconds(1)
         rule.waitForIdle()
 
-        assertTrue(!existsTag(BOOKING_CARD_RESCHEDULE_TAG))
+        rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).assertExists()
         rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).assertExists()
     }
 
     @Test
-    fun under24hCardUnchanged() {
+    @Config(qualifiers = "w411dp-h1200dp")
+    fun under24hCardShowsRescheduleRow() {
         val start = defaultStart.minusSeconds(600).plusSeconds(23L * 3600)
         show { Content(loaded(upcoming = listOf(bookingItem("b1", start = start)))) }
+        val join = rule.onNodeWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNode()
+        val reschedule = rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNode()
+        val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
+        assertTrue(join.boundsInRoot.bottom <= reschedule.boundsInRoot.top)
+        assertTrue(reschedule.boundsInRoot.right <= message.boundsInRoot.left)
+        assertTrue(message.size.width > message.size.height)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1200dp")
+    fun pendingApprovalCardShowsBannerThenRescheduleAndMessage() {
+        val calls = Callbacks()
+        val item = bookingItem("b1", status = STATUS_PENDING_APPROVAL, start = farOutStart)
+        show { Content(loaded(upcoming = listOf(item)), calls) }
+        rule.onNodeWithText("Waiting for expert to accept").assertExists()
+        assertTrue(!existsTag(MY_BOOKINGS_JOIN_TAG))
+        val banner = rule.onNodeWithText("Waiting for expert to accept", useUnmergedTree = true).fetchSemanticsNode()
+        val reschedule = rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNode()
+        val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
+        assertTrue(banner.boundsInRoot.bottom <= reschedule.boundsInRoot.top)
+        assertTrue(reschedule.boundsInRoot.right <= message.boundsInRoot.left)
+        assertTrue(message.size.width > message.size.height)
+
+        rule.onNodeWithTag(BOOKING_CARD_RESCHEDULE_TAG).performClick()
+        assertEquals(listOf("b1"), calls.rescheduled)
+        assertEquals(null, calls.openedUpcoming)
+    }
+
+    @Test
+    fun pendingRescheduleCardHidesReschedule() {
+        val item = rescheduleItem("expert").copy(startTime = farOutStart)
+        show { Content(loaded(upcoming = listOf(item))) }
         assertTrue(!existsTag(BOOKING_CARD_RESCHEDULE_TAG))
         val message = rule.onNodeWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNode()
         assertEquals(message.size.width, message.size.height)
         rule.onNodeWithContentDescription("Message Ada Lovelace").assertExists()
-    }
-
-    @Test
-    fun pendingApprovalAndPendingRescheduleCardsUnchanged() {
-        val upcoming =
-            listOf(
-                bookingItem("b1", status = STATUS_PENDING_APPROVAL, start = farOutStart),
-                rescheduleItem("expert").copy(bookingId = "b2", startTime = farOutStart),
-            )
-        show { Content(loaded(upcoming = upcoming)) }
-        assertTrue(!existsTag(BOOKING_CARD_RESCHEDULE_TAG))
     }
 
     @Test
@@ -590,7 +615,7 @@ class MyBookingsScreenTest {
         val upcoming =
             listOf(
                 bookingItem("b1", start = farOutStart),
-                bookingItem("b2", start = defaultStart),
+                rescheduleItem("expert").copy(bookingId = "b2", startTime = farOutStart),
             )
         show { Content(loaded(upcoming = upcoming)) }
         assertEquals(1, rule.onAllNodesWithTag(BOOKING_CARD_RESCHEDULE_TAG).fetchSemanticsNodes().size)
@@ -652,6 +677,7 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h1200dp")
     fun busyCardShowsSpinnerOnThatCardOnly() {
         val upcoming = listOf(bookingItem("b1"), bookingItem("b3", expertId = "e2"))
         show { Content(loaded(upcoming = upcoming), messageBusyPeerId = "e2") }
@@ -660,6 +686,7 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h1200dp")
     fun contentMessageReportsTheTappedBooking() {
         val calls = Callbacks()
         show { Content(loaded(upcoming = listOf(bookingItem("b1"), bookingItem("b3"))), calls) }

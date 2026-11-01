@@ -78,8 +78,9 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
  * actions are Join Call, live within the join window (Android goes beyond iOS here, whose card passes an empty
  * `onJoinCall`, D-01), and Message (D-14): a 56 dp icon button beside Join, or the full-width text form on a
  * pending-approval card, which has no Join. Reschedule is offered when the caller passes [onReschedule] (Phase 16.2,
- * D-04/D-05): Join then goes full width and a second row holds Reschedule at the start and the text-form Message at
- * the end (iOS arrangement). Private Note is still not on the card (D-16).
+ * D-05, D-04 as amended 2026-11-01): a confirmed card shows Join full width and then Reschedule at the start with the
+ * text-form Message at the end; a pending-approval card shows the banner and then that same Reschedule + Message row
+ * (iOS arrangement). Private Note is still not on the card (D-16).
  *
  * @param joinEnabled whether the booking is inside the join window (`isWithinJoinWindow`).
  * @param onJoin starts the call; tapping Join does not open the details.
@@ -177,13 +178,23 @@ fun UpcomingBookingCard(
                     icon = Icons.Outlined.HourglassEmpty,
                     text = stringResource(R.string.my_bookings_pending_banner),
                 )
-                MessageButton(
-                    label = stringResource(R.string.chat_entry_message),
-                    onClick = onMessage,
-                    busy = messageBusy,
-                    enabled = messageEnabled,
-                    modifier = Modifier.fillMaxWidth().testTag(BOOKING_CARD_MESSAGE_TAG),
-                )
+                if (onReschedule != null) {
+                    RescheduleMessageRow(
+                        expertName = expertName,
+                        onReschedule = onReschedule,
+                        onMessage = onMessage,
+                        messageBusy = messageBusy,
+                        messageEnabled = messageEnabled,
+                    )
+                } else {
+                    MessageButton(
+                        label = stringResource(R.string.chat_entry_message),
+                        onClick = onMessage,
+                        busy = messageBusy,
+                        enabled = messageEnabled,
+                        modifier = Modifier.fillMaxWidth().testTag(BOOKING_CARD_MESSAGE_TAG),
+                    )
+                }
             } else if (onReschedule == null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.Top) {
                     JoinCallButton(joinEnabled, onJoin, Modifier.weight(1f).testTag(MY_BOOKINGS_JOIN_TAG))
@@ -200,28 +211,46 @@ fun UpcomingBookingCard(
                 }
             } else {
                 JoinCallButton(joinEnabled, onJoin, Modifier.fillMaxWidth().testTag(MY_BOOKINGS_JOIN_TAG))
-                ActionButtonPair(
-                    start = {
-                        RescheduleActionButton(
-                            onClick = onReschedule,
-                            contentDescription = stringResource(R.string.reschedule_start_action_a11y, expertName),
-                            modifier = it.testTag(BOOKING_CARD_RESCHEDULE_TAG),
-                        )
-                    },
-                    end = {
-                        MessageButton(
-                            label = stringResource(R.string.chat_entry_message),
-                            onClick = onMessage,
-                            busy = messageBusy,
-                            enabled = messageEnabled,
-                            modifier = it.testTag(BOOKING_CARD_MESSAGE_TAG),
-                        )
-                    },
-                    gap = Spacing.sm,
+                RescheduleMessageRow(
+                    expertName = expertName,
+                    onReschedule = onReschedule,
+                    onMessage = onMessage,
+                    messageBusy = messageBusy,
+                    messageEnabled = messageEnabled,
                 )
             }
         }
     }
+}
+
+/** The Reschedule + text-form Message row shared by the confirmed and pending-approval branches (D-05). */
+@Composable
+private fun RescheduleMessageRow(
+    expertName: String,
+    onReschedule: () -> Unit,
+    onMessage: () -> Unit,
+    messageBusy: Boolean,
+    messageEnabled: Boolean,
+) {
+    ActionButtonPair(
+        start = {
+            RescheduleActionButton(
+                onClick = onReschedule,
+                contentDescription = stringResource(R.string.reschedule_start_action_a11y, expertName),
+                modifier = it.testTag(BOOKING_CARD_RESCHEDULE_TAG),
+            )
+        },
+        end = {
+            MessageButton(
+                label = stringResource(R.string.chat_entry_message),
+                onClick = onMessage,
+                busy = messageBusy,
+                enabled = messageEnabled,
+                modifier = it.testTag(BOOKING_CARD_MESSAGE_TAG),
+            )
+        },
+        gap = Spacing.sm,
+    )
 }
 
 @Composable
