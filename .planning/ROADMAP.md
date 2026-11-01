@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 12/16 plans executed
+**Plans:** 14/16 plans executed
 
 Plans:
 **Wave 1**
@@ -918,8 +918,8 @@ Plans:
 
 **Wave 1**
 
-- [ ] 16.2-13-PLAN.md — G-16.2-1: status-only `canClientStartReschedule` (hidden only for pending_reschedule), both client call sites, Reschedule + Message on pending-approval cards, old-rule tests rewritten (RS-C1)
-- [ ] 16.2-14-PLAN.md — G-16.2-1: call guard on the disclosure Continue path (IN-01, now reachable), D-04 amendment in CONTEXT with the corrected server premise, UI-SPEC entry points, matrix row D1.RS6, review disposition (RS-C1, RS-C5)
+- [x] 16.2-13-PLAN.md — G-16.2-1: status-only `canClientStartReschedule` (hidden only for pending_reschedule), both client call sites, Reschedule + Message on pending-approval cards, old-rule tests rewritten (RS-C1)
+- [x] 16.2-14-PLAN.md — G-16.2-1: call guard on the disclosure Continue path (IN-01, now reachable), D-04 amendment in CONTEXT with the corrected server premise, UI-SPEC entry points, matrix row D1.RS6, review disposition (RS-C1, RS-C5)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

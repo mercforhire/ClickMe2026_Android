@@ -5,15 +5,15 @@ current_phase: "16.2"
 current_phase_name: "iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)"
 status: executing
 stopped_at: Phase 16.2 UI-SPEC approved
-last_updated: "2026-10-31T13:03:57.096Z"
+last_updated: "2026-11-01T01:12:18.998Z"
 last_activity: 2026-10-31
-last_activity_desc: Phase 16.2 execution started
-state_head: 6c6b375dae35fbb95f9e4431b249e0807990a174
+last_activity_desc: Phase 16.2 execution resumed (wave continue)
+state_head: c4ee10e1463110ad38362a48fb2a850310198e48
 progress:
   total_phases: 22
   completed_phases: 11
-  total_plans: 263
-  completed_plans: 242
+  total_plans: 267
+  completed_plans: 254
 milestone_name: milestone
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 Phase: 16.2 (iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)) — EXECUTING
 Plan: 1 of 12
 Status: Executing Phase 16.2
-Last activity: 2026-10-31 — Phase 16.2 execution started
+Last activity: 2026-10-31 — Phase 16.2 execution resumed (wave continue)
 
 Progress: [███████░░░] 65%
 
