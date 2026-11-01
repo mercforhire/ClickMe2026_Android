@@ -42,6 +42,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.ReviewOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -50,6 +51,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -540,6 +542,22 @@ class MyBookingsScreenTest {
         assertTrue(join.size.width > reschedule.size.width)
         assertTrue(reschedule.boundsInRoot.right <= message.boundsInRoot.left)
         assertTrue(message.size.width > message.size.height)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w384dp-h2400dp")
+    fun rescheduleAndMessageFitOneLineAt384dp() {
+        val confirmed = bookingItem("b1", start = farOutStart)
+        val pending = bookingItem("b2", status = STATUS_PENDING_APPROVAL, start = farOutStart)
+        show { Content(loaded(upcoming = listOf(confirmed, pending))) }
+
+        assertEquals(listOf(1, 1), rule.lineCountsOf("Reschedule", BOOKING_CARD_RESCHEDULE_TAG))
+        assertEquals(listOf(1, 1), rule.lineCountsOf("Message", BOOKING_CARD_MESSAGE_TAG))
+        val reschedule = rule.onAllNodesWithTag(BOOKING_CARD_RESCHEDULE_TAG)[0].fetchSemanticsNode()
+        val message = rule.onAllNodesWithTag(BOOKING_CARD_MESSAGE_TAG)[0].fetchSemanticsNode()
+        assertEquals(reschedule.boundsInRoot.top, message.boundsInRoot.top, 1f)
+        assertTrue(reschedule.boundsInRoot.right <= message.boundsInRoot.left)
     }
 
     @Test

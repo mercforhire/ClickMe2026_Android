@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPairDefaults
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
@@ -247,6 +248,7 @@ private fun RescheduleMessageRow(
                 busy = messageBusy,
                 enabled = messageEnabled,
                 modifier = it.testTag(BOOKING_CARD_MESSAGE_TAG),
+                contentPadding = ActionButtonPairDefaults.ContentPadding,
             )
         },
         gap = Spacing.sm,
