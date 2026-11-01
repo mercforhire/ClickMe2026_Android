@@ -13,6 +13,9 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -43,10 +46,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subvie
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileReviewsCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileStatsBar
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.subviews.ExpertProfileTopicsCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.initiateData
 import com.uptrendinvestments.clickmeapp.testing.reportData
 import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
+import com.uptrendinvestments.clickmeapp.testing.toggleFavorite
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -556,7 +561,8 @@ class ExpertProfileScreenTest {
 
         rule.onAllNodesWithText("Message").assertCountEquals(0)
         rule.onAllNodesWithText("See all", ignoreCase = true).assertCountEquals(0)
-        rule.onAllNodesWithContentDescription("avorite", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Remove from saved").assertCountEquals(0)
         rule.onAllNodesWithContentDescription("More options", substring = true).assertCountEquals(0)
     }
 
@@ -578,6 +584,7 @@ class ExpertProfileScreenTest {
             ExpertProfileViewModel(
                 ExpertProfileKey(expertId = "e1", name = "Ada", title = "", imageUrl = null),
                 ExpertProfileRepository(api),
+                FavoritesRepository(api),
             )
         val entry = testChatEntryViewModel(api)
         rule.setContent {
@@ -641,5 +648,89 @@ class ExpertProfileScreenTest {
 
         rule.onNodeWithText("You blocked this user").assertIsDisplayed()
         assertNull(safety.state.value.snackbar)
+    }
+
+    private fun setHeartContent(
+        isFavorite: Boolean,
+        showFavorite: Boolean = true,
+        onToggle: () -> Unit,
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileContent(
+                    state = loadedState(),
+                    onBack = {},
+                    onBookSession = {},
+                    onRetry = {},
+                    showFavorite = showFavorite,
+                    isFavorite = isFavorite,
+                    onToggleFavorite = onToggle,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun heartShowsWhenAllowedAndCallsBack() {
+        var taps = 0
+        setHeartContent(isFavorite = false, onToggle = { taps++ })
+
+        rule
+            .onNodeWithContentDescription("Save expert")
+            .assertHeightIsAtLeast(48.dp)
+            .assertIsOff()
+            .assertIsToggleable()
+            .performClick()
+        assertEquals(1, taps)
+    }
+
+    @Test
+    fun favoritedHeartReadsRemoveFromSavedAndIsOn() {
+        setHeartContent(isFavorite = true, onToggle = {})
+
+        rule.onNodeWithContentDescription("Remove from saved").assertIsOn().assertIsToggleable()
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
+    }
+
+    @Test
+    fun heartIsAbsentWhenNotAllowed() {
+        setHeartContent(isFavorite = false, showFavorite = false, onToggle = {})
+
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Remove from saved").assertCountEquals(0)
+    }
+
+    @Test
+    fun heartTapThroughTheRealViewModel() {
+        val api = FakeClickMeApi()
+        api.expertDetailsHandler = { PublicProfileDetailsData(isFavorite = false) }
+        api.expertReviewsHandler = { ExpertReviewsPayload() }
+        api.addFavoriteHandler = { toggleFavorite("e1", isFavorite = true) }
+        val profile =
+            ExpertProfileViewModel(
+                ExpertProfileKey(expertId = "e1", name = "Ada", title = "", imageUrl = null),
+                ExpertProfileRepository(api),
+                FavoritesRepository(api),
+            )
+        val entry = testChatEntryViewModel(api)
+        val safety = safetyViewModel(api)
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileScreen(
+                    viewModel = profile,
+                    onBack = {},
+                    onBook = {},
+                    chatEntry = entry,
+                    safety = safety,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Save expert").performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("e1"), api.addFavoriteRequests)
+        rule.onNodeWithContentDescription("Remove from saved").assertIsOn()
     }
 }

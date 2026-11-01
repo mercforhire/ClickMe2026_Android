@@ -9,11 +9,14 @@ import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileStatsDto
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewItemDto
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewSummaryDto
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewerDto
+import com.uptrendinvestments.clickmeapp.model.responses.ToggleFavoriteData
 import com.uptrendinvestments.clickmeapp.model.responses.TopicOfDiscussionDto
 import com.uptrendinvestments.clickmeapp.model.responses.TopicPriceDto
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
+import com.uptrendinvestments.clickmeapp.testing.toggleFavorite
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,7 +47,8 @@ class ExpertProfileViewModelTest {
 
     private val topicKey = ExpertProfileKey(expertId = "e1", name = "Ada", title = "", imageUrl = null)
 
-    private fun vm(key: ExpertProfileKey = fullKey) = ExpertProfileViewModel(key, ExpertProfileRepository(api))
+    private fun vm(key: ExpertProfileKey = fullKey) =
+        ExpertProfileViewModel(key, ExpertProfileRepository(api), FavoritesRepository(api))
 
     private fun details(
         name: String = "Ada Lovelace",
@@ -52,8 +56,10 @@ class ExpertProfileViewModelTest {
         bio: String? = "Bio",
         isBookable: Boolean? = null,
         topics: List<TopicOfDiscussionDto> = emptyList(),
+        isFavorite: Boolean = false,
     ) = PublicProfileDetailsData(
         isBookable = isBookable,
+        isFavorite = isFavorite,
         profile =
             PublicProfileDto(
                 name = name,
@@ -315,5 +321,78 @@ class ExpertProfileViewModelTest {
             assertEquals(BookingKey("e1", "Ada", "Engineer", "u"), vm.bookingKey())
             runCurrent()
             assertEquals(BookingKey("e1", "Ada Lovelace", "Principal Engineer", "u"), vm.bookingKey())
+        }
+
+    private fun loadedVm(isFavorite: Boolean): ExpertProfileViewModel {
+        api.expertDetailsHandler = { details(isFavorite = isFavorite) }
+        api.expertReviewsHandler = { reviews(null, 0) }
+        return vm()
+    }
+
+    @Test
+    fun heartStartsFromDetails() =
+        runTest(main.testDispatcher) {
+            neverCompleting()
+            val pending = vm()
+            runCurrent()
+            assertEquals(false, pending.uiState.value.isFavorite)
+
+            val on = loadedVm(isFavorite = true)
+            runCurrent()
+            assertEquals(true, on.uiState.value.isFavorite)
+
+            val off = loadedVm(isFavorite = false)
+            runCurrent()
+            assertEquals(false, off.uiState.value.isFavorite)
+        }
+
+    @Test
+    fun tapWhenNotFavoritedFlipsAtOnceAndCallsPut() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<ToggleFavoriteData>()
+            api.addFavoriteHandler = { gate.await() }
+            val vm = loadedVm(isFavorite = false)
+            runCurrent()
+
+            vm.onToggleFavorite()
+            assertEquals(true, vm.uiState.value.isFavorite)
+            runCurrent()
+            assertEquals(listOf("e1"), api.addFavoriteRequests)
+            assertEquals(0, api.removeFavoriteCalls)
+            assertEquals(true, vm.uiState.value.isFavorite)
+
+            gate.complete(toggleFavorite("e1", isFavorite = true))
+            runCurrent()
+            assertEquals(true, vm.uiState.value.isFavorite)
+        }
+
+    @Test
+    fun tapWhenFavoritedCallsDelete() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<ToggleFavoriteData>()
+            api.removeFavoriteHandler = { gate.await() }
+            val vm = loadedVm(isFavorite = true)
+            runCurrent()
+
+            vm.onToggleFavorite()
+            assertEquals(false, vm.uiState.value.isFavorite)
+            runCurrent()
+            assertEquals(listOf("e1"), api.removeFavoriteRequests)
+            assertEquals(0, api.addFavoriteCalls)
+            gate.complete(toggleFavorite("e1", isFavorite = false))
+            runCurrent()
+            assertEquals(false, vm.uiState.value.isFavorite)
+        }
+
+    @Test
+    fun serverResultWins() =
+        runTest(main.testDispatcher) {
+            api.addFavoriteHandler = { toggleFavorite("e1", isFavorite = false) }
+            val vm = loadedVm(isFavorite = false)
+            runCurrent()
+
+            vm.onToggleFavorite()
+            runCurrent()
+            assertEquals(false, vm.uiState.value.isFavorite)
         }
 }
