@@ -934,7 +934,7 @@ Plans:
 **Goal:** Clients can favorite an expert from Expert Profile (optimistic toggle with rollback), see Saved Experts from the client Profile hub, and open the full Reviews list from "See all" on Expert Profile, matching iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 2/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 **Wave 1**
@@ -944,9 +944,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16.3-03-PLAN.md — Expert Profile heart (optimistic, reconcile, rollback snackbar, in-flight guard, hidden for self) and "See all" on Recent Reviews for 0-3 reviews and self-view (FAV-HEART, REV-CARD, D-01..D-04, D-13..D-15)
-- [ ] 16.3-04-PLAN.md — Saved Experts ViewModel: first load, silent refresh on return, pull-to-refresh, optimistic remove with rollback and race guard, View My History hand-off, Profile-origin profile key (FAV-LIST, D-06, D-09..D-12)
-- [ ] 16.3-05-PLAN.md — Full Reviews screen: title, overall card with half stars, review cards, skeleton / error / empty / refresh states, accessibility (REV-LIST, D-16)
+- [x] 16.3-03-PLAN.md — Expert Profile heart (optimistic, reconcile, rollback snackbar, in-flight guard, hidden for self) and "See all" on Recent Reviews for 0-3 reviews and self-view (FAV-HEART, REV-CARD, D-01..D-04, D-13..D-15)
+- [x] 16.3-04-PLAN.md — Saved Experts ViewModel: first load, silent refresh on return, pull-to-refresh, optimistic remove with rollback and race guard, View My History hand-off, Profile-origin profile key (FAV-LIST, D-06, D-09..D-12)
+- [x] 16.3-05-PLAN.md — Full Reviews screen: title, overall card with half stars, review cards, skeleton / error / empty / refresh states, accessibility (REV-LIST, D-16)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
