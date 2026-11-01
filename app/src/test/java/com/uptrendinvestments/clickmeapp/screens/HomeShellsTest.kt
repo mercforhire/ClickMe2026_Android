@@ -891,12 +891,94 @@ class HomeShellsTest {
         }
     }
 
+    /**
+     * The booking flow started from Saved Experts (CR-01): the real hub row opens the real [clientFavoritesEntry],
+     * whose button opens an expert on the Profile stack. That profile stand-in has no hidden-bar metadata, like the
+     * production entry, and its "book" button opens the booking form. The real [clientBookingFlowEntries] supply the
+     * Request Sent exits under test. The Explore root opens the same expert with the Default origin.
+     */
+    private fun setClientWithSavedExpertsBooking() {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Button(onClick = { navigator.navigate(ada()) }) { Text("open explore profile") }
+                    },
+                    detailEntries = { navigator ->
+                        clientFavoritesEntry(navigator) { actions ->
+                            Button(
+                                onClick = { actions.onOpenExpert(ada().copy(origin = StackOrigin.Profile)) },
+                            ) { Text("open favorite profile") }
+                        }
+                        entry<ExpertProfileKey> { key ->
+                            Column {
+                                Text("profile ${key.expertId} ${key.origin}")
+                                Button(
+                                    onClick = {
+                                        navigator.navigate(BookingKey("e1", "Ada Lovelace", "Engineer", null))
+                                    },
+                                ) { Text("book ${key.origin}") }
+                            }
+                        }
+                        clientBookingFlowEntries(
+                            navigator = navigator,
+                            booking = { _, _, onBooked, _ ->
+                                Button(onClick = { onBooked("b1") }) { Text("fake book") }
+                            },
+                            requestSent = { key, _, onViewBookings, onBackToHome ->
+                                Column {
+                                    Text("sent ${key.bookingId}")
+                                    Button(onClick = onViewBookings) { Text("sent bookings") }
+                                    Button(onClick = onBackToHome) { Text("sent home") }
+                                }
+                            },
+                        )
+                    },
+                )
+            }
+        }
+    }
+
     private fun ada() = ExpertProfileKey("e1", "Ada Lovelace", "Engineer", null, 4.5, null, listOf("AI"))
 
     private fun openFavoriteProfileOnTheProfileTab() {
         tapTab("Profile")
         composeRule.onNodeWithText("Saved Experts").performScrollTo().performClick()
         composeRule.onNodeWithText("open favorite profile").performClick()
+    }
+
+    private fun bookFromSavedExperts() {
+        openFavoriteProfileOnTheProfileTab()
+        composeRule.onNodeWithText("book Profile").performClick()
+        composeRule.onNodeWithText("fake book").performClick()
+        composeRule.onNodeWithText("sent b1").assertExists()
+    }
+
+    private fun assertProfileTabShowsTheHub() {
+        tapTab("Profile")
+        composeRule.onNode(tab("Profile")).assertIsSelected()
+        composeRule.onNodeWithText("Saved Experts").assertExists()
+        composeRule.onNodeWithText("sent b1").assertDoesNotExist()
+        composeRule.onNodeWithText("open favorite profile").assertDoesNotExist()
+        composeRule.onNodeWithText("profile e1 Profile").assertDoesNotExist()
+    }
+
+    @Test
+    fun bookingFromSavedExpertsViewBookingsLeavesProfileOnTheHub() {
+        setClientWithSavedExpertsBooking()
+        bookFromSavedExperts()
+
+        composeRule.onNodeWithText("sent bookings").performClick()
+
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        assertProfileTabShowsTheHub()
     }
 
     @Test
