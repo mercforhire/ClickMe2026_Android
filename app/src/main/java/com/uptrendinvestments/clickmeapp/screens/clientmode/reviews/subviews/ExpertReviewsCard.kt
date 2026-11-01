@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,8 +48,14 @@ fun ExpertReviewsCard(
     review: ExpertReviewUi,
     modifier: Modifier = Modifier,
 ) {
+    val name = review.reviewerName ?: stringResource(R.string.expert_profile_anonymous)
+    val rated = stringResource(R.string.expert_reviews_card_rated_a11y, review.rating)
+    val topic = review.topic?.let { stringResource(R.string.expert_reviews_topic, it) }
+    // The spoken description carries the full comment; only the visible text is clamped (RESEARCH Pitfall 8).
+    val description =
+        listOfNotNull(name, rated, topic, review.dateLabel, review.comment).joinToString(". ")
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description },
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -77,13 +85,13 @@ fun ExpertReviewsCard(
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
                     Text(
-                        text = review.reviewerName ?: stringResource(R.string.expert_profile_anonymous),
+                        text = name,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    if (review.topic != null) {
+                    if (topic != null) {
                         Text(
-                            text = stringResource(R.string.expert_reviews_topic, review.topic),
+                            text = topic,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
