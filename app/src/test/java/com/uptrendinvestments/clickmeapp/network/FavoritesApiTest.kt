@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.network
 
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.ToggleFavoriteData
+import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.toFavoriteFailure
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -11,6 +12,7 @@ import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -26,13 +28,14 @@ import java.io.IOException
  */
 class FavoritesApiTest {
     private lateinit var server: MockWebServer
+    private lateinit var api: ClickMeApi
     private lateinit var repository: FavoritesRepository
 
     @Before
     fun setUp() {
         server = MockWebServer()
         server.start()
-        val api =
+        api =
             Retrofit
                 .Builder()
                 .baseUrl(server.url("/api/v1/"))
@@ -165,6 +168,22 @@ class FavoritesApiTest {
                 assertEquals(403, e.status)
                 assertEquals("Client role required", e.userMessage)
             }
+        }
+
+    @Test
+    fun detailsDecodesIsFavorite() =
+        runTest {
+            val profile = ExpertProfileRepository(api)
+
+            enqueue(200, """{"status":"success","data":{"is_favorite":true,"profile":{"name":"Ada"}}}""")
+            assertTrue(profile.details("e1").isFavorite)
+            assertEquals("/api/v1/experts/e1/details", server.takeRequest().url.encodedPath)
+
+            enqueue(200, """{"status":"success","data":{"is_favorite":false,"profile":{"name":"Ada"}}}""")
+            assertFalse(profile.details("e1").isFavorite)
+
+            enqueue(200, """{"status":"success","data":{"profile":{"name":"Ada"}}}""")
+            assertFalse(profile.details("e1").isFavorite)
         }
 
     @Test
