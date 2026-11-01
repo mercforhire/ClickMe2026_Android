@@ -20,31 +20,78 @@ class RescheduleRulesTest {
         available: Boolean = true,
     ) = BookingTimeSlot(start, start.plus(Duration.ofMinutes(30)), available)
 
-    // canClientStartReschedule (D-04 as amended 2026-11-01: only a pending reschedule hides the button)
+    // canClientStartReschedule: an allow-list mirroring the server's canReschedule minus pending_reschedule
+    // (WR-04, D-04 as amended 2026-11-01). Wire strings are literals on purpose, to pin the server values.
+
+    private val later = now.plusSeconds(3600)
+    private val passed = now.minusSeconds(60)
 
     @Test
-    fun canStart_confirmedIsTrue() {
-        assertTrue(canClientStartReschedule("confirmed"))
+    fun canStart_confirmedIsTrueAtAnyTime() {
+        assertTrue(canClientStartReschedule("confirmed", later, now))
+        assertTrue(canClientStartReschedule("confirmed", now, now))
+        assertTrue(canClientStartReschedule("confirmed", passed, now))
     }
 
     @Test
-    fun canStart_pendingApprovalIsTrue() {
-        assertTrue(canClientStartReschedule("pending_approval"))
+    fun canStart_pendingApprovalIsTrueAtAnyTime() {
+        assertTrue(canClientStartReschedule("pending_approval", later, now))
+        assertTrue(canClientStartReschedule("pending_approval", now, now))
+        assertTrue(canClientStartReschedule("pending_approval", passed, now))
     }
 
     @Test
-    fun canStart_inProgressIsTrue() {
-        assertTrue(canClientStartReschedule("in_progress"))
+    fun canStart_inProgressBeforeEndIsTrue() {
+        assertTrue(canClientStartReschedule("in_progress", later, now))
     }
 
     @Test
-    fun canStart_completedIsTrue() {
-        assertTrue(canClientStartReschedule("completed"))
+    fun canStart_inProgressAtOrAfterEndIsFalse() {
+        assertFalse(canClientStartReschedule("in_progress", now, now))
+        assertFalse(canClientStartReschedule("in_progress", passed, now))
+    }
+
+    @Test
+    fun canStart_completedBeforeEndIsTrue() {
+        assertTrue(canClientStartReschedule("completed", later, now))
+    }
+
+    @Test
+    fun canStart_completedAtOrAfterEndIsFalse() {
+        assertFalse(canClientStartReschedule("completed", now, now))
+        assertFalse(canClientStartReschedule("completed", passed, now))
     }
 
     @Test
     fun canStart_pendingRescheduleIsFalse() {
-        assertFalse(canClientStartReschedule("pending_reschedule"))
+        assertFalse(canClientStartReschedule("pending_reschedule", later, now))
+    }
+
+    @Test
+    fun canStart_cancelledIsFalse() {
+        assertFalse(canClientStartReschedule("cancelled", later, now))
+    }
+
+    @Test
+    fun canStart_declinedIsFalse() {
+        assertFalse(canClientStartReschedule("declined", later, now))
+    }
+
+    @Test
+    fun canStart_missedIsFalse() {
+        assertFalse(canClientStartReschedule("missed", later, now))
+    }
+
+    @Test
+    fun canStart_expiredIsFalse() {
+        assertFalse(canClientStartReschedule("expired", later, now))
+    }
+
+    @Test
+    fun canStart_unknownOrEmptyStatusIsFalse() {
+        assertFalse(canClientStartReschedule("no_show_both", later, now))
+        assertFalse(canClientStartReschedule("some_future_status", later, now))
+        assertFalse(canClientStartReschedule("", later, now))
     }
 
     // clientBookingIsPaid
