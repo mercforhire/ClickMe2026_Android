@@ -982,6 +982,46 @@ class HomeShellsTest {
     }
 
     @Test
+    fun bookingFromSavedExpertsBackToHomeLeavesProfileOnTheHub() {
+        setClientWithSavedExpertsBooking()
+        bookFromSavedExperts()
+
+        composeRule.onNodeWithText("sent home").performClick()
+
+        composeRule.onNode(tab("Explore")).assertIsSelected()
+        assertProfileTabShowsTheHub()
+    }
+
+    @Test
+    fun bookingFromExploreLeavesASavedExpertProfileOpenOnTheProfileTab() {
+        setClientWithSavedExpertsBooking()
+        openFavoriteProfileOnTheProfileTab()
+        tapTab("Explore")
+        composeRule.onNodeWithText("open explore profile").performClick()
+        composeRule.onNodeWithText("book Default").performClick()
+        composeRule.onNodeWithText("fake book").performClick()
+        composeRule.onNodeWithText("sent bookings").performClick()
+
+        tapTab("Profile")
+
+        composeRule.onNodeWithText("profile e1 Profile").assertExists()
+        composeRule.onNodeWithText("sent b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun savedExpertsExploreButtonKeepsSavedExpertsOpenOnTheProfileTab() {
+        // D-05, runbook row D1.FV4: Saved Experts' own button is not a finished booking, so the list stays open.
+        setClient(showDebug = false, hubStandIns = true)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Saved Experts").performScrollTo().performClick()
+
+        composeRule.onNodeWithText("stand-in explore experts").performClick()
+        tapTab("Profile")
+
+        composeRule.onNodeWithText("stand-in favorites").assertExists()
+    }
+
+    @Test
     fun sameExpertOnExploreAndProfileDoesNotCollide() {
         setClientWithProfileAndReviewsStandIns()
         composeRule.onNodeWithText("open explore profile").performClick()

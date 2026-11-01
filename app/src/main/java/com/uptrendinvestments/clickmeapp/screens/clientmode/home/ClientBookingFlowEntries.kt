@@ -65,6 +65,11 @@ internal fun Navigator.viewBookingsFromRequestSent(key: RequestSentKey) {
     showMyBookings()
 }
 
+/** [showExplore] after a finished booking (RED stub: Profile reset added in the GREEN step). */
+internal fun Navigator.backToHomeFromRequestSent(key: RequestSentKey) {
+    showExplore()
+}
+
 private fun Navigator.resetProfileStackHolding(key: RequestSentKey) {
     if (key in state.backStacks[ClientProfileRoot].orEmpty()) reselect(ClientProfileRoot)
 }
