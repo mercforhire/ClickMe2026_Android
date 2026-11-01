@@ -11,7 +11,7 @@ package com.uptrendinvestments.clickmeapp.network
  * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability. Phase 11 adds the
  * expert request, booking, earnings and payout groups (booking requests, expert bookings, weekly earnings, payout
  * summary and Stripe Connect). Phase 14 adds change password, account deletion, the help FAQ list, the earnings
- * transactions ledger and the expert tax profile. Phase 16.1 adds the expert search (Search tab).
+ * transactions ledger and the expert tax profile. Phase 16.1 adds the expert search (Search tab). Phase 16.3 adds the client favorites group.
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -42,6 +42,15 @@ object ApiRequestUrls {
 
     /** Ports iOS `ClickMeAPI+Discovery.searchExperts` (Phase 16.1, Search tab). Authed: not in [publicPaths]. */
     const val EXPERTS_SEARCH = "experts/search"
+
+    /**
+     * Phase 16.3: Saved Experts and the profile heart (PARITY-AUDIT #2, #2b). Authed: not in [publicPaths]. Add is
+     * PUT on the backend (routes/favorites.js), not POST.
+     */
+    const val CLIENT_FAVORITES = "client/favorites"
+
+    /** Add (PUT) and remove (DELETE) one favorite. See [CLIENT_FAVORITES]. */
+    const val CLIENT_FAVORITE = "client/favorites/{expertId}"
 
     // Phase 6: booking (availability, free booking request, client booking detail).
     const val EXPERT_AVAILABILITY = "experts/{id}/availability"

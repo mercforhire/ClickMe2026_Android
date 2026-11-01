@@ -65,6 +65,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FavoritesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -89,6 +90,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ToggleFavoriteData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import okhttp3.MultipartBody
@@ -116,7 +118,7 @@ import retrofit2.http.Query
  * the expert's own weekly availability and the profile-tags update. Phase 14 adds nine endpoints: the profile
  * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
  * earnings transactions ledger and the expert tax profile (get and save). Phase 16.2 adds the two
- * reschedule-propose PATCH calls. Other API groups arrive with their
+ * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Other API groups arrive with their
  * features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -218,6 +220,31 @@ interface ClickMeApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): SuccessDataResponse<ExpertsSearchPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+Favorites getFavorites. Client-only (403 otherwise). The server default `limit` is 20 and
+     * the cap is 100; the repository always asks for page 1 with 100 (one request, no paging).
+     */
+    @GET(ApiRequestUrls.CLIENT_FAVORITES)
+    suspend fun getClientFavorites(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<FavoritesPayload>
+
+    /**
+     * Ports iOS ClickMeAPI+Favorites addFavorite. PUT on the backend (not POST); idempotent and client-only. No
+     * `@Body`: the route has no body schema (same shape as [joinCall]), and Retrofit sends an empty body for a PUT.
+     */
+    @PUT(ApiRequestUrls.CLIENT_FAVORITE)
+    suspend fun addFavorite(
+        @Path("expertId") expertId: String,
+    ): SuccessDataResponse<ToggleFavoriteData>
+
+    /** Ports iOS ClickMeAPI+Favorites removeFavorite. Idempotent and client-only. */
+    @DELETE(ApiRequestUrls.CLIENT_FAVORITE)
+    suspend fun removeFavorite(
+        @Path("expertId") expertId: String,
+    ): SuccessDataResponse<ToggleFavoriteData>
 
     /** Ports iOS ClickMeAPI+ClientBookings list. [type] is the server filter, e.g. `upcoming`. */
     @GET(ApiRequestUrls.CLIENT_BOOKINGS)

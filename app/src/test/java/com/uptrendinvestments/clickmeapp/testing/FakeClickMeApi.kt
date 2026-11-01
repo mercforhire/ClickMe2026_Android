@@ -66,6 +66,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FavoritesPayload
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -90,6 +91,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessDataResponse
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.model.responses.TaxProfileData
+import com.uptrendinvestments.clickmeapp.model.responses.ToggleFavoriteData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.WeeklyEarningsData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -133,6 +135,9 @@ class FakeClickMeApi : ClickMeApi {
     var clientHomeHandler: suspend (String?) -> ClientHomeData = { notStubbed() }
     var clientBookingsHandler: suspend (String) -> ClientBookingsPayload = { notStubbed() }
     var searchExpertsHandler: suspend (SearchExpertsQuery) -> ExpertsSearchPayload = { notStubbed() }
+    var getClientFavoritesHandler: suspend (page: Int, limit: Int) -> FavoritesPayload = { _, _ -> notStubbed() }
+    var addFavoriteHandler: suspend (String) -> ToggleFavoriteData = { notStubbed() }
+    var removeFavoriteHandler: suspend (String) -> ToggleFavoriteData = { notStubbed() }
     var categoriesHandler: suspend () -> CategoriesPayload = { notStubbed() }
     var expertDetailsHandler: suspend (String) -> PublicProfileDetailsData = { notStubbed() }
     var expertReviewsHandler: suspend (String) -> ExpertReviewsPayload = { notStubbed() }
@@ -261,6 +266,15 @@ class FakeClickMeApi : ClickMeApi {
         private set
 
     @Volatile var searchExpertsCalls = 0
+        private set
+
+    @Volatile var getClientFavoritesCalls = 0
+        private set
+
+    @Volatile var addFavoriteCalls = 0
+        private set
+
+    @Volatile var removeFavoriteCalls = 0
         private set
 
     @Volatile var categoriesCalls = 0
@@ -452,6 +466,24 @@ class FakeClickMeApi : ClickMeApi {
     /** Every PATCH /expert/bookings/{id}/reschedule body, in call order. */
     val rescheduleExpertBookingRequests: List<ExpertRescheduleProposalRequest>
         get() = synchronized(_rescheduleExpertBookingRequests) { _rescheduleExpertBookingRequests.toList() }
+
+    private val _clientFavoritesQueries = mutableListOf<Pair<Int, Int>>()
+
+    /** The (page to limit) arguments of every GET /client/favorites call, in call order. */
+    val clientFavoritesQueries: List<Pair<Int, Int>>
+        get() = synchronized(_clientFavoritesQueries) { _clientFavoritesQueries.toList() }
+
+    private val _addFavoriteRequests = mutableListOf<String>()
+
+    /** Every PUT /client/favorites/{expertId} expert id, in call order. */
+    val addFavoriteRequests: List<String>
+        get() = synchronized(_addFavoriteRequests) { _addFavoriteRequests.toList() }
+
+    private val _removeFavoriteRequests = mutableListOf<String>()
+
+    /** Every DELETE /client/favorites/{expertId} expert id, in call order. */
+    val removeFavoriteRequests: List<String>
+        get() = synchronized(_removeFavoriteRequests) { _removeFavoriteRequests.toList() }
 
     private val _joinCallRequests = mutableListOf<String>()
 
@@ -735,6 +767,27 @@ class FakeClickMeApi : ClickMeApi {
         val query = SearchExpertsQuery(q, category, sort, page, limit)
         synchronized(_searchExpertsQueries) { _searchExpertsQueries += query }
         return ok(searchExpertsHandler(query))
+    }
+
+    override suspend fun getClientFavorites(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<FavoritesPayload> {
+        getClientFavoritesCalls++
+        synchronized(_clientFavoritesQueries) { _clientFavoritesQueries += page to limit }
+        return ok(getClientFavoritesHandler(page, limit))
+    }
+
+    override suspend fun addFavorite(expertId: String): SuccessDataResponse<ToggleFavoriteData> {
+        addFavoriteCalls++
+        synchronized(_addFavoriteRequests) { _addFavoriteRequests += expertId }
+        return ok(addFavoriteHandler(expertId))
+    }
+
+    override suspend fun removeFavorite(expertId: String): SuccessDataResponse<ToggleFavoriteData> {
+        removeFavoriteCalls++
+        synchronized(_removeFavoriteRequests) { _removeFavoriteRequests += expertId }
+        return ok(removeFavoriteHandler(expertId))
     }
 
     override suspend fun getCategories(): SuccessDataResponse<CategoriesPayload> {
