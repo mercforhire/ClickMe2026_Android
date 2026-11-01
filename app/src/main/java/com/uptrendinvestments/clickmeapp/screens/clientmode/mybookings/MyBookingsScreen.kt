@@ -358,7 +358,7 @@ private fun TabBody(
                                     timeFormat = timeFormat,
                                     locale = locale,
                                     onReschedule =
-                                        if (canClientStartReschedule(item.status, item.startTime, joinNow)) {
+                                        if (canClientStartReschedule(item.status)) {
                                             { onReschedule(item.bookingId) }
                                         } else {
                                             null

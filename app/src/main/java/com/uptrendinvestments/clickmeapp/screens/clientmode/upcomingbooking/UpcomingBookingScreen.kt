@@ -116,10 +116,9 @@ private val DateSkeletonHeight = 128.dp
 /**
  * Upcoming Booking Details (BOOK-06), opened from a Today's Sessions or Upcoming card. Port of iOS
  * `UpcomingBookingView` without the private note (DEF-1, Phase 13). Phase 16.2 adds Reschedule: a button at the start of
- * the row with Cancel Booking at the end (D-05), shown only while [canClientStartReschedule] allows it (D-04: not for
- * pending approval or pending reschedule, nor within 24 hours of the start) and opening the picker through
- * [onReschedule]. Message Expert is present (D-14): it
- * opens the chat with the booking's expert through [ChatEntryViewModel].
+ * the row with Cancel Booking at the end (D-05), shown unless a reschedule is pending (D-04 as amended
+ * 2026-11-01, [canClientStartReschedule]) and opening the picker through [onReschedule]. Message Expert is present
+ * (D-14): it opens the chat with the booking's expert through [ChatEntryViewModel].
  *
  * D-01: a pending reschedule proposal shows the shared reschedule card first, which fixes the iOS dead end where the
  * client could not respond. D-14: the status, price and payment pill are real. D-15: Cancel is limited to confirmed,
@@ -445,8 +444,7 @@ private fun LoadedBody(
             enabled = details.expertId != null,
             modifier = Modifier.fillMaxWidth().testTag(MESSAGE_EXPERT_TAG),
         )
-        // D-04: hidden live at the 24 h mark because it reads the shared 30 s join clock.
-        val showReschedule = canClientStartReschedule(details.status.raw, details.start, joinNow)
+        val showReschedule = canClientStartReschedule(details.status.raw)
         if (showReschedule || details.canCancel) {
             Spacer(Modifier.height(Spacing.lg))
             // D-05: Reschedule at the start, Cancel at the end; one alone fills the width.
