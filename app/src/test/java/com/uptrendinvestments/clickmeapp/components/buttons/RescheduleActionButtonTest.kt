@@ -1,11 +1,15 @@
 package com.uptrendinvestments.clickmeapp.components.buttons
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -17,7 +21,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -52,6 +58,35 @@ class RescheduleActionButtonTest {
                         ActionButtonPair(
                             start = if (start) ({ Box(it.testTag("start")) { Text("Start") } }) else null,
                             end = if (end) ({ Box(it.testTag("end")) { Text("End") } }) else null,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun Stub(
+        tag: String,
+        width: Int,
+        modifier: Modifier,
+    ) {
+        Box(modifier.testTag(tag)) { Spacer(Modifier.width(width.dp).height(20.dp)) }
+    }
+
+    /** Slots are fixed-width stubs so the fit rule is tested without any font. The container is 340 dp: half = 162 dp. */
+    private fun stubPair(
+        startWidth: Int,
+        endWidth: Int,
+        layoutDirection: LayoutDirection = LayoutDirection.Ltr,
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+                    Box(Modifier.width(340.dp)) {
+                        ActionButtonPair(
+                            start = { Stub("start", startWidth, it) },
+                            end = { Stub("end", endWidth, it) },
                         )
                     }
                 }
@@ -117,6 +152,58 @@ class RescheduleActionButtonTest {
         val start = rule.onNodeWithTag("start").getUnclippedBoundsInRoot()
         val end = rule.onNodeWithTag("end").getUnclippedBoundsInRoot()
         assertTrue(end.top >= start.bottom)
+    }
+
+    @Test
+    fun pairStaysARowWhenBothFitTheirHalf() {
+        stubPair(100, 100)
+
+        val start = rule.onNodeWithTag("start").getUnclippedBoundsInRoot()
+        val end = rule.onNodeWithTag("end").getUnclippedBoundsInRoot()
+        assertEquals(start.top.value, end.top.value, 1f)
+        assertTrue(end.left >= start.right)
+        assertEquals(start.right.value - start.left.value, end.right.value - end.left.value, 1f)
+    }
+
+    @Test
+    fun pairStaysARowJustUnderTheHalf() {
+        stubPair(161, 161)
+
+        val start = rule.onNodeWithTag("start").getUnclippedBoundsInRoot()
+        val end = rule.onNodeWithTag("end").getUnclippedBoundsInRoot()
+        assertEquals(start.top.value, end.top.value, 1f)
+    }
+
+    @Test
+    fun pairStacksWhenStartCannotFitItsHalf() {
+        stubPair(163, 100)
+
+        val start = rule.onNodeWithTag("start").getUnclippedBoundsInRoot()
+        val end = rule.onNodeWithTag("end").getUnclippedBoundsInRoot()
+        assertTrue(end.top >= start.bottom)
+        assertEquals(340f, start.width.value, 1f)
+        assertEquals(340f, end.width.value, 1f)
+    }
+
+    @Test
+    fun pairStacksWhenEndCannotFitItsHalf() {
+        stubPair(100, 163)
+
+        val start = rule.onNodeWithTag("start").getUnclippedBoundsInRoot()
+        val end = rule.onNodeWithTag("end").getUnclippedBoundsInRoot()
+        assertTrue(end.top >= start.bottom)
+        assertEquals(340f, start.width.value, 1f)
+        assertEquals(340f, end.width.value, 1f)
+    }
+
+    @Test
+    fun pairRowMirrorsInRtl() {
+        stubPair(100, 100, LayoutDirection.Rtl)
+
+        val start = rule.onNodeWithTag("start").getUnclippedBoundsInRoot()
+        val end = rule.onNodeWithTag("end").getUnclippedBoundsInRoot()
+        assertEquals(start.top.value, end.top.value, 1f)
+        assertTrue(start.left >= end.right)
     }
 
     @Test

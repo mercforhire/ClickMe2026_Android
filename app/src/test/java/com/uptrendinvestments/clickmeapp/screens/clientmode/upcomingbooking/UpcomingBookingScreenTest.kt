@@ -475,6 +475,31 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h900dp")
+    fun labelsFitOneLineAt360dp() {
+        setScreen(loaded(detailsAt(Duration.ofDays(3))), joinNow = clientNow)
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", UPCOMING_BOOKING_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Cancel Booking", UPCOMING_BOOKING_CANCEL_TAG))
+        val reschedule = rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).getUnclippedBoundsInRoot()
+        val cancel = rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).getUnclippedBoundsInRoot()
+        assertTrue(reschedule.bottom <= cancel.top)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w384dp-h900dp")
+    fun labelsFitOneLineAt384dp() {
+        setScreen(loaded(detailsAt(Duration.ofDays(3))), joinNow = clientNow)
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", UPCOMING_BOOKING_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Cancel Booking", UPCOMING_BOOKING_CANCEL_TAG))
+    }
+
+    @Test
     fun exactly24hShows() {
         setScreen(loaded(detailsAt(Duration.ofHours(24))), joinNow = clientNow)
         rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
