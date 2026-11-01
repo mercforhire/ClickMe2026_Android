@@ -38,6 +38,8 @@ Later plans add the sessions `preflight`, `session-A`, `batch-A`, `session-B`, `
 
 Phase 16.2 adds rows D1.RS1-D1.RS8 and D2.RS1-D2.RS4; they run on the first Play build that contains Phase 16.2 (after Phase 16.5, per ROADMAP).
 
+Phase 16.3 adds rows D1.FV1-D1.FV6, D2.FV1 and FS.FV1-FS.FV3; they run on the first Play build that contains Phase 16.3 (after Phase 16.5, per ROADMAP).
+
 ## 0. Pre-flight
 
 Direction `D1` unless stated. Run before any money row.
@@ -143,6 +145,19 @@ Android client B proposes; iOS expert A responds. Paid rows end in a void (cance
 | D1.28 | P13 (d) | D1 | Open the notifications list from both bells; receive a foreground push; tap rows; turn the permission off and use the settings round trip. | Grouped by date; a foreground push reloads it; rows route like pushes; the permission-off row works. | Outcome per bullet. | [ ] |
 | D1.29 | P12 (c), P12 (d) | D1 | Run last in Direction 1. B reports A from chat (Supabase report row), blocks from chat ("Blocked {name}") and from the profile; the iPhone side tries to send; Unblock. | The report row stores the enum value; the iPhone side cannot send; Unblock restores the composer. | Supabase report row (enum value only). | [ ] |
 
+### 2f-F Saved Experts, favorite heart and full Reviews (Phase 16.3)
+
+Samsung = B (client). No money moves in these rows.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D1.FV1 | PARITY #2b, D-01..D-04 | D1 | B opens A's profile from Explore. Watch the heart; tap it; leave and reopen the profile; tap it again; then double tap quickly. | The outlined heart shows only after the profile loads; a tap fills it; after reopening it is still filled; the next tap outlines it; a fast double tap changes it once. | Outcome per step. | [ ] |
+| D1.FV2 | D-03 | D1 | With airplane mode on, tap the heart on A's profile. | The heart flips and rolls back with a snackbar (connection message or "Couldn't update favorites"). | Snackbar text seen. | [ ] |
+| D1.FV3 | PARITY #2, D-09, D-10, D-12 | D1 | Favorite A. Open Profile, Discovery, Saved Experts. Open A's profile from the card and unfavorite; press Back. Favorite A again; on the list tap A's heart; try Cancel, then Remove. | A is listed with photo, name, green headline and tags; after unfavoriting and Back, A is gone without a pull; the dialog reads "Remove {A} from favorites?" with Cancel and Remove; Cancel keeps A; Remove removes A and shows the empty state. | Outcome per step. | [ ] |
+| D1.FV4 | D-05..D-08 | D1 | On the Saved Experts empty state: read the Pro Tip; tap "Explore Experts"; go back to Profile; tap "View My History". | The Pro Tip names the heart icon; "Explore Experts" opens the Explore tab root; back on Profile, Saved Experts is still open; "View My History" opens Bookings with Past selected. | Outcome per step. | [ ] |
+| D1.FV5 | PARITY #3, D-13, D-14, D-16 | D1 | Tap "See all" on A's Recent Reviews from Explore, from Search, from a chat "View profile" and from Saved Experts. Switch tabs while two of these are open. | "{First}'s Reviews" shows the overall card and review cards; Back returns to the profile; switching tabs with two open causes no crash. | Outcome per origin; H4 crash count. | [ ] |
+| D1.FV6 | D-13 | D1 | Open the profile of an expert with 0 reviews; tap "See all". | The Recent Reviews card shows only its header and "See all"; "See all" shows "No reviews yet". | Outcome per step. | [ ] |
+
 ### 2g Payouts mirror (D-05, iOS half)
 
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
@@ -212,6 +227,14 @@ Android expert A proposes; iOS client B responds. Paid rows end in a void (cance
 | D2.RS2 | PARITY #11, D-10 | D2 | From an expert upcoming card on a paid held booking inside 6 days, A proposes a new slot. B accepts on iOS, which triggers the iOS client-side saved-card recovery. Then A cancels the booking (void). | The proposal is sent from the card; record what the iOS accept does and any error code. PAID line, expected end void. | Error codes and outcome only; Stripe status canceled; booking id first 8. | [ ] |
 | D2.RS3 | locked `can_reschedule` | D2 | Compare a booking where the server reports `can_reschedule` false (for example a completed past booking) with a confirmed upcoming one. | A's Reschedule button is absent on the first and present on the second. | Yes or no per booking. | [ ] |
 | D2.RS4 | D-02 | D2 | On a paid booking A opens the reschedule calendar. | No dot and dimmed chips beyond now + 6 days, with the paid note. | Outcome one line. | [ ] |
+
+### 4e-F Expert self-view reviews (Phase 16.3)
+
+Samsung = A (expert). No money moves in this row.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D2.FV1 | D-15 | D2 | A opens "View My Public Profile" from the expert hub. Tap "See all" on Recent Reviews. | The self-view shows no heart; Recent Reviews shows "See all"; it opens A's own full Reviews list with no bottom bar; Back returns to the profile. | Outcome per step. | [ ] |
 
 ### 4f Payouts (D-05, Android half)
 
@@ -285,6 +308,9 @@ Switch on Settings, Display, Font size at the largest, then Display size at the 
 | FS.K6 | K6 | D1 | At 200% open Conversations, a thread with a failed bubble, the blocked banner, Report & Block, the Report sheet and the Request Decision footer. | Row name and time wrap; bubbles and composer grow; footer buttons stack. | Note. | [ ] |
 | FS.Y7 | Y7 | Samsung | Change the font scale while on a form in each flow. | Typed text kept, secrets empty, no crash. | Note; H4 crash count. | [ ] |
 | FS.Y12 | Y12 | Samsung | Run Accessibility Scanner at 200% on the four SC-4 flows. | Findings logged. | Finding count. | [ ] |
+| FS.FV1 | 16.3 UI-SPEC E3 backstop | D1 | At 200% open Profile, Saved Experts. | The Favorite Experts app bar title stays on one line with an ellipsis. | Note. | [ ] |
+| FS.FV2 | 16.3 UI-SPEC E4 backstop | D1 | At 200% view a Saved Experts card with a long name and several tags. | The card grows with no clipping and the photo stays 72 x 80 dp. | Note. | [ ] |
+| FS.FV3 | 16.3 UI-SPEC E5 backstop | D1 | At 200% tap the heart on a Saved Experts card whose expert has a long name. | The remove dialog title wraps without clipping and both buttons stay reachable. | Note. | [ ] |
 
 Switch the font and display size back.
 

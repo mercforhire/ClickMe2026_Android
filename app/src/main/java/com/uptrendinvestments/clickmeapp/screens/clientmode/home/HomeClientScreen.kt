@@ -43,6 +43,9 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.Expert
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.clientFavoritesEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
@@ -64,6 +67,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.expertReviewsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.reviewsKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingViewModel
@@ -156,6 +163,16 @@ fun HomeClientScreen(
                             viewModel = profileViewModel,
                             onBack = navigator::goBack,
                             onBook = { navigator.navigate(it) },
+                            onSeeAllReviews = { name -> navigator.navigate(key.reviewsKey(name)) },
+                        )
+                    }
+                    expertReviewsEntry(navigator) { key, onBack ->
+                        ExpertReviewsScreen(
+                            viewModel =
+                                hiltViewModel<ExpertReviewsViewModel, ExpertReviewsViewModel.Factory>(
+                                    creationCallback = { factory -> factory.create(key) },
+                                ),
+                            onBack = onBack,
                         )
                     }
                     clientBookingFlowEntries(
@@ -236,6 +253,15 @@ fun HomeClientScreen(
                             )
                         },
                     )
+                    clientFavoritesEntry(navigator) { actions ->
+                        FavoritesScreen(
+                            viewModel = hiltViewModel(),
+                            onBack = actions.onBack,
+                            onOpenExpert = actions.onOpenExpert,
+                            onExplore = actions.onExplore,
+                            onViewHistory = actions.onViewHistory,
+                        )
+                    }
                     clientPaymentMethodsEntry(navigator) { onBack ->
                         PaymentMethodsScreen(viewModel = hiltViewModel(), onBack = onBack)
                     }
@@ -399,6 +425,7 @@ internal fun clientProfileHubActions(
     ClientProfileHubActions(
         onEditProfile = { navigator.navigate(ClientProfileSettingsKey) },
         onSwitchToExpert = { onSwitchMode(AppMode.Expert) },
+        onOpenSavedExperts = { navigator.navigate(FavoritesKey) },
         onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
         onOpenPayment = { navigator.navigate(PaymentMethodsKey) },
         onOpenHelp = { navigator.navigate(HelpKey) },

@@ -36,6 +36,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.Expert
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.profileHubVersionLabel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.expertReviewsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.reviewsKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryKey
 import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
@@ -155,6 +159,15 @@ fun HomeExpertScreen(
             chatEntries(navigator, AppMode.Expert)
             notificationsEntries(navigator, AppMode.Expert)
             expertProfileEntry(navigator)
+            expertReviewsEntry(navigator, metadata = BottomBar.hidden()) { key, onBack ->
+                ExpertReviewsScreen(
+                    viewModel =
+                        hiltViewModel<ExpertReviewsViewModel, ExpertReviewsViewModel.Factory>(
+                            creationCallback = { factory -> factory.create(key) },
+                        ),
+                    onBack = onBack,
+                )
+            }
             expertSettingsEntries(navigator)
         },
         pendingChatThread = pendingChatThread,
@@ -299,7 +312,8 @@ internal fun expertProfileHubActions(
 /**
  * The expert shell's own Expert Profile route: the "View My Public Profile" self-view and a chat-pushed peer profile
  * (RESEARCH Pitfall 8). Book Session is never shown in Expert mode (no booking route is registered here, and an
- * expert cannot book themselves), so the screen is told not to show it.
+ * expert cannot book themselves), so the screen is told not to show it. "See all" pushes the full Reviews route
+ * (`expertReviewsEntry`, registered next to this entry), also for the self-view (Phase 16.3, D-15).
  */
 internal fun EntryProviderScope<NavKey>.expertProfileEntry(navigator: Navigator) {
     entry<ExpertProfileKey>(metadata = BottomBar.hidden()) { key ->
@@ -312,6 +326,7 @@ internal fun EntryProviderScope<NavKey>.expertProfileEntry(navigator: Navigator)
             onBook = {},
             isSelfView = key.isSelfView,
             showBookSession = false,
+            onSeeAllReviews = { name -> navigator.navigate(key.reviewsKey(name)) },
         )
     }
 }
