@@ -31,7 +31,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -52,10 +56,12 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.subviews.FavoriteExpertCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.subviews.FavoritesEmptyState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.subviews.RemoveFavoriteDialog
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
+import kotlinx.coroutines.launch
 
 /** Test tag on the populated Saved Experts list. */
 const val FAVORITES_LIST_TAG = "favorites_list"
@@ -87,6 +93,17 @@ fun FavoritesScreen(
     // The Nav3 entry may not receive ON_RESUME when it is re-shown; it leaves and re-enters composition instead.
     LaunchedEffect(Unit) { viewModel.onScreenShown() }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val removeFailedMessage = state.removeFailed?.asString()
+    LaunchedEffect(state.removeFailed) {
+        if (removeFailedMessage != null) {
+            // Launched on the composition scope so consuming the flag does not cancel the Snackbar. Never logged.
+            scope.launch { snackbarHostState.showSnackbar(removeFailedMessage) }
+            viewModel.consumeRemoveFailure()
+        }
+    }
+
     val nameFallback = stringResource(R.string.explore_expert_name_fallback)
     FavoritesContent(
         state = state,
@@ -103,12 +120,15 @@ fun FavoritesScreen(
         onRefresh = viewModel::refresh,
         onRefreshFailureConsumed = viewModel::consumeRefreshFailure,
         modifier = modifier,
+        snackbarHostState = snackbarHostState,
     )
 }
 
 /**
- * Stateless Saved Experts: the "Favorite Experts" app bar and the list of cards (iOS `FavoritesView`). The other
- * states are added alongside the list.
+ * Stateless Saved Experts (iOS `FavoritesView`): the "Favorite Experts" app bar over pull-to-refresh and the state of
+ * the list: skeleton cards on the first load, an error with Retry, the empty state, or the cards. A card's heart opens
+ * the remove confirmation (D-10); the dialog target is kept as an expert id only, so recreation never saves a name or
+ * other server text.
  */
 @Suppress("LongParameterList")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,6 +147,7 @@ fun FavoritesContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    var pendingRemoveId by rememberSaveable { mutableStateOf<String?>(null) }
     // Pull failures only: the ViewModel never raises the flag for a return-triggered refresh (D-09).
     RefreshFailedSnackbarEffect(
         refreshFailed = state.refreshFailed,
@@ -194,11 +215,32 @@ fun FavoritesContent(
                     BodyKind.Empty -> FavoritesEmptyState(onExplore = onExplore, onViewHistory = onViewHistory)
                     BodyKind.Populated ->
                         (state.load as? FavoritesLoad.Loaded)?.let { loaded ->
-                            FavoritesList(experts = loaded.experts, onOpenExpert = onOpenExpert, onRemove = {})
+                            FavoritesList(
+                                experts = loaded.experts,
+                                onOpenExpert = onOpenExpert,
+                                onRemove = { pendingRemoveId = it.expertId },
+                            )
                         }
                 }
             }
         }
+    }
+
+    val rows = (state.load as? FavoritesLoad.Loaded)?.experts.orEmpty()
+    val target = pendingRemoveId?.let { id -> rows.firstOrNull { it.expertId == id } }
+    LaunchedEffect(state.load, pendingRemoveId) {
+        // The row is gone from a loaded list (for example a reload removed it), so there is nothing left to confirm.
+        if (pendingRemoveId != null && state.load is FavoritesLoad.Loaded && target == null) pendingRemoveId = null
+    }
+    if (target != null) {
+        RemoveFavoriteDialog(
+            name = target.name ?: stringResource(R.string.explore_expert_name_fallback),
+            onConfirm = {
+                pendingRemoveId = null
+                onRemoveConfirmed(target.expertId)
+            },
+            onDismiss = { pendingRemoveId = null },
+        )
     }
 }
 

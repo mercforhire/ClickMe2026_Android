@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -24,9 +25,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsL
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
 import com.uptrendinvestments.clickmeapp.testing.assertIsHeading
+import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
 import com.uptrendinvestments.clickmeapp.testing.favoriteItem
 import com.uptrendinvestments.clickmeapp.testing.favoritesPayload
+import com.uptrendinvestments.clickmeapp.testing.toggleFavorite
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -37,6 +41,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowDialog
+import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w411dp-h3000dp")
@@ -91,6 +97,7 @@ class FavoritesScreenTest {
     private var refreshes = 0
     private var refreshFailureConsumed = 0
     private val removed = mutableListOf<String>()
+    private val openedRows = mutableListOf<FavoriteExpertUi>()
 
     private fun showContent(state: FavoritesUiState) {
         rule.setContent {
@@ -98,7 +105,7 @@ class FavoritesScreenTest {
                 FavoritesContent(
                     state = state,
                     onBack = { backs++ },
-                    onOpenExpert = {},
+                    onOpenExpert = { openedRows += it },
                     onRemoveConfirmed = { removed += it },
                     onExplore = { explores++ },
                     onViewHistory = { histories++ },
@@ -300,5 +307,165 @@ class FavoritesScreenTest {
             val bounds = rule.onNodeWithText(label).getUnclippedBoundsInRoot()
             assertTrue("$label ${bounds.bottom - bounds.top}", bounds.bottom - bounds.top >= 56.dp)
         }
+    }
+
+    // ---- Task 3: remove dialog, optimistic removal, accessibility -----------------------------------------------
+
+    private val dialogTitle = "Remove Ada Lovelace from favorites?"
+    private val dialogBody = "You can favorite this expert again anytime from their profile."
+
+    /** System back while a Compose dialog is showing: the dialog's own back dispatcher handles it. */
+    @Suppress("DEPRECATION")
+    private fun pressBackOnTheDialog() {
+        val dialog = checkNotNull(ShadowDialog.getLatestDialog()) { "no dialog is showing" }
+        rule.runOnUiThread { dialog.onBackPressed() }
+    }
+
+    private fun tapHeart(name: String) {
+        rule.onNodeWithContentDescription("Remove $name from favorites").performClick()
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun cardHeartOpensTheDialogNotTheProfile() {
+        showContent(loaded(ada.toUi()))
+
+        tapHeart("Ada Lovelace")
+
+        rule.onNodeWithText(dialogTitle).assertIsDisplayed()
+        rule.onNodeWithText(dialogBody).assertIsDisplayed()
+        rule.onNodeWithText("Cancel").assertIsDisplayed()
+        rule.onNodeWithText("Remove").assertIsDisplayed()
+        assertTrue(openedRows.isEmpty())
+        assertTrue(removed.isEmpty())
+    }
+
+    @Test
+    fun dialogNameFallsBackToExpert() {
+        showContent(loaded(favoriteItem(id = "e3", name = null).toUi()))
+
+        tapHeart("Expert")
+
+        rule.onNodeWithText("Remove Expert from favorites?").assertIsDisplayed()
+    }
+
+    @Test
+    fun confirmCallsOnRemoveConfirmedAndClosesTheDialog() {
+        showContent(loaded(ada.toUi()))
+        tapHeart("Ada Lovelace")
+
+        rule.onNodeWithText("Remove").performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("e1"), removed)
+        assertTrue(!exists(dialogTitle))
+    }
+
+    @Test
+    fun cancelAndBackLeaveTheListUnchanged() {
+        showContent(loaded(ada.toUi()))
+        tapHeart("Ada Lovelace")
+
+        rule.onNodeWithText("Cancel").performClick()
+        rule.waitForIdle()
+        assertTrue(!exists(dialogTitle))
+
+        tapHeart("Ada Lovelace")
+        assertTrue(exists(dialogTitle))
+        pressBackOnTheDialog()
+        rule.waitForIdle()
+
+        assertTrue(!exists(dialogTitle))
+        assertTrue(removed.isEmpty())
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+    }
+
+    @Test
+    fun removeThroughTheRealViewModel() {
+        stub(ada)
+        api.removeFavoriteHandler = { toggleFavorite("e1", isFavorite = false) }
+        showScreen()
+        tapHeart("Ada Lovelace")
+
+        rule.onNodeWithText("Remove").performClick()
+        rule.waitForIdle()
+
+        assertTrue(!exists(dialogTitle))
+        assertEquals(listOf("e1"), api.removeFavoriteRequests)
+        assertTrue(!exists("Ada Lovelace"))
+        rule.onNodeWithText("No favorites yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun failedRemoveRestoresTheRowAndShowsTheSnackbar() {
+        stub(ada, grace)
+        api.removeFavoriteHandler = {
+            throw api.httpError(404, """{"status":"error","code":"NOT_FOUND","message":"Expert not found."}""")
+        }
+        showScreen()
+        tapHeart("Ada Lovelace")
+
+        rule.onNodeWithText("Remove").performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("e1"), api.removeFavoriteRequests)
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        assertTrue(top("Ada Lovelace") < top("Grace Hopper"))
+        rule.onNodeWithText("Expert not found.").assertIsDisplayed()
+    }
+
+    @Test
+    fun failedRemoveOfflineShowsTheGenericSnackbar() {
+        stub(ada)
+        api.removeFavoriteHandler = { throw IOException() }
+        showScreen()
+        tapHeart("Ada Lovelace")
+
+        rule.onNodeWithText("Remove").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Ada Lovelace").assertExists()
+        rule.onNodeWithText("Couldn't update favorites").assertIsDisplayed()
+    }
+
+    @Test
+    fun dialogTargetSurvivesRecreation() {
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            ClickMeTheme {
+                FavoritesContent(
+                    state = loaded(ada.toUi()),
+                    onBack = {},
+                    onOpenExpert = {},
+                    onRemoveConfirmed = {},
+                    onExplore = {},
+                    onViewHistory = {},
+                    onRetry = {},
+                    onRefresh = {},
+                    onRefreshFailureConsumed = {},
+                )
+            }
+        }
+        tapHeart("Ada Lovelace")
+        assertTrue(exists(dialogTitle))
+
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText(dialogTitle).assertIsDisplayed()
+    }
+
+    @Test
+    fun a11yAuditPassesOnTheListAndTheEmptyState() {
+        showContent(loaded(ada.toUi(), grace.toUi()))
+        rule.assertTouchTargets()
+        rule.assertActionablesNamed()
+    }
+
+    @Test
+    fun a11yAuditPassesOnTheEmptyState() {
+        showContent(loaded())
+        rule.assertTouchTargets()
+        rule.assertActionablesNamed()
     }
 }
