@@ -934,7 +934,7 @@ Plans:
 **Goal:** Clients can favorite an expert from Expert Profile (optimistic toggle with rollback), see Saved Experts from the client Profile hub, and open the full Reviews list from "See all" on Expert Profile, matching iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans executed
 
 Plans:
 **Wave 1**
@@ -958,7 +958,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 16.3-08-PLAN.md — CR-01 gap closure: both Request Sent exits pop the Profile stack to the hub when the booking ran there, shared reset sets and Saved Experts buttons unchanged (D1.FV4), differential tests for other stacks, KDoc next to the Search note, matrix row D1.FV7, full gate (FAV-LIST, FAV-EMPTY)
+- [x] 16.3-08-PLAN.md — CR-01 gap closure: both Request Sent exits pop the Profile stack to the hub when the booking ran there, shared reset sets and Saved Experts buttons unchanged (D1.FV4), differential tests for other stacks, KDoc next to the Search note, matrix row D1.FV7, full gate (FAV-LIST, FAV-EMPTY)
 
 ### Phase 16.4: iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)
 
