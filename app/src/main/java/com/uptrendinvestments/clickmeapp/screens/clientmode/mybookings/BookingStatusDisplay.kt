@@ -5,12 +5,15 @@ import java.util.Locale
 const val STATUS_PENDING_APPROVAL = "pending_approval"
 const val STATUS_PENDING_RESCHEDULE = "pending_reschedule"
 const val STATUS_COMPLETED = "completed"
+const val STATUS_CONFIRMED = "confirmed"
+const val STATUS_IN_PROGRESS = "in_progress"
 
 /**
  * Booking statuses the client may cancel: the backend cancel guard. Any other status is answered with
  * 409 INVALID_STATUS, so the UI offers Cancel only for these. The UI gate is convenience; the server is the authority.
  */
-val CANCELLABLE_BOOKING_STATUSES: Set<String> = setOf("confirmed", STATUS_PENDING_APPROVAL, STATUS_PENDING_RESCHEDULE)
+val CANCELLABLE_BOOKING_STATUSES: Set<String> =
+    setOf(STATUS_CONFIRMED, STATUS_PENDING_APPROVAL, STATUS_PENDING_RESCHEDULE)
 
 /**
  * Semantic colour of a status pill. The composable side maps these to `colorScheme.primary`, `tertiary`, `error` and
@@ -56,11 +59,11 @@ fun pastStatusDisplay(status: String): BookingStatusDisplay? =
  */
 fun detailStatusDisplay(status: String): BookingStatusDisplay =
     when (status) {
-        "confirmed" -> BookingStatusDisplay(BookingStatusLabel.Confirmed, StatusTone.Primary, status)
+        STATUS_CONFIRMED -> BookingStatusDisplay(BookingStatusLabel.Confirmed, StatusTone.Primary, status)
         STATUS_PENDING_APPROVAL -> BookingStatusDisplay(BookingStatusLabel.PendingApproval, StatusTone.Tertiary, status)
         STATUS_PENDING_RESCHEDULE ->
             BookingStatusDisplay(BookingStatusLabel.NewTimeProposed, StatusTone.Tertiary, status)
-        "in_progress" -> BookingStatusDisplay(BookingStatusLabel.InProgress, StatusTone.Primary, status)
+        STATUS_IN_PROGRESS -> BookingStatusDisplay(BookingStatusLabel.InProgress, StatusTone.Primary, status)
         STATUS_COMPLETED -> BookingStatusDisplay(BookingStatusLabel.Completed, StatusTone.Primary, status)
         else -> BookingStatusDisplay(BookingStatusLabel.Other, StatusTone.Neutral, status)
     }

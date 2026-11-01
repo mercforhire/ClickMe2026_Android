@@ -8,6 +8,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.PAID_BO
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.capNotes
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isSelectable
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDisclosure
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_CONFIRMED
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_IN_PROGRESS
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_APPROVAL
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.rescheduleDisclosure
 import java.time.Duration
@@ -20,19 +24,49 @@ import kotlin.math.abs
 /** iOS parity: a slot within this many milliseconds of the booking's start is the booking's own slot. */
 private const val CURRENT_SLOT_TOLERANCE_MS = 1000L
 
+/** Statuses whose Reschedule entry is offered at any time (server `NO_TIME_GATE_STATUSES`, minus pending_reschedule). */
+private val RESCHEDULE_ANYTIME_STATUSES: Set<String> = setOf(STATUS_CONFIRMED, STATUS_PENDING_APPROVAL)
+
+/** Statuses whose Reschedule entry is offered only until the session ends (server `TIME_GATED_STATUSES`). */
+private val RESCHEDULE_UNTIL_END_STATUSES: Set<String> = setOf(STATUS_IN_PROGRESS, STATUS_COMPLETED)
+
 /**
- * D-04 (as amended 2026-11-01, UAT G-16.2-1), RS-C1: whether the client's "Reschedule" entry is shown for a booking.
+ * D-04 (as amended 2026-11-01, UAT G-16.2-1), RS-C1, WR-04: whether the client's "Reschedule" entry is shown for a
+ * booking.
  *
- * Hidden only while a reschedule is already pending ([STATUS_PENDING_RESCHEDULE]), because the Accept/Decline card
- * shows instead. It is shown on every other upcoming status, as iOS shows it unconditionally
- * (`UpcomingBookingCard.swift` secondaryActions, `UpcomingBookingSecondaryActions.swift`).
+ * (a) This is an allow-list mirroring the server's `canReschedule` (`src/utils/reschedule.js`). Confirmed and
+ * pending_approval have no time gate. In_progress and completed apply only while [now] is before the session's [end].
+ * Everything else fails closed: cancelled, declined, missed, expired, and any unknown or empty status.
  *
- * The server stays the authority. Its `canReschedule` (`src/utils/reschedule.js`) allows confirmed, pending_approval
- * and pending_reschedule with no time gate, and in_progress and completed until the session's end_time. The only 24 h
- * rule applies to the PROPOSED start of a payment-conversion move (RESCHEDULE_OUTSIDE_AUTH_WINDOW). Refusals surface
- * through the D-13 propose error mapping (`ProposeErrors.kt`).
+ * (b) Pending_reschedule ([STATUS_PENDING_RESCHEDULE]) is hidden although the server accepts it, because the
+ * Accept/Decline card shows instead (D-04).
+ *
+ * (c) In_progress and completed are included because the Upcoming surfaces render them (the server Upcoming bucket
+ * includes in_progress, and `isRejoinableCompleted` moves an unfinished completed session into Upcoming), and iOS shows
+ * the button on every Upcoming card (`UpcomingBookingCard.swift` secondaryActions,
+ * `UpcomingBookingSecondaryActions.swift`).
+ *
+ * (d) [end] is the session's own end, the server's refusal condition, not a start-based lead-time rule. There is still
+ * no 24 h gate on the current session (D-04 amended). The only 24 h rule applies to the PROPOSED start of a
+ * payment-conversion move (RESCHEDULE_OUTSIDE_AUTH_WINDOW).
+ *
+ * (e) The terminal hide matters because Upcoming Booking Details reloads on a realtime BookingUpdate, so an expert
+ * cancel while the screen is open must not leave Reschedule as the only action on a dead booking.
+ *
+ * (f) [now] must come from the caller's ticking join clock so the end bound takes effect live.
+ *
+ * (g) The server stays the authority. Refusals surface through the D-13 propose error mapping (`ProposeErrors.kt`).
  */
-fun canClientStartReschedule(status: String): Boolean = status != STATUS_PENDING_RESCHEDULE
+fun canClientStartReschedule(
+    status: String,
+    end: Instant,
+    now: Instant,
+): Boolean =
+    when (status) {
+        in RESCHEDULE_ANYTIME_STATUSES -> true
+        in RESCHEDULE_UNTIL_END_STATUSES -> now.isBefore(end)
+        else -> false
+    }
 
 /**
  * Whether the booking is paid, which decides the 6-day pick cap (RESEARCH Pattern 3, Assumption A1).

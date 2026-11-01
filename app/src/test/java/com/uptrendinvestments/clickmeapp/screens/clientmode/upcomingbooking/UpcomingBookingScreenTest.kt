@@ -564,6 +564,50 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
+    fun confirmedThenCancelledHidesReschedule() {
+        var state by mutableStateOf<UpcomingBookingUiState>(loaded(details()))
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingContent(
+                    state = state,
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = detailsStart.minusSeconds(600),
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAccept = {},
+                    onDecline = {},
+                    onDismissRescheduleDialog = {},
+                    onOpenPaymentMethods = {},
+                    onRescheduleNoticeConsumed = {},
+                    zone = zone,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
+        // WR-04: the realtime BookingUpdate reload turns the open booking into a cancelled one.
+        state = loaded(details(status = "cancelled"))
+        rule.waitForIdle()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun completedAfterEndHidesReschedule() {
+        setScreen(loaded(details(status = "completed")), joinNow = detailsStart.plusSeconds(3600))
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun rejoinableCompletedShowsReschedule() {
+        setScreen(loaded(details(status = "completed")))
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
     fun inProgressShowsRescheduleAlone() {
         setScreen(loaded(details(status = "in_progress")))
         rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
