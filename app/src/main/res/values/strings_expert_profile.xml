@@ -20,4 +20,7 @@
     <string name="expert_profile_unavailable_heading">This profile isn\'t available</string>
     <string name="expert_profile_unavailable_body">This expert may no longer be on ClickMe. Go back and try someone else.</string>
     <string name="expert_profile_go_back">Go back</string>
+    <string name="expert_profile_see_all">See all</string>
+    <string name="expert_profile_favorite_add">Save expert</string>
+    <string name="expert_profile_favorite_remove">Remove from saved</string>
 </resources>

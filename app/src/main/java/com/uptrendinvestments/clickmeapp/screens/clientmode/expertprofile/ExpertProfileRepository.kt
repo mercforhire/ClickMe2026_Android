@@ -11,8 +11,8 @@ import javax.inject.Singleton
 const val REVIEWS_PREVIEW_LIMIT = 3
 
 /**
- * Expert Profile reads. Both calls throw [com.uptrendinvestments.clickmeapp.network.ApiException]. The profile
- * hides the heart (D-05), so nothing about the viewer's saved experts is requested (D-15).
+ * Expert Profile reads. Both calls throw [com.uptrendinvestments.clickmeapp.network.ApiException]. The heart's start
+ * state arrives as `is_favorite` on the details response (16.3 D-01), so no saved-experts list is requested here.
  */
 @Singleton
 class ExpertProfileRepository

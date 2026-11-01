@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 
 /** What the hero rating line shows (D-12, D-15). */
@@ -79,6 +80,10 @@ data class ExpertProfileUiState(
     val rating: HeroRating,
     val details: DetailsState = DetailsState.Loading,
     val reviews: ReviewsState = ReviewsState.Loading,
+    /** The heart: seeded from `is_favorite` on the details response (D-01), flipped at once by a tap (D-03). */
+    val isFavorite: Boolean = false,
+    /** One-shot message for a failed favorite toggle; the screen shows it as a snackbar and consumes it (D-03). */
+    val favoriteError: FieldError? = null,
 ) {
     /** The title is unknown (opened from a Featured Topic) and details have not arrived yet. */
     val isTitlePending: Boolean get() = title.isBlank() && details is DetailsState.Loading

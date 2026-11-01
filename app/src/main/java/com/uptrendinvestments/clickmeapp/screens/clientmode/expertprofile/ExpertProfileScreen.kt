@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material3.DropdownMenu
@@ -24,6 +26,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
@@ -79,6 +82,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.Booking
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -99,7 +103,8 @@ private enum class ReviewsKind { Loading, Shown, Absent }
  * profile from the expert hub; booking yourself ends in `422 CANNOT_BOOK_SELF`) or when the profile is the signed-in
  * user's own. The expert shell passes `showBookSession = false` (an expert cannot book from Expert mode and
  * `BookingKey` is not registered there) and the hub passes [isSelfView] from the key. `isSelf` already hides
- * Message and the safety menu.
+ * Message and the safety menu. The favorite heart is hidden for [isSelfView], for the signed-in user's own profile
+ * and until the details have loaded (D-02).
  */
 @Composable
 fun ExpertProfileScreen(
@@ -111,6 +116,7 @@ fun ExpertProfileScreen(
     showBookSession: Boolean = true,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
     safety: ProfileSafetyViewModel = hiltViewModel(),
+    onSeeAllReviews: (expertName: String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
@@ -133,6 +139,15 @@ fun ExpertProfileScreen(
             // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
             scope.launch { snackbarHostState.showSnackbar(message) }
             safety.consumeSnackbar()
+        }
+    }
+    // D-03: a failed heart toggle surfaces as a snackbar (iOS shows an alert); never logged.
+    val favoriteMessage = state.favoriteError?.asString()
+    LaunchedEffect(state.favoriteError) {
+        if (favoriteMessage != null) {
+            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
+            scope.launch { snackbarHostState.showSnackbar(favoriteMessage) }
+            viewModel.consumeFavoriteError()
         }
     }
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
@@ -173,16 +188,21 @@ fun ExpertProfileScreen(
         showMessage = !chatEntry.isSelf(state.expertId),
         messageBusy = entryState.busyPeerId != null,
         onMessage = { chatEntry.open(ChatPeer(state.expertId, state.name, state.imageUrl, isExpert = true)) },
+        showFavorite = !isSelfView && !chatEntry.isSelf(state.expertId) && state.details is DetailsState.Loaded,
+        isFavorite = state.isFavorite,
+        onToggleFavorite = viewModel::onToggleFavorite,
         showSafetyMenu = !chatEntry.isSelf(state.expertId) && state.details is DetailsState.Loaded,
         onReport = safety::openReport,
         onBlock = safety::openBlock,
+        onSeeAllReviews = onSeeAllReviews,
         snackbarHostState = snackbarHostState,
     )
 }
 
 /**
  * Stateless profile content (DISC-03). The hero renders from [state] at once; the sections below it follow the
- * details and reviews load states (D-12, D-13, D-15).
+ * details and reviews load states (D-12, D-13, D-15). [onSeeAllReviews] receives the name the profile currently
+ * shows; the shells push the full Reviews route from it (D-16).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,9 +216,13 @@ fun ExpertProfileContent(
     showMessage: Boolean = false,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
+    showFavorite: Boolean = false,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
     showSafetyMenu: Boolean = false,
     onReport: () -> Unit = {},
     onBlock: () -> Unit = {},
+    onSeeAllReviews: (expertName: String) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -210,6 +234,9 @@ fun ExpertProfileContent(
                 name = state.name,
                 onBack = onBack,
                 scrollBehavior = scrollBehavior,
+                showFavorite = showFavorite,
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
                 showSafetyMenu = showSafetyMenu,
                 onReport = onReport,
                 onBlock = onBlock,
@@ -254,7 +281,11 @@ fun ExpertProfileContent(
                     }
                 }
                 if (state.details !is DetailsState.Error) {
-                    item(key = "reviews") { Column(Modifier.contentMaxWidth()) { ReviewsSection(state.reviews) } }
+                    item(key = "reviews") {
+                        Column(Modifier.contentMaxWidth()) {
+                            ReviewsSection(state.reviews, onSeeAll = { onSeeAllReviews(state.name) })
+                        }
+                    }
                 }
             }
         }
@@ -267,6 +298,9 @@ private fun ProfileTopBar(
     name: String,
     onBack: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
+    showFavorite: Boolean,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     showSafetyMenu: Boolean,
     onReport: () -> Unit,
     onBlock: () -> Unit,
@@ -282,6 +316,7 @@ private fun ProfileTopBar(
             }
         },
         actions = {
+            if (showFavorite) FavoriteHeart(isFavorite = isFavorite, onToggle = onToggleFavorite)
             if (showSafetyMenu) SafetyMenu(name = name, onReport = onReport, onBlock = onBlock)
         },
         colors =
@@ -293,6 +328,38 @@ private fun ProfileTopBar(
             ),
         scrollBehavior = scrollBehavior,
     )
+}
+
+/**
+ * The favorite heart (D-02): an outlined heart when not saved, a filled heart in the error color when saved, with
+ * toggle semantics. No spinner and no dimmed state while a request is in flight (UI-SPEC screen 1).
+ */
+@Composable
+private fun FavoriteHeart(
+    isFavorite: Boolean,
+    onToggle: () -> Unit,
+) {
+    IconToggleButton(
+        checked = isFavorite,
+        onCheckedChange = { onToggle() },
+        modifier = Modifier.size(MenuTarget),
+    ) {
+        Crossfade(
+            targetState = isFavorite,
+            animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
+            label = "favoriteHeart",
+        ) { saved ->
+            Icon(
+                imageVector = if (saved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription =
+                    stringResource(
+                        if (saved) R.string.expert_profile_favorite_remove else R.string.expert_profile_favorite_add,
+                    ),
+                modifier = Modifier.size(24.dp),
+                tint = if (saved) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
 }
 
 /** The More options menu: Report this profile and Block {name} (D-07). Re-blocking is allowed, so no block state. */
@@ -467,12 +534,16 @@ private fun LoadedDetails(
 }
 
 @Composable
-private fun ReviewsSection(reviews: ReviewsState) {
+private fun ReviewsSection(
+    reviews: ReviewsState,
+    onSeeAll: () -> Unit,
+) {
+    // D-13: Loaded of any size shows the card (0 reviews is the header only); a failed load never reads as 0 reviews.
     val kind =
-        when {
-            reviews is ReviewsState.Loading -> ReviewsKind.Loading
-            reviews is ReviewsState.Loaded && reviews.items.isNotEmpty() -> ReviewsKind.Shown
-            else -> ReviewsKind.Absent
+        when (reviews) {
+            ReviewsState.Loading -> ReviewsKind.Loading
+            is ReviewsState.Loaded -> ReviewsKind.Shown
+            ReviewsState.Failed -> ReviewsKind.Absent
         }
     Crossfade(
         targetState = kind,
@@ -485,7 +556,7 @@ private fun ReviewsSection(reviews: ReviewsState) {
             ReviewsKind.Shown ->
                 (reviews as? ReviewsState.Loaded)?.let {
                     SectionAppear(Modifier.padding(top = Spacing.lg)) {
-                        ExpertProfileReviewsCard(reviews = it.items)
+                        ExpertProfileReviewsCard(reviews = it.items, onSeeAll = onSeeAll)
                     }
                 }
             ReviewsKind.Absent -> Unit
