@@ -1,7 +1,10 @@
 package com.uptrendinvestments.clickmeapp.network
 
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.ToggleFavoriteData
 import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesRepository
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.toFavoriteFailure
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -15,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.io.IOException
 
 /**
  * Exact-wire tests for the three `/client/favorites` calls (Phase 16.3). The add verb is PUT (the backend route),
@@ -162,6 +166,18 @@ class FavoritesApiTest {
                 assertEquals("Client role required", e.userMessage)
             }
         }
+
+    @Test
+    fun failureMappingUsesServerMessageThenFallback() {
+        val withMessage = ApiException.Http(403, null, "FORBIDDEN", "Client role required", emptyList(), null)
+        val withoutMessage = ApiException.Http(500, null, null, null, emptyList(), null)
+        val fallback = FieldError.Res(R.string.favorites_update_failed)
+
+        assertEquals(FieldError.Text("Client role required"), withMessage.toFavoriteFailure())
+        assertEquals(fallback, withoutMessage.toFavoriteFailure())
+        assertEquals(fallback, ApiException.Network(IOException("offline")).toFavoriteFailure())
+        assertEquals(fallback, ApiException.Decoding(IllegalStateException("bad json")).toFavoriteFailure())
+    }
 
     private companion object {
         const val EXPERT_ID = "0f1e2d3c-0000-4000-8000-000000000001"

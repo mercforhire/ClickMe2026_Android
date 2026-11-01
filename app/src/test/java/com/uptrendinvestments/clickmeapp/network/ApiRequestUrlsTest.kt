@@ -234,6 +234,14 @@ class ApiRequestUrlsTest {
     }
 
     @Test
+    fun phaseSixteenThreeFavoritesConstants_areAuthed() {
+        assertEquals("client/favorites", ApiRequestUrls.CLIENT_FAVORITES)
+        assertEquals("client/favorites/{expertId}", ApiRequestUrls.CLIENT_FAVORITE)
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/client/favorites"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/client/favorites/0f1e2d3c-0000-4000-8000-000000000001"))
+    }
+
+    @Test
     fun phaseElevenPaths_needAuthToken() {
         listOf(
             "/api/v1/expert/booking-requests",
