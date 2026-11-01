@@ -4,17 +4,16 @@ milestone: v1.0
 current_phase: "16.3"
 current_phase_name: "iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)"
 status: ready_to_discuss
-stopped_at: Phase 16.2 complete, ready to discuss Phase 16.3
-last_updated: "2026-11-01T03:29:32.666Z"
+stopped_at: Phase 16.3 context gathered
+last_updated: "2026-11-01T04:01:54.424Z"
 last_activity: 2026-10-31
 last_activity_desc: Phase 16.2 complete (UAT + re-verification passed), next is Phase 16.3
-state_head: b72979a542540e98afeadc9a4b1246d785941751
+state_head: 7b35510c144e226144163c9c0e825dc87e8da022
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 267
   completed_plans: 258
-  percent: 65
 milestone_name: milestone
 ---
 
@@ -343,9 +342,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-01T03:35:00Z
-Stopped at: Phase 16.2 complete, ready to discuss Phase 16.3
-Resume file: None
+Last session: 2026-11-01T04:01:52.409Z
+Stopped at: Phase 16.3 context gathered
+Resume file: .planning/phases/16.3-ios-parity-saved-experts-favorite-heart-and-full-reviews-lis/16.3-CONTEXT.md
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
