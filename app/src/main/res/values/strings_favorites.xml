@@ -2,4 +2,23 @@
 <resources>
     <!-- Saved Experts and the favorite heart (Phase 16.3, PARITY-AUDIT #2, #2b). Copy follows iOS unless the UI-SPEC marks it changed. -->
     <string name="favorites_update_failed">Couldn\'t update favorites</string>
+
+    <!-- Saved Experts screen (plan 16.3-06) -->
+    <string name="favorites_title">Favorite Experts</string>
+    <string name="favorites_tagline">Manage your curated list of elite professionals.</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_body">Start exploring and save your favorite experts to find them easily later.</string>
+    <string name="favorites_explore_experts">Explore Experts</string>
+    <string name="favorites_view_history">View My History</string>
+    <string name="favorites_pro_tip_label">Pro Tip:</string>
+    <!-- D-07: deliberate copy deviation from iOS, which names a different icon. -->
+    <string name="favorites_pro_tip_body">Tap the heart icon on any expert\'s profile to add them to this list instantly.</string>
+    <string name="favorites_load_error_title">Couldn\'t load favorites</string>
+    <string name="favorites_remove_title">Remove %1$s from favorites?</string>
+    <string name="favorites_remove_body">You can favorite this expert again anytime from their profile.</string>
+    <string name="favorites_remove_confirm">Remove</string>
+    <string name="favorites_remove_cancel">Cancel</string>
+    <string name="favorites_card_remove_a11y">Remove %1$s from favorites</string>
+    <string name="favorites_card_expertise_a11y">Expertise: %1$s</string>
+    <string name="favorites_card_open_profile">Open profile</string>
 </resources>
