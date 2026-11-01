@@ -177,7 +177,8 @@ class ExpertBookingsScreenTest {
         assertEquals(listOf(1), rule.lineCountsOf("Message", EXPERT_BOOKINGS_MESSAGE_TAG))
         val message = rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).getBoundsInRoot()
         val reschedule = rule.onNodeWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).getBoundsInRoot()
-        assertTrue("Message and Reschedule share a row", kotlin.math.abs(message.top.value - reschedule.top.value) <= 1f)
+        val topGap = kotlin.math.abs(message.top.value - reschedule.top.value)
+        assertTrue("Message and Reschedule share a row", topGap <= 1f)
         assertTrue("Message is left of Reschedule", message.right <= reschedule.left)
     }
 

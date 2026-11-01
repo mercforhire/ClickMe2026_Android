@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.components.chat
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
@@ -55,7 +56,8 @@ enum class MessageButtonVariant {
  * 48 dp elsewhere) outlined icon button described by [contentDescription] (the label when null).
  *
  * While [busy] both forms show a spinner in place of the glyph, expose "Opening chat" to accessibility and ignore
- * taps. [enabled] false disables the control.
+ * taps. [enabled] false disables the control. [contentPadding] is the Text form's side padding (the Icon form ignores
+ * it); a Message beside a Reschedule passes `ActionButtonPairDefaults.ContentPadding` so its label fits a half-width slot.
  */
 @Composable
 fun MessageButton(
@@ -67,6 +69,7 @@ fun MessageButton(
     variant: MessageButtonVariant = MessageButtonVariant.Text,
     contentDescription: String? = null,
     iconTarget: Dp = TextButtonMinHeight,
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.lg),
 ) {
     val openingState = stringResource(R.string.chat_entry_opening)
     val guardedClick = { if (!busy) onClick() }
@@ -75,6 +78,7 @@ fun MessageButton(
             PressScaleButton(
                 onClick = guardedClick,
                 enabled = enabled,
+                contentPadding = contentPadding,
                 modifier =
                     modifier
                         .heightIn(min = TextButtonMinHeight)

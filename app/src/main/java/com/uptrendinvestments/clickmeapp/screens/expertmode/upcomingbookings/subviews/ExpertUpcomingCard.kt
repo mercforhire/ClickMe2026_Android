@@ -34,6 +34,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ExpertRescheduleBadge
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPairDefaults
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
@@ -235,6 +236,7 @@ fun ExpertUpcomingCard(
                             onClick = onMessage,
                             modifier = it.testTag(EXPERT_BOOKINGS_MESSAGE_TAG),
                             busy = messageBusy,
+                            contentPadding = ActionButtonPairDefaults.ContentPadding,
                         )
                     },
                     end = {
