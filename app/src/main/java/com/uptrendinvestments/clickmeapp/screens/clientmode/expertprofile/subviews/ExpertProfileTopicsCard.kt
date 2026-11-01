@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -95,13 +97,16 @@ private fun TopicRow(topic: TopicRowUi) {
 }
 
 /**
- * Shared card shell for the Topics and Reviews sections: a `surfaceContainer` header strip with a heading, a divider,
- * then [content].
+ * Shared card shell for the Topics and Reviews sections: a `surfaceContainer` header strip with a heading and an
+ * optional trailing [headerAction], then (when [hasContent]) a divider and [content]. With an action the header's end
+ * and vertical padding shrink so the 48 dp action sets the strip height; without one the padding is `md` all round.
  */
 @Composable
 internal fun ExpertProfileSectionCard(
     title: String,
     modifier: Modifier = Modifier,
+    headerAction: (@Composable RowScope.() -> Unit)? = null,
+    hasContent: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -111,22 +116,37 @@ internal fun ExpertProfileSectionCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column {
-            Box(
+            Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .padding(Spacing.md),
+                        .padding(
+                            if (headerAction == null) {
+                                PaddingValues(Spacing.md)
+                            } else {
+                                PaddingValues(
+                                    start = Spacing.md,
+                                    end = Spacing.xs,
+                                    top = Spacing.xs,
+                                    bottom = Spacing.xs,
+                                )
+                            },
+                        ),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = title,
-                    modifier = Modifier.semantics { heading() },
+                    modifier = Modifier.weight(1f).semantics { heading() },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                headerAction?.invoke(this)
             }
-            CardDivider()
-            content()
+            if (hasContent) {
+                CardDivider()
+                content()
+            }
         }
     }
 }

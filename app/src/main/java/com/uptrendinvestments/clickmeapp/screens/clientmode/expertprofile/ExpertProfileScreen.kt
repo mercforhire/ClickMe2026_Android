@@ -116,6 +116,7 @@ fun ExpertProfileScreen(
     showBookSession: Boolean = true,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
     safety: ProfileSafetyViewModel = hiltViewModel(),
+    onSeeAllReviews: (expertName: String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val entryState by chatEntry.state.collectAsStateWithLifecycle()
@@ -193,13 +194,15 @@ fun ExpertProfileScreen(
         showSafetyMenu = !chatEntry.isSelf(state.expertId) && state.details is DetailsState.Loaded,
         onReport = safety::openReport,
         onBlock = safety::openBlock,
+        onSeeAllReviews = onSeeAllReviews,
         snackbarHostState = snackbarHostState,
     )
 }
 
 /**
  * Stateless profile content (DISC-03). The hero renders from [state] at once; the sections below it follow the
- * details and reviews load states (D-12, D-13, D-15).
+ * details and reviews load states (D-12, D-13, D-15). [onSeeAllReviews] receives the name the profile currently
+ * shows; the shells push the full Reviews route from it (D-16).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -219,6 +222,7 @@ fun ExpertProfileContent(
     showSafetyMenu: Boolean = false,
     onReport: () -> Unit = {},
     onBlock: () -> Unit = {},
+    onSeeAllReviews: (expertName: String) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -277,7 +281,11 @@ fun ExpertProfileContent(
                     }
                 }
                 if (state.details !is DetailsState.Error) {
-                    item(key = "reviews") { Column(Modifier.contentMaxWidth()) { ReviewsSection(state.reviews) } }
+                    item(key = "reviews") {
+                        Column(Modifier.contentMaxWidth()) {
+                            ReviewsSection(state.reviews, onSeeAll = { onSeeAllReviews(state.name) })
+                        }
+                    }
                 }
             }
         }
@@ -526,12 +534,16 @@ private fun LoadedDetails(
 }
 
 @Composable
-private fun ReviewsSection(reviews: ReviewsState) {
+private fun ReviewsSection(
+    reviews: ReviewsState,
+    onSeeAll: () -> Unit,
+) {
+    // D-13: Loaded of any size shows the card (0 reviews is the header only); a failed load never reads as 0 reviews.
     val kind =
-        when {
-            reviews is ReviewsState.Loading -> ReviewsKind.Loading
-            reviews is ReviewsState.Loaded && reviews.items.isNotEmpty() -> ReviewsKind.Shown
-            else -> ReviewsKind.Absent
+        when (reviews) {
+            ReviewsState.Loading -> ReviewsKind.Loading
+            is ReviewsState.Loaded -> ReviewsKind.Shown
+            ReviewsState.Failed -> ReviewsKind.Absent
         }
     Crossfade(
         targetState = kind,
@@ -544,7 +556,7 @@ private fun ReviewsSection(reviews: ReviewsState) {
             ReviewsKind.Shown ->
                 (reviews as? ReviewsState.Loaded)?.let {
                     SectionAppear(Modifier.padding(top = Spacing.lg)) {
-                        ExpertProfileReviewsCard(reviews = it.items)
+                        ExpertProfileReviewsCard(reviews = it.items, onSeeAll = onSeeAll)
                     }
                 }
             ReviewsKind.Absent -> Unit

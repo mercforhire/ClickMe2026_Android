@@ -3,10 +3,12 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertHeightIsEqualTo
@@ -33,6 +35,9 @@ import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.model.enums.UserReportReason
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PublicProfileDetailsData
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewItemDto
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewSummaryDto
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewerDto
 import com.uptrendinvestments.clickmeapp.model.responses.StatusOnlyResponse
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatSessionState
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatsRepository
@@ -233,7 +238,7 @@ class ExpertProfileScreenTest {
     }
 
     @Test
-    fun reviewsCardShowsThreeRowsAnonymousFallbackAndNoSeeAll() {
+    fun reviewsCardShowsThreeRowsAnonymousFallbackAndSeeAll() {
         rule.setContent {
             ClickMeTheme {
                 ExpertProfileReviewsCard(
@@ -244,18 +249,88 @@ class ExpertProfileScreenTest {
                             ReviewRowUi("3", "Alan", 3, null),
                             ReviewRowUi("4", "Hidden", 5, "Fourth"),
                         ),
+                    onSeeAll = {},
                 )
             }
         }
 
-        rule.onNodeWithText("Recent Reviews").assertExists()
+        rule
+            .onNodeWithText("Recent Reviews")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         rule.onNodeWithText("Grace").assertExists()
         rule.onNodeWithText("Anonymous").assertExists()
         rule.onNodeWithText("Alan").assertExists()
         rule.onAllNodesWithText("Hidden").assertCountEquals(0)
         rule.onAllNodesWithText("Fourth").assertCountEquals(0)
         rule.onAllNodesWithText("   ").assertCountEquals(0)
-        rule.onAllNodesWithText("See all", ignoreCase = true).assertCountEquals(0)
+        rule.onAllNodesWithText("See all").assertCountEquals(1)
+        rule
+            .onNodeWithText("See all")
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun seeAllInvokesCallbackWithTheShownName() {
+        val names = mutableListOf<String>()
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileContent(
+                    state = loadedState(),
+                    onBack = {},
+                    onBookSession = {},
+                    onRetry = {},
+                    onSeeAllReviews = { names += it },
+                )
+            }
+        }
+
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("See all"))
+        rule.onNodeWithText("See all").performClick()
+        assertEquals(listOf("Ada Lovelace"), names)
+    }
+
+    @Test
+    fun zeroReviewsShowsHeaderAndSeeAllOnly() {
+        setContent(loadedState(reviews = ReviewsState.Loaded(emptyList())))
+
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Recent Reviews"))
+        rule.onNodeWithText("Recent Reviews").assertExists()
+        rule.onNodeWithText("See all").assertExists()
+        rule.onAllNodesWithText("Anonymous").assertCountEquals(0)
+    }
+
+    @Test
+    fun failedReviewsKeepTheCardHidden() {
+        setContent(loadedState(reviews = ReviewsState.Failed))
+
+        rule.onAllNodesWithText("Recent Reviews").assertCountEquals(0)
+        rule.onAllNodesWithText("See all").assertCountEquals(0)
+    }
+
+    @Test
+    fun reviewsLoadingShowsNoSeeAll() {
+        setContent(loadedState(reviews = ReviewsState.Loading))
+
+        rule.onAllNodesWithText("See all").assertCountEquals(0)
+        rule.onAllNodesWithText("Recent Reviews").assertCountEquals(0)
+    }
+
+    @Test
+    fun selfViewKeepsSeeAll() {
+        setHeartScreen(isSelfView = true) { api ->
+            api.expertReviewsHandler = {
+                ExpertReviewsPayload(
+                    summary = ReviewSummaryDto(overallRating = 5.0, totalReviews = 1),
+                    reviews = listOf(ReviewItemDto(id = "r1", reviewer = ReviewerDto(name = "Grace"), rating = 5)),
+                )
+            }
+        }
+
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("See all"))
+        rule.onNodeWithText("See all").assertExists()
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
     }
 
     private fun loadedState(
@@ -380,15 +455,15 @@ class ExpertProfileScreenTest {
                 tags = emptyList(),
                 bio = "  ",
                 topics = emptyList(),
-                reviews = ReviewsState.Loaded(emptyList()),
+                reviews = ReviewsState.Failed,
             ),
         )
 
         rule.onNodeWithText("Book Session").assertExists()
         rule.onAllNodesWithText("Expertise").assertCountEquals(0)
         rule.onAllNodesWithText("Topics of Discussion").assertCountEquals(0)
-        rule.onAllNodesWithText("Recent Reviews").assertCountEquals(0)
         rule.onAllNodesWithText("About").assertCountEquals(0)
+        rule.onAllNodesWithText("Recent Reviews").assertCountEquals(0)
     }
 
     @Test
@@ -560,7 +635,8 @@ class ExpertProfileScreenTest {
         setContent(loadedState())
 
         rule.onAllNodesWithText("Message").assertCountEquals(0)
-        rule.onAllNodesWithText("See all", ignoreCase = true).assertCountEquals(0)
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("See all"))
+        rule.onNodeWithText("See all").assertExists()
         rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
         rule.onAllNodesWithContentDescription("Remove from saved").assertCountEquals(0)
         rule.onAllNodesWithContentDescription("More options", substring = true).assertCountEquals(0)
