@@ -578,6 +578,47 @@ class RescheduleViewModelTest {
         }
 
     @Test
+    fun liveCallBlocksDisclosureContinue() =
+        runTest(main.testDispatcher) {
+            stubDisclosureBooking()
+            val vm = withSlotChosen()
+            vm.submit()
+            advanceUntilIdle()
+            assertEquals(ReschedulePickerDialog.Disclosure(chargesSoon = false), vm.uiState.value.dialog)
+
+            callGuard.blocked = true
+            vm.confirmDisclosure()
+            advanceUntilIdle()
+
+            assertEquals(0, api.rescheduleClientBookingCalls)
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(slotNov5, vm.uiState.value.selectedSlotStart)
+            assertEquals(
+                listOf("b1" to RestrictedAction.RescheduleBooking, "b1" to RestrictedAction.RescheduleBooking),
+                callGuard.modifyAttempts,
+            )
+        }
+
+    @Test
+    fun liveCallBlocksRestoredDisclosureContinue() =
+        runTest(main.testDispatcher) {
+            stubDisclosureBooking()
+            val savedState = SavedStateHandle()
+            withSlotChosen(savedState).submit()
+            val restored = vm(savedState)
+            advanceUntilIdle()
+            assertEquals(ReschedulePickerDialog.Disclosure(chargesSoon = false), restored.uiState.value.dialog)
+
+            callGuard.blocked = true
+            restored.confirmDisclosure()
+            advanceUntilIdle()
+
+            assertEquals(0, api.rescheduleClientBookingCalls)
+            assertNull(restored.uiState.value.dialog)
+            assertNull(savedState.get<Boolean>(ReschedulePickerController.KEY_DISCLOSURE_OPEN))
+        }
+
+    @Test
     fun disclosureChargesSoonUnder48h() =
         runTest(main.testDispatcher) {
             clock.instant = Instant.parse("2026-11-04T10:00:00Z")

@@ -359,11 +359,17 @@ class ReschedulePickerController(
         send()
     }
 
-    /** Continue on the payment disclosure: the one way past it. */
+    /**
+     * Continue on the payment disclosure: the one way past it. It asks the call guard first (16.2-REVIEW IN-01,
+     * T-16.2-39): a call may have gone live on this booking while the disclosure was open, or the disclosure may have
+     * been restored after process death. A refusal sends nothing and keeps the date, slot and message; the guard
+     * queues its own dialog, and the next Submit asks again.
+     */
     fun confirmDisclosure() {
         if (_state.value.dialog !is ReschedulePickerDialog.Disclosure) return
         _state.update { it.copy(dialog = null) }
         savedState.remove<Boolean>(KEY_DISCLOSURE_OPEN)
+        if (!callGuard.attemptModifyBooking(bookingId, RestrictedAction.RescheduleBooking)) return
         send()
     }
 
@@ -403,7 +409,8 @@ class ReschedulePickerController(
     /**
      * The single send. Single flight: [ReschedulePickerUiState.isSubmitting] spans the whole proposer call (PATCH, card
      * list and retry), so a second tap does nothing (T-16.2-17). Only [submit] and [confirmDisclosure] reach it, always
-     * from a tap, never on resume or after returning from Payment Methods (D-08, T-16.2-19).
+     * from a tap, never on resume or after returning from Payment Methods (D-08, T-16.2-19). Both entry points ask the
+     * call guard before they reach it, so it does not ask again here.
      */
     private fun send() {
         val s = _state.value
