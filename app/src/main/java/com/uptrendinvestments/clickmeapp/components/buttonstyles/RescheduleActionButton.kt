@@ -1,11 +1,7 @@
 package com.uptrendinvestments.clickmeapp.components.buttonstyles
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -21,12 +17,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -88,9 +86,14 @@ fun RescheduleActionButton(
 }
 
 /**
- * Lays out up to two entry-point actions. Nothing renders when both are null; a single action fills the width; two
- * share a row with equal weights and [gap] between them, or stack in a column (start first, full width each) when the
- * font scale is 1.5 or more or the available width is under 320 dp, the same rule the reschedule response card uses.
+ * Lays out up to two entry-point actions. Nothing renders when both are null and a single action fills the width. Two
+ * actions share a row of equal halves with [gap] between them, or stack in a column (start first, full width each)
+ * when the font scale is 1.5 or more, the width is under 320 dp, or either button's single-line content is wider than
+ * its half of the row (G-16.2-3), so no label ever breaks across lines.
+ *
+ * Contract: the slot content must support intrinsic measurement, because the fit check reads each slot's
+ * `maxIntrinsicWidth`. That rules out subcomposition-based layouts (`SubcomposeLayout` and the composables built on
+ * it) and lazy lists inside a slot. Every current slot is a Material button row.
  *
  * Used by Upcoming Booking Details (Reschedule + Cancel, `Spacing.md`), My Bookings and the expert cards
  * (Reschedule + Message, `Spacing.sm`) and Expert Booking Summary (UI-SPEC Entry points; D-05).
@@ -109,17 +112,40 @@ fun ActionButtonPair(
             only?.invoke(modifier.fillMaxWidth())
         }
         else ->
-            BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-                val stacked = LocalDensity.current.fontScale >= LARGE_FONT_SCALE || maxWidth < NarrowWidth
+            Layout(
+                contents = listOf({ start(Modifier) }, { end(Modifier) }),
+                modifier = modifier.fillMaxWidth(),
+            ) { (startMeasurables, endMeasurables), constraints ->
+                val startItem = startMeasurables.first()
+                val endItem = endMeasurables.first()
+                val gapPx = gap.roundToPx()
+                val bounded = constraints.hasBoundedWidth
+                val width = constraints.maxWidth
+                val half = (width - gapPx) / 2
+                val fits =
+                    bounded &&
+                        startItem.maxIntrinsicWidth(Constraints.Infinity) <= half &&
+                        endItem.maxIntrinsicWidth(Constraints.Infinity) <= half
+                val stacked = fontScale >= LARGE_FONT_SCALE || !bounded || width < NarrowWidth.roundToPx() || !fits
+                val loose = constraints.copy(minWidth = 0, minHeight = 0)
                 if (stacked) {
-                    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                        start(Modifier.fillMaxWidth())
-                        end(Modifier.fillMaxWidth())
+                    val slot = if (bounded) loose.copy(minWidth = width) else loose
+                    val startPlaceable = startItem.measure(slot)
+                    val endPlaceable = endItem.measure(slot)
+                    val layoutWidth = if (bounded) width else maxOf(startPlaceable.width, endPlaceable.width)
+                    val height = constraints.constrainHeight(startPlaceable.height + gapPx + endPlaceable.height)
+                    layout(layoutWidth, height) {
+                        startPlaceable.placeRelative(0, 0)
+                        endPlaceable.placeRelative(0, startPlaceable.height + gapPx)
                     }
                 } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        start(Modifier.weight(1f))
-                        end(Modifier.weight(1f))
+                    val endWidth = width - half - gapPx
+                    val startPlaceable = startItem.measure(loose.copy(minWidth = half, maxWidth = half))
+                    val endPlaceable = endItem.measure(loose.copy(minWidth = endWidth, maxWidth = endWidth))
+                    val height = constraints.constrainHeight(maxOf(startPlaceable.height, endPlaceable.height))
+                    layout(width, height) {
+                        startPlaceable.placeRelative(0, 0)
+                        endPlaceable.placeRelative(half + gapPx, 0)
                     }
                 }
             }

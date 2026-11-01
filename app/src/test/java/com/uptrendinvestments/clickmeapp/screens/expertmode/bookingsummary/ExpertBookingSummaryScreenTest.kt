@@ -661,6 +661,31 @@ class ExpertBookingSummaryScreenTest {
         assertEquals(reschedule.positionInRoot.y, cancel.positionInRoot.y, 1f)
     }
 
+    @Config(qualifiers = "w360dp-h891dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test
+    fun labelsFitOneLineAt360dp() {
+        showScreen(expertBookingDetail(start = start, canReschedule = true, canCancel = true))
+        rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", EXPERT_SUMMARY_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Cancel Booking", EXPERT_SUMMARY_CANCEL_TAG))
+        val reschedule = rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).fetchSemanticsNode()
+        val cancel = rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).fetchSemanticsNode()
+        assertTrue(cancel.positionInRoot.y > reschedule.positionInRoot.y)
+    }
+
+    @Config(qualifiers = "w384dp-h891dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test
+    fun labelsFitOneLineAt384dp() {
+        showScreen(expertBookingDetail(start = start, canReschedule = true, canCancel = true))
+        rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", EXPERT_SUMMARY_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Cancel Booking", EXPERT_SUMMARY_CANCEL_TAG))
+    }
+
     @Test
     fun onlyRescheduleFillsWidth() {
         showScreen(expertBookingDetail(start = start, canReschedule = true, canCancel = false))

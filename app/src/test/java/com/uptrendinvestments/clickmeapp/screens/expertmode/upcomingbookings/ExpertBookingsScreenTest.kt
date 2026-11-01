@@ -183,6 +183,20 @@ class ExpertBookingsScreenTest {
     }
 
     @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h1200dp")
+    fun rescheduleAndMessageFitOneLineAt360dp() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)))
+        show()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", EXPERT_BOOKINGS_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Message", EXPERT_BOOKINGS_MESSAGE_TAG))
+        val message = rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).getBoundsInRoot()
+        val reschedule = rule.onNodeWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).getBoundsInRoot()
+        assertTrue("Message is above Reschedule", message.bottom <= reschedule.top)
+    }
+
+    @Test
     fun rescheduleClickDoesNotOpenSummary() {
         serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)))
         val opened = mutableListOf<String>()
