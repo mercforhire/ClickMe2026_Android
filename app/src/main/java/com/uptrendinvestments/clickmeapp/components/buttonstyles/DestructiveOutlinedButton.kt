@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.components.buttonstyles
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
@@ -23,7 +24,9 @@ private val MinTouchTarget = 48.dp
 /**
  * Error-outlined pill button for destructive actions: Cancel Booking, Confirm Cancellation and Decline (UI-SPEC Color
  * rule). Destructive actions use `colorScheme.error` for the border and label and are never a filled error button
- * (Phase 7 A5). Shrinks slightly while pressed like [PressScaleButton].
+ * (Phase 7 A5). Shrinks slightly while pressed like [PressScaleButton]. [contentPadding] defaults to Material's 24 dp
+ * sides; the Cancel Booking button beside a Reschedule passes `ActionButtonPairDefaults.ContentPadding` so its label
+ * fits a half-width slot.
  */
 @Composable
 fun DestructiveOutlinedButton(
@@ -31,6 +34,7 @@ fun DestructiveOutlinedButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit,
 ) {
     val source = interactionSource ?: remember { MutableInteractionSource() }
@@ -51,6 +55,7 @@ fun DestructiveOutlinedButton(
         shape = CircleShape,
         border = BorderStroke(1.dp, borderColor),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        contentPadding = contentPadding,
         interactionSource = source,
     ) {
         ProvideTextStyle(MaterialTheme.typography.labelLarge) {
