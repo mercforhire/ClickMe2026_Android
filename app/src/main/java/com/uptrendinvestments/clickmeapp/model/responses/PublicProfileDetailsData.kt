@@ -8,10 +8,15 @@ import com.squareup.moshi.JsonClass
  *
  * [isBookable] null means bookable (iOS parity). The Book gating built on it is display-only (D-04): the
  * server enforces `EXPERT_NOT_BOOKABLE` when the booking is confirmed.
+ *
+ * [isFavorite] seeds the Expert Profile heart (Phase 16.3 D-01). The backend computes it best effort (false on any
+ * lookup error and for self-view); the iOS list scan for it is deliberately not ported (its comment that details
+ * lack the flag is stale).
  */
 @JsonClass(generateAdapter = true)
 data class PublicProfileDetailsData(
     @Json(name = "is_bookable") val isBookable: Boolean? = null,
+    @Json(name = "is_favorite") val isFavorite: Boolean = false,
     @Json(name = "available_meeting_types") val availableMeetingTypes: List<String>? = null,
     val profile: PublicProfileDto = PublicProfileDto(),
     @Json(name = "topics_of_discussion") val topicsOfDiscussion: List<TopicOfDiscussionDto> = emptyList(),

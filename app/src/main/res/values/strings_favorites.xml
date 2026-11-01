@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Saved Experts and the favorite heart (Phase 16.3, PARITY-AUDIT #2, #2b). Copy follows iOS unless the UI-SPEC marks it changed. -->
+    <string name="favorites_update_failed">Couldn\'t update favorites</string>
+</resources>
