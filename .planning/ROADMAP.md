@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 14/16 plans executed
+**Plans:** 15/16 plans executed
 
 Plans:
 **Wave 1**
@@ -923,7 +923,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16.2-15-PLAN.md — G-16.2-3: 8 dp pair padding (`ActionButtonPairDefaults.ContentPadding`) on Reschedule, paired Message and paired Cancel Booking, real-font NATIVE regression tests at 384 dp (cards) and 411 dp (details) (RS-C1, RS-E1)
+- [x] 16.2-15-PLAN.md — G-16.2-3: 8 dp pair padding (`ActionButtonPairDefaults.ContentPadding`) on Reschedule, paired Message and paired Cancel Booking, real-font NATIVE regression tests at 384 dp (cards) and 411 dp (details) (RS-C1, RS-E1)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
