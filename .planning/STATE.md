@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: "16.3"
 current_phase_name: "iOS parity: Saved Experts, favorite heart and full Reviews list"
-status: ready_to_discuss
+status: executing
 stopped_at: Phase 16.3 UI-SPEC approved
-last_updated: "2026-11-01T05:10:57.137Z"
-last_activity: 2026-10-31
-last_activity_desc: Phase 16.2 complete (UAT + re-verification passed), next is Phase 16.3
-state_head: 7375ff089fe2a28a6f302b76a553b069e9b2dbd0
+last_updated: "2026-11-01T15:44:27.314Z"
+last_activity: 2026-11-01
+last_activity_desc: Phase 16.3 execution started
+state_head: 68d8c7a0d3c30b8843ed5154ab036ba81595ec1d
 progress:
   total_phases: 22
   completed_phases: 11
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-10-31)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 16.3 — iOS parity: Saved Experts, favorite heart and full Reviews list (INSERTED)
+**Current focus:** Phase 16.3 — iOS parity: Saved Experts, favorite heart and full Reviews list
 
 ## Current Position
 
-Phase: 16.3 (iOS parity: Saved Experts, favorite heart and full Reviews list) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to discuss (16.1 UAT still open: status testing, verification human_needed)
-Last activity: 2026-10-31 — Phase 16.2 complete (UAT 5/8 passed, test 5 deferred to Phase 16 matrix; verification 13/13 passed)
+Phase: 16.3 (iOS parity: Saved Experts, favorite heart and full Reviews list) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 16.3
+Last activity: 2026-11-01 — Phase 16.3 execution started
 
 Progress: [███████░░░] 65%
 

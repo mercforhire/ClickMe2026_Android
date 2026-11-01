@@ -934,13 +934,13 @@ Plans:
 **Goal:** Clients can favorite an expert from Expert Profile (optimistic toggle with rollback), see Saved Experts from the client Profile hub, and open the full Reviews list from "See all" on Expert Profile, matching iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 7 plans
+**Plans:** 2/7 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 16.3-01-PLAN.md — Favorites wire contract: `GET/PUT/DELETE /client/favorites` (PUT, not POST; page 1, limit 100), DTOs, `FavoritesRepository`, `is_favorite` on details, shared failure message, fake overrides and wire tests (FAV-NET, D-01, D-03, D-12)
-- [ ] 16.3-02-PLAN.md — Reviews wire (`session_context`, page 1 limit 20), `StackOrigin.Profile`, `FavoritesKey`, `ExpertReviewsKey` with origin copy, `ExpertReviewsViewModel` and title rule (REV-LIST, NAV-KEYS, D-16)
+- [x] 16.3-01-PLAN.md — Favorites wire contract: `GET/PUT/DELETE /client/favorites` (PUT, not POST; page 1, limit 100), DTOs, `FavoritesRepository`, `is_favorite` on details, shared failure message, fake overrides and wire tests (FAV-NET, D-01, D-03, D-12)
+- [x] 16.3-02-PLAN.md — Reviews wire (`session_context`, page 1 limit 20), `StackOrigin.Profile`, `FavoritesKey`, `ExpertReviewsKey` with origin copy, `ExpertReviewsViewModel` and title rule (REV-LIST, NAV-KEYS, D-16)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
