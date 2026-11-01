@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestSentKey
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
@@ -52,10 +53,20 @@ fun EntryProviderScope<NavKey>.clientBookingFlowEntries(
         requestSent(
             key,
             navigator::goBack,
-            navigator::showMyBookings,
+            { navigator.viewBookingsFromRequestSent(key) },
             navigator::showExplore,
         )
     }
+}
+
+/** [showMyBookings] after a finished booking, also returning the Profile tab to the hub (see Task 3 KDoc). */
+internal fun Navigator.viewBookingsFromRequestSent(key: RequestSentKey) {
+    resetProfileStackHolding(key)
+    showMyBookings()
+}
+
+private fun Navigator.resetProfileStackHolding(key: RequestSentKey) {
+    if (key in state.backStacks[ClientProfileRoot].orEmpty()) reselect(ClientProfileRoot)
 }
 
 /**
