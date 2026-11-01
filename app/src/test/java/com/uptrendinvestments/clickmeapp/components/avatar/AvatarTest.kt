@@ -25,6 +25,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.components.backgrounds.GreenGlowBlobLayer
 import com.uptrendinvestments.clickmeapp.screens.debug.GalleryMediaSection
+import com.uptrendinvestments.clickmeapp.ui.theme.ClickMePalette
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -122,7 +123,7 @@ class AvatarTest {
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun fallbackColor_paintsTheFallbackDisc() {
-        val green = Color(0xFF1F2E24)
+        val green = ClickMePalette.avatarFallback
         rule.setContent {
             ClickMeTheme { Avatar(url = null, contentDescription = null, size = 80.dp, fallbackColor = green) }
         }

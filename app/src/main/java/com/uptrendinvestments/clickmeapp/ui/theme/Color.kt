@@ -51,6 +51,9 @@ object ClickMePalette {
     val onSurfaceMuted = Color(0xFF999999)
     val onSurfaceFaint = Color(0xFF6E6E6E)
 
+    /** iOS `ClientProfileBrand.avatarFallback` (0.12, 0.18, 0.14): the disc behind the person icon of an image-less avatar. */
+    val avatarFallback = Color(0xFF1F2E24)
+
     val overlayWhite05 = Color.White.copy(alpha = 0.05f)
     val overlayWhite06 = Color.White.copy(alpha = 0.06f)
     val overlayWhite10 = Color.White.copy(alpha = 0.10f)

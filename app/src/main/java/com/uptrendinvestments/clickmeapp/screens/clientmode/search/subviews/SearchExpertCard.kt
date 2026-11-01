@@ -27,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,6 +41,7 @@ import com.uptrendinvestments.clickmeapp.components.ExpertTagChip
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.pressScale
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertUi
+import com.uptrendinvestments.clickmeapp.ui.theme.ClickMePalette
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 
 /** Test tag on every Search result card. */
@@ -54,12 +54,6 @@ private val SearchAvatarSize = 80.dp
 private val CardPadding = 16.dp
 private val CardCorner = 16.dp
 private val ColumnSpacing = 6.dp
-
-/**
- * Fallback disc behind the person icon on a Search card. iOS `Color(red: 0.12, green: 0.18, blue: 0.14)`; the only
- * hard-coded color on the Search screen (every other color is a theme token).
- */
-internal val SearchAvatarFallbackColor = Color(0xFF1F2E24)
 
 /**
  * Port of iOS `SearchExpertCard`: 80 dp avatar, bold name with the star rating on the right, the headline, the bio
@@ -117,7 +111,7 @@ fun SearchExpertCard(
             url = expert.avatarUrl,
             contentDescription = null,
             size = SearchAvatarSize,
-            fallbackColor = SearchAvatarFallbackColor,
+            fallbackColor = ClickMePalette.avatarFallback,
         )
         Spacer(Modifier.width(CardPadding))
         Column(
