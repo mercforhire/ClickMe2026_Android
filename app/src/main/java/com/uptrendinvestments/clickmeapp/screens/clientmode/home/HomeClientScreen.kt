@@ -67,6 +67,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.expertReviewsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.reviewsKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingViewModel
@@ -159,6 +163,16 @@ fun HomeClientScreen(
                             viewModel = profileViewModel,
                             onBack = navigator::goBack,
                             onBook = { navigator.navigate(it) },
+                            onSeeAllReviews = { name -> navigator.navigate(key.reviewsKey(name)) },
+                        )
+                    }
+                    expertReviewsEntry(navigator) { key, onBack ->
+                        ExpertReviewsScreen(
+                            viewModel =
+                                hiltViewModel<ExpertReviewsViewModel, ExpertReviewsViewModel.Factory>(
+                                    creationCallback = { factory -> factory.create(key) },
+                                ),
+                            onBack = onBack,
                         )
                     }
                     clientBookingFlowEntries(

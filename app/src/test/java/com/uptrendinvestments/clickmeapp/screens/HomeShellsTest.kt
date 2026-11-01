@@ -66,6 +66,9 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfil
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ExpertReviewsKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.expertReviewsEntry
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.reviewsKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchExpertUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.search.SearchResults
@@ -841,6 +844,143 @@ class HomeShellsTest {
                 )
             }
         }
+    }
+
+    /**
+     * Explore root and the Saved Experts stand-in that each push the same expert with their own origin, the real
+     * [clientFavoritesEntry] and [expertReviewsEntry], and a profile stand-in whose "see all" builds the Reviews key
+     * through the real [reviewsKey]. The default Profile hub opens the stand-in favorites.
+     */
+    private fun setClientWithProfileAndReviewsStandIns() {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        Button(onClick = { navigator.navigate(ada()) }) { Text("open explore profile") }
+                    },
+                    detailEntries = { navigator ->
+                        clientFavoritesEntry(navigator) { actions ->
+                            Button(
+                                onClick = { actions.onOpenExpert(ada().copy(origin = StackOrigin.Profile)) },
+                            ) { Text("open favorite profile") }
+                        }
+                        entry<ExpertProfileKey> { key ->
+                            Column {
+                                Text("profile ${key.expertId} ${key.origin}")
+                                Button(onClick = { navigator.navigate(key.reviewsKey(key.name)) }) {
+                                    Text("see all ${key.origin}")
+                                }
+                            }
+                        }
+                        expertReviewsEntry(navigator) { key, onBack ->
+                            Column {
+                                Text("reviews ${key.expertId} ${key.origin}")
+                                Button(onClick = onBack) { Text("reviews back") }
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+
+    private fun ada() = ExpertProfileKey("e1", "Ada Lovelace", "Engineer", null, 4.5, null, listOf("AI"))
+
+    private fun openFavoriteProfileOnTheProfileTab() {
+        tapTab("Profile")
+        composeRule.onNodeWithText("Saved Experts").performScrollTo().performClick()
+        composeRule.onNodeWithText("open favorite profile").performClick()
+    }
+
+    @Test
+    fun sameExpertOnExploreAndProfileDoesNotCollide() {
+        setClientWithProfileAndReviewsStandIns()
+        composeRule.onNodeWithText("open explore profile").performClick()
+        composeRule.onNodeWithText("profile e1 Default").assertExists()
+
+        openFavoriteProfileOnTheProfileTab()
+        composeRule.onNodeWithText("profile e1 Profile").assertExists()
+        composeRule.onNode(tab("Profile")).assertIsSelected()
+
+        tapTab("Explore")
+        composeRule.onNodeWithText("profile e1 Default").assertExists()
+        tapTab("Profile")
+        composeRule.onNodeWithText("profile e1 Profile").assertExists()
+    }
+
+    @Test
+    fun seeAllOnTwoStacksDoesNotCollide() {
+        setClientWithProfileAndReviewsStandIns()
+        composeRule.onNodeWithText("open explore profile").performClick()
+        composeRule.onNodeWithText("see all Default").performClick()
+        composeRule.onNodeWithText("reviews e1 Default").assertExists()
+
+        tapTab("Profile")
+        composeRule.onNodeWithText("Saved Experts").performScrollTo().performClick()
+        composeRule.onNodeWithText("open favorite profile").performClick()
+        composeRule.onNodeWithText("see all Profile").performClick()
+        composeRule.onNodeWithText("reviews e1 Profile").assertExists()
+
+        tapTab("Explore")
+        composeRule.onNodeWithText("reviews e1 Default").assertExists()
+        tapTab("Profile")
+        composeRule.onNodeWithText("reviews e1 Profile").assertExists()
+    }
+
+    @Test
+    fun clientReviewsRouteKeepsTheBarAndBackPops() {
+        setClientWithProfileAndReviewsStandIns()
+        composeRule.onNodeWithText("open explore profile").performClick()
+        composeRule.onNodeWithText("see all Default").performClick()
+        composeRule.onNodeWithText("reviews e1 Default").assertExists()
+        composeRule.onNode(tab("Explore")).assertExists()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("reviews e1 Default").assertDoesNotExist()
+        composeRule.onNodeWithText("profile e1 Default").assertExists()
+    }
+
+    @Test
+    fun expertReviewsRouteHidesTheBarAndBackPops() {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                HomeExpertShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    dashboardRoot = { navigator ->
+                        Button(onClick = { navigator.navigate(ExpertReviewsKey("e1", "Ada")) }) {
+                            Text("open own reviews")
+                        }
+                    },
+                    detailEntries = { navigator ->
+                        expertReviewsEntry(navigator, metadata = BottomBar.hidden()) { key, _ ->
+                            Text("reviews ${key.expertId} ${key.expertName}")
+                        }
+                    },
+                )
+            }
+        }
+        composeRule.onNodeWithText("open own reviews").performClick()
+        composeRule.onNodeWithText("reviews e1 Ada").assertExists()
+        composeRule.onNode(tab("Dashboard")).assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("reviews e1 Ada").assertDoesNotExist()
+        composeRule.onNode(tab("Dashboard")).assertIsSelected()
     }
 
     @Test
