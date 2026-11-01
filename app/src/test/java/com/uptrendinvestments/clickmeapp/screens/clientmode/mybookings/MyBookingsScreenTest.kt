@@ -561,6 +561,21 @@ class MyBookingsScreenTest {
     }
 
     @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h1200dp")
+    fun rescheduleAndMessageFitOneLineAt360dp() {
+        val confirmed = bookingItem("b1", start = farOutStart)
+        val pending = bookingItem("b2", status = STATUS_PENDING_APPROVAL, start = farOutStart)
+        show { Content(loaded(upcoming = listOf(confirmed, pending))) }
+
+        assertEquals(listOf(1, 1), rule.lineCountsOf("Reschedule", BOOKING_CARD_RESCHEDULE_TAG))
+        assertEquals(listOf(1, 1), rule.lineCountsOf("Message", BOOKING_CARD_MESSAGE_TAG))
+        val reschedule = rule.onAllNodesWithTag(BOOKING_CARD_RESCHEDULE_TAG)[0].fetchSemanticsNode()
+        val message = rule.onAllNodesWithTag(BOOKING_CARD_MESSAGE_TAG)[0].fetchSemanticsNode()
+        assertTrue(reschedule.boundsInRoot.bottom <= message.boundsInRoot.top)
+    }
+
+    @Test
     fun rescheduleClickDoesNotOpenDetails() {
         val calls = Callbacks()
         show { Content(loaded(upcoming = listOf(bookingItem("b1", start = farOutStart))), calls) }
