@@ -5,10 +5,10 @@ current_phase: "16.2"
 current_phase_name: "iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)"
 status: executing
 stopped_at: Phase 16.2 UI-SPEC approved
-last_updated: "2026-11-01T01:12:18.998Z"
+last_updated: "2026-11-01T02:53:17.519Z"
 last_activity: 2026-10-31
 last_activity_desc: Phase 16.2 execution resumed (wave continue)
-state_head: c4ee10e1463110ad38362a48fb2a850310198e48
+state_head: af4d224308fdcfa4b20c0ae176cce4b00a40ba32
 progress:
   total_phases: 22
   completed_phases: 11
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-19)
 Phase: 16.2 (iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)) — EXECUTING
 Plan: 1 of 12
 Status: Executing Phase 16.2
-Last activity: 2026-10-31 — Phase 16.2 execution resumed (wave continue)
+Last activity: 2026-10-31 - Completed quick task 261031-v84: WR-04 Reschedule allow-list + avatarFallback color token
 
 Progress: [███████░░░] 65%
 
@@ -320,6 +320,7 @@ Recent decisions affecting current work:
 | 261027-vow | Switch all app back arrows to AutoMirrored.Outlined.ArrowBack per UI spec | 2026-10-27 | fea65c4 | [261027-vow-switch-all-app-back-arrows-to-automirror](./quick/261027-vow-switch-all-app-back-arrows-to-automirror/) |
 | 261028-to1 | Block new long-lead paid bookings (6-day paid window, 422 is an error), route booking/payment_actions push to the booking, dev BASE_URL override + debug localhost cleartext, local Stripe test runbook | 2026-10-28 | b2e3c4d | [261028-to1-block-new-long-lead-paid-bookings-route-](./quick/261028-to1-block-new-long-lead-paid-bookings-route-/) |
 | 261028-ve4 | Adopt backend 261028-uph: LONG_LEAD_NOT_AVAILABLE and RESCHEDULE_TOO_FAR_AHEAD codes, reschedule-accept mapping both sides, runbook sandbox expert done | 2026-10-28 | 3710e61 | [261028-ve4-adopt-backend-261028-uph-contract-new-er](./quick/261028-ve4-adopt-backend-261028-uph-contract-new-er/) |
+| 261031-v84 | Fix WR-04 (client Reschedule allow-list for upcoming statuses only, with terminal-status tests) and move the 16.1 Color(0xFF1F2E24) literal into ui/theme/Color.kt | 2026-10-31 | af4d2243 | [261031-v84-fix-wr-04-client-reschedule-allow-list-f](./quick/261031-v84-fix-wr-04-client-reschedule-allow-list-f/) |
 
 ### Roadmap Evolution
 
