@@ -24,6 +24,7 @@ The ClickMe MVP is live on Google Play (organization account) by ~2026-12-13. An
 - BOOK-05..BOOK-09: My Bookings as the Bookings tab root (Upcoming/Past with the completed-but-not-ended rejoin rule, pull-to-refresh, quiet reloads on resume, tab re-show and `booking.update`), Upcoming Booking Details (status, pending banner, inert Phase 9 join card, Cancel), two-step cancellation with the strict-24h refund preview and a single-flight `POST /client/bookings/:id/cancel`, Booking Summary with Book Again, and the shared reschedule response card (accept with one-shot saved-card recovery, decline with reason). Validated in Phase 8: Client Bookings & Cancellation (2026-10-24; 1888 unit tests per flavor, R8 release green; 6 code-review warnings open in 08-REVIEW.md, WR-01/WR-06 recommended before Phase 9; 5 device checks deferred in 08-HUMAN-UAT.md).
 - CALL-01..CALL-08: in-app Agora voice calls from all three Join sites (Upcoming Details, My Bookings card, Today's Sessions) through one app-scoped `CallCenter`; microphone permission with rationale and settings recovery; a microphone foreground service with an ongoing notification (tap to expand, End call); a root call overlay that minimizes to a pill across tabs and mode switches; the "you're in a call" guard on mode switch, logout, add payment method and cancel; waiting-for-peer on peer hang-up, rejoin, a schedule-anchored timer with the 5-minute amber stretch and the end + 3600 s cutoff; confirm-connection exactly once; leave-then-`/end` hang-up and local teardown on forced logout. External (Skype/Zoom) links open app-first with a Custom Tab fallback. Android keeps Join enabled until max(start + 60 min, scheduled end), unlike iOS. `:spikes:agora` removed. Validated in Phase 9: Voice Call (2026-10-24; 2237 unit tests per flavor, lint and R8 release green; all 10 code-review warnings fixed; 9 device checks deferred in 09-HUMAN-UAT.md, paid end-to-end blocked on the test-mode Stripe backend).
 - EXP-05..EXP-09: the Expert Dashboard (pending count, reschedule banner, Today's Sessions with Join, weekly earnings, Stripe payout onboarding card opened in a Custom Tab), Incoming Requests → Request Decision (net earnings only, accept/decline with reason, expiry and ALREADY_PROCESSED handling) → Booking Confirmed with Add to Calendar, expert Upcoming/Past bookings with Booking Summary, cancellation and the expert reschedule response, and expert Join into the shared `CallCenter`. Cross-platform calls work: Android ↔ iOS meet in one Agora channel after three gap fixes (engine context NPE, COMMUNICATION profile, and a backend fix that derives the channel from `booking.id` in lowercase, deployed `4c694e7`). Validated in Phase 11: Expert Requests & Bookings (2026-10-27; 2961 unit tests; UAT 7/7 incl. a two-sided Android expert ↔ iOS client call; verification 4/4; security 70/70 closed; review WR-01/IN-02 open in 11-REVIEW-DISPOSITION.md; 09-HUMAN-UAT items 1, 2, 5 unblocked but not yet run).
+- DEF-1 (pulled into scope by the 2026-10-30 parity decision): starting a reschedule on both sides, as on iOS. A shared slot picker with the current-slot chip and the paid 6-day cap, client and expert `PATCH .../reschedule`, the payment-conversion card-hold disclosure, the PAYMENT_METHOD_REQUIRED retry with a saved or one-off card, and the expert side gated on `can_reschedule`. The client Reschedule button follows the iOS/server allow-list: hidden only on pending_reschedule and on cancelled or ended bookings. Validated in Phase 16.2 (2026-10-31): 4672 unit tests, verification 13/13 passed, UAT 5/8 passed (two device-reported gaps fixed and re-tested on the SM-A075F). Test 5 (200% font backstops) is deferred to the Phase 16 matrix. Review WR-01 is open (no My Bookings call-site test for the gate), and picker warnings WR-01..03 from the first review are still unaddressed.
 
 ### Active
 
@@ -46,7 +47,7 @@ Full checkable list with IDs: `.planning/REQUIREMENTS.md` (99 v1 requirements).
 
 Deferred to v2, in the PRD's suggested order (details in REQUIREMENTS.md):
 
-- DEF-1: Starting a reschedule, for clients and experts (the Reschedule screens with the slot picker). It's the riskiest flow, and until v2 users can cancel and book again. Responding to a reschedule the other side proposed **is** in the MVP (BOOK-09, EXP-09).
+- ~~DEF-1: Starting a reschedule, for clients and experts.~~ Moved in scope by the 2026-10-30 full-parity decision and shipped in Phase 16.2 (see Validated).
 - DEF-2: Search tab with filters and sort. The MVP has a placeholder tab.
 - DEF-3: Favorites, the full Reviews list, Booking Notes (both sides), Client Profile (expert side). These aren't on a money or session path.
 - DEF-4: Client payment history and the expert transactions list. Not needed to book, pay or get paid.
@@ -54,7 +55,7 @@ Deferred to v2, in the PRD's suggested order (details in REQUIREMENTS.md):
 - DEF-6: Notification preferences, Feedback, the Expertise-tag editor in expert settings. Nice-to-have settings.
 - DEF-7: Cancellation Policies static page, Categories modal, cosmetic animations. Cosmetic or informational.
 - DEF-8: Analytics endpoints and the Firebase Ads conversion SDK. Not user-facing.
-- An Android expert proposing a reschedule. No PRD section covers it, so it falls under DEF-1.
+- ~~An Android expert proposing a reschedule.~~ Shipped with DEF-1 in Phase 16.2.
 - Pixel parity with iOS. The iOS design is adapted to Material 3.
 
 ## Context
@@ -164,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-27 after Phase 11 completion*
+*Last updated: 2026-10-31 after Phase 16.2 completion*

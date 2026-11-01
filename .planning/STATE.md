@@ -1,19 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: "16.2"
-current_phase_name: "iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)"
-status: executing
-stopped_at: Phase 16.2 UI-SPEC approved
-last_updated: "2026-11-01T02:53:17.519Z"
+current_phase: "16.3"
+current_phase_name: "iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)"
+status: ready_to_discuss
+stopped_at: Phase 16.2 complete, ready to discuss Phase 16.3
+last_updated: "2026-11-01T03:29:32.666Z"
 last_activity: 2026-10-31
-last_activity_desc: Phase 16.2 execution resumed (wave continue)
-state_head: af4d224308fdcfa4b20c0ae176cce4b00a40ba32
+last_activity_desc: Phase 16.2 complete (UAT + re-verification passed), next is Phase 16.3
+state_head: b72979a542540e98afeadc9a4b1246d785941751
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 267
-  completed_plans: 254
+  completed_plans: 258
+  percent: 65
 milestone_name: milestone
 ---
 
@@ -21,17 +22,17 @@ milestone_name: milestone
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-19)
+See: .planning/PROJECT.md (updated 2026-10-31)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 16.2 — iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)
+**Current focus:** Phase 16.3 — iOS parity: Saved Experts, favorite heart and full Reviews list (INSERTED)
 
 ## Current Position
 
-Phase: 16.2 (iOS parity: client and expert reschedule start (PARITY-AUDIT #10, #11) (INSERTED)) — EXECUTING
-Plan: 1 of 12
-Status: Executing Phase 16.2
-Last activity: 2026-10-31 - Completed quick task 261031-v84: WR-04 Reschedule allow-list + avatarFallback color token
+Phase: 16.3 (iOS parity: Saved Experts, favorite heart and full Reviews list) — READY TO DISCUSS
+Plan: Not started
+Status: Ready to discuss (16.1 UAT still open: status testing, verification human_needed)
+Last activity: 2026-10-31 — Phase 16.2 complete (UAT 5/8 passed, test 5 deferred to Phase 16 matrix; verification 13/13 passed)
 
 Progress: [███████░░░] 65%
 
@@ -39,7 +40,7 @@ Progress: [███████░░░] 65%
 
 **Velocity:**
 
-- Total plans completed: 167
+- Total plans completed: 183
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -58,6 +59,7 @@ Progress: [███████░░░] 65%
 | 10 | 20 | - | - |
 | 11 | 18 | - | - |
 | 12 | 17 | - | - |
+| 16.2 | 16 | - | - |
 
 **Recent Trend:**
 
@@ -169,6 +171,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- [Phase 16.2] OPEN (advisory, 2026-10-31): review WR-01 (no My Bookings call-site test for the canClientStartReschedule allow-list), plus the first review's picker warnings: single-flight released on Sent before the pop animation, a silent Continue after slot expiry, and a restored disclosure that reappears. The incremental re-review reused ids WR-01/IN-01..03, so those older rows were dropped from 16.2-REVIEW-DISPOSITION.md (recoverable from git before d748888a). UAT test 5 (200% font / 1.5x visual backstops) is deferred to the Phase 16 device matrix.
 - [Phase 1]: OUTSIDE WAIT (RESOLVED). Play Console organization account submitted for Google verification on 2026-10-20 and shown as verified on 2026-10-20. D-U-N-S: confirmed, details match. Responder: the user (watch the Play Console account email for any follow-up requests). Status: verified, no wait remaining. REL-03 (Phase 2 first signed upload registers com.uptrendinvestments.clickmeapp) and REL-05 (Phase 13 internal track) are unblocked on the account side. Closed-test requirement shown in Console: not shown yet (user unsure). Re-check in Play Console before Phase 13.
 - [Phase 8]: RESOLVED (D-05, 2026-10-23). Android sends the comment inside `reason` as "<label>: <comment>" (comment capped at 450, whole string at 500); `cancelSchema` is `{reason?}.strict()` and the backend validates but does not store it.
 - [Phase 2]: EncryptedSharedPreferences is deprecated upstream. The decision is locked and stands. Revisit on purpose, not by accident.
@@ -340,8 +343,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-31T05:09:59.550Z
-Stopped at: Phase 16.2 UI-SPEC approved
+Last session: 2026-11-01T03:35:00Z
+Stopped at: Phase 16.2 complete, ready to discuss Phase 16.3
+Resume file: None
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.

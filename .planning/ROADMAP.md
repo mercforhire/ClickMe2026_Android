@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 15: Polish & Hardening** - Loading/empty/error states everywhere, process death, edge-to-edge, TalkBack (Week 7)
 - [ ] **Phase 16: Cross-Platform QA** - Internal-testing bug fixes and the two-way Android/iOS matrix (Week 8)
 - [ ] **Phase 16.1: iOS parity: Search tab and Explore See all** (INSERTED) - iOS feature parity before release
-- [ ] **Phase 16.2: iOS parity: client and expert reschedule start** (INSERTED) - iOS feature parity before release
+- [x] **Phase 16.2: iOS parity: client and expert reschedule start** (INSERTED) - iOS feature parity before release (completed 2026-10-31)
 - [ ] **Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list** (INSERTED) - iOS feature parity before release
 - [ ] **Phase 16.4: iOS parity: private booking notes and expert-side Client Profile** (INSERTED) - iOS feature parity before release
 - [ ] **Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card** (INSERTED) - iOS feature parity before release
@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 16/16 plans executed
+**Plans:** 16/16 plans complete
 
 Plans:
 **Wave 1**
