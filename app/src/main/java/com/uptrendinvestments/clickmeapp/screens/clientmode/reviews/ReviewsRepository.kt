@@ -1,6 +1,7 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.reviews
 
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
 import com.uptrendinvestments.clickmeapp.model.responses.SubmitReviewData
 import com.uptrendinvestments.clickmeapp.network.ClickMeApi
@@ -9,7 +10,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The post-session review (`/bookings/{id}/reviews`). Ports iOS `ClickMeAPI+Reviews`, with a request body that
+ * The post-session review (`/bookings/{id}/reviews`) and the public expert reviews list. Ports iOS `ClickMeAPI+Reviews`, with a request body that
  * follows the backend `submitReviewSchema`.
  *
  * Stateless: nothing here is cleared on logout, so it caches nothing; throws ApiException only (a 404 or 422
@@ -38,7 +39,18 @@ class ReviewsRepository
             return apiCall { api.submitReview(bookingId, body) }.data
         }
 
+        /**
+         * Full Reviews screen (Phase 16.3, D-16): page 1 only, 20 rows, as iOS ClickMeAPI+Reviews
+         * `getExpertReviews` defaults; the server default is 10, so the limit is sent explicitly. Reviews beyond
+         * the first page are not shown (RESEARCH A6).
+         */
+        suspend fun expertReviews(expertId: String): ExpertReviewsPayload =
+            apiCall { api.getExpertReviews(expertId, 1, EXPERT_REVIEWS_PAGE_SIZE) }.data
+
         companion object {
+            /** Rows requested for the full Reviews list (iOS default; server clamps at 100). */
+            const val EXPERT_REVIEWS_PAGE_SIZE = 20
+
             const val RATING_MIN = 1
             const val RATING_MAX = 5
 

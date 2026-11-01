@@ -25,6 +25,16 @@ data class ReviewItemDto(
     val reviewer: ReviewerDto = ReviewerDto(),
     val rating: Int,
     val comment: String? = null,
+    /** Feeds the full Reviews card's topic and date lines (Phase 16.3 D-16); absent on older payloads. */
+    @Json(name = "session_context") val sessionContext: ReviewSessionContextDto? = null,
+)
+
+/** The session a review is about; all three fields are nullable server-side. */
+@JsonClass(generateAdapter = true)
+data class ReviewSessionContextDto(
+    val topic: String? = null,
+    val date: String? = null,
+    @Json(name = "date_label") val dateLabel: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
