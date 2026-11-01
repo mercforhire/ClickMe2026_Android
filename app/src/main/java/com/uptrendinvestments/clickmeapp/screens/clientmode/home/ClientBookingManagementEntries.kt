@@ -31,6 +31,10 @@ fun Navigator.openBookingSummary(bookingId: String) = navigate(BookingSummaryKey
  * Also resets the Search stack, a deliberate Android deviation (user decision 2026-10-30): iOS leaves `searchPath`
  * alone, which would park Request Sent (bottom bar hidden) or an Expert Profile on the Search stack after a booking
  * started from Search. [SearchRoot] itself is kept, so the Search ViewModel and its query survive (D-02).
+ *
+ * The Profile stack is deliberately not in this set: Saved Experts' "View My History" calls this function and must
+ * leave Saved Experts open (RESEARCH A3, runbook row D1.FV4). A booking that ran on the Profile stack is reset by
+ * [viewBookingsFromRequestSent], a second deliberate Android deviation (Phase 16.3 CR-01).
  */
 fun Navigator.showMyBookings() = resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, SearchRoot, ClientBookingsRoot))
 
@@ -39,6 +43,10 @@ fun Navigator.showMyBookings() = resetAndSelect(ClientBookingsRoot, setOf(Explor
  *
  * Also resets the Search stack, the same deliberate Android deviation as [showMyBookings] (user decision
  * 2026-10-30): a booking started from Search must not leave Request Sent parked there. [SearchRoot] is kept (D-02).
+ *
+ * The Profile stack is deliberately not in this set: Saved Experts' "Explore Experts" calls this function and must
+ * leave Saved Experts open (RESEARCH A3, runbook row D1.FV4). A booking that ran on the Profile stack is reset by
+ * [backToHomeFromRequestSent], a second deliberate Android deviation (Phase 16.3 CR-01).
  */
 fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot, SearchRoot))
 

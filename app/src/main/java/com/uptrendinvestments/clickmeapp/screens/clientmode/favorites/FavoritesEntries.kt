@@ -26,6 +26,8 @@ data class FavoritesRouteActions(
  * - D-05: "Explore Experts" calls [showExplore], the same tab switch as the bottom bar.
  * - D-06: "View My History" calls [showMyBookings]; the screen has already posted the Past launch.
  * - RESEARCH A3: neither switch resets the Profile stack, so Saved Experts is still open when the user returns.
+ * - Runbook row D1.FV4 depends on A3. A finished booking is the one exit that does return the Profile tab to the hub,
+ *   and it happens in the Request Sent callbacks, not here (Phase 16.3 CR-01).
  *
  * Client shell only: the expert shell registers no favorites route.
  */

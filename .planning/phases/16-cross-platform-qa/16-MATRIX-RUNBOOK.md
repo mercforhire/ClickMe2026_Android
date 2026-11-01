@@ -38,7 +38,7 @@ Later plans add the sessions `preflight`, `session-A`, `batch-A`, `session-B`, `
 
 Phase 16.2 adds rows D1.RS1-D1.RS8 and D2.RS1-D2.RS4; they run on the first Play build that contains Phase 16.2 (after Phase 16.5, per ROADMAP).
 
-Phase 16.3 adds rows D1.FV1-D1.FV6, D2.FV1 and FS.FV1-FS.FV3; they run on the first Play build that contains Phase 16.3 (after Phase 16.5, per ROADMAP).
+Phase 16.3 adds rows D1.FV1-D1.FV7, D2.FV1 and FS.FV1-FS.FV3; they run on the first Play build that contains Phase 16.3 (after Phase 16.5, per ROADMAP).
 
 ## 0. Pre-flight
 
@@ -157,6 +157,7 @@ Samsung = B (client). No money moves in these rows.
 | D1.FV4 | D-05..D-08 | D1 | On the Saved Experts empty state: read the Pro Tip; tap "Explore Experts"; go back to Profile; tap "View My History". | The Pro Tip names the heart icon; "Explore Experts" opens the Explore tab root; back on Profile, Saved Experts is still open; "View My History" opens Bookings with Past selected. | Outcome per step. | [ ] |
 | D1.FV5 | PARITY #3, D-13, D-14, D-16 | D1 | Tap "See all" on A's Recent Reviews from Explore, from Search, from a chat "View profile" and from Saved Experts. Switch tabs while two of these are open. | "{First}'s Reviews" shows the overall card and review cards; Back returns to the profile; switching tabs with two open causes no crash. | Outcome per origin; H4 crash count. | [ ] |
 | D1.FV6 | D-13 | D1 | Open the profile of an expert with 0 reviews; tap "See all". | The Recent Reviews card shows only its header and "See all"; "See all" shows "No reviews yet". | Outcome per step. | [ ] |
+| D1.FV7 | CR-01, D-05 | D1 | Favorite A. Open Profile, Discovery, Saved Experts, then A's profile. Book A's free topic to Request Sent; tap "View My Bookings"; tap the Profile tab. Book the same way again; tap "Back to home"; tap the Profile tab. As B, cancel both bookings. | "View My Bookings" opens Bookings and "Back to home" opens Explore; each time the Profile tab shows the hub with the bottom bar, not Request Sent and not Saved Experts. | Outcome per exit. | [ ] |
 
 ### 2g Payouts mirror (D-05, iOS half)
 
