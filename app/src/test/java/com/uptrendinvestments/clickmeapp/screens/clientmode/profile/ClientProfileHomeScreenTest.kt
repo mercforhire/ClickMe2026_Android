@@ -45,6 +45,7 @@ class ClientProfileHomeScreenTest {
         ClientProfileHubActions(
             onEditProfile = count("edit"),
             onSwitchToExpert = count("switch"),
+            onOpenSavedExperts = count("saved"),
             onOpenSecurity = count("security"),
             onOpenPayment = count("payment"),
             onOpenHelp = count("help"),
@@ -100,15 +101,29 @@ class ClientProfileHomeScreenTest {
         setContent()
 
         listOf(
-            "Saved Experts",
             "Payment History",
             "Notifications",
             "Send Feedback",
-            "Discovery",
             "Pause Account",
             "coming soon",
         ).forEach { rule.onAllNodesWithText(it, substring = true, ignoreCase = true).assertCountEquals(0) }
         rule.onAllNodesWithText("Professional").assertCountEquals(0)
+    }
+
+    @Test
+    fun discoverySectionSitsBetweenModeSwitchAndAccount() {
+        setContent()
+
+        rule.onNodeWithText("Discovery").assertIsDisplayed()
+        rule.onNodeWithText("Saved Experts").assertIsDisplayed()
+        val order = listOf("Switch to Expert Mode", "Discovery", "Saved Experts", "Account")
+        val tops = order.map(::yOf)
+        assertEquals(tops.sorted(), tops)
+        assertEquals(order.size, tops.toSet().size)
+
+        rule.onNodeWithText("Saved Experts").performClick()
+
+        assertEquals(mapOf("saved" to 1), calls)
     }
 
     @Test

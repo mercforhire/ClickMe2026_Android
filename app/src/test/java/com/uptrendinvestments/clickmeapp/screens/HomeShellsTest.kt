@@ -49,6 +49,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.EXPLORE_LIST
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.subviews.EXPLORE_EXPERTS_SEE_ALL_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.clientFavoritesEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.ClientHomeGate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.HomeClientShell
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientBookingFlowEntries
@@ -146,7 +147,7 @@ class HomeShellsTest {
                     },
                     detailEntries = { navigator ->
                         if (paymentMethods) fakePaymentMethodsEntry(navigator)
-                        if (hubStandIns) clientHubStandIns()
+                        if (hubStandIns) clientHubStandIns(navigator)
                         fakeChatThreadEntry()
                         pushStandIns()
                     },
@@ -366,7 +367,15 @@ class HomeShellsTest {
     fun clientProfileTabIsTheHub() {
         setClient(showDebug = false)
         tapTab("Profile")
-        listOf("Security & Password", "Payment", "FAQ & Help", "Privacy", "Log out").forEach {
+        listOf(
+            "Discovery",
+            "Saved Experts",
+            "Security & Password",
+            "Payment",
+            "FAQ & Help",
+            "Privacy",
+            "Log out",
+        ).forEach {
             composeRule.onNodeWithText(it).assertExists()
         }
         composeRule.onNodeWithText("Payment Methods").assertDoesNotExist()
@@ -377,6 +386,7 @@ class HomeShellsTest {
     fun clientHubRowsNavigate() {
         setClient(showDebug = false, paymentMethods = true, hubStandIns = true)
         listOf(
+            "Saved Experts" to "stand-in favorites",
             "Security & Password" to "stand-in security",
             "FAQ & Help" to "stand-in help",
             "Payment" to "fake payment methods",
@@ -392,6 +402,36 @@ class HomeShellsTest {
         composeRule.onNodeWithContentDescription("Edit profile", substring = true).performScrollTo().performClick()
         composeRule.onNodeWithText("stand-in client settings").assertExists()
         composeRule.onNode(tab("Profile")).assertDoesNotExist()
+    }
+
+    @Test
+    fun savedExpertsExploreButtonSelectsTheExploreRoot() {
+        setClient(showDebug = false, hubStandIns = true)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Saved Experts").performScrollTo().performClick()
+        composeRule.onNodeWithText("stand-in favorites").assertExists()
+        composeRule.onNode(tab("Explore")).assertDoesNotExist()
+
+        composeRule.onNodeWithText("stand-in explore experts").performClick()
+
+        composeRule.onNode(tab("Explore")).assertIsSelected()
+        composeRule.onNodeWithText("Nothing here yet.").assertExists()
+        composeRule.onNodeWithText("stand-in favorites").assertDoesNotExist()
+    }
+
+    @Test
+    fun savedExpertsHistoryButtonSelectsBookings() {
+        setClient(showDebug = false, hubStandIns = true)
+        tapTab("Profile")
+        composeRule.onNodeWithText("Saved Experts").performScrollTo().performClick()
+
+        composeRule.onNodeWithText("stand-in view history").performClick()
+
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("stand-in favorites").assertDoesNotExist()
+        // RESEARCH A3: the Profile stack is not reset, so Saved Experts is still open there.
+        tapTab("Profile")
+        composeRule.onNodeWithText("stand-in favorites").assertExists()
     }
 
     @Test
@@ -541,7 +581,14 @@ class HomeShellsTest {
     }
 
     /** Stand-ins for the client hub destinations, registered with the same hidden-bar metadata as the real ones. */
-    private fun EntryProviderScope<NavKey>.clientHubStandIns() {
+    private fun EntryProviderScope<NavKey>.clientHubStandIns(navigator: Navigator) {
+        clientFavoritesEntry(navigator) { actions ->
+            Column {
+                Text("stand-in favorites")
+                Button(onClick = actions.onExplore) { Text("stand-in explore experts") }
+                Button(onClick = actions.onViewHistory) { Text("stand-in view history") }
+            }
+        }
         entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in client settings") }
         entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
         entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }

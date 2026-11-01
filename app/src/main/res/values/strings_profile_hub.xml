@@ -4,10 +4,12 @@
     <string name="profile_hub_title_client">Profile</string>
     <string name="profile_hub_title_expert">Expert Settings</string>
 
+    <string name="profile_hub_section_discovery">Discovery</string>
     <string name="profile_hub_section_account">Account</string>
     <string name="profile_hub_section_support">Support</string>
     <string name="profile_hub_section_professional">Professional</string>
 
+    <string name="profile_hub_row_saved_experts">Saved Experts</string>
     <string name="profile_hub_row_security">Security &amp; Password</string>
     <string name="profile_hub_row_payment">Payment</string>
     <string name="profile_hub_row_help">FAQ &amp; Help</string>

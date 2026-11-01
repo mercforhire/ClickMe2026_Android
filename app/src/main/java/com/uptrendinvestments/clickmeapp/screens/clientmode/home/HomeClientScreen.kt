@@ -43,6 +43,9 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.Expert
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.ExploreScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.clientFavoritesEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
@@ -236,6 +239,15 @@ fun HomeClientScreen(
                             )
                         },
                     )
+                    clientFavoritesEntry(navigator) { actions ->
+                        FavoritesScreen(
+                            viewModel = hiltViewModel(),
+                            onBack = actions.onBack,
+                            onOpenExpert = actions.onOpenExpert,
+                            onExplore = actions.onExplore,
+                            onViewHistory = actions.onViewHistory,
+                        )
+                    }
                     clientPaymentMethodsEntry(navigator) { onBack ->
                         PaymentMethodsScreen(viewModel = hiltViewModel(), onBack = onBack)
                     }
@@ -399,6 +411,7 @@ internal fun clientProfileHubActions(
     ClientProfileHubActions(
         onEditProfile = { navigator.navigate(ClientProfileSettingsKey) },
         onSwitchToExpert = { onSwitchMode(AppMode.Expert) },
+        onOpenSavedExperts = { navigator.navigate(FavoritesKey) },
         onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
         onOpenPayment = { navigator.navigate(PaymentMethodsKey) },
         onOpenHelp = { navigator.navigate(HelpKey) },

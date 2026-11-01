@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.SnackbarHostState
@@ -43,6 +44,7 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 data class ClientProfileHubActions(
     val onEditProfile: () -> Unit,
     val onSwitchToExpert: () -> Unit,
+    val onOpenSavedExperts: () -> Unit,
     val onOpenSecurity: () -> Unit,
     val onOpenPayment: () -> Unit,
     val onOpenHelp: () -> Unit,
@@ -50,8 +52,8 @@ data class ClientProfileHubActions(
 )
 
 /**
- * Client Profile tab root (PROF-01, D-01..D-04): the user card, the mode-switch card, Account and Support rows, Log
- * out and the version footer. Only rows that work are shown. [debugContent] renders below the footer for the debug
+ * Client Profile tab root (PROF-01, D-01..D-04): the user card, the mode-switch card, the Discovery row (Saved
+ * Experts), Account and Support rows, Log out and the version footer. Only rows that work are shown. [debugContent] renders below the footer for the debug
  * affordances the shell still owns.
  */
 @Composable
@@ -101,6 +103,13 @@ fun ClientProfileHomeContent(
             subtitle = stringResource(R.string.profile_hub_switch_to_expert_subtitle),
             onClick = actions.onSwitchToExpert,
         )
+        ProfileHubSection(stringResource(R.string.profile_hub_section_discovery)) {
+            ProfileMenuRow(
+                title = stringResource(R.string.profile_hub_row_saved_experts),
+                icon = Icons.Outlined.FavoriteBorder,
+                onClick = actions.onOpenSavedExperts,
+            )
+        }
         ProfileHubSection(stringResource(R.string.profile_hub_section_account)) {
             ProfileMenuRow(
                 title = stringResource(R.string.profile_hub_row_security),
@@ -161,7 +170,7 @@ private fun ClientProfileHomeContentPreview() {
         ClientProfileHomeContent(
             card = ProfileHubCard("Ana Lee", "ana@example.com", null),
             versionLabel = "Version 0.1.0 (1)",
-            actions = ClientProfileHubActions({}, {}, {}, {}, {}, {}),
+            actions = ClientProfileHubActions({}, {}, {}, {}, {}, {}, {}),
         )
     }
 }
