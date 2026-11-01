@@ -39,7 +39,10 @@ class SearchNavigationTest {
     }
 
     @Test
-    fun stackOriginAppendsSearchLast() {
-        assertEquals(listOf(StackOrigin.Default, StackOrigin.Chats, StackOrigin.Search), StackOrigin.entries)
+    fun stackOriginAppendsProfileLast() {
+        assertEquals(
+            listOf(StackOrigin.Default, StackOrigin.Chats, StackOrigin.Search, StackOrigin.Profile),
+            StackOrigin.entries,
+        )
     }
 }
