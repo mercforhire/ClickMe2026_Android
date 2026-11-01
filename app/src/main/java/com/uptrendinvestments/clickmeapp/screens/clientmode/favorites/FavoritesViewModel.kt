@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +38,12 @@ class FavoritesViewModel
 
         private var loadJob: Job? = null
         private var loadIsCurrent = false
+
+        /** Ids whose DELETE is in flight; a reload never brings these rows back (RESEARCH Pitfall 4). */
+        private val removing = mutableSetOf<String>()
+
+        /** Ids whose DELETE succeeded after the current load started; a load that began earlier may still list them. */
+        private val removedSinceLoadStart = mutableSetOf<String>()
 
         /**
          * D-09: the screen is shown, or shown again. A call while a current load runs does nothing, so first
@@ -71,6 +79,8 @@ class FavoritesViewModel
         private fun startLoad(mode: LoadMode) {
             loadJob?.cancel()
             loadIsCurrent = true
+            // A load that starts after a successful DELETE reflects the server, so the guard resets here.
+            removedSinceLoadStart.clear()
             // A new load clears a stale refreshing or refresh-failed flag (RESEARCH Pitfall 6): a cancelled pull
             // never reaches its own cleanup.
             _uiState.update {
@@ -85,12 +95,11 @@ class FavoritesViewModel
                 viewModelScope.launch {
                     try {
                         val payload = repository.list()
-                        _uiState.update {
-                            it.copy(
-                                load = FavoritesLoad.Loaded(payload.experts.map { e -> e.toUi() }),
-                                isRefreshing = false,
-                            )
-                        }
+                        val experts =
+                            payload.experts
+                                .map { e -> e.toUi() }
+                                .filterNot { e -> e.expertId in removing || e.expertId in removedSinceLoadStart }
+                        _uiState.update { it.copy(load = FavoritesLoad.Loaded(experts), isRefreshing = false) }
                     } catch (e: ApiException) {
                         _uiState.update {
                             when (mode) {
@@ -103,5 +112,51 @@ class FavoritesViewModel
                         }
                     }
                 }
+        }
+
+        /**
+         * D-10: confirmed removal. The row drops at once and DELETE is sent; on failure the row returns to its
+         * original index and [FavoritesUiState.removeFailed] carries the message (iOS `removeFavorite`). Only a
+         * Loaded list with the id present is touched.
+         */
+        fun remove(expertId: String) {
+            val rows = (_uiState.value.load as? FavoritesLoad.Loaded)?.experts ?: return
+            val index = rows.indexOfFirst { it.expertId == expertId }
+            if (index < 0) return
+            val row = rows[index]
+            removing += expertId
+            _uiState.update { it.copy(load = FavoritesLoad.Loaded(rows.filterNot { r -> r.expertId == expertId })) }
+            viewModelScope.launch {
+                try {
+                    repository.remove(expertId)
+                    removedSinceLoadStart += expertId
+                } catch (e: ApiException) {
+                    val failure = e.toFavoriteFailure()
+                    _uiState.update { state ->
+                        val current = (state.load as? FavoritesLoad.Loaded)?.experts
+                        if (current == null || current.any { it.expertId == expertId }) {
+                            state.copy(removeFailed = failure)
+                        } else {
+                            val restored = current.toMutableList().apply { add(index.coerceAtMost(size), row) }
+                            state.copy(load = FavoritesLoad.Loaded(restored), removeFailed = failure)
+                        }
+                    }
+                } finally {
+                    removing -= expertId
+                }
+            }
+        }
+
+        /** The remove-failed snackbar was shown; clears the one-shot message. */
+        fun consumeRemoveFailure() {
+            _uiState.update { it.copy(removeFailed = null) }
+        }
+
+        /**
+         * D-06: "View My History". Posts the Past launch; the screen calls this and then the shell switches to the
+         * Bookings tab (`Navigator.showMyBookings()`). My Bookings consumes the launch at init or while alive.
+         */
+        fun viewHistory() {
+            launchRequest.post(BookingsLaunch(BookingsTab.Past))
         }
     }
