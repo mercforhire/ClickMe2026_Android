@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Full Reviews screen (Phase 16.3, D-16). Copy follows iOS ExpertReviewsView unless marked. -->
+    <string name="expert_reviews_title">%1$s\'s Reviews</string>
+    <string name="expert_reviews_title_fallback">Reviews</string>
+    <string name="expert_reviews_overall_label">Overall Rating</string>
+    <!-- Grammar fix over iOS: "1 Total Review" (UI-SPEC). -->
+    <plurals name="expert_reviews_total">
+        <item quantity="one">%d Total Review</item>
+        <item quantity="other">%d Total Reviews</item>
+    </plurals>
+    <string name="expert_reviews_topic">Topic: %1$s</string>
+    <string name="expert_reviews_empty_body">Client reviews will appear here after their sessions.</string>
+    <string name="expert_reviews_load_error_title">Couldn\'t load reviews</string>
+    <string name="expert_reviews_overall_a11y">Overall rating %1$s out of 5, %2$s</string>
+    <string name="expert_reviews_card_rated_a11y">Rated %1$d out of 5</string>
+</resources>
