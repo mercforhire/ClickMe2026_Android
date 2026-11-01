@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: "16.3"
-current_phase_name: "iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)"
+current_phase_name: "iOS parity: Saved Experts, favorite heart and full Reviews list"
 status: ready_to_discuss
 stopped_at: Phase 16.3 UI-SPEC approved
-last_updated: "2026-11-01T04:23:57.969Z"
+last_updated: "2026-11-01T05:10:57.137Z"
 last_activity: 2026-10-31
 last_activity_desc: Phase 16.2 complete (UAT + re-verification passed), next is Phase 16.3
-state_head: 7910fc471abebb8694fd35c4bebb076ff18c3fe2
+state_head: 7375ff089fe2a28a6f302b76a553b069e9b2dbd0
 progress:
   total_phases: 22
   completed_phases: 11
-  total_plans: 267
+  total_plans: 274
   completed_plans: 258
 milestone_name: milestone
 ---
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-31)
 
 ## Current Position
 
-Phase: 16.3 (iOS parity: Saved Experts, favorite heart and full Reviews list) — READY TO DISCUSS
+Phase: 16.3 (iOS parity: Saved Experts, favorite heart and full Reviews list) — READY TO EXECUTE
 Plan: Not started
 Status: Ready to discuss (16.1 UAT still open: status testing, verification human_needed)
 Last activity: 2026-10-31 — Phase 16.2 complete (UAT 5/8 passed, test 5 deferred to Phase 16 matrix; verification 13/13 passed)
