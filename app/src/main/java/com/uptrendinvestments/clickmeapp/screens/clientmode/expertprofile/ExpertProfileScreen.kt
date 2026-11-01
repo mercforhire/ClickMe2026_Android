@@ -140,6 +140,15 @@ fun ExpertProfileScreen(
             safety.consumeSnackbar()
         }
     }
+    // D-03: a failed heart toggle surfaces as a snackbar (iOS shows an alert); never logged.
+    val favoriteMessage = state.favoriteError?.asString()
+    LaunchedEffect(state.favoriteError) {
+        if (favoriteMessage != null) {
+            // Launched on the composition scope so consuming the flag does not cancel the Snackbar.
+            scope.launch { snackbarHostState.showSnackbar(favoriteMessage) }
+            viewModel.consumeFavoriteError()
+        }
+    }
     ChatEntryErrorDialog(error = entryState.error, onDismiss = chatEntry::dismissError)
     if (safetyState.sheetOpen) {
         ReportUserSheet(

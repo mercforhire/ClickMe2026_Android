@@ -733,4 +733,102 @@ class ExpertProfileScreenTest {
         assertEquals(listOf("e1"), api.addFavoriteRequests)
         rule.onNodeWithContentDescription("Remove from saved").assertIsOn()
     }
+
+    private class ProfileFixture(
+        val api: FakeClickMeApi,
+        val profile: ExpertProfileViewModel,
+    )
+
+    /** Builds every ViewModel outside setContent (lint ViewModelConstructorInComposable). */
+    private fun setHeartScreen(
+        isFavorite: Boolean = false,
+        detailsGated: Boolean = false,
+        isSelfView: Boolean = false,
+        currentUserId: String? = "me",
+        configure: (FakeClickMeApi) -> Unit = {},
+    ): ProfileFixture {
+        val api = FakeClickMeApi()
+        api.expertDetailsHandler =
+            if (detailsGated) {
+                { CompletableDeferred<PublicProfileDetailsData>().await() }
+            } else {
+                { PublicProfileDetailsData(isFavorite = isFavorite) }
+            }
+        api.expertReviewsHandler = { ExpertReviewsPayload() }
+        configure(api)
+        val profile =
+            ExpertProfileViewModel(
+                ExpertProfileKey(expertId = "e1", name = "Ada", title = "", imageUrl = null),
+                ExpertProfileRepository(api),
+                FavoritesRepository(api),
+            )
+        val entry = testChatEntryViewModel(api, currentUserId = currentUserId)
+        val safety = safetyViewModel(api)
+        rule.setContent {
+            ClickMeTheme {
+                ExpertProfileScreen(
+                    viewModel = profile,
+                    onBack = {},
+                    onBook = {},
+                    isSelfView = isSelfView,
+                    chatEntry = entry,
+                    safety = safety,
+                )
+            }
+        }
+        rule.waitForIdle()
+        return ProfileFixture(api, profile)
+    }
+
+    @Test
+    fun heartFailureShowsSnackbarAndRollsBack() {
+        val fixture =
+            setHeartScreen { fake ->
+                fake.addFavoriteHandler =
+                    { _ ->
+                        throw fake.httpError(
+                            403,
+                            """{"status":"error","code":"FORBIDDEN","message":"Client role required"}""",
+                        )
+                    }
+            }
+
+        rule.onNodeWithContentDescription("Save expert").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Client role required").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Save expert").assertIsOff()
+        assertNull(fixture.profile.uiState.value.favoriteError)
+    }
+
+    @Test
+    fun heartHiddenForSelfView() {
+        setHeartScreen(isSelfView = true)
+
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Remove from saved").assertCountEquals(0)
+    }
+
+    @Test
+    fun heartHiddenForOwnProfile() {
+        setHeartScreen(currentUserId = "E1")
+
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Remove from saved").assertCountEquals(0)
+    }
+
+    @Test
+    fun heartHiddenBeforeDetailsLoad() {
+        setHeartScreen(detailsGated = true)
+
+        rule.onAllNodesWithContentDescription("Save expert").assertCountEquals(0)
+        rule.onAllNodesWithContentDescription("Remove from saved").assertCountEquals(0)
+    }
+
+    @Test
+    fun heartShowsForAnotherExpertOnceDetailsLoad() {
+        setHeartScreen(isFavorite = true)
+
+        rule.onNodeWithContentDescription("Remove from saved").assertIsOn()
+    }
 }
