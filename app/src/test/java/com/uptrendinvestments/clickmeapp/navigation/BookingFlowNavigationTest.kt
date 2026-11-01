@@ -3,9 +3,12 @@ package com.uptrendinvestments.clickmeapp.navigation
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.favorites.FavoritesKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.backToHomeFromRequestSent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showExplore
@@ -16,6 +19,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.SearchRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.viewBookingsFromRequestSent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.RequestSentKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
@@ -185,5 +189,124 @@ class BookingFlowNavigationTest {
         navigator.showExplore()
         assertEquals(listOf<NavKey>(ExploreRoot), navigator.stack(ExploreRoot))
         assertEquals(ExploreRoot, navigator.state.topLevelRoute)
+    }
+
+    // CR-01: a booking started from Saved Experts ends on Request Sent in the Profile stack. Neither shared reset set
+    // holds the Profile tab (Saved Experts' own buttons keep the list open, RESEARCH A3, runbook row D1.FV4), so the
+    // two Request Sent exits reset it themselves, and only when this booking ran there.
+    private val savedProfile = profile.copy(origin = StackOrigin.Profile)
+
+    private fun navigatorParkedOnSavedExperts(): Navigator =
+        newNavigator().also {
+            it.navigate(ClientProfileRoot)
+            it.navigate(FavoritesKey)
+            it.navigate(savedProfile)
+        }
+
+    private fun navigatorAtRequestSentFromSavedExperts(): Navigator =
+        navigatorParkedOnSavedExperts().also {
+            it.navigate(booking)
+            it.replaceTop(RequestSentKey("b1"))
+        }
+
+    @Test
+    fun viewBookingsFromRequestSentOnTheProfileStackPopsItToTheHub() {
+        val navigator = navigatorAtRequestSentFromSavedExperts()
+        navigator.viewBookingsFromRequestSent(RequestSentKey("b1"))
+        assertEquals(listOf<NavKey>(ClientProfileRoot), navigator.stack(ClientProfileRoot))
+        assertEquals(ClientBookingsRoot, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
+    }
+
+    @Test
+    fun backToHomeFromRequestSentOnTheProfileStackPopsItToTheHub() {
+        val navigator = navigatorAtRequestSentFromSavedExperts()
+        navigator.backToHomeFromRequestSent(RequestSentKey("b1"))
+        assertEquals(listOf<NavKey>(ClientProfileRoot), navigator.stack(ClientProfileRoot))
+        assertEquals(ExploreRoot, navigator.state.topLevelRoute)
+        assertEquals(NavTransition.TabSwitch, navigator.state.lastTransition)
+    }
+
+    @Test
+    fun sharedSwitchesLeaveSavedExpertsOnTheProfileStack() {
+        // RESEARCH A3 / D1.FV4: Saved Experts' Explore Experts and View My History keep the list open.
+        val navigator = newNavigator()
+        navigator.navigate(ClientProfileRoot)
+        navigator.navigate(FavoritesKey)
+        navigator.showExplore()
+        assertEquals(listOf<NavKey>(ClientProfileRoot, FavoritesKey), navigator.stack(ClientProfileRoot))
+        navigator.navigate(ClientProfileRoot)
+        navigator.showMyBookings()
+        assertEquals(listOf<NavKey>(ClientProfileRoot, FavoritesKey), navigator.stack(ClientProfileRoot))
+    }
+
+    private val parkedProfileStack = listOf<NavKey>(ClientProfileRoot, FavoritesKey, savedProfile)
+
+    /** Every other stack that can host Request Sent, built on a navigator whose Profile stack is parked. */
+    private val flowsOnAnotherStack: List<Navigator.() -> Unit> =
+        listOf(
+            {
+                navigate(ExploreRoot)
+                navigate(profile)
+                navigate(booking)
+                replaceTop(RequestSentKey("b1"))
+            },
+            {
+                navigate(SearchRoot)
+                navigate(profile.copy(origin = StackOrigin.Search))
+                navigate(booking)
+                replaceTop(RequestSentKey("b1"))
+            },
+            {
+                navigate(ClientChatsRoot)
+                navigate(ChatThreadKey("t1"))
+                navigate(profile.copy(origin = StackOrigin.Chats))
+                navigate(booking)
+                replaceTop(RequestSentKey("b1"))
+            },
+            {
+                navigate(ClientBookingsRoot)
+                navigate(BookingSummaryKey("b0"))
+                navigate(booking)
+                replaceTop(RequestSentKey("b1"))
+            },
+        )
+
+    private fun parkedNavigatorWith(flow: Navigator.() -> Unit): Navigator =
+        navigatorParkedOnSavedExperts().also { it.flow() }
+
+    private fun assertSameNavigationState(
+        expected: Navigator,
+        actual: Navigator,
+    ) {
+        for (tab in expected.state.backStacks.keys) {
+            assertEquals("stack of $tab", expected.stack(tab), actual.stack(tab))
+        }
+        assertEquals(expected.state.topLevelRoute, actual.state.topLevelRoute)
+        assertEquals(expected.state.lastTransition, actual.state.lastTransition)
+    }
+
+    @Test
+    fun viewBookingsFromRequestSentMatchesShowMyBookingsForAFlowOnAnotherStack() {
+        for (flow in flowsOnAnotherStack) {
+            val withHelper = parkedNavigatorWith(flow)
+            val withShared = parkedNavigatorWith(flow)
+            withHelper.viewBookingsFromRequestSent(RequestSentKey("b1"))
+            withShared.showMyBookings()
+            assertSameNavigationState(withShared, withHelper)
+            assertEquals(parkedProfileStack, withHelper.stack(ClientProfileRoot))
+        }
+    }
+
+    @Test
+    fun backToHomeFromRequestSentMatchesShowExploreForAFlowOnAnotherStack() {
+        for (flow in flowsOnAnotherStack) {
+            val withHelper = parkedNavigatorWith(flow)
+            val withShared = parkedNavigatorWith(flow)
+            withHelper.backToHomeFromRequestSent(RequestSentKey("b1"))
+            withShared.showExplore()
+            assertSameNavigationState(withShared, withHelper)
+            assertEquals(parkedProfileStack, withHelper.stack(ClientProfileRoot))
+        }
     }
 }
