@@ -881,7 +881,7 @@ Plans:
 **Goal:** Clients and experts can start a reschedule as on iOS (slot picker, PATCH `/reschedule`), including the client PAYMENT_METHOD_REQUIRED retry with a saved card and the payment-conversion disclosure (backend RESCHEDULE-PAYMENT-CONVERSION.md); the expert side honors `can_reschedule`. New rows go into the Phase 16 two-way matrix.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 12/12 plans executed
+**Plans:** 12/16 plans executed
 
 Plans:
 **Wave 1**
@@ -913,6 +913,21 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 16.2-12-PLAN.md — Phase gate (full suite, ktlint, lint, design rules) and reschedule-start rows in the Phase 16 two-way matrix
+
+**Gap closure** *(from 16.2-UAT.md G-16.2-1, major: client Reschedule hidden by the D-04 gate, user decided 2026-11-01 to match iOS; G-16.2-3, cosmetic: Reschedule label wraps mid-word in the half-width pair at 384 dp)*
+
+**Wave 1**
+
+- [ ] 16.2-13-PLAN.md — G-16.2-1: status-only `canClientStartReschedule` (hidden only for pending_reschedule), both client call sites, Reschedule + Message on pending-approval cards, old-rule tests rewritten (RS-C1)
+- [ ] 16.2-14-PLAN.md — G-16.2-1: call guard on the disclosure Continue path (IN-01, now reachable), D-04 amendment in CONTEXT with the corrected server premise, UI-SPEC entry points, matrix row D1.RS6, review disposition (RS-C1, RS-C5)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16.2-15-PLAN.md — G-16.2-3: 8 dp pair padding (`ActionButtonPairDefaults.ContentPadding`) on Reschedule, paired Message and paired Cancel Booking, real-font NATIVE regression tests at 384 dp (cards) and 411 dp (details) (RS-C1, RS-E1)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16.2-16-PLAN.md — G-16.2-3: ActionButtonPair stacks when a label cannot fit its half (intrinsic-width Layout), 360/384 dp label tests on all four entry points, UI-SPEC wording, full gate (RS-C1, RS-E1)
 
 ### Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list (PARITY-AUDIT #2, #2b, #3) (INSERTED)
 
