@@ -5,7 +5,10 @@ import kotlinx.serialization.Serializable
 /**
  * Which stack pushed a shared route key: [Default] for the stack the route was first built for, [Chats] when a chat
  * thread pushes it onto the Chats stack, [Search] when a Search result pushes it onto the Search stack (Phase 16.1,
- * RESEARCH Pitfall 2: the same expert open on Explore and on Search never shares a content key).
+ * RESEARCH Pitfall 2: the same expert open on Explore and on Search never shares a content key), [Profile] when the
+ * client Profile tab pushes it from Saved Experts (Phase 16.3, RESEARCH Pitfall 1). `ExpertReviewsKey` copies the
+ * origin of the profile it was opened from, so the reviews screen for one expert on two stacks never shares a content
+ * key either.
  *
  * It only keeps keys distinct across stacks, because `NavigationState.toDecoratedEntries` flattens the start stack with
  * the selected one and two equal keys would produce duplicate content keys (RESEARCH Pitfall 7; the same trick as
@@ -19,4 +22,4 @@ import kotlinx.serialization.Serializable
  * flow. Thread an origin through those keys if that path ever becomes reachable.
  */
 @Serializable
-enum class StackOrigin { Default, Chats, Search }
+enum class StackOrigin { Default, Chats, Search, Profile }
