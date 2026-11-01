@@ -45,6 +45,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +58,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
@@ -162,6 +164,22 @@ class ExpertBookingsScreenTest {
         assertTrue("Message sits below Join", message.top >= join.bottom)
         assertTrue("Message is left of Reschedule", message.right <= reschedule.left)
         assertEquals(message.top, reschedule.top)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w384dp-h1200dp")
+    fun rescheduleAndMessageFitOneLineAt384dp() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)))
+        show()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", EXPERT_BOOKINGS_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Message", EXPERT_BOOKINGS_MESSAGE_TAG))
+        val message = rule.onNodeWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).getBoundsInRoot()
+        val reschedule = rule.onNodeWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).getBoundsInRoot()
+        val topGap = kotlin.math.abs(message.top.value - reschedule.top.value)
+        assertTrue("Message and Reschedule share a row", topGap <= 1f)
+        assertTrue("Message is left of Reschedule", message.right <= reschedule.left)
     }
 
     @Test

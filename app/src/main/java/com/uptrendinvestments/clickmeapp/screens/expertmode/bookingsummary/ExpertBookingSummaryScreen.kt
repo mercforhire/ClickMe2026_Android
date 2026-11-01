@@ -57,6 +57,7 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
+import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPairDefaults
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
 import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
@@ -405,6 +406,7 @@ private fun LoadedBody(
                             DestructiveOutlinedButton(
                                 onClick = onCancel,
                                 enabled = !rescheduleState.isSubmitting,
+                                contentPadding = ActionButtonPairDefaults.ContentPadding,
                                 modifier =
                                     buttonModifier
                                         .heightIn(min = CancelMinHeight)

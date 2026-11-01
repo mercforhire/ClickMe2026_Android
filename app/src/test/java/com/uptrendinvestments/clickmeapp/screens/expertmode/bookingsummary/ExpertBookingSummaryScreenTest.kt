@@ -48,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
 import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -60,6 +61,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -643,6 +645,20 @@ class ExpertBookingSummaryScreenTest {
 
         reschedule.performClick()
         assertEquals(listOf("b1"), reschedules)
+    }
+
+    @Config(qualifiers = "w411dp-h891dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test
+    fun rescheduleAndCancelFitOneLineAt411dp() {
+        showScreen(expertBookingDetail(start = start, canReschedule = true, canCancel = true))
+        rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).performScrollTo()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", EXPERT_SUMMARY_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Cancel Booking", EXPERT_SUMMARY_CANCEL_TAG))
+        val reschedule = rule.onNodeWithTag(EXPERT_SUMMARY_RESCHEDULE_TAG).fetchSemanticsNode()
+        val cancel = rule.onNodeWithTag(EXPERT_SUMMARY_CANCEL_TAG).fetchSemanticsNode()
+        assertEquals(reschedule.positionInRoot.y, cancel.positionInRoot.y, 1f)
     }
 
     @Test

@@ -4,6 +4,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +39,16 @@ private val NarrowWidth = 320.dp
 private const val LARGE_FONT_SCALE = 1.5f
 
 /**
+ * Shared sizing for any button placed in an [ActionButtonPair]. iOS gives these buttons no horizontal padding
+ * (`UpcomingBookingsSessionCard.swift`, `UpcomingBookingCard.swift` secondaryButton), so the default 24 dp side padding
+ * pushes "Reschedule" onto two lines in a half-width slot. 8 dp keeps the glyph inside the pill's rounded end; the
+ * vertical padding stays 0, matching PressScaleButton's default (G-16.2-3).
+ */
+object ActionButtonPairDefaults {
+    val ContentPadding: PaddingValues = PaddingValues(horizontal = Spacing.sm)
+}
+
+/**
  * The "Reschedule" control for every entry point (Phase 16.2, UI-SPEC "Reschedule action button"): a neutral outlined
  * 56 dp pill with the update glyph and the label "Reschedule". It is never accent-coloured, so it reads as a
  * secondary action beside Cancel or Message. [contentDescription], when given, replaces the spoken name (for example
@@ -53,6 +64,7 @@ fun RescheduleActionButton(
     PressScaleButton(
         onClick = onClick,
         enabled = enabled,
+        contentPadding = ActionButtonPairDefaults.ContentPadding,
         modifier =
             modifier
                 .heightIn(min = ButtonMinHeight)

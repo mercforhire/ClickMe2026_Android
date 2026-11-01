@@ -69,6 +69,7 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.initiateData
+import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
@@ -81,6 +82,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.time.Instant
@@ -456,6 +458,20 @@ class UpcomingBookingScreenTest {
 
         rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performClick()
         assertEquals(listOf("reschedule"), calls.events)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w411dp-h900dp")
+    fun rescheduleAndCancelFitOneLineAt411dp() {
+        setScreen(loaded(detailsAt(Duration.ofDays(3))), joinNow = clientNow)
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo()
+
+        assertEquals(listOf(1), rule.lineCountsOf("Reschedule", UPCOMING_BOOKING_RESCHEDULE_TAG))
+        assertEquals(listOf(1), rule.lineCountsOf("Cancel Booking", UPCOMING_BOOKING_CANCEL_TAG))
+        val reschedule = rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).getUnclippedBoundsInRoot()
+        val cancel = rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).getUnclippedBoundsInRoot()
+        assertEquals(reschedule.top, cancel.top)
     }
 
     @Test
