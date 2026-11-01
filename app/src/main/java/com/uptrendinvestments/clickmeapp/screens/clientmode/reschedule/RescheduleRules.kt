@@ -8,7 +8,6 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.PAID_BO
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.capNotes
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.isSelectable
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDisclosure
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_APPROVAL
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.rescheduleDisclosure
 import java.time.Duration
@@ -18,31 +17,22 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 
-/** D-04: a client cannot start a reschedule for a session that starts in under this long. */
-val CLIENT_RESCHEDULE_MIN_LEAD: Duration = Duration.ofHours(24)
-
 /** iOS parity: a slot within this many milliseconds of the booking's start is the booking's own slot. */
 private const val CURRENT_SLOT_TOLERANCE_MS = 1000L
 
 /**
- * D-04, RS-C1: whether the client's "Reschedule" entry is shown for a booking.
+ * D-04 (as amended 2026-11-01, UAT G-16.2-1), RS-C1: whether the client's "Reschedule" entry is shown for a booking.
  *
- * Hidden when the booking already has a pending proposal ([STATUS_PENDING_RESCHEDULE]), is awaiting the expert's
- * approval ([STATUS_PENDING_APPROVAL]), or the session starts in under [CLIENT_RESCHEDULE_MIN_LEAD] from [now] (a
- * start exactly 24 h away still shows it).
+ * Hidden only while a reschedule is already pending ([STATUS_PENDING_RESCHEDULE]), because the Accept/Decline card
+ * shows instead. It is shown on every other upcoming status, as iOS shows it unconditionally
+ * (`UpcomingBookingCard.swift` secondaryActions, `UpcomingBookingSecondaryActions.swift`).
  *
- * The 24 h item is a UX rule the user chose (D-04), not a server mirror: the backend's 24 h rule applies to the
- * PROPOSED start of a conversion move, and it has no time gate on the current start of a confirmed booking. The
- * server stays the authority; dropping the time condition later means deleting one comparison here.
+ * The server stays the authority. Its `canReschedule` (`src/utils/reschedule.js`) allows confirmed, pending_approval
+ * and pending_reschedule with no time gate, and in_progress and completed until the session's end_time. The only 24 h
+ * rule applies to the PROPOSED start of a payment-conversion move (RESCHEDULE_OUTSIDE_AUTH_WINDOW). Refusals surface
+ * through the D-13 propose error mapping (`ProposeErrors.kt`).
  */
-fun canClientStartReschedule(
-    status: String,
-    start: Instant,
-    now: Instant,
-): Boolean {
-    if (status == STATUS_PENDING_RESCHEDULE || status == STATUS_PENDING_APPROVAL) return false
-    return Duration.between(now, start) >= CLIENT_RESCHEDULE_MIN_LEAD
-}
+fun canClientStartReschedule(status: String): Boolean = status != STATUS_PENDING_RESCHEDULE
 
 /**
  * Whether the booking is paid, which decides the 6-day pick cap (RESEARCH Pattern 3, Assumption A1).

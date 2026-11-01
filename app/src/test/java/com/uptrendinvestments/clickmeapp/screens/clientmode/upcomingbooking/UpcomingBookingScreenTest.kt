@@ -465,17 +465,14 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
-    fun under24hHidesAndCancelFillsTheRow() {
+    fun under24hShowsRescheduleAndCancel() {
         setScreen(loaded(detailsAt(Duration.ofHours(24).minusMinutes(1))), joinNow = clientNow)
-        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
-        val cancel = rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().getUnclippedBoundsInRoot()
-        val message = rule.onNodeWithTag(MESSAGE_EXPERT_TAG).getUnclippedBoundsInRoot()
-        assertEquals(message.left, cancel.left)
-        assertEquals(message.right, cancel.right)
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
     }
 
     @Test
-    fun hidesLiveWhenTheJoinClockPassesThe24hMark() {
+    fun keepsRescheduleWhenTheJoinClockPassesThe24hMark() {
         var now by mutableStateOf(clientNow)
         val d = detailsAt(Duration.ofHours(24).plus(sixHours))
         rule.setContent {
@@ -502,7 +499,7 @@ class UpcomingBookingScreenTest {
         rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
         now = clientNow.plus(sixHours).plusSeconds(1)
         rule.waitForIdle()
-        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
     }
 
     @Test
@@ -513,10 +510,23 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
-    fun pendingApprovalHides() {
-        setScreen(loaded(detailsAt(Duration.ofDays(3), status = "pending_approval")), joinNow = clientNow)
-        rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+    fun pendingApprovalShowsRescheduleAndCancel() {
+        val calls =
+            setScreen(loaded(detailsAt(Duration.ofDays(3), status = "pending_approval")), joinNow = clientNow)
         rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG)
+            .performScrollTo()
+            .assertExists()
+            .performClick()
+        assertEquals(listOf("reschedule"), calls.events)
+    }
+
+    @Test
+    fun inProgressShowsRescheduleAlone() {
+        setScreen(loaded(details(status = "in_progress")))
+        rule.onNodeWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).performScrollTo().assertExists()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
     }
 
     @Test
@@ -653,11 +663,10 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
-    fun noRescheduleOrPrivateNoteActionsExist() {
+    fun noPrivateNoteActionExists() {
         setScreen(loaded())
-        listOf("Reschedule", "Private Note").forEach {
-            rule.onAllNodesWithText(it).assertCountEquals(0)
-        }
+        rule.onAllNodesWithText("Private Note").assertCountEquals(0)
+        rule.onNodeWithText("Reschedule").assertExists()
     }
 
     // ---- call resume note, refresh standard, unavailable and width cap (Phase 15) ----

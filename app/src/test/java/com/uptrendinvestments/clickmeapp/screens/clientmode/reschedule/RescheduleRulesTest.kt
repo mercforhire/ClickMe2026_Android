@@ -20,36 +20,31 @@ class RescheduleRulesTest {
         available: Boolean = true,
     ) = BookingTimeSlot(start, start.plus(Duration.ofMinutes(30)), available)
 
-    // canClientStartReschedule (D-04)
+    // canClientStartReschedule (D-04 as amended 2026-11-01: only a pending reschedule hides the button)
 
     @Test
-    fun canStart_confirmedExactly24HoursAway_isTrue() {
-        assertTrue(canClientStartReschedule("confirmed", now.plus(Duration.ofHours(24)), now))
+    fun canStart_confirmedIsTrue() {
+        assertTrue(canClientStartReschedule("confirmed"))
     }
 
     @Test
-    fun canStart_confirmedOneSecondUnder24Hours_isFalse() {
-        assertFalse(canClientStartReschedule("confirmed", now.plus(Duration.ofHours(24)).minusSeconds(1), now))
+    fun canStart_pendingApprovalIsTrue() {
+        assertTrue(canClientStartReschedule("pending_approval"))
     }
 
     @Test
-    fun canStart_confirmedThreeDaysAway_isTrue() {
-        assertTrue(canClientStartReschedule("confirmed", now.plus(Duration.ofDays(3)), now))
+    fun canStart_inProgressIsTrue() {
+        assertTrue(canClientStartReschedule("in_progress"))
+    }
+
+    @Test
+    fun canStart_completedIsTrue() {
+        assertTrue(canClientStartReschedule("completed"))
     }
 
     @Test
     fun canStart_pendingRescheduleIsFalse() {
-        assertFalse(canClientStartReschedule("pending_reschedule", now.plus(Duration.ofDays(3)), now))
-    }
-
-    @Test
-    fun canStart_pendingApprovalIsFalse() {
-        assertFalse(canClientStartReschedule("pending_approval", now.plus(Duration.ofDays(3)), now))
-    }
-
-    @Test
-    fun canStart_startInThePast_isFalse() {
-        assertFalse(canClientStartReschedule("confirmed", now.minus(Duration.ofMinutes(10)), now))
+        assertFalse(canClientStartReschedule("pending_reschedule"))
     }
 
     // clientBookingIsPaid
