@@ -934,7 +934,7 @@ Plans:
 **Goal:** Clients can favorite an expert from Expert Profile (optimistic toggle with rollback), see Saved Experts from the client Profile hub, and open the full Reviews list from "See all" on Expert Profile, matching iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 5/7 plans executed
+**Plans:** 6/7 plans executed
 
 Plans:
 **Wave 1**
@@ -950,7 +950,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 16.3-06-PLAN.md — Saved Experts screen: Favorite Experts list of iOS card ports, empty state with glowing star, wired buttons and heart-icon Pro Tip, Phase 15 states, remove confirm dialog (FAV-LIST, FAV-EMPTY, D-05..D-11)
+- [x] 16.3-06-PLAN.md — Saved Experts screen: Favorite Experts list of iOS card ports, empty state with glowing star, wired buttons and heart-icon Pro Tip, Phase 15 states, remove confirm dialog (FAV-LIST, FAV-EMPTY, D-05..D-11)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
