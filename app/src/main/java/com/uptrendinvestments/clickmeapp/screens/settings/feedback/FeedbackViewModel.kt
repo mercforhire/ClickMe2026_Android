@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.managers.UserManager
+import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
 import com.uptrendinvestments.clickmeapp.model.responses.FeedbackTypeItem
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.login.fieldMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val HTTP_UNPROCESSABLE = 422
+private const val HTTP_TOO_MANY_REQUESTS = 429
 
 /** The feedback types load: [Loading] on entry and Retry; [Failed] (also an empty list) is the error state. */
 sealed interface FeedbackLoad {
@@ -145,8 +150,51 @@ class FeedbackViewModel
                     )
                     _uiState.update { it.copy(saveState = SaveState.Saved, showThanks = true) }
                 } catch (e: ApiException) {
-                    _uiState.update { it.copy(saveState = SaveState.Idle) }
+                    _uiState.update { applySendFailure(it.copy(saveState = SaveState.Idle), e) }
                 }
             }
         }
+
+        fun dismissDialog() {
+            _uiState.update { it.copy(dialog = null) }
+        }
+
+        /**
+         * Puts a failed send where the user can act on it, keeping the form. A 422 goes to its field (details, then
+         * email) and otherwise to the dialog, preferring the field message because the validate middleware's own
+         * message is the generic "Validation failed". A suspended account shows nothing: the global handler owns it
+         * (16.4 WR-02). The fallback copy is iOS's; `toDialogError()` is not used because its generic fallback
+         * differs from this screen's.
+         */
+        private fun applySendFailure(
+            state: FeedbackUiState,
+            e: ApiException,
+        ): FeedbackUiState =
+            when {
+                e is ApiException.Http && e.code == ErrorCode.AccountSuspended -> state
+                e is ApiException.Http && e.status == HTTP_UNPROCESSABLE -> applyValidationFailure(state, e)
+                e is ApiException.Http && e.status == HTTP_TOO_MANY_REQUESTS ->
+                    state.copy(dialog = FieldError.Res(R.string.feedback_too_many_attempts))
+                e is ApiException.Http ->
+                    state.copy(dialog = e.userMessage?.let { FieldError.Text(it) } ?: sendFailed())
+                e is ApiException.Network -> state.copy(dialog = FieldError.Res(R.string.login_error_network))
+                else -> state.copy(dialog = sendFailed())
+            }
+
+        private fun applyValidationFailure(
+            state: FeedbackUiState,
+            e: ApiException.Http,
+        ): FeedbackUiState {
+            val emailMessage = e.fieldMessage("email")
+            return when {
+                e.fieldMessage("details") != null -> state.copy(showDetailsError = true)
+                emailMessage != null -> state.copy(emailError = emailMessage)
+                else -> {
+                    val message = e.fieldErrors.firstOrNull()?.message ?: e.userMessage
+                    state.copy(dialog = message?.let { FieldError.Text(it) } ?: sendFailed())
+                }
+            }
+        }
+
+        private fun sendFailed() = FieldError.Res(R.string.feedback_send_failed)
     }

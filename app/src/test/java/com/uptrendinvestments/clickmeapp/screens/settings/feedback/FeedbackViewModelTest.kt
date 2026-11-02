@@ -7,6 +7,7 @@ import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
+import com.uptrendinvestments.clickmeapp.network.ApiErrorParser
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
@@ -340,5 +341,166 @@ class FeedbackViewModelTest {
 
             assertEquals(FieldError.Res(R.string.feedback_no_category), vm.uiState.value.dialog)
             assertEquals(0, h.api.submitFeedbackCalls)
+        }
+
+    /** Runs a valid submit whose request fails with [failure], and returns the state after it. */
+    private fun TestScope.failedSend(failure: Exception): FeedbackUiState {
+        val h = harness()
+        h.api.submitFeedbackHandler = { throw failure }
+        val vm = readyVm(h, "0123456789")
+        vm.onEmailChange("a@b.co")
+        vm.onSelectType("billing")
+        vm.submit()
+        runCurrent()
+        return vm.uiState.value
+    }
+
+    private fun http(
+        status: Int,
+        body: String,
+    ) = ApiErrorParser.httpError(status, body)
+
+    private fun validation(
+        field: String,
+        message: String,
+    ) = http(
+        422,
+        """{"status":"error","code":"VALIDATION_ERROR","message":"Validation failed",""" +
+            """"errors":[{"field":"$field","message":"$message"}]}""",
+    )
+
+    @Test
+    fun validation422OnDetailsShowsTheInlineError() =
+        runTest(main.testDispatcher) {
+            val state = failedSend(validation("details", "Too short"))
+
+            assertTrue(state.showDetailsError)
+            assertEquals(null, state.dialog)
+            assertEquals(SaveState.Idle, state.saveState)
+            assertEquals("0123456789", state.details)
+        }
+
+    @Test
+    fun validation422OnEmailShowsOnTheEmailField() =
+        runTest(main.testDispatcher) {
+            val state = failedSend(validation("email", "Invalid email"))
+
+            assertEquals("Invalid email", state.emailError)
+            assertEquals(null, state.dialog)
+            assertEquals("a@b.co", state.email)
+        }
+
+    @Test
+    fun validation422OnTheTypeShowsTheServerMessage() =
+        runTest(main.testDispatcher) {
+            val state = failedSend(validation("type_id", "Unknown type"))
+
+            assertEquals(FieldError.Text("Unknown type"), state.dialog)
+            assertFalse(state.showDetailsError)
+        }
+
+    @Test
+    fun validation422WithAnUnnamedFieldPrefersItsMessage() =
+        runTest(main.testDispatcher) {
+            val state = failedSend(validation("other", "Bad"))
+
+            assertEquals(FieldError.Text("Bad"), state.dialog)
+        }
+
+    @Test
+    fun status429ShowsTheFixedCopy() =
+        runTest(main.testDispatcher) {
+            val state =
+                failedSend(http(429, """{"status":"error","code":"TOO_MANY_REQUESTS","message":"Slow down"}"""))
+
+            assertEquals(FieldError.Res(R.string.feedback_too_many_attempts), state.dialog)
+        }
+
+    @Test
+    fun otherHttpShowsTheServerMessage() =
+        runTest(main.testDispatcher) {
+            val withMessage = failedSend(http(500, """{"status":"error","message":"Boom"}"""))
+            assertEquals(FieldError.Text("Boom"), withMessage.dialog)
+
+            val bare = failedSend(http(500, "{}"))
+            assertEquals(FieldError.Res(R.string.feedback_send_failed), bare.dialog)
+        }
+
+    @Test
+    fun networkFailureShowsTheConnectionCopy() =
+        runTest(main.testDispatcher) {
+            val state = failedSend(IOException("offline"))
+
+            assertEquals(FieldError.Res(R.string.login_error_network), state.dialog)
+        }
+
+    @Test
+    fun suspendedShowsNothingHere() =
+        runTest(main.testDispatcher) {
+            val state =
+                failedSend(
+                    http(
+                        403,
+                        """{"status":"error","code":"ACCOUNT_SUSPENDED","message":"Your account is suspended"}""",
+                    ),
+                )
+
+            assertEquals(null, state.dialog)
+            assertEquals(SaveState.Idle, state.saveState)
+        }
+
+    @Test
+    fun theFormIsKeptOnEveryFailure() =
+        runTest(main.testDispatcher) {
+            val failures =
+                listOf(
+                    validation("details", "Too short"),
+                    validation("email", "Invalid email"),
+                    validation("type_id", "Unknown type"),
+                    http(429, "{}"),
+                    http(500, "{}"),
+                    IOException("offline"),
+                )
+            failures.forEach { failure ->
+                val state = failedSend(failure)
+
+                assertEquals("0123456789", state.details)
+                assertEquals("a@b.co", state.email)
+                assertEquals("billing", state.selectedTypeId)
+                assertFalse(state.showThanks)
+            }
+        }
+
+    @Test
+    fun dismissDialogClearsIt() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.api.submitFeedbackHandler = { throw http(500, """{"status":"error","message":"Boom"}""") }
+            val vm = readyVm(h, "0123456789")
+            vm.submit()
+            runCurrent()
+            assertEquals(FieldError.Text("Boom"), vm.uiState.value.dialog)
+
+            vm.dismissDialog()
+
+            assertEquals(null, vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun aFailedSendCanBeRetried() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.api.submitFeedbackHandler = { throw IOException("offline") }
+            val vm = readyVm(h, "0123456789")
+            vm.submit()
+            runCurrent()
+
+            h.api.submitFeedbackHandler = { feedbackSubmission() }
+            vm.dismissDialog()
+            vm.submit()
+            runCurrent()
+
+            assertEquals(2, h.api.submitFeedbackCalls)
+            assertEquals(SaveState.Saved, vm.uiState.value.saveState)
         }
 }
