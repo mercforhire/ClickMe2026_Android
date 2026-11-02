@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -22,6 +23,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertClientProfileData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.CLIENT_PROFILE_HISTORY_ROW_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
@@ -319,6 +321,120 @@ class ExpertClientProfileScreenTest {
         showLoaded(history = (1..4).map { row(id = "b$it", topic = "Topic $it") })
         (1..4).forEach { assertTrue(shown("Topic $it")) }
     }
+
+    private fun showState(
+        state: ExpertClientProfileUiState,
+        onRetry: () -> Unit = {},
+        onRefresh: () -> Unit = {},
+        onRefreshFailureConsumed: () -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                ExpertClientProfileContent(
+                    state = state,
+                    onBack = { backCount++ },
+                    onRetry = onRetry,
+                    onRefresh = onRefresh,
+                    onRefreshFailureConsumed = onRefreshFailureConsumed,
+                    zone = utc,
+                    locale = Locale.US,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun loadingShowsTheSkeleton() {
+        showState(ExpertClientProfileUiState(load = ClientProfileLoad.Loading))
+        assertEquals(1, rule.onAllNodesWithTag(CLIENT_PROFILE_SKELETON_TAG).fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodesWithTag(CLIENT_PROFILE_LIST_TAG).fetchSemanticsNodes().size)
+        assertEquals(1, rule.onAllNodesWithContentDescription("Loading").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun failedShowsTheErrorWithRetry() {
+        var retries = 0
+        showState(
+            ExpertClientProfileUiState(load = ClientProfileLoad.Failed(FieldError.Text("Boom"))),
+            onRetry = { retries++ },
+        )
+        assertTrue(shown("Couldn't load profile"))
+        assertTrue(shown("Boom"))
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, retries)
+    }
+
+    @Test
+    fun noRelationshipShowsTheFriendlyStateWithNoRetry() {
+        showState(ExpertClientProfileUiState(load = ClientProfileLoad.NoRelationship))
+        assertTrue(shown("No bookings with this person yet"))
+        assertTrue(shown("You can see someone's profile once they have booked a session with you."))
+        assertFalse(shown("Retry"))
+        rule.onNodeWithText("Go back").performClick()
+        assertEquals(1, backCount)
+    }
+
+    @Test
+    fun unavailableShowsItsStateWithNoRetry() {
+        showState(ExpertClientProfileUiState(load = ClientProfileLoad.Unavailable))
+        assertTrue(shown("Profile unavailable"))
+        assertTrue(shown("This person may no longer be on ClickMe."))
+        assertFalse(shown("Retry"))
+        rule.onNodeWithText("Go back").performClick()
+        assertEquals(1, backCount)
+    }
+
+    @Test
+    fun theRealViewModel403ReachesTheFriendlyState() {
+        stub()
+        api.getExpertClientHandler = {
+            throw api.httpError(403, """{"status":"error","code":"NO_RELATIONSHIP","message":"No relationship"}""")
+        }
+        show()
+        assertTrue(shown("No bookings with this person yet"))
+        assertFalse(shown("Retry"))
+        assertEquals(0, api.expertBookingsCalls)
+    }
+
+    @Test
+    fun refreshFailureShowsTheSnackbarAndKeepsContent() {
+        var consumed = 0
+        var refreshes = 0
+        showState(
+            ExpertClientProfileUiState(
+                load = ClientProfileLoad.Loaded(expertClientProfile(fullName = "Sophia Carter"), emptyList()),
+                refreshFailed = true,
+            ),
+            onRefresh = { refreshes++ },
+            onRefreshFailureConsumed = { consumed++ },
+        )
+        rule.waitForIdle()
+        assertTrue(shown("Sophia Carter"))
+        assertTrue(shown("Couldn't refresh. Check your connection and try again."))
+        assertEquals(1, consumed)
+        rule.onNodeWithText("Retry").performClick()
+        rule.waitForIdle()
+        assertEquals(1, refreshes)
+    }
+
+    private fun assertNamedAndLargeEnough(load: ClientProfileLoad) {
+        showState(ExpertClientProfileUiState(load = load))
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
+    }
+
+    @Test
+    fun loadedIsNamedAndLargeEnough() =
+        assertNamedAndLargeEnough(ClientProfileLoad.Loaded(expertClientProfile(), listOf(row())))
+
+    @Test
+    fun failedIsNamedAndLargeEnough() = assertNamedAndLargeEnough(ClientProfileLoad.Failed(FieldError.Text("Boom")))
+
+    @Test
+    fun noRelationshipIsNamedAndLargeEnough() = assertNamedAndLargeEnough(ClientProfileLoad.NoRelationship)
+
+    @Test
+    fun unavailableIsNamedAndLargeEnough() = assertNamedAndLargeEnough(ClientProfileLoad.Unavailable)
 
     @Test
     @Config(qualifiers = "w320dp-h3000dp")
