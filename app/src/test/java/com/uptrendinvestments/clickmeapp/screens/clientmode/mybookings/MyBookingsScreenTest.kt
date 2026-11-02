@@ -26,8 +26,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_FOOTER_TAG
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.noteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_RESCHEDULE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MY_BOOKINGS_JOIN_TAG
@@ -114,7 +117,8 @@ class MyBookingsScreenTest {
     private fun PastCard(
         row: PastRow,
         onClick: () -> Unit = {},
-    ) = PastBookingCard(row, onClick, zone = zone, timeFormat = timeFormat(), locale = locale)
+        onPrivateNote: () -> Unit = {},
+    ) = PastBookingCard(row, onClick, onPrivateNote, zone = zone, timeFormat = timeFormat(), locale = locale)
 
     private fun rescheduleItem(initiatedBy: String) =
         bookingItem(status = STATUS_PENDING_RESCHEDULE, reschedule = rescheduleDto(initiatedBy = initiatedBy))
@@ -285,6 +289,7 @@ class MyBookingsScreenTest {
         val joined = mutableListOf<String>()
         val messaged = mutableListOf<String>()
         val rescheduled = mutableListOf<String>()
+        val noteKeys = mutableListOf<ClientBookingNoteKey>()
     }
 
     @Composable
@@ -312,6 +317,7 @@ class MyBookingsScreenTest {
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = { calls.reviewThanksShown++ },
         onReschedule = { calls.rescheduled += it },
+        onPrivateNote = { calls.noteKeys += it },
         onRescheduleSentShown = { calls.rescheduleSentShown++ },
         zone = zone,
         timeFormat = timeFormat(),
@@ -321,7 +327,8 @@ class MyBookingsScreenTest {
     private fun pastRow(
         id: String,
         status: String = "completed",
-    ) = PastRow(bookingItem(id = id, status = status), pastStatusDisplay(status)!!)
+        preview: String? = null,
+    ) = PastRow(bookingItem(id = id, status = status, privateNotePreview = preview), pastStatusDisplay(status)!!)
 
     private fun loaded(
         tab: BookingsTab = BookingsTab.Upcoming,
@@ -465,16 +472,18 @@ class MyBookingsScreenTest {
     }
 
     @Test
-    fun content_neverOffersExcludedActions() {
+    fun content_offersOnlyTheIntendedActions() {
         val upcoming = listOf(bookingItem("b1"), bookingItem("b3", status = STATUS_PENDING_APPROVAL))
         val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
         var tab by mutableStateOf(BookingsTab.Upcoming)
         show { Content(state.copy(selectedTab = tab)) }
-        // Reschedule is offered on Upcoming cards (Phase 16.2 D-04 amended), never on Past.
-        listOf("Message Expert", "Private Note").forEach { assertTrue("$it on Upcoming", !exists(it)) }
+        // Reschedule and the note zone are offered on Upcoming cards (Phase 16.2 D-04 amended, Phase 16.4 D-07).
+        assertTrue("Message Expert on Upcoming", !exists("Message Expert"))
         rule.runOnIdle { tab = BookingsTab.Past }
         rule.waitForIdle()
-        listOf("Reschedule", "Message Expert", "Private Note", "Message").forEach {
+        // Private Note is on every Past card (D-07); Reschedule and Message never are.
+        assertTrue("Private Note on Past", exists("Private Note"))
+        listOf("Reschedule", "Message Expert", "Message").forEach {
             assertTrue("$it on Past", !exists(it))
         }
         assertTrue(!existsTag(BOOKING_CARD_MESSAGE_TAG))
@@ -793,6 +802,7 @@ class MyBookingsScreenTest {
             PastBookingCard(
                 row,
                 onClick = { opens++ },
+                onPrivateNote = {},
                 onLeaveReview = { reviews++ },
                 zone = zone,
                 timeFormat = timeFormat(),
@@ -824,6 +834,7 @@ class MyBookingsScreenTest {
                     PastBookingCard(
                         pastRow("b2"),
                         onClick = {},
+                        onPrivateNote = {},
                         onLeaveReview = {},
                         zone = zone,
                         timeFormat = timeFormat(),
@@ -835,5 +846,94 @@ class MyBookingsScreenTest {
         rule.onNodeWithText("Leave a review").assertIsDisplayed()
         assertTrue(anyTextContains(dateText))
         rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG).assertIsDisplayed()
+    }
+
+    // Private note on the past card (Phase 16.4, D-07, D-08)
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp")
+    fun pastCardShowsPrivateNoteOnEveryStatus() {
+        val statuses = listOf("completed", "cancelled", "declined", "missed", "expired")
+        val past = statuses.map { pastRow("p-$it", it) }
+        show { Content(loaded(tab = pastTab, past = past)) }
+        assertEquals(statuses.size, rule.onAllNodesWithText("Private Note").fetchSemanticsNodes().size)
+        // Leave a review stays completed-only.
+        assertEquals(1, rule.onAllNodesWithText("Leave a review").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun pastNoteActionOpensTheNoteNotTheSummary() {
+        val calls = Callbacks()
+        val row = pastRow("b2", "cancelled")
+        show { Content(loaded(tab = pastTab, past = listOf(row)), calls) }
+        rule.onNodeWithText("Private Note").performClick()
+        assertEquals(listOf(row.item.noteKey()), calls.noteKeys)
+        assertEquals(null, calls.openedPast)
+
+        rule.onNodeWithText("Ada Lovelace").performClick()
+        assertEquals("b2", calls.openedPast)
+        assertEquals(1, calls.noteKeys.size)
+    }
+
+    @Test
+    fun pastFooterShowsTheServerPreview() {
+        val calls = Callbacks()
+        val row = pastRow("b2", preview = "Call back")
+        show { Content(loaded(tab = pastTab, past = listOf(row)), calls) }
+        rule.onNodeWithText("Call back").assertExists()
+        rule.onNodeWithTag(PRIVATE_NOTE_FOOTER_TAG).performClick()
+        assertEquals(listOf(row.item.noteKey()), calls.noteKeys)
+        assertEquals(null, calls.openedPast)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1200dp")
+    fun pastFooterIsHiddenForABlankPreview() {
+        val past = listOf(pastRow("n1", preview = null), pastRow("n2", preview = "   "))
+        show { Content(loaded(tab = pastTab, past = past)) }
+        assertEquals(2, rule.onAllNodesWithTag(PAST_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
+        assertTrue(!existsTag(PRIVATE_NOTE_FOOTER_TAG))
+    }
+
+    @Test
+    fun pastCardExposesPrivateNoteToTalkBack() {
+        var notes = 0
+        var opens = 0
+        show { PastCard(pastRow("b2", "cancelled"), onClick = { opens++ }, onPrivateNote = { notes++ }) }
+        val actions =
+            rule
+                .onNodeWithTag(PAST_BOOKING_CARD_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsActions.CustomActions)
+                .orEmpty()
+        val action = actions.single { it.label == "Private Note" }
+        rule.runOnUiThread { action.action() }
+        assertEquals(1, notes)
+        assertEquals(0, opens)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h1200dp")
+    fun largeFontKeepsThePastControls() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    PastBookingCard(
+                        pastRow("b2"),
+                        onClick = {},
+                        onPrivateNote = {},
+                        onLeaveReview = {},
+                        zone = zone,
+                        timeFormat = timeFormat(),
+                        locale = locale,
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Private Note").assertIsDisplayed()
+        rule.onNodeWithText("Leave a review").assertIsDisplayed()
+        assertTrue(anyTextContains(dateText))
     }
 }

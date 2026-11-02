@@ -49,6 +49,8 @@ import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.noteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsEmptyState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MyBookingsError
@@ -86,6 +88,7 @@ fun MyBookingsScreen(
     onExploreExperts: () -> Unit,
     onLeaveReview: (WriteReviewKey) -> Unit,
     onReschedule: (bookingId: String) -> Unit,
+    onPrivateNote: (ClientBookingNoteKey) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MyBookingsViewModel = hiltViewModel(),
     chatEntry: ChatEntryViewModel = hiltViewModel(),
@@ -118,6 +121,7 @@ fun MyBookingsScreen(
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = viewModel::consumeReviewThanks,
         onReschedule = onReschedule,
+        onPrivateNote = onPrivateNote,
         onRescheduleSentShown = viewModel::consumeRescheduleSent,
         messageBusyPeerId = entryState.busyPeerId,
         onMessage = { item ->
@@ -157,6 +161,7 @@ fun MyBookingsContent(
     reviewedBookingIds: Set<String> = emptySet(),
     onReviewThanksShown: () -> Unit = {},
     onReschedule: (String) -> Unit = {},
+    onPrivateNote: (ClientBookingNoteKey) -> Unit = {},
     onRescheduleSentShown: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
@@ -286,6 +291,7 @@ fun MyBookingsContent(
                         onLeaveReview = onLeaveReview,
                         reviewedBookingIds = reviewedBookingIds,
                         onReschedule = onReschedule,
+                        onPrivateNote = onPrivateNote,
                         zone = zone,
                         timeFormat = timeFormat,
                         locale = locale,
@@ -313,6 +319,7 @@ private fun TabBody(
     onLeaveReview: (WriteReviewKey) -> Unit,
     reviewedBookingIds: Set<String>,
     onReschedule: (String) -> Unit,
+    onPrivateNote: (ClientBookingNoteKey) -> Unit,
     zone: ZoneId,
     timeFormat: DateFormat,
     locale: Locale,
@@ -370,6 +377,7 @@ private fun TabBody(
                                 PastBookingCard(
                                     row = row,
                                     onClick = { onOpenPast(row.item.bookingId) },
+                                    onPrivateNote = { onPrivateNote(row.item.noteKey()) },
                                     modifier = Modifier.animateItem().contentMaxWidth(),
                                     onLeaveReview =
                                         if (row.status.raw == STATUS_COMPLETED &&

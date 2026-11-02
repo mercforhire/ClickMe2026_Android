@@ -20,6 +20,7 @@ fun bookingItem(
     topic: String? = "Algorithms",
     meetingType: String? = "in_app_voice",
     reschedule: RescheduleDto? = null,
+    privateNotePreview: String? = null,
 ): ClientBookingItem =
     ClientBookingItem(
         bookingId = id,
@@ -30,6 +31,7 @@ fun bookingItem(
         meetingType = meetingType,
         status = status,
         reschedule = reschedule,
+        privateNotePreview = privateNotePreview,
     )
 
 fun rescheduleDto(
