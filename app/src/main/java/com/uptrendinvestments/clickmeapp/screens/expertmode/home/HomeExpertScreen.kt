@@ -79,9 +79,11 @@ import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.screens.settings.expertSettingsEntries
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 
 /**
@@ -313,7 +315,9 @@ internal fun expertProfileHubActions(
         onOpenPayouts = { navigator.navigate(PayoutsKey(SettingsOrigin.Profile)) },
         onOpenTaxProfile = { navigator.navigate(TaxProfileKey(SettingsOrigin.Profile)) },
         onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
+        onOpenNotifications = { navigator.navigate(NotificationSettingsKey) },
         onOpenHelp = { navigator.navigate(HelpKey) },
+        onOpenFeedback = { navigator.navigate(FeedbackKey) },
         onLogOut = onLogout,
     )
 

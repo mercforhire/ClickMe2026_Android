@@ -6,12 +6,16 @@
 
     <string name="profile_hub_section_discovery">Discovery</string>
     <string name="profile_hub_section_account">Account</string>
+    <string name="profile_hub_section_preferences">Preferences</string>
     <string name="profile_hub_section_support">Support</string>
     <string name="profile_hub_section_professional">Professional</string>
 
     <string name="profile_hub_row_saved_experts">Saved Experts</string>
     <string name="profile_hub_row_security">Security &amp; Password</string>
     <string name="profile_hub_row_payment">Payment</string>
+    <string name="profile_hub_row_payment_history">Payment History</string>
+    <string name="profile_hub_row_notifications">Notifications</string>
+    <string name="profile_hub_row_feedback">Send Feedback</string>
     <string name="profile_hub_row_help">FAQ &amp; Help</string>
     <string name="profile_hub_row_privacy">Privacy</string>
     <string name="profile_hub_row_public_profile">View My Public Profile</string>

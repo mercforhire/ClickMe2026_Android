@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.MyBookingsScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHubActions
@@ -87,9 +88,11 @@ import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteViewModel
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientSettingsEntries
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchKey
 import com.uptrendinvestments.clickmeapp.screens.settings.modeswitching.ModeSwitchScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsKey
 import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -433,7 +436,10 @@ internal fun clientProfileHubActions(
         onOpenSavedExperts = { navigator.navigate(FavoritesKey) },
         onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
         onOpenPayment = { navigator.navigate(PaymentMethodsKey) },
+        onOpenPaymentHistory = { navigator.navigate(ClientTransactionsKey) },
+        onOpenNotifications = { navigator.navigate(NotificationSettingsKey) },
         onOpenHelp = { navigator.navigate(HelpKey) },
+        onOpenFeedback = { navigator.navigate(FeedbackKey) },
         onLogOut = onLogout,
     )
 

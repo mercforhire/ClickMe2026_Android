@@ -6,7 +6,9 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Psychology
@@ -42,8 +44,10 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 const val PROFILE_AVAILABILITY_ROW_TAG = "profile_availability_row"
 
 /**
- * What the expert hub can do (PROF-01, D-02, D-08). The shell maps each callback to a destination; "Expertise &
- * Topics" selects the Topics tab. [onLogOut] runs only after the user confirms the dialog.
+ * What the expert hub can do (PROF-01, D-02, D-08): the Professional rows, Security, Notifications (Preferences),
+ * FAQ & Help and Send Feedback. There is no Payment History row; that ledger is client-only. The shell maps each
+ * callback to a destination; "Expertise & Topics" selects the Topics tab. [onLogOut] runs only after the user
+ * confirms the dialog.
  */
 data class ExpertProfileHubActions(
     val onEditProfile: () -> Unit,
@@ -53,7 +57,9 @@ data class ExpertProfileHubActions(
     val onOpenPayouts: () -> Unit,
     val onOpenTaxProfile: () -> Unit,
     val onOpenSecurity: () -> Unit,
+    val onOpenNotifications: () -> Unit,
     val onOpenHelp: () -> Unit,
+    val onOpenFeedback: () -> Unit,
     val onLogOut: () -> Unit,
 )
 
@@ -146,11 +152,23 @@ fun ExpertProfileHomeContent(
                 onClick = actions.onOpenSecurity,
             )
         }
+        ProfileHubSection(stringResource(R.string.profile_hub_section_preferences)) {
+            ProfileMenuRow(
+                title = stringResource(R.string.profile_hub_row_notifications),
+                icon = Icons.Outlined.Notifications,
+                onClick = actions.onOpenNotifications,
+            )
+        }
         ProfileHubSection(stringResource(R.string.profile_hub_section_support)) {
             ProfileMenuRow(
                 title = stringResource(R.string.profile_hub_row_help),
                 icon = Icons.AutoMirrored.Outlined.HelpOutline,
                 onClick = actions.onOpenHelp,
+            )
+            ProfileMenuRow(
+                title = stringResource(R.string.profile_hub_row_feedback),
+                icon = Icons.Outlined.Feedback,
+                onClick = actions.onOpenFeedback,
             )
             ProfileMenuRow(
                 title = stringResource(R.string.profile_hub_row_privacy),
@@ -181,7 +199,20 @@ private fun ExpertProfileHomeContentPreview() {
         ExpertProfileHomeContent(
             card = ProfileHubCard("Ana Lee", "ana@example.com", null),
             versionLabel = "Version 0.1.0 (1)",
-            actions = ExpertProfileHubActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions =
+                ExpertProfileHubActions(
+                    onEditProfile = {},
+                    onSwitchToClient = {},
+                    onOpenExpertise = {},
+                    onOpenAvailability = {},
+                    onOpenPayouts = {},
+                    onOpenTaxProfile = {},
+                    onOpenSecurity = {},
+                    onOpenNotifications = {},
+                    onOpenHelp = {},
+                    onOpenFeedback = {},
+                    onLogOut = {},
+                ),
             onViewPublicProfile = {},
         )
     }

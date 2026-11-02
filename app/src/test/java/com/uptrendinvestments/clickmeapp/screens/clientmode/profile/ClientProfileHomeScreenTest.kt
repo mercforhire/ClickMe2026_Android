@@ -3,6 +3,8 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.profile
 import android.app.Application
 import android.content.Intent
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.config.AppLinks
@@ -48,7 +51,10 @@ class ClientProfileHomeScreenTest {
             onOpenSavedExperts = count("saved"),
             onOpenSecurity = count("security"),
             onOpenPayment = count("payment"),
+            onOpenPaymentHistory = count("paymentHistory"),
+            onOpenNotifications = count("notifications"),
             onOpenHelp = count("help"),
+            onOpenFeedback = count("feedback"),
             onLogOut = count("logout"),
         )
 
@@ -84,8 +90,12 @@ class ClientProfileHomeScreenTest {
                 "Account",
                 "Security & Password",
                 "Payment",
+                "Payment History",
+                "Preferences",
+                "Notifications",
                 "Support",
                 "FAQ & Help",
+                "Send Feedback",
                 "Privacy",
                 "Log out",
             )
@@ -101,9 +111,6 @@ class ClientProfileHomeScreenTest {
         setContent()
 
         listOf(
-            "Payment History",
-            "Notifications",
-            "Send Feedback",
             "Pause Account",
             "coming soon",
         ).forEach { rule.onAllNodesWithText(it, substring = true, ignoreCase = true).assertCountEquals(0) }
@@ -132,11 +139,53 @@ class ClientProfileHomeScreenTest {
 
         rule.onNodeWithTag("profile_hub_user_card").performClick()
         rule.onNodeWithTag("profile_hub_mode_switch").performClick()
-        listOf("Security & Password", "Payment", "FAQ & Help").forEach {
+        listOf(
+            "Security & Password",
+            "Payment",
+            "Payment History",
+            "Notifications",
+            "FAQ & Help",
+            "Send Feedback",
+        ).forEach {
             rule.onNodeWithText(it).performScrollTo().performClick()
         }
 
-        assertEquals(mapOf("edit" to 1, "switch" to 1, "security" to 1, "payment" to 1, "help" to 1), calls)
+        assertEquals(
+            mapOf(
+                "edit" to 1,
+                "switch" to 1,
+                "security" to 1,
+                "payment" to 1,
+                "paymentHistory" to 1,
+                "notifications" to 1,
+                "help" to 1,
+                "feedback" to 1,
+            ),
+            calls,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun largeFontWrapsHubRows() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    ClientProfileHomeContent(card = ana, versionLabel = "Version 9.9.9 (42)", actions = actions)
+                }
+            }
+        }
+
+        listOf("Preferences", "Payment History", "Notifications", "Send Feedback").forEach { text ->
+            val bounds = rule.onNodeWithText(text).getUnclippedBoundsInRoot()
+            assertTrue("$text left ${bounds.left}", bounds.left >= 0.dp)
+            assertTrue("$text right ${bounds.right} inside 360dp", bounds.right <= 360.dp)
+        }
+        listOf("Payment History", "Notifications", "Send Feedback").forEach { text ->
+            val bounds = rule.onNodeWithText(text).getUnclippedBoundsInRoot()
+            assertTrue("$text at least 56dp tall", bounds.bottom - bounds.top >= 56.dp)
+        }
     }
 
     @Test

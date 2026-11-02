@@ -67,6 +67,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleKey
@@ -107,7 +108,9 @@ import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
 import com.uptrendinvestments.clickmeapp.testing.searchExpertUi
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -523,6 +526,43 @@ class HomeShellsTest {
     }
 
     @Test
+    fun clientHubReachesNotificationsAndFeedback() {
+        setClient(showDebug = false, hubStandIns = true)
+        listOf(
+            "Notifications" to "stand-in notification settings",
+            "Send Feedback" to "stand-in feedback",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+            composeRule.onNodeWithText(row).assertExists()
+        }
+    }
+
+    @Test
+    fun expertHubReachesNotificationsAndFeedback() {
+        setExpert(showDebug = false, hubStandIns = true)
+        listOf(
+            "Notifications" to "stand-in notification settings",
+            "Send Feedback" to "stand-in feedback",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+            composeRule.onNodeWithText(row).assertExists()
+        }
+        composeRule.onNodeWithText("Payment History").assertDoesNotExist()
+    }
+
+    @Test
     fun expertiseAndTopicsSelectsTopicsTab() {
         setExpert(showDebug = false)
         tapTab("Profile")
@@ -605,6 +645,9 @@ class HomeShellsTest {
         entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in client settings") }
         entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
         entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+        entry<ClientTransactionsKey>(metadata = BottomBar.hidden()) { Text("stand-in payment history") }
+        entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in notification settings") }
+        entry<FeedbackKey>(metadata = BottomBar.hidden()) { Text("stand-in feedback") }
     }
 
     /** Stand-ins for the expert hub destinations, registered with the same hidden-bar metadata as the real ones. */
@@ -614,6 +657,8 @@ class HomeShellsTest {
         entry<TaxProfileKey>(metadata = BottomBar.hidden()) { Text("stand-in tax:${it.origin}") }
         entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
         entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+        entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in notification settings") }
+        entry<FeedbackKey>(metadata = BottomBar.hidden()) { Text("stand-in feedback") }
         fakeAvailabilityEntry(navigator)
     }
 
@@ -1252,6 +1297,104 @@ class HomeShellsTest {
                 )
             }
         }
+    }
+
+    /**
+     * The real hub (default `profileRoot`) with a stand-in Payment History list whose button opens booking "b1" the
+     * way the real row does, plus the real booking-management entries around fake content.
+     */
+    private fun setClientWithPaymentHistory() {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    exploreRoot = { navigator, _ ->
+                        shellNavigator = navigator
+                        Column {
+                            Text("fake explore")
+                            Button(onClick = { navigator.openUpcomingBooking("b1") }) { Text("explore open upcoming") }
+                        }
+                    },
+                    detailEntries = { nav ->
+                        entry<ClientTransactionsKey>(metadata = BottomBar.hidden()) {
+                            Column {
+                                Text("stand-in payment history")
+                                Button(onClick = { nav.openUpcomingBookingFromProfile("b1") }) {
+                                    Text("history open b1")
+                                }
+                            }
+                        }
+                        clientBookingManagementEntries(
+                            navigator = nav,
+                            upcoming = { key, onBack, _, _, _ ->
+                                Column {
+                                    Text("fake upcoming ${key.bookingId}")
+                                    Button(onClick = onBack) { Text("upcoming back") }
+                                }
+                            },
+                            cancel = { key, _, _ -> Text("fake cancel ${key.bookingId}") },
+                            summary = { key, _, _, _, _, _ -> Text("fake summary ${key.bookingId}") },
+                            reschedule = { key, _, _ -> Text("reschedule-stub:${key.bookingId}") },
+                        )
+                    },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun paymentHistoryOpensFromTheHubAndABookingFromIt() {
+        setClientWithPaymentHistory()
+        tapTab("Profile")
+        composeRule.onNodeWithText("Payment History").performScrollTo().performClick()
+        composeRule.onNodeWithText("stand-in payment history").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+
+        composeRule.onNodeWithText("history open b1").performClick()
+
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.onNode(tab("Profile")).assertDoesNotExist()
+    }
+
+    @Test
+    fun paymentHistoryBackReturnsToTheHub() {
+        setClientWithPaymentHistory()
+        tapTab("Profile")
+        composeRule.onNodeWithText("Payment History").performScrollTo().performClick()
+        composeRule.onNodeWithText("history open b1").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("stand-in payment history").assertExists()
+        composeRule.onNodeWithText("fake upcoming b1").assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNode(tab("Profile")).assertIsSelected()
+        composeRule.onNodeWithText("Payment History").assertExists()
+        composeRule.onNodeWithText("stand-in payment history").assertDoesNotExist()
+    }
+
+    @Test
+    fun sameBookingFromExploreAndPaymentHistoryDoesNotCollide() {
+        setClientWithPaymentHistory()
+        composeRule.onNodeWithText("explore open upcoming").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.runOnIdle { shellNavigator!!.onTabSelected(ClientProfileRoot) }
+        composeRule.onNodeWithText("Payment History").performScrollTo().performClick()
+        composeRule.onNodeWithText("history open b1").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.onNodeWithText("upcoming back").performClick()
+        composeRule.onNodeWithText("stand-in payment history").assertExists()
+        composeRule.runOnIdle { shellNavigator!!.onTabSelected(ExploreRoot) }
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
     }
 
     @Test

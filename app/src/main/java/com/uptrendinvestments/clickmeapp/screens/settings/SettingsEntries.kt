@@ -6,6 +6,9 @@ import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBookingFromProfile
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.TransactionsKey
@@ -21,18 +24,29 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfilePhotoCropKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackScreen
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsScreen
 import com.uptrendinvestments.clickmeapp.screens.signup.profilephoto.PhotoCropScreen
 
 /**
  * The one place that maps the Phase 14 screens' callbacks to navigation keys (feature plans built the screens with
  * plain callbacks so they could be written in parallel). Every pushed screen hides the bottom bar.
  *
- * Client side: Profile Settings, the photo crop it opens, Account Security (and Delete Account behind it) and Help.
- * The expert side is [expertSettingsEntries].
+ * Client side: Profile Settings, the photo crop it opens, Payment History (its rows open the booking on the Profile
+ * stack), Account Security (and Delete Account behind it), Help, and the shared Notifications and Send Feedback
+ * entries. The expert side is [expertSettingsEntries].
  */
 fun EntryProviderScope<NavKey>.clientSettingsEntries(navigator: Navigator) {
+    entry<ClientTransactionsKey>(metadata = BottomBar.hidden()) {
+        ClientTransactionsScreen(
+            onBack = navigator::goBack,
+            onOpenBooking = navigator::openUpcomingBookingFromProfile,
+        )
+    }
     entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) {
         ClientProfileSettingsScreen(
             viewModel = hiltViewModel(),
@@ -74,8 +88,17 @@ fun EntryProviderScope<NavKey>.expertSettingsEntries(navigator: Navigator) {
     accountAndHelpEntries(navigator)
 }
 
-/** Entries both modes share: the photo crop, Account Security, Delete Account and Help. */
+/**
+ * Entries both modes share: the photo crop, Account Security, Delete Account, Help, Notifications and Send Feedback.
+ * Each is pushed from the Profile hub of one shell at a time, so the keys are plain objects.
+ */
 private fun EntryProviderScope<NavKey>.accountAndHelpEntries(navigator: Navigator) {
+    entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) {
+        NotificationSettingsScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)
+    }
+    entry<FeedbackKey>(metadata = BottomBar.hidden()) {
+        FeedbackScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)
+    }
     entry<ProfilePhotoCropKey>(metadata = BottomBar.hidden()) {
         PhotoCropScreen(onDone = navigator::goBack, onCancel = navigator::goBack)
     }
