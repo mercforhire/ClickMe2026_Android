@@ -1,8 +1,8 @@
 package com.uptrendinvestments.clickmeapp.managers
 
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.JOINABLE_BOOKING_STATUSES
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_APPROVAL
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +41,12 @@ private const val MILLIS_PER_SECOND = 1000L
  * tight (D-02). The backend join window (120 min before / after in code, 10 / 0 in docs, "tighten before
  * launch") still has the final say on `POST /join`, so this rule is a UX gate and never an authorization
  * decision (RESEARCH Pitfall 5, ASVS V4).
+ *
+ * The rule fails closed (Phase 16.5 D-03): only [JOINABLE_BOOKING_STATUSES] use the live window and
+ * `completed` stays joinable until [end]; every other status, including `pending_approval`, `cancelled`,
+ * `declined`, `missed`, `expired`, unknown and empty ones, is never joinable. `POST /bookings/:id/join` never
+ * checks status (`call.controller.js`), and Payment History can open a terminal booking on Upcoming Booking
+ * Details, so this client rule is the only status guard.
  */
 fun isWithinJoinWindow(
     status: String,
@@ -48,11 +54,22 @@ fun isWithinJoinWindow(
     end: Instant,
     now: Instant,
 ): Boolean =
-    when (status) {
-        STATUS_PENDING_APPROVAL -> false
-        STATUS_COMPLETED -> end.isAfter(now)
-        else -> isInLiveWindow(start, end, now)
+    when {
+        status in JOINABLE_BOOKING_STATUSES -> isInLiveWindow(start, end, now)
+        status == STATUS_COMPLETED -> end.isAfter(now)
+        else -> false
     }
+
+/**
+ * Whether Upcoming Booking Details renders the Join card at all. A live booking outside its window keeps the
+ * disabled card and its hint; a booking that will never happen (terminal, unknown, pending approval, or a
+ * completed one whose [end] has passed) shows no card (Phase 16.5 D-03).
+ */
+fun showsJoinCard(
+    status: String,
+    end: Instant,
+    now: Instant,
+): Boolean = status in JOINABLE_BOOKING_STATUSES || (status == STATUS_COMPLETED && end.isAfter(now))
 
 /** [now] in [start - JOIN_WINDOW_SECONDS, max(start + JOIN_WINDOW_SECONDS, end)], both edges inclusive. */
 private fun isInLiveWindow(

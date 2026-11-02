@@ -64,6 +64,7 @@ import com.uptrendinvestments.clickmeapp.components.call.CallResumeNote
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
+import com.uptrendinvestments.clickmeapp.managers.showsJoinCard
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
@@ -419,19 +420,25 @@ private fun LoadedBody(
             Spacer(Modifier.height(Spacing.md))
             UpcomingBookingPaymentPill(it)
         }
-        Spacer(Modifier.height(Spacing.md))
+        // Phase 16.5 D-03: a booking that will never happen shows no Join card, and no doubled gap either.
+        val showsJoin = showsJoinCard(details.status.raw, details.end, joinNow)
+        if (details.showsPendingBanner || showCallResumeNote || showsJoin) {
+            Spacer(Modifier.height(Spacing.md))
+        }
         if (details.showsPendingBanner) {
             UpcomingBookingPendingBanner(details.expertName)
         } else {
             if (showCallResumeNote) {
                 CallResumeNote()
             }
-            UpcomingBookingJoinCard(
-                meetingType = details.meetingType,
-                joinLink = details.joinLink,
-                joinEnabled = isWithinJoinWindow(details.status.raw, details.start, details.end, joinNow),
-                onJoin = onJoin,
-            )
+            if (showsJoin) {
+                UpcomingBookingJoinCard(
+                    meetingType = details.meetingType,
+                    joinLink = details.joinLink,
+                    joinEnabled = isWithinJoinWindow(details.status.raw, details.start, details.end, joinNow),
+                    onJoin = onJoin,
+                )
+            }
         }
         details.clientNotes?.let {
             Spacer(Modifier.height(Spacing.md))
