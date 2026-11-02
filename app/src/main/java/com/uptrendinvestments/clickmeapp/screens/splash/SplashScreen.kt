@@ -17,7 +17,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -30,10 +33,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.extras
 
 /**
  * The Compose splash stage shown after the OS splash (D-07), mirroring iOS `SplashScreenView`: a full-bleed radial
- * gradient and a centered mark, wordmark and tagline.
- *
- * This is the resting composition; plan 16.5-04 adds the entrance, glow and merged semantics to it. There is no
- * `Scaffold` and no `BackHandler`: system back is not intercepted during the splash.
+ * gradient and a centered mark with a pulsing glow, wordmark and tagline, with the iOS entrance (see
+ * [rememberSplashMotion]). There is no `Scaffold` and no `BackHandler`: system back is not intercepted during the
+ * splash.
  *
  * [onComposed] is reported once, after the first composition, and starts the minimum display time in
  * `AppViewModel.onSplashComposed`.
@@ -46,6 +48,14 @@ fun SplashScreen(
     val latestOnComposed by rememberUpdatedState(onComposed)
     LaunchedEffect(Unit) { latestOnComposed() }
 
+    SplashContent(motion = rememberSplashMotion(rememberAnimationsEnabled()), modifier = modifier)
+}
+
+@Composable
+internal fun SplashContent(
+    motion: SplashMotionValues,
+    modifier: Modifier = Modifier,
+) {
     val radiusPx = with(LocalDensity.current) { 520.dp.toPx() }
     Box(
         modifier =
@@ -67,25 +77,74 @@ fun SplashScreen(
             modifier = Modifier.contentMaxWidth().offset(y = (-20).dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Image(
-                painter = painterResource(R.drawable.clickme_mark),
-                contentDescription = null,
-                modifier = Modifier.size(148.dp),
-            )
+            SplashLogo(motion)
             Spacer(Modifier.height(Spacing.xl))
-            Text(
-                text = stringResource(R.string.splash_wordmark),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            Text(
-                text = stringResource(R.string.splash_tagline),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.extras.onSurfaceMuted,
-                textAlign = TextAlign.Center,
-            )
+            Column(
+                modifier = Modifier.graphicsLayer { alpha = motion.textAlpha },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.splash_wordmark),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(Spacing.sm))
+                Text(
+                    text = stringResource(R.string.splash_tagline),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.extras.onSurfaceMuted,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
+
+/** The mark over its soft pulsing halo, fading and scaling in together. */
+@Composable
+private fun SplashLogo(motion: SplashMotionValues) {
+    val glowColor = MaterialTheme.colorScheme.primary
+    val glowRadiusPx = with(LocalDensity.current) { GLOW_RADIUS.toPx() }
+    Box(
+        modifier =
+            Modifier.graphicsLayer {
+                alpha = motion.logoAlpha
+                scaleX = motion.logoScale
+                scaleY = motion.logoScale
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(GLOW_BOX)
+                    .graphicsLayer {
+                        scaleX = motion.glowScale
+                        scaleY = motion.glowScale
+                    }.drawBehind {
+                        val alpha = motion.glowAlpha
+                        drawCircle(
+                            brush =
+                                Brush.radialGradient(
+                                    0f to glowColor.copy(alpha = alpha),
+                                    0.55f to glowColor.copy(alpha = alpha / 2f),
+                                    1f to Color.Transparent,
+                                    center = center,
+                                    radius = glowRadiusPx,
+                                ),
+                            radius = glowRadiusPx,
+                            center = center,
+                        )
+                    },
+        )
+        Image(
+            painter = painterResource(R.drawable.clickme_mark),
+            contentDescription = null,
+            modifier = Modifier.size(148.dp),
+        )
+    }
+}
+
+private val GLOW_BOX = 190.dp
+private val GLOW_RADIUS = 160.dp
