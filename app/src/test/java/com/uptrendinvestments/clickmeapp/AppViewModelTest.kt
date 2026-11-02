@@ -17,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashPlayedFlag
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
@@ -78,7 +79,7 @@ class AppViewModelTest {
             api.userProfileHandler = { throw IOException("not needed") }
         }
 
-        fun viewModel() = AppViewModel(manager, guard)
+        fun viewModel(splashPlayed: SplashPlayedFlag = SplashPlayedFlag()) = AppViewModel(manager, guard, splashPlayed)
     }
 
     private fun Harness.clientLaunch() {
@@ -914,6 +915,263 @@ class AppViewModelTest {
 
             assertEquals(AppRoute.Login, vm.route.value)
             assertFalse(h.sessionStore.isSetupDeferred())
+        }
+
+    // ---- Phase 16.5: the 3 s Compose splash hold (D-07, D-08, D-09) ----
+
+    @Test
+    fun splashHoldsForThreeSecondsAfterComposition() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            assertTrue("held before composition", vm.splashHeld.value)
+
+            vm.onSplashComposed()
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS - 1)
+            runCurrent()
+            assertTrue(vm.splashHeld.value)
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertFalse(vm.splashHeld.value)
+        }
+
+    @Test
+    fun composedTwiceDoesNotRestartTheHold() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+
+            vm.onSplashComposed()
+            advanceTimeBy(2_000)
+            runCurrent()
+            vm.onSplashComposed()
+            advanceTimeBy(1_000)
+            runCurrent()
+
+            assertFalse(vm.splashHeld.value)
+        }
+
+    @Test
+    fun shownRouteStaysSplashWhileHeldEvenWithAuthResolved() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS - 1)
+            runCurrent()
+
+            assertEquals(AppRoute.ClientHome, vm.route.value)
+            assertTrue(vm.destinationResolved.value)
+            assertEquals(AppRoute.Splash, shownRootRoute(vm.route.value, vm.splashHeld.value))
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(AppRoute.ClientHome, shownRootRoute(vm.route.value, vm.splashHeld.value))
+        }
+
+    @Test
+    fun shownRouteStaysSplashWhenAuthOutlastsTheHold() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS)
+            runCurrent()
+            assertFalse(vm.splashHeld.value)
+            assertEquals(AppRoute.Splash, shownRootRoute(vm.route.value, vm.splashHeld.value))
+
+            advanceTimeBy(AppViewModel.SPLASH_HOLD_CAP_MS - AppViewModel.SPLASH_MIN_DISPLAY_MS + 1)
+            runCurrent()
+            assertEquals(AppRoute.ClientHome, shownRootRoute(vm.route.value, vm.splashHeld.value))
+            gate.complete(Unit)
+            runCurrent()
+        }
+
+    @Test
+    fun loggedOutLaunchShowsLoginOnlyAfterTheHold() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this, initial = null)
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+
+            assertEquals(AppRoute.Login, vm.route.value)
+            assertEquals(AppRoute.Splash, shownRootRoute(vm.route.value, vm.splashHeld.value))
+
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS)
+            runCurrent()
+            assertEquals(AppRoute.Login, shownRootRoute(vm.route.value, vm.splashHeld.value))
+        }
+
+    @Test
+    fun keepSystemSplashFlipsAtCompositionNotAtResolution() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            assertTrue(vm.destinationResolved.value)
+            assertTrue("held until composition even when resolved", vm.keepSystemSplash())
+
+            vm.onSplashComposed()
+            assertFalse(vm.keepSystemSplash())
+        }
+
+    @Test
+    fun keepSystemSplashReleasesAtCompositionWithAuthStillPending() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            assertFalse(vm.destinationResolved.value)
+            assertTrue(vm.keepSystemSplash())
+
+            vm.onSplashComposed()
+
+            assertFalse(vm.destinationResolved.value)
+            assertFalse(vm.keepSystemSplash())
+            advanceTimeBy(AppViewModel.SPLASH_HOLD_CAP_MS + 1)
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+        }
+
+    @Test
+    fun aFreshProcessPlays() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+
+            assertTrue(vm.splashHeld.value)
+            assertTrue(vm.showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun aSecondActivityInTheSameProcessDoesNotReplay() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val flag = SplashPlayedFlag()
+            val first = h.viewModel(flag)
+            runCurrent()
+            first.onSplashComposed()
+
+            val second = h.viewModel(flag)
+            runCurrent()
+
+            assertFalse(second.splashHeld.value)
+            assertFalse(second.showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun aServedLaunchKeepsTheSystemSplashUntilTheRouteResolves() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val flag = SplashPlayedFlag().apply { played = true }
+            val vm = h.viewModel(flag)
+            runCurrent()
+
+            assertFalse(vm.destinationResolved.value)
+            assertTrue(vm.keepSystemSplash())
+
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(vm.destinationResolved.value)
+            assertFalse(vm.keepSystemSplash())
+        }
+
+    @Test
+    fun restoringBeforeTheHoldStartedServesIt() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val flag = SplashPlayedFlag()
+            val vm = h.viewModel(flag)
+            runCurrent()
+
+            vm.onActivityRestored()
+
+            assertFalse(vm.splashHeld.value)
+            assertFalse(vm.showsAnimatedSplash.value)
+            assertTrue(vm.keepSystemSplash())
+            assertTrue(flag.played)
+            gate.complete(Unit)
+            runCurrent()
+            assertFalse(vm.keepSystemSplash())
+            assertFalse(h.viewModel(flag).showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun aConfigurationChangeDuringTheHoldChangesNothing() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+            advanceTimeBy(1_000)
+            runCurrent()
+
+            vm.onActivityRestored()
+
+            assertTrue(vm.splashHeld.value)
+            assertTrue(vm.showsAnimatedSplash.value)
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS - 1_000)
+            runCurrent()
+            assertFalse(vm.splashHeld.value)
+            assertTrue(vm.showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun holdAndCapAreBothBoundedWhenAuthHangs() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+
+            advanceTimeBy(AppViewModel.SPLASH_HOLD_CAP_MS + 1)
+            runCurrent()
+
+            assertFalse(vm.splashHeld.value)
+            assertTrue(vm.destinationResolved.value)
+            gate.complete(Unit)
+            runCurrent()
         }
 
     @Test

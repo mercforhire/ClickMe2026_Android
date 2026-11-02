@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Client
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
+import com.uptrendinvestments.clickmeapp.shownRootRoute
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClientBookingProbe
 import com.uptrendinvestments.clickmeapp.testing.FakePendingRequestLookup
@@ -244,5 +245,60 @@ class PushRoutingViewModelTest {
 
             assertNull(shellRoutes.pending.value)
             assertNull(chatLaunch.thread.pending.value)
+        }
+
+    // ---- Phase 16.5: the 3 s splash hold shows Splash to the router (D-09) ----
+
+    @Test
+    fun aPushPostedDuringTheHoldWaitsForTheShownRoute() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(shownRootRoute(AppRoute.ClientHome, held = true))
+            val tap = PushDestination.BookingDetail("B1", PushAudience.Client)
+            launchRequest.destination.post(tap)
+            advanceUntilIdle()
+            assertNull(shellRoutes.pending.value)
+            assertEquals(tap, launchRequest.destination.pending.value)
+
+            vm.onRouteChanged(shownRootRoute(AppRoute.ClientHome, held = false))
+            advanceUntilIdle()
+
+            assertEquals(clientSummary(), shellRoutes.pending.value)
+            assertNull(launchRequest.destination.pending.value)
+        }
+
+    @Test
+    fun aResumedCallDestinationWaitsForTheShownRoute() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(shownRootRoute(AppRoute.ClientHome, held = true))
+            val resumed = PushDestination.BookingDetail("B1", PushAudience.Either)
+            launchRequest.destination.postIfAbsent(resumed)
+            advanceUntilIdle()
+            assertNull(shellRoutes.pending.value)
+            assertEquals(resumed, launchRequest.destination.pending.value)
+
+            vm.onRouteChanged(shownRootRoute(AppRoute.ClientHome, held = false))
+            advanceUntilIdle()
+
+            assertEquals(clientSummary(), shellRoutes.pending.value)
+            assertNull(launchRequest.destination.pending.value)
+        }
+
+    @Test
+    fun aPushDuringTheHoldDropsOnlyWhenTheShownRouteReachesLogin() =
+        runTest(mainRule.testDispatcher) {
+            val vm = viewModel()
+            vm.onRouteChanged(shownRootRoute(AppRoute.Login, held = true))
+            val tap = PushDestination.BookingDetail("B1", PushAudience.Client)
+            launchRequest.destination.post(tap)
+            advanceUntilIdle()
+            assertEquals(tap, launchRequest.destination.pending.value)
+
+            vm.onRouteChanged(shownRootRoute(AppRoute.Login, held = false))
+            advanceUntilIdle()
+
+            assertNull(launchRequest.destination.pending.value)
+            assertNull(shellRoutes.pending.value)
         }
 }

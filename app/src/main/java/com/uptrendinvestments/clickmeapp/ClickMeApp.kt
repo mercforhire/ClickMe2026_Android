@@ -26,6 +26,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
 import com.uptrendinvestments.clickmeapp.screens.push.PushPermissionRequester
 import com.uptrendinvestments.clickmeapp.screens.push.PushRoutingHost
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.AccountDeletionFarewellHost
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
 /**
@@ -37,6 +38,9 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Motion
  * (D-08, CALL-04). The suspended-account dialog stays outside it. The root push router lives here too, because a
  * tapped notification may need a mode switch before any shell exists (RESEARCH F-7).
  *
+ * While the splash holds, the push router, the permission prompt and the suspended dialog all see `Splash`, so a
+ * destination stays in its slot and no system dialog appears over the splash.
+ *
  * The account-deleted Farewell is rendered last, above the route switch, because deleting an account revokes every
  * session and the resulting forced logout changes the route to Login underneath it (RESEARCH Pitfall 3).
  */
@@ -47,14 +51,17 @@ fun ClickMeApp(
 ) {
     val route by appViewModel.route.collectAsStateWithLifecycle()
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
+    val held by appViewModel.splashHeld.collectAsStateWithLifecycle()
+    val showsAnimatedSplash by appViewModel.showsAnimatedSplash.collectAsStateWithLifecycle()
+    val shownRoute = shownRootRoute(route, held)
     val context = LocalContext.current
-    PushRoutingHost(route = route, onSwitchMode = appViewModel::switchMode)
-    PushPermissionRequester(route = route)
+    PushRoutingHost(route = shownRoute, onSwitchMode = appViewModel::switchMode)
+    PushPermissionRequester(route = shownRoute)
     Box(modifier.fillMaxSize()) {
         // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
         CallOverlayHost {
             AnimatedContent(
-                targetState = route,
+                targetState = shownRoute,
                 transitionSpec = {
                     if (initialState in HOMES && targetState in HOMES) {
                         fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
@@ -66,8 +73,13 @@ fun ClickMeApp(
                 label = "root-route",
             ) { targetRoute ->
                 when (targetRoute) {
-                    // The OS splash covers Splash.
-                    AppRoute.Splash -> EmptySurface()
+                    // A served or restored launch keeps the OS splash up until the route resolves, as before.
+                    AppRoute.Splash ->
+                        if (showsAnimatedSplash) {
+                            SplashScreen(onComposed = appViewModel::onSplashComposed)
+                        } else {
+                            EmptySurface()
+                        }
 
                     AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 
@@ -85,7 +97,7 @@ fun ClickMeApp(
             }
         }
 
-        if (showSuspendedDialog) {
+        if (showSuspendedDialog && !held) {
             SuspendedAccountDialog(
                 onDismiss = appViewModel::onSuspendedDialogDismissed,
                 onContactSupport = {

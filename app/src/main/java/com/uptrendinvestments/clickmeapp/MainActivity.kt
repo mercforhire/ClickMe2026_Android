@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Single activity: splash hold, edge-to-edge, and the [ClickMeApp] route switch. `singleTop`, so tapping the
+ * Single activity: OS splash hand-off to the Compose splash, edge-to-edge, and the [ClickMeApp] route switch. `singleTop`, so tapping the
  * ongoing-call notification or a push notification arrives in [onNewIntent] while running and in [onCreate] after a
  * cold start.
  */
@@ -40,8 +40,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
-        // Hold the OS splash only until the root route resolves; no fixed delay.
-        splash.setKeepOnScreenCondition { !appViewModel.destinationResolved.value }
+        // Flips at composition, not at first draw: see AppViewModel.keepSystemSplash.
+        splash.setKeepOnScreenCondition { appViewModel.keepSystemSplash() }
+        // No exit animation, so the API 31+ icon fade cannot stack on the Compose splash entrance (UI-SPEC).
+        splash.setOnExitAnimationListener { it.remove() }
+        // Rotation keeps the ViewModel and its running hold, so this is a no-op there; a process restore has a new
+        // ViewModel and is treated as already served.
+        if (savedInstanceState != null) appViewModel.onActivityRestored()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

@@ -7,15 +7,27 @@ import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashPlayedFlag
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+
+/**
+ * The route the UI shows: [AppRoute.Splash] while the Compose splash holds, else the resolved [route]. [route]
+ * itself keeps meaning "resolved destination", so [AppViewModel.destinationResolved] and the push router's
+ * contract are unchanged.
+ */
+internal fun shownRootRoute(
+    route: AppRoute,
+    held: Boolean,
+): AppRoute = if (held) AppRoute.Splash else route
 
 /**
  * Holds the root [AppRoute] and the splash hold condition, driven by the session in [UserManager].
@@ -31,7 +43,9 @@ import javax.inject.Inject
  * While on a home route the root route follows [UserManager.currentMode] (D-17): the mode switch, the
  * post-publish landing and relaunch restore all flow through that one collector.
  *
- * [destinationResolved] feeds `setKeepOnScreenCondition` in MainActivity.
+ * The OS splash is released by [keepSystemSplash], at the first composition of the Compose splash; the Compose
+ * splash then stays for [SPLASH_MIN_DISPLAY_MS] (D-08) while auth runs alongside. [destinationResolved] still
+ * says when [route] holds the resolved destination.
  */
 @HiltViewModel
 class AppViewModel
@@ -39,6 +53,7 @@ class AppViewModel
     constructor(
         private val userManager: UserManager,
         private val callGuard: CallGuard,
+        private val splashPlayed: SplashPlayedFlag = SplashPlayedFlag(),
     ) : ViewModel() {
         private val _route = MutableStateFlow(AppRoute.Splash)
         val route: StateFlow<AppRoute> = _route.asStateFlow()
@@ -50,6 +65,60 @@ class AppViewModel
 
         /** True while the "account suspended" dialog should show (D-08). */
         val showSuspendedDialog: StateFlow<Boolean> = userManager.wasSuspended
+
+        @Volatile
+        private var splashComposed = false
+        private val _splashHeld = MutableStateFlow(!splashPlayed.played)
+        private val _showsAnimatedSplash = MutableStateFlow(!splashPlayed.played)
+        private var holdJob: Job? = null
+
+        /**
+         * True until [SPLASH_MIN_DISPLAY_MS] after the Compose splash first composed (D-08). The UI shows
+         * [shownRootRoute] of [route] and this flag, so [route] keeps meaning "resolved destination".
+         */
+        val splashHeld: StateFlow<Boolean> = _splashHeld.asStateFlow()
+
+        /**
+         * True when this launch plays the Compose splash. False when the process already served it (a new activity
+         * in a live process) or the activity was restored (A10): those launches keep the OS splash until the route
+         * resolves and show an empty surface under it.
+         */
+        val showsAnimatedSplash: StateFlow<Boolean> = _showsAnimatedSplash.asStateFlow()
+
+        /**
+         * The keep condition for the OS splash. It flips at composition, never at first draw, because
+         * core-splashscreen 1.2.0 cancels draws in an `OnPreDrawListener` while the condition is true, so a
+         * condition that waits for a draw would never flip (RESEARCH Pitfall 1).
+         */
+        fun keepSystemSplash(): Boolean =
+            if (_showsAnimatedSplash.value) !splashComposed else !_destinationResolved.value
+
+        /**
+         * Called from `onCreate` with a non-null saved state. A rotation keeps this ViewModel and its running
+         * hold, so it is a no-op there; a process restore has a new ViewModel and is treated as already served,
+         * so a later activity in this process does not play the splash either.
+         */
+        fun onActivityRestored() {
+            if (holdJob != null) return
+            _showsAnimatedSplash.value = false
+            _splashHeld.value = false
+            splashPlayed.played = true
+        }
+
+        /**
+         * Starts the minimum display time once, when the Compose splash first composes. Auth keeps running from
+         * `init`, so a slow `/me` is not stacked on top of the hold.
+         */
+        fun onSplashComposed() {
+            if (holdJob != null || !_showsAnimatedSplash.value) return
+            splashComposed = true
+            splashPlayed.played = true
+            holdJob =
+                viewModelScope.launch {
+                    delay(SPLASH_MIN_DISPLAY_MS)
+                    _splashHeld.value = false
+                }
+        }
 
         init {
             // Mirrors iOS onChange(of: isLoggedIn): a session that ends while on a protected route goes to Login.
@@ -180,6 +249,12 @@ class AppViewModel
         companion object {
             /** Upper bound on how long the splash waits for auto-login (D-02). */
             const val SPLASH_HOLD_CAP_MS = 5_000L
+
+            /**
+             * Minimum time the Compose splash stays up on every cold start (D-08). Mirrors iOS
+             * `SplashViewModel.displaySeconds`; the single constant to change.
+             */
+            const val SPLASH_MIN_DISPLAY_MS = 3_000L
 
             private val HOME_ROUTES = setOf(AppRoute.ClientHome, AppRoute.ExpertHome)
 
