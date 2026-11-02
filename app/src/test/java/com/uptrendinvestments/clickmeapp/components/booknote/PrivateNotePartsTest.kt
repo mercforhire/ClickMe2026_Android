@@ -61,6 +61,19 @@ class PrivateNotePartsTest {
     }
 
     @Test
+    fun previewWithLeadingBlankLinesShowsItsFirstWords() {
+        rule.setContent { ClickMeTheme { PrivateNoteZone(preview = "\n\nCall about pricing", onClick = ::click) } }
+        rule.onNodeWithText("Call about pricing").assertIsDisplayed()
+    }
+
+    @Test
+    fun previewTextTrimsEdgesAndCollapsesLineBreaks() {
+        assertEquals("Call about pricing", notePreviewText("\n\nCall about pricing"))
+        assertEquals("one two", notePreviewText("one\n \n  two  "))
+        assertEquals("a b", notePreviewText("a b"))
+    }
+
+    @Test
     fun actionShowsPrivateNote() {
         rule.setContent { ClickMeTheme { PrivateNoteAction(onClick = ::click) } }
         rule.onNodeWithText("Private Note").assertIsDisplayed()
@@ -83,6 +96,12 @@ class PrivateNotePartsTest {
         rule.onNodeWithText("My Note").assertIsDisplayed()
         rule.onNodeWithText(note).assertExists()
         rule.onNodeWithText(PROMPT).assertDoesNotExist()
+    }
+
+    @Test
+    fun myNoteCardTrimsLeadingBlankLines() {
+        rule.setContent { ClickMeTheme { MyNoteCard(note = "\n\nCall about pricing\n", onClick = ::click) } }
+        rule.onNodeWithText("Call about pricing").assertIsDisplayed()
     }
 
     @Test

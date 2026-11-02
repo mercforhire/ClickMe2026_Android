@@ -190,7 +190,7 @@ fun MyNoteCard(
                 )
             } else {
                 Text(
-                    text = note,
+                    text = note.trim(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -198,6 +198,15 @@ fun MyNoteCard(
         }
     }
 }
+
+/**
+ * The preview as shown in the two-line strip. Display only: the saved note is untouched. Edge whitespace is trimmed and
+ * line breaks become single spaces, so a note that starts with blank lines still shows its first words instead of an
+ * empty strip (the server preview is the first 140 characters as typed).
+ */
+internal fun notePreviewText(raw: String): String = raw.trim().replace(LineBreakRun, " ")
+
+private val LineBreakRun = Regex("\\s*\\n\\s*")
 
 @Composable
 private fun NotePreviewStrip(
@@ -230,7 +239,7 @@ private fun NotePreviewStrip(
         ) {
             DecorativeIcon(Icons.AutoMirrored.Outlined.Notes, tint)
             Text(
-                text = preview,
+                text = notePreviewText(preview),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = PREVIEW_MAX_LINES,
