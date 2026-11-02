@@ -11,7 +11,9 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -49,14 +51,17 @@ data class ClientProfileHubActions(
     val onOpenSecurity: () -> Unit,
     val onOpenPayment: () -> Unit,
     val onOpenPaymentHistory: () -> Unit,
+    val onOpenNotifications: () -> Unit,
     val onOpenHelp: () -> Unit,
+    val onOpenFeedback: () -> Unit,
     val onLogOut: () -> Unit,
 )
 
 /**
  * Client Profile tab root (PROF-01, D-01..D-04): the user card, the mode-switch card, the Discovery row (Saved
- * Experts), Account and Support rows, Log out and the version footer. Only rows that work are shown. [debugContent] renders below the footer for the debug
- * affordances the shell still owns.
+ * Experts), Account rows (Security, Payment, Payment History), the Preferences row (Notifications), Support rows (FAQ
+ * & Help, Send Feedback, Privacy), Log out and the version footer. Only rows that work are shown. [debugContent]
+ * renders below the footer for the debug affordances the shell still owns.
  */
 @Composable
 fun ClientProfileHomeScreen(
@@ -129,11 +134,23 @@ fun ClientProfileHomeContent(
                 onClick = actions.onOpenPaymentHistory,
             )
         }
+        ProfileHubSection(stringResource(R.string.profile_hub_section_preferences)) {
+            ProfileMenuRow(
+                title = stringResource(R.string.profile_hub_row_notifications),
+                icon = Icons.Outlined.Notifications,
+                onClick = actions.onOpenNotifications,
+            )
+        }
         ProfileHubSection(stringResource(R.string.profile_hub_section_support)) {
             ProfileMenuRow(
                 title = stringResource(R.string.profile_hub_row_help),
                 icon = Icons.AutoMirrored.Outlined.HelpOutline,
                 onClick = actions.onOpenHelp,
+            )
+            ProfileMenuRow(
+                title = stringResource(R.string.profile_hub_row_feedback),
+                icon = Icons.Outlined.Feedback,
+                onClick = actions.onOpenFeedback,
             )
             ProfileMenuRow(
                 title = stringResource(R.string.profile_hub_row_privacy),
@@ -185,7 +202,9 @@ private fun ClientProfileHomeContentPreview() {
                     onOpenSecurity = {},
                     onOpenPayment = {},
                     onOpenPaymentHistory = {},
+                    onOpenNotifications = {},
                     onOpenHelp = {},
+                    onOpenFeedback = {},
                     onLogOut = {},
                 ),
         )

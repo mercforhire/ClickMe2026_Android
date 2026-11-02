@@ -24,8 +24,12 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfilePhotoCropKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackScreen
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsScreen
 import com.uptrendinvestments.clickmeapp.screens.signup.profilephoto.PhotoCropScreen
 
 /**
@@ -84,8 +88,17 @@ fun EntryProviderScope<NavKey>.expertSettingsEntries(navigator: Navigator) {
     accountAndHelpEntries(navigator)
 }
 
-/** Entries both modes share: the photo crop, Account Security, Delete Account and Help. */
+/**
+ * Entries both modes share: the photo crop, Account Security, Delete Account, Help, Notifications and Send Feedback.
+ * Each is pushed from the Profile hub of one shell at a time, so the keys are plain objects.
+ */
 private fun EntryProviderScope<NavKey>.accountAndHelpEntries(navigator: Navigator) {
+    entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) {
+        NotificationSettingsScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)
+    }
+    entry<FeedbackKey>(metadata = BottomBar.hidden()) {
+        FeedbackScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)
+    }
     entry<ProfilePhotoCropKey>(metadata = BottomBar.hidden()) {
         PhotoCropScreen(onDone = navigator::goBack, onCancel = navigator::goBack)
     }
