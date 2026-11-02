@@ -2,13 +2,22 @@ package com.uptrendinvestments.clickmeapp.screens.splash
 
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.Density
+import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,6 +27,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w400dp-h900dp")
@@ -29,8 +39,8 @@ class SplashScreenTest {
     fun showsTheMarkWordmarkAndTagline() {
         rule.setContent { ClickMeTheme { SplashScreen(onComposed = {}) } }
 
-        rule.onNodeWithText("ClickMe").assertIsDisplayed()
-        rule.onNodeWithText("Book time with the best minds.").assertIsDisplayed()
+        rule.onNodeWithText("ClickMe", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("Book time with the best minds.", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -175,5 +185,37 @@ class SplashScreenTest {
 
         assertEquals(1f, motion.logoAlpha, 0.001f)
         assertTrue(motion.textAlpha >= textBefore)
+    }
+
+    @Test
+    fun screenIsOneMergedNode() {
+        rule.setContent { ClickMeTheme { SplashScreen(onComposed = {}) } }
+        rule.waitForIdle()
+
+        val a11y = "ClickMe. Book time with the best minds."
+        rule.onAllNodes(hasContentDescription(a11y)).assertCountEquals(1)
+        // The parts are folded into that node: no separate text node in the merged tree.
+        rule.onAllNodes(hasText("ClickMe")).assertCountEquals(0)
+        rule.onAllNodes(hasText("Book time with the best minds.")).assertCountEquals(0)
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertCountEquals(0)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h800dp")
+    fun longTaglineWrapsAndTheWordmarkStaysWhole() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme { SplashScreen(onComposed = {}) }
+            }
+        }
+        rule.waitForIdle()
+
+        assertEquals(listOf(1), rule.lineCountsOf("ClickMe", SPLASH_SCREEN_TAG))
+        val tagline = rule.lineCountsOf("Book time with the best minds.", SPLASH_SCREEN_TAG).single()
+        assertTrue("tagline wraps at 200%, was $tagline line(s)", tagline >= 2)
+        rule.onNodeWithText("ClickMe", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("Book time with the best minds.", useUnmergedTree = true).assertIsDisplayed()
     }
 }

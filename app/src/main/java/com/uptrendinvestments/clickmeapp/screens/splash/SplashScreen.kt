@@ -22,8 +22,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
@@ -57,10 +60,15 @@ internal fun SplashContent(
     modifier: Modifier = Modifier,
 ) {
     val radiusPx = with(LocalDensity.current) { 520.dp.toPx() }
+    // Read outside the semantics lambda, which is not composable.
+    val a11y = stringResource(R.string.splash_a11y)
     Box(
         modifier =
             modifier
                 .fillMaxSize()
+                .testTag(SPLASH_SCREEN_TAG)
+                // One TalkBack node: the mark and glow are decorative and nothing is a live region.
+                .clearAndSetSemantics { contentDescription = a11y }
                 .background(
                     Brush.radialGradient(
                         colors =
@@ -145,6 +153,9 @@ private fun SplashLogo(motion: SplashMotionValues) {
         )
     }
 }
+
+/** Test tag of the splash root. */
+internal const val SPLASH_SCREEN_TAG = "splash_screen"
 
 private val GLOW_BOX = 190.dp
 private val GLOW_RADIUS = 160.dp
