@@ -121,8 +121,8 @@ import retrofit2.http.Query
  * the expert's own weekly availability and the profile-tags update. Phase 14 adds nine endpoints: the profile
  * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
  * earnings transactions ledger and the expert tax profile (get and save). Phase 16.2 adds the two
- * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Phase 16.4 adds the four note calls and the expert's client profile. Other API groups arrive with their
- * features (ROADMAP Phase 2 planning note).
+ * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Phase 16.4 adds the four note calls and
+ * the expert's client profile. Other API groups arrive with their features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
  * wrapped by `apiCall` at the repository layer, which maps failures to `ApiException`.

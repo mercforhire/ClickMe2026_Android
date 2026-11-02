@@ -56,10 +56,11 @@ const val EXPERT_PAST_CARD_TAG = "expert_past_card"
 private val PREVIEW_START: Instant = Instant.parse("2026-10-10T18:00:00Z")
 
 /**
- * An expert Past booking card: the Phase 8 `PastBookingCard` with the client in place of the expert (UI-SPEC surface 5).
- * The whole card opens the expert Booking Summary. There are no earnings on the Past card (UI-SPEC A15) and no Message
- * or Review control. "Private Note" is on every status (Phase 16.4, D-07, iOS `PastSessionCard`) and consumes its own
- * tap; a non-blank [ExpertBookingItem.privateNotePreview] adds a footer strip under it that does the same.
+ * An expert Past booking card: the Phase 8 `PastBookingCard` with the client in place of the expert (UI-SPEC
+ * surface 5). The whole card opens the expert Booking Summary. There are no earnings on the Past card (UI-SPEC A15)
+ * and no Message or Review control. "Private Note" is on every status (Phase 16.4, D-07, iOS `PastSessionCard`) and
+ * consumes its own tap; a non-blank [ExpertBookingItem.privateNotePreview] adds a footer strip under it that does the
+ * same.
  *
  * @param row the booking and the badge it shows (Completed, Cancelled or Missed).
  * @param onOpen opens the summary with origin Bookings.

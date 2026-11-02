@@ -63,7 +63,8 @@ class BookingNoteViewModel
                     try {
                         repository.get(args.role, args.bookingId)
                     } catch (e: ApiException) {
-                        // The server answers a uniform 404 for "no note yet" and "not yours": both open an empty editor.
+                        // The server answers a uniform 404 for "no note yet" and "not yours": both open an empty
+                        // editor.
                         if (e.isNotFound()) {
                             null
                         } else {

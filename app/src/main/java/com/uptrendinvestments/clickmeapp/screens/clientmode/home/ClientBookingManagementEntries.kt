@@ -69,7 +69,8 @@ fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot, Sea
  * - Phase 16.4 D-06: [summary]'s `onOpenNote` pushes the note editor on the same stack as the summary. The summary's
  *   ViewModel copies its origin into the key, so a chat-opened summary keeps a distinct key.
  * - Phase 16.2 D-09: [reschedule] (the picker) pops to its opener.
- * - Phase 16.2 D-06/D-08: Add a Payment Method pushes Payment Methods above the picker and nothing is retried on return.
+ * - Phase 16.2 D-06/D-08: Add a Payment Method pushes Payment Methods above the picker and nothing is retried on
+ *   return.
  */
 fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
     navigator: Navigator,

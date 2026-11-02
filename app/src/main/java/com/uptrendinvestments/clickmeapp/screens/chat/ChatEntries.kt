@@ -61,7 +61,8 @@ fun Navigator.openChatBooking(
  * "View profile" for the peer in [key], on the Chats stack of [mode]'s shell. Expert mode opens the read-only Client
  * Profile (iOS `HomeRoute.peerProfile` in the expert shell, D-13); client mode opens the peer's Expert Profile, seeded
  * from the thread key. A no-op without a [ChatThreadKey.peerId]. [mode] has no default on purpose: only expert mode may
- * reach the expert endpoints, because `ensureExpert` converts a client-only account on first touch, so a caller must choose.
+ * reach the expert endpoints, because `ensureExpert` converts a client-only account on first touch, so a caller must
+ * choose.
  */
 fun Navigator.openChatPeerProfile(
     key: ChatThreadKey,

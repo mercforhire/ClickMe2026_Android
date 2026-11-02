@@ -107,7 +107,8 @@ fun BookingSummaryUiState.Loaded.showLeaveReview(reviewedIds: Set<String>): Bool
 /**
  * Maps the booking detail to the display model. The price label follows the payment status: `captured` is "Price
  * paid", `refunded` is "Refunded", anything else (held, none, unknown) and every free topic is "Session fee".
- * Blank strings become null (a whitespace note written from iOS counts as no note); a missing end time falls back to start plus the topic duration.
+ * Blank strings become null (a whitespace note written from iOS counts as no note); a missing end time falls back to
+ * start plus the topic duration.
  */
 fun ClientBookingDetail.toSummaryDetails(now: Instant): BookingSummaryDetails =
     BookingSummaryDetails(

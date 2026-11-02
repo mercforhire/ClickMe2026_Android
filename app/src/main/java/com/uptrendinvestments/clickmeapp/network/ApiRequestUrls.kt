@@ -11,8 +11,8 @@ package com.uptrendinvestments.clickmeapp.network
  * Phase 10 adds expert topics (create, update, delete) and the expert's own weekly availability. Phase 11 adds the
  * expert request, booking, earnings and payout groups (booking requests, expert bookings, weekly earnings, payout
  * summary and Stripe Connect). Phase 14 adds change password, account deletion, the help FAQ list, the earnings
- * transactions ledger and the expert tax profile. Phase 16.1 adds the expert search (Search tab). Phase 16.3 adds the client favorites group.
- * Phase 16.4 adds the booking note paths and the expert's client profile.
+ * transactions ledger and the expert tax profile. Phase 16.1 adds the expert search (Search tab). Phase 16.3 adds the
+ * client favorites group. Phase 16.4 adds the booking note paths and the expert's client profile.
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"

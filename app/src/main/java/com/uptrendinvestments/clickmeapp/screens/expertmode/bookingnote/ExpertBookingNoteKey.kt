@@ -12,8 +12,8 @@ import kotlinx.serialization.Serializable
  * Times are epoch millis because `Instant` is not `@Serializable`. Never add the note text to a key: keys are written
  * to saved navigation state, and the note is private (the editor fetches it by [bookingId]).
  *
- * [origin] is copied from the opener and only keeps the key distinct across stacks (D-06): [ExpertBookingOrigin.Bookings]
- * from a Bookings card, the summary's origin from Expert Booking Summary.
+ * [origin] is copied from the opener and only keeps the key distinct across stacks (D-06):
+ * [ExpertBookingOrigin.Bookings] from a Bookings card, the summary's origin from Expert Booking Summary.
  */
 @Serializable
 data class ExpertBookingNoteKey(
