@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
+import com.uptrendinvestments.clickmeapp.components.booknote.PrivateNoteZone
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPairDefaults
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
@@ -81,10 +82,12 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
  * pending-approval card, which has no Join. Reschedule is offered when the caller passes [onReschedule] (Phase 16.2,
  * D-05, D-04 as amended 2026-11-01): a confirmed card shows Join full width and then Reschedule at the start with the
  * text-form Message at the end; a pending-approval card shows the banner and then that same Reschedule + Message row
- * (iOS arrangement). Private Note is still not on the card (D-16).
+ * (iOS arrangement). The note zone is the card's last child on every layout (Phase 16.4, D-07, iOS `noteZone`):
+ * the server's preview with a pencil, or a dashed "Add private note" row; tapping it does not open the details.
  *
  * @param joinEnabled whether the booking is inside the join window (`isWithinJoinWindow`).
  * @param onJoin starts the call; tapping Join does not open the details.
+ * @param onPrivateNote opens the private note editor for this booking; tapping the note zone does not open the details.
  * @param messageBusy true while the chat with this card's expert is being opened.
  * @param onMessage opens the chat with the expert; tapping Message does not open the details.
  * @param zone zone the date and times are shown in; defaults to the device zone.
@@ -99,6 +102,7 @@ fun UpcomingBookingCard(
     onClick: () -> Unit,
     joinEnabled: Boolean,
     onJoin: () -> Unit,
+    onPrivateNote: () -> Unit,
     modifier: Modifier = Modifier,
     messageBusy: Boolean = false,
     onMessage: () -> Unit = {},
@@ -220,6 +224,11 @@ fun UpcomingBookingCard(
                     messageEnabled = messageEnabled,
                 )
             }
+            PrivateNoteZone(
+                preview = item.privateNotePreview,
+                onClick = onPrivateNote,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -329,6 +338,7 @@ private fun UpcomingBookingCardConfirmedPreview() {
                 onClick = {},
                 joinEnabled = true,
                 onJoin = {},
+                onPrivateNote = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }
@@ -345,6 +355,7 @@ private fun UpcomingBookingCardPendingPreview() {
                 onClick = {},
                 joinEnabled = false,
                 onJoin = {},
+                onPrivateNote = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }

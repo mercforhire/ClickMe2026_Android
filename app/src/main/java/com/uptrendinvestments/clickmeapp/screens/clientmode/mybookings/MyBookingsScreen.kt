@@ -358,6 +358,7 @@ private fun TabBody(
                                             joinNow,
                                         ),
                                     onJoin = { onJoin(item) },
+                                    onPrivateNote = { onPrivateNote(item.noteKey()) },
                                     modifier = Modifier.animateItem().contentMaxWidth(),
                                     messageBusy = messageBusyPeerId.equals(item.expert.id, ignoreCase = true),
                                     onMessage = { onMessage(item) },
