@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: "16.4"
 current_phase_name: "iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)"
 status: executing
-stopped_at: Phase 16.4 UI-SPEC approved; resuming execution at wave 2
-last_updated: "2026-11-02T02:52:53.417Z"
+stopped_at: Phase 16.4 executed; verification human_needed, 7 items in 16.4-UAT.md
+last_updated: "2026-11-02T04:38:00.997Z"
 last_activity: 2026-11-01
 last_activity_desc: Phase 16.4 execution resumed (wave continue)
-state_head: 576c2bf78fcf492fe73848882d0fb103452f1e49
+state_head: 98bcfced77d89c32c8558de5c3e9a54473a6b6fa
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 285
-  completed_plans: 268
+  completed_plans: 276
 milestone_name: milestone
 ---
 
@@ -344,9 +344,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-02T02:52:48.850Z
-Stopped at: Phase 16.4 UI-SPEC approved; resuming execution at wave 2
-Resume file: .planning/phases/16.4-ios-parity-private-booking-notes-and-expert-side-client-prof/16.4-UI-SPEC.md
+Last session: 2026-11-02T04:37:57.836Z
+Stopped at: Phase 16.4 executed; verification human_needed, 7 items in 16.4-UAT.md
+Resume file: .planning/phases/16.4-ios-parity-private-booking-notes-and-expert-side-client-prof/16.4-UAT.md
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
