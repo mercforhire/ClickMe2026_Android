@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Phase 16.5, PARITY-AUDIT #6: Send Feedback validation and failure copy (UI-SPEC Copywriting "Send Feedback").
-         Reused, not duplicated here: login_error_network, login_error_unknown. -->
+    <!-- Phase 16.5, PARITY-AUDIT #6: Send Feedback (UI-SPEC Copywriting "Send Feedback").
+         Reused, not duplicated here: login_error_network, login_error_unknown, section_retry. -->
+    <string name="feedback_title">Send Feedback</string>
+    <string name="feedback_label_type">Feedback Type</string>
+    <string name="feedback_label_details">Details</string>
+    <string name="feedback_label_email">Email (Optional)</string>
+    <string name="feedback_type_hint">Choose a category</string>
+    <string name="feedback_picker_title">Feedback Type</string>
+    <string name="feedback_details_hint">Describe your experience...</string>
+    <string name="feedback_email_hint">you@example.com</string>
+    <string name="feedback_submit">Submit Feedback</string>
+    <string name="feedback_sent">Feedback Sent!</string>
+    <string name="feedback_load_error_title">Couldn\'t load categories</string>
+    <string name="feedback_thanks_title">Thanks for your feedback!</string>
+    <string name="feedback_thanks_body">We really appreciate you taking the time to help us make ClickMe better.</string>
+    <string name="feedback_thanks_ok">OK</string>
+    <string name="feedback_error_title">Couldn\'t send feedback</string>
     <string name="feedback_details_too_short">Please describe your experience in at least 10 characters.</string>
     <string name="feedback_no_category">Please choose a feedback category before submitting.</string>
     <string name="feedback_too_many_attempts">Too many attempts. Please try again in a moment.</string>
