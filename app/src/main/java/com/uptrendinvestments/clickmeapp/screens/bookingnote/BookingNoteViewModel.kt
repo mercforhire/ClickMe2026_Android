@@ -98,6 +98,10 @@ class BookingNoteViewModel
                     repository.save(args.role, args.bookingId, body)
                 } catch (e: ApiException) {
                     // The text stays. A POST 404 lands here too: only the load maps 404 to an empty note.
+                    // toDialogError() is null only for ACCOUNT_SUSPENDED, and that needs no dialog here: the
+                    // SuspensionInterceptor has already cleared the tokens and raised SessionEvent.Suspended, so
+                    // UserManager logs out, AppViewModel moves this home route to Login (the editor leaves
+                    // composition) and ClickMeApp shows the global suspended dialog. Same as every sibling screen.
                     _uiState.update { it.copy(isSaving = false, saveError = e.toDialogError()) }
                     return@launch
                 }
