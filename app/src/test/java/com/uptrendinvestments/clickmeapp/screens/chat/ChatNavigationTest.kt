@@ -17,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Explor
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.ExpertClientProfileKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertChatsRoot
 import org.junit.Assert.assertEquals
@@ -98,7 +99,7 @@ class ChatNavigationTest {
     fun viewProfileUsesPeerSeedAndChatsOrigin() {
         val navigator = clientNavigator()
 
-        navigator.openChatPeerProfile(thread)
+        navigator.openChatPeerProfile(thread, AppMode.Client)
 
         assertEquals(
             ExpertProfileKey(
@@ -116,9 +117,30 @@ class ChatNavigationTest {
     fun viewProfileWithoutPeerIdPushesNothing() {
         val navigator = clientNavigator()
 
-        navigator.openChatPeerProfile(ChatThreadKey("t1", null, "Ada", null, true))
+        navigator.openChatPeerProfile(ChatThreadKey("t1", null, "Ada", null, true), AppMode.Client)
 
         assertEquals(listOf<NavKey>(ClientChatsRoot, thread), navigator.stack(ClientChatsRoot))
+    }
+
+    @Test
+    fun expertModeViewProfileOpensTheClientProfileOnChats() {
+        val navigator = expertNavigator()
+
+        navigator.openChatPeerProfile(thread, AppMode.Expert)
+
+        assertEquals(
+            listOf<NavKey>(ExpertChatsRoot, thread, ExpertClientProfileKey("p1", ExpertBookingOrigin.Chats)),
+            navigator.stack(ExpertChatsRoot),
+        )
+    }
+
+    @Test
+    fun expertModeViewProfileWithoutPeerIdPushesNothing() {
+        val navigator = expertNavigator()
+
+        navigator.openChatPeerProfile(ChatThreadKey("t1", null, "Ada", null, true), AppMode.Expert)
+
+        assertEquals(listOf<NavKey>(ExpertChatsRoot, thread), navigator.stack(ExpertChatsRoot))
     }
 
     @Test
@@ -136,6 +158,10 @@ class ChatNavigationTest {
         assertNotEquals(
             ClientBookingNoteKey("b1", "Ada", "Algorithms", 0L, 1L, StackOrigin.Default),
             ClientBookingNoteKey("b1", "Ada", "Algorithms", 0L, 1L, StackOrigin.Chats),
+        )
+        assertNotEquals(
+            ExpertClientProfileKey("c1", ExpertBookingOrigin.Bookings),
+            ExpertClientProfileKey("c1", ExpertBookingOrigin.Chats),
         )
     }
 
