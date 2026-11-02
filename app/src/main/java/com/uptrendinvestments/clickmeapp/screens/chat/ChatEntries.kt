@@ -16,6 +16,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.Client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.UpcomingBookingKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.ExpertClientProfileKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertChatsRoot
 
 /**
@@ -57,20 +58,30 @@ fun Navigator.openChatBooking(
 }
 
 /**
- * "View profile": opens the peer's Expert Profile on the Chats stack, seeded from the thread key. A no-op without a
- * [ChatThreadKey.peerId]. An empty title means unknown, per [ExpertProfileKey].
+ * "View profile" for the peer in [key], on the Chats stack of [mode]'s shell. Expert mode opens the read-only Client
+ * Profile (iOS `HomeRoute.peerProfile` in the expert shell, D-13); client mode opens the peer's Expert Profile, seeded
+ * from the thread key. A no-op without a [ChatThreadKey.peerId]. [mode] has no default on purpose: only expert mode may
+ * reach the expert endpoints, because `ensureExpert` converts a client-only account on first touch, so a caller must choose.
  */
-fun Navigator.openChatPeerProfile(key: ChatThreadKey) {
+fun Navigator.openChatPeerProfile(
+    key: ChatThreadKey,
+    mode: AppMode,
+) {
     val peerId = key.peerId ?: return
-    navigate(
-        ExpertProfileKey(
-            expertId = peerId,
-            name = key.peerName.orEmpty(),
-            title = "",
-            imageUrl = key.peerAvatarUrl,
-            origin = StackOrigin.Chats,
-        ),
-    )
+    when (mode) {
+        AppMode.Client ->
+            // An empty title means unknown, per ExpertProfileKey.
+            navigate(
+                ExpertProfileKey(
+                    expertId = peerId,
+                    name = key.peerName.orEmpty(),
+                    title = "",
+                    imageUrl = key.peerAvatarUrl,
+                    origin = StackOrigin.Chats,
+                ),
+            )
+        AppMode.Expert -> navigate(ExpertClientProfileKey(peerId, ExpertBookingOrigin.Chats))
+    }
 }
 
 /** Opens Report & Block for the thread in [key] on the Chats stack. */

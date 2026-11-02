@@ -236,7 +236,9 @@ fun ChatThreadContent(
             ChatThreadTopBar(state = state, onBack = onBack) {
                 ThreadOverflowMenu(
                     entry = state.menuEntry,
-                    showViewProfile = mode == AppMode.Client && state.peerIsExpert == true,
+                    // Every signup has the expert role, so peerIsExpert says nothing in expert mode (D-13); a
+                    // person with no booking reaches the friendly Client Profile state (D-14).
+                    showViewProfile = if (mode == AppMode.Client) state.peerIsExpert == true else !state.isSelfThread,
                     viewProfileEnabled = state.peerId != null,
                     showSafetyItem = !state.isSelfThread,
                     onViewProfile = onViewProfile,

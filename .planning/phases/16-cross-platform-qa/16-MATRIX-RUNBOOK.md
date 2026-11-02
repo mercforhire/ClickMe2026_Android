@@ -40,6 +40,8 @@ Phase 16.2 adds rows D1.RS1-D1.RS8 and D2.RS1-D2.RS4; they run on the first Play
 
 Phase 16.3 adds rows D1.FV1-D1.FV7, D2.FV1 and FS.FV1-FS.FV3; they run on the first Play build that contains Phase 16.3 (after Phase 16.5, per ROADMAP).
 
+Phase 16.4 adds rows D1.PN1-D1.PN5, D2.PN1-D2.PN2, D2.CP1-D2.CP3, FS.PN1 and FS.CP1, plus the backstops D1.PN6-D1.PN7, D2.PN3 and D2.CP4-D2.CP5 reported by plans 16.4-03, 16.4-06, 16.4-08 and 16.4-09; they run on the first Play build that contains Phase 16.4 (after Phase 16.5, per ROADMAP).
+
 ## 0. Pre-flight
 
 Direction `D1` unless stated. Run before any money row.
@@ -159,6 +161,20 @@ Samsung = B (client). No money moves in these rows.
 | D1.FV6 | D-13 | D1 | Open the profile of an expert with 0 reviews; tap "See all". | The Recent Reviews card shows only its header and "See all"; "See all" shows "No reviews yet". | Outcome per step. | [ ] |
 | D1.FV7 | CR-01, D-05 | D1 | Favorite A. Open Profile, Discovery, Saved Experts, then A's profile. Book A's free topic to Request Sent; tap "View My Bookings"; tap the Profile tab. Book the same way again; tap "Back to home"; tap the Profile tab. As B, cancel both bookings. | "View My Bookings" opens Bookings and "Back to home" opens Explore; each time the Profile tab shows the hub with the bottom bar, not Request Sent and not Saved Experts. | Outcome per exit. | [ ] |
 
+### 2f-N Private notes, client side (Phase 16.4)
+
+Samsung = B (client). No money moves in these rows.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D1.PN1 | PARITY #7, D-03, D-05 | D1 | On a past card B taps "Private Note", types a note and taps Save. Then Back. | The header shows A's name, the topic and the date; the Save action shows a spinner, then a check for about 1.5 s; the screen stays; after Back the card shows the preview. | Outcome per step. | [ ] |
+| D1.PN2 | D-07, D-08 | D1 | On an upcoming card B taps "Add private note", saves, and returns. Tap the preview pencil. Open Upcoming Booking Details. | The card shows the preview with a pencil; tapping it shows the saved text; Upcoming Booking Details shows no note card. | Outcome per step. | [ ] |
+| D1.PN3 | D-06, D-08 | D1 | B opens Booking Summary from a past card, from a booking event in a chat thread and from a push. Tap "My Note", edit, go back. | "My Note" opens the editor from all three; after an edit the full note shows on return. | Outcome per entry point. | [ ] |
+| D1.PN4 | D-01, D-02, D-04 | D1 | With unsaved edits press the app bar arrow, then system back. Choose Keep editing, then Discard. With no edits press Back. Paste over 5,000 characters. Save only spaces. | Each back asks "Discard changes?"; Keep editing keeps the text; Discard leaves; with no edits no dialog shows; the paste is cut at 5,000 and the counter shows from 4,500; the spaces-only save clears the note and the card shows no preview. | Outcome per step. | [ ] |
+| D1.PN5 | PARITY #7, #8, RESEARCH notes are independent columns | D1 | On one booking B writes a client note on Android and A writes an expert note on iOS. Each then reads their own note on their own platform. | Each side reads only their own note; neither sees or overwrites the other's. | Yes or no per side; never the note text. | [ ] |
+| D1.PN6 | 16.4-06 manual backstop | D1 | A booking push opens Booking Summary on the Samsung (app killed, then backgrounded). Tap "My Note", save a note, press Back twice. | "My Note" opens the editor from the push-opened summary; the saved note shows on return; Back leaves the app stack in the order the push built. | Outcome per launch state. | [ ] |
+| D1.PN7 | 16.4-03 manual backstop | D1 | In the note editor look at the field border unfocused and focused, tap Save and watch the icon, open the keyboard and scroll a long note. | The border changes on focus; the Save spinner cross-fades to the check without a jump; the field, counter and Save stay reachable with the keyboard up and the text scrolls. | Note. | [ ] |
+
 ### 2g Payouts mirror (D-05, iOS half)
 
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
@@ -237,6 +253,21 @@ Samsung = A (expert). No money moves in this row.
 |---|---|---|---|---|---|---|
 | D2.FV1 | D-15 | D2 | A opens "View My Public Profile" from the expert hub. Tap "See all" on Recent Reviews. | The self-view shows no heart; Recent Reviews shows "See all"; it opens A's own full Reviews list with no bottom bar; Back returns to the profile. | Outcome per step. | [ ] |
 
+### 4e-N Expert notes and Client Profile (Phase 16.4)
+
+Samsung = A (expert). No money moves in these rows.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D2.PN1 | PARITY #8, D-07, D-08 | D2 | A uses "Private Note" on a past card, the note zone on an upcoming card and "My Note" on Expert Booking Summary. | Each opens the editor; the saved note shows on return in each place. | Outcome per place. | [ ] |
+| D2.PN2 | PARITY #7, #8, independence the other way | D2 | On one booking A writes an expert note on Android and B writes a client note on iOS. Each reads their own note. | Each reads only their own note; neither overwrites the other's. | Yes or no per side; never the note text. | [ ] |
+| D2.CP1 | PARITY #9, D-09, D-10, D-11 | D2 | A taps "View Profile" on Expert Booking Summary. Pull to refresh. | Avatar, name, "Client" badge, About, "Your Sessions Together" and "Booking History" show in that order; a paid completed row shows A's net earnings, a free row shows no amount, a cancelled row shows no amount; rows are not tappable; pull to refresh works. | Outcome per element. | [ ] |
+| D2.CP2 | D-13 | D2 | In an expert-mode chat thread with a client open the menu and tap "View profile". Press Back. | The menu shows "View profile"; it opens the same Client Profile; Back returns to the thread. | Outcome per step. | [ ] |
+| D2.CP3 | D-14 | D2 | From an expert-mode chat with a person who has no booking with A tap "View profile". | "No bookings with this person yet" shows with no Retry and a working "Go back". | Outcome per step. | [ ] |
+| D2.PN3 | 16.4-09 manual backstop | D2 | A booking push opens Expert Booking Summary on the Samsung (app killed, then backgrounded). Tap "My Note", save, press Back twice. | "My Note" opens the editor from the push-opened summary; the saved note shows on return; Back follows the order the push built. | Outcome per launch state. | [ ] |
+| D2.CP4 | 16.4-09 manual backstop | D2 | From a booking event in an expert-mode chat thread open Expert Booking Summary, tap "View Profile", press Back twice. | Client Profile opens on the Chats stack; Back returns to the summary, then to the thread; the bottom bar stays hidden throughout. | Outcome per step. | [ ] |
+| D2.CP5 | 16.4-08 manual backstop | D2 | On a Client Profile look at the avatar ring and glow and the Upcoming row border. Reach the friendly 403 and 404 states (a chat peer with no booking; a removed account if one exists) and pull to refresh on each. | The ring and static glow match the iOS profile; the Upcoming row shows its border; each friendly state refreshes on pull and keeps Go back. | Note per item. | [ ] |
+
 ### 4f Payouts (D-05, Android half)
 
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
@@ -312,6 +343,8 @@ Switch on Settings, Display, Font size at the largest, then Display size at the 
 | FS.FV1 | 16.3 UI-SPEC E3 backstop | D1 | At 200% open Profile, Saved Experts. | The Favorite Experts app bar title stays on one line with an ellipsis. | Note. | [ ] |
 | FS.FV2 | 16.3 UI-SPEC E4 backstop | D1 | At 200% view a Saved Experts card with a long name and several tags. | The card grows with no clipping and the photo stays 72 x 80 dp. | Note. | [ ] |
 | FS.FV3 | 16.3 UI-SPEC E5 backstop | D1 | At 200% tap the heart on a Saved Experts card whose expert has a long name. | The remove dialog title wraps without clipping and both buttons stay reachable. | Note. | [ ] |
+| FS.PN1 | 16.4 D-02 | Samsung | At 200% open the note editor with the keyboard up. Also open Booking Summary as B and as A with a saved note. | The header, the field and the counter stay reachable and nothing clips; the Save action stays reachable; the My Note card wraps without clipping on both summaries. | Note. | [ ] |
+| FS.CP1 | 16.4 D-09 | D2 | At 200% open a Client Profile with a long topic. Also view the View Profile link on Expert Booking Summary. | Stat cells wrap, the amount stays visible and nothing clips; the View Profile link wraps or stays one line without clipping and keeps a 48 dp target. | Note. | [ ] |
 
 Switch the font and display size back.
 

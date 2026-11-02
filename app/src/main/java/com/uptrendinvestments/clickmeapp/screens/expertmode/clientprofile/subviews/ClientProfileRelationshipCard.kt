@@ -123,7 +123,7 @@ private fun ClientProfileRelationshipCardPreview() {
             ClientProfileRelationshipCard(
                 relationship = ClientRelationshipDto(totalSessions = 3),
                 zone = ZoneId.systemDefault(),
-                locale = Locale.getDefault(),
+                locale = Locale.US,
                 modifier = Modifier.padding(Spacing.md),
             )
         }

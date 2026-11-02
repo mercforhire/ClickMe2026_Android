@@ -198,7 +198,7 @@ private fun ClientProfilePersonalInfoPreview() {
                         languages = listOf("English", "Spanish"),
                     ),
                 zone = ZoneId.systemDefault(),
-                locale = Locale.getDefault(),
+                locale = Locale.US,
                 modifier = Modifier.padding(Spacing.md),
             )
         }

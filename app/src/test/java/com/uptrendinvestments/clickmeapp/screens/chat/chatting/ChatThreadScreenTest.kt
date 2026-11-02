@@ -411,12 +411,55 @@ class ChatThreadScreenTest {
     }
 
     @Test
-    fun viewProfileIsAbsentInExpertMode() {
+    fun viewProfileIsOfferedInExpertMode() {
         show(loaded(listOf(incoming("m1", "Hello"))), mode = AppMode.Expert)
         rule.onNodeWithContentDescription("More options").performClick()
 
-        rule.onNodeWithText("View profile").assertDoesNotExist()
+        rule.onNodeWithText("View profile").assertIsDisplayed()
         rule.onNodeWithText("Block or report").assertIsDisplayed()
+        rule.onNodeWithText("View profile").performClick()
+        assertEquals(1, viewProfileCalls)
+    }
+
+    @Test
+    fun expertModeIgnoresPeerIsExpert() {
+        val base = loaded(listOf(incoming("m1", "Hello")))
+        show(base.copy(peerIsExpert = null), mode = AppMode.Expert)
+        rule.onNodeWithContentDescription("More options").performClick()
+        rule.onNodeWithText("View profile").assertIsDisplayed()
+
+        listOf(false, true).forEach { peerIsExpert ->
+            shown = base.copy(peerIsExpert = peerIsExpert)
+            rule.waitForIdle()
+            rule.onNodeWithText("View profile").assertIsDisplayed()
+            rule.onNodeWithText("View profile").assertIsEnabled()
+        }
+    }
+
+    @Test
+    fun viewProfileIsDisabledInExpertModeUntilThePeerIdIsKnown() {
+        show(loaded(listOf(incoming("m1", "Hello"))).copy(peerId = null), mode = AppMode.Expert)
+        rule.onNodeWithContentDescription("More options").performClick()
+
+        rule.onNodeWithText("View profile").assertIsDisplayed()
+        rule.onNodeWithText("View profile").assertIsNotEnabled()
+    }
+
+    @Test
+    fun clientModeKeepsItsRule() {
+        val base = loaded(listOf(incoming("m1", "Hello")))
+        show(base.copy(peerIsExpert = false))
+        rule.onNodeWithContentDescription("More options").performClick()
+        rule.onNodeWithText("Block or report").assertIsDisplayed()
+        rule.onNodeWithText("View profile").assertDoesNotExist()
+
+        shown = base.copy(peerIsExpert = null)
+        rule.waitForIdle()
+        rule.onNodeWithText("View profile").assertDoesNotExist()
+
+        shown = base.copy(peerIsExpert = true)
+        rule.waitForIdle()
+        rule.onNodeWithText("View profile").assertIsDisplayed()
     }
 
     @Test
