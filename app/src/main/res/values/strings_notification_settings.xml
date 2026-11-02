@@ -22,4 +22,8 @@
     <string name="notification_settings_row_nudge">Review Reminders</string>
 
     <string name="notification_settings_row_subtitle">In-app, Email, Push</string>
+
+    <string name="notification_settings_title">Notifications</string>
+    <string name="notification_settings_load_error_title">Couldn\'t load preferences</string>
+    <string name="notification_settings_save_error_a11y">Couldn\'t save preferences. Retry</string>
 </resources>
