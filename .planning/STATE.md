@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: "16.4"
 current_phase_name: "iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)"
 status: executing
-stopped_at: Phase 16.4 context gathered
-last_updated: "2026-11-02T02:00:18.571Z"
+stopped_at: Phase 16.4 UI-SPEC approved; resuming execution at wave 2
+last_updated: "2026-11-02T02:52:53.417Z"
 last_activity: 2026-11-01
-last_activity_desc: Phase 16.4 execution started
-state_head: 86f0a05b26b2e30f886a5fdbb1f35e02348d7bbd
+last_activity_desc: Phase 16.4 execution resumed (wave continue)
+state_head: 576c2bf78fcf492fe73848882d0fb103452f1e49
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 285
-  completed_plans: 266
+  completed_plans: 268
 milestone_name: milestone
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 Phase: 16.4 (iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)) — EXECUTING
 Plan: 1 of 10
 Status: Executing Phase 16.4
-Last activity: 2026-11-01 — Phase 16.4 execution started
+Last activity: 2026-11-01 — Phase 16.4 execution resumed (wave continue)
 
 Progress: [███████░░░] 65%
 
@@ -344,9 +344,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-02T00:45:10.807Z
-Stopped at: Phase 16.4 context gathered
-Resume file: .planning/phases/16.4-ios-parity-private-booking-notes-and-expert-side-client-prof/16.4-CONTEXT.md
+Last session: 2026-11-02T02:52:48.850Z
+Stopped at: Phase 16.4 UI-SPEC approved; resuming execution at wave 2
+Resume file: .planning/phases/16.4-ios-parity-private-booking-notes-and-expert-side-client-prof/16.4-UI-SPEC.md
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
