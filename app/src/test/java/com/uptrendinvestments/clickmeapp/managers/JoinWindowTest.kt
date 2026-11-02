@@ -99,4 +99,34 @@ class JoinWindowTest {
     fun pendingApproval_isNeverJoinableEvenForALongSession() {
         assertFalse(isWithinJoinWindow("pending_approval", now.minusSeconds(2 * 3600), now.plusSeconds(3600), now))
     }
+
+    // ---- Phase 16.5 D-03: the rule fails closed for terminal and unknown statuses ----
+
+    private val neverJoinable = listOf("cancelled", "declined", "missed", "expired", "something_new", "")
+
+    @Test
+    fun terminalAndUnknownStatusesAreNeverJoinable() {
+        (neverJoinable + "pending_approval").forEach { status ->
+            assertFalse(status, within(status, 600))
+        }
+    }
+
+    @Test
+    fun showsJoinCardTruthTable() {
+        val start = now.plusSeconds(600)
+        val end = now.plusSeconds(4200)
+        listOf("confirmed", "in_progress", "pending_reschedule").forEach { status ->
+            assertTrue(status, showsJoinCard(status, end, now))
+            assertTrue(status, showsJoinCard(status, end, now.minusSeconds(2 * 86_400)))
+            assertTrue(status, showsJoinCard(status, end, end.plusSeconds(86_400)))
+        }
+        assertTrue(showsJoinCard("completed", end, now))
+        assertTrue(showsJoinCard("completed", end, end.minusSeconds(1)))
+        assertFalse(showsJoinCard("completed", end, end))
+        assertFalse(showsJoinCard("completed", end, end.plusSeconds(1)))
+        (neverJoinable + "pending_approval").forEach { status ->
+            assertFalse(status, showsJoinCard(status, end, now))
+            assertFalse(status, showsJoinCard(status, end, start))
+        }
+    }
 }

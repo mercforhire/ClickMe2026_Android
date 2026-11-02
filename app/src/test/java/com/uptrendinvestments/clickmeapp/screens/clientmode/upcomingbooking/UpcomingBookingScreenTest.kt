@@ -72,6 +72,7 @@ import com.uptrendinvestments.clickmeapp.testing.initiateData
 import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -680,6 +681,80 @@ class UpcomingBookingScreenTest {
             joinNow = detailsStart,
         )
         rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    // ---- Phase 16.5 D-03: Payment History opens any status, so terminal ones offer no live action ----
+
+    private fun setStatusScreen(
+        state: androidx.compose.runtime.MutableState<UpcomingBookingUiState>,
+        joinNow: Instant,
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingContent(
+                    state = state.value,
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = joinNow,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAccept = {},
+                    onDecline = {},
+                    onDismissRescheduleDialog = {},
+                    onOpenPaymentMethods = {},
+                    onRescheduleNoticeConsumed = {},
+                    zone = zone,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun terminalStatusesShowNoLiveAction() {
+        val state = mutableStateOf<UpcomingBookingUiState>(loaded(details()))
+        setStatusScreen(state, detailsStart.minusSeconds(600))
+        listOf("cancelled", "declined", "missed", "expired", "something_new").forEach { status ->
+            state.value = loaded(details(status = status))
+            rule.waitForIdle()
+            rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
+            rule.onAllNodesWithTag(UPCOMING_BOOKING_RESCHEDULE_TAG).assertCountEquals(0)
+            rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun completedAfterEndShowsNoJoinCard() {
+        setScreen(loaded(details(status = "completed")), joinNow = detailsStart.plusSeconds(3600))
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun completedBeforeEndKeepsAnEnabledJoin() {
+        setScreen(loaded(details(status = "completed")), joinNow = detailsStart.plusSeconds(1800))
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun liveBookingOutsideItsWindowKeepsTheDisabledCard() {
+        setScreen(loaded(details(status = "confirmed")), joinNow = detailsStart.minusSeconds(2 * 86_400))
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG)
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .assert(hasJoinHint())
+    }
+
+    @Test
+    fun terminalBookingKeepsMessageAndHasOneGap() {
+        setScreen(loaded(details(status = "cancelled", clientNotes = null)))
+        rule.onNodeWithText("Cancelled").assertExists()
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo().assertIsEnabled()
+        val pillBottom = rule.onNodeWithTag(UPCOMING_BOOKING_PAYMENT_PILL_TAG).getUnclippedBoundsInRoot().bottom
+        val messageTop = rule.onNodeWithTag(MESSAGE_EXPERT_TAG).getUnclippedBoundsInRoot().top
+        assertEquals(Spacing.md.value, (messageTop - pillBottom).value, 0.5f)
     }
 
     @Test
