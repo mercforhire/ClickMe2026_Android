@@ -27,7 +27,8 @@ const val SAVED_HOLD_MS = 2_000L
  *
  * It saves a snapshot of type [S] by calling [persist] with the last successfully saved snapshot and the newest one.
  * Rules:
- * - Every [onEdited] restarts a [AUTO_SAVE_DEBOUNCE_MS] timer; a burst of edits gives one save of the final value.
+ * - Every [onEdited] restarts a [debounceMs] timer (default [AUTO_SAVE_DEBOUNCE_MS]); a burst of edits gives one save of
+ *   the final value.
  * - A snapshot equal to the saved baseline is never persisted, nor is one that [sendsNothing] says would produce no
  *   request (for example a whitespace-only edit): it becomes the baseline silently, with no Saving/Saved flash.
  * - The baseline moves only after [persist] returns, so a failure keeps it and [retry] re-sends the newest snapshot.
@@ -41,6 +42,7 @@ class AutoSaver<S : Any>(
     private val persist: suspend (old: S, new: S) -> Unit,
     private val onFailure: (ApiException) -> Unit,
     private val sendsNothing: (old: S, new: S) -> Boolean = { _, _ -> false },
+    private val debounceMs: Long = AUTO_SAVE_DEBOUNCE_MS,
 ) {
     private val _status = MutableStateFlow(AutoSaveStatus.Idle)
     val status: StateFlow<AutoSaveStatus> = _status.asStateFlow()
@@ -69,7 +71,7 @@ class AutoSaver<S : Any>(
         debounceJob?.cancel()
         debounceJob =
             scope.launch {
-                delay(AUTO_SAVE_DEBOUNCE_MS)
+                delay(debounceMs)
                 // A separate job, so a later edit cancelling this debounce never cancels a request in flight.
                 scope.launch { save() }
             }

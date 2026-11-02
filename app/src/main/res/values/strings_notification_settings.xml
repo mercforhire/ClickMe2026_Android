@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phase 16.5 (PARITY-AUDIT #5): Notification Settings copy, verbatim from iOS. Not the inbox strings, which live
+         in strings_notifications.xml. -->
+    <string name="notification_settings_section_bookings">Bookings</string>
+    <string name="notification_settings_section_sessions">Sessions</string>
+    <string name="notification_settings_section_messages">Messages</string>
+    <string name="notification_settings_section_reviews">Reviews</string>
+
+    <string name="notification_settings_row_requests">Booking Requests</string>
+    <string name="notification_settings_row_confirmations">Booking Confirmations</string>
+    <string name="notification_settings_row_declines">Booking Declines</string>
+    <string name="notification_settings_row_cancellations">Booking Cancellations</string>
+    <string name="notification_settings_row_reschedules">Booking Reschedules</string>
+    <string name="notification_settings_row_expirations">Booking Expirations</string>
+    <string name="notification_settings_row_refunds">Refunds</string>
+    <string name="notification_settings_row_reminder">Session Reminders</string>
+    <string name="notification_settings_row_no_show">Partner No-Show</string>
+    <string name="notification_settings_row_ended">Session Ended</string>
+    <string name="notification_settings_row_new_message">New Messages</string>
+    <string name="notification_settings_row_received">New Reviews</string>
+    <string name="notification_settings_row_nudge">Review Reminders</string>
+
+    <string name="notification_settings_row_subtitle">In-app, Email, Push</string>
+</resources>

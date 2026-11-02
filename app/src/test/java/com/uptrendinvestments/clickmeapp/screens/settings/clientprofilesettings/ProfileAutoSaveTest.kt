@@ -39,6 +39,7 @@ class ProfileAutoSaveTest {
         test: TestScope,
         val persistDelayMs: Long = 0L,
         sendsNothing: (String, String) -> Boolean = { _, _ -> false },
+        debounceMs: Long = AUTO_SAVE_DEBOUNCE_MS,
     ) {
         val mainJob = Job()
         val mainScope = CoroutineScope(mainJob + StandardTestDispatcher(test.testScheduler))
@@ -66,8 +67,40 @@ class ProfileAutoSaveTest {
                 },
                 onFailure = { failures += it },
                 sendsNothing = sendsNothing,
+                debounceMs = debounceMs,
             )
     }
+
+    @Test
+    fun customDebounceIsHonoured() =
+        runTest {
+            val h = Harness(this, debounceMs = 800)
+            h.saver.onEdited("b")
+            advanceTimeBy(799)
+            runCurrent()
+            assertTrue(h.calls.isEmpty())
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(listOf("a" to "b"), h.calls)
+            h.mainJob.cancel()
+        }
+
+    @Test
+    fun defaultDebounceIsUnchanged() =
+        runTest {
+            assertEquals(1_200L, AUTO_SAVE_DEBOUNCE_MS)
+            val h = Harness(this)
+            h.saver.onEdited("b")
+            advanceTimeBy(1_199)
+            runCurrent()
+            assertTrue(h.calls.isEmpty())
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(listOf("a" to "b"), h.calls)
+            h.mainJob.cancel()
+        }
 
     @Test
     fun debouncesBurstIntoOneSave() =
