@@ -45,6 +45,8 @@ import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.CALL_END_
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.EXTERNAL_OPEN_TAG
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MEETING_CALL_PILL_TAG
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.splash.SPLASH_SCREEN_TAG
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashScreen
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -201,6 +203,42 @@ class CallOverlayHostTest {
         rule.onNodeWithTag(MEETING_CALL_SCREEN_TAG).assertIsDisplayed()
         rule.onNodeWithText("Underlying content").assertDoesNotExist()
         rule.onNodeWithTag(MEETING_CALL_PILL_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun expandedCallDrawsAboveTheSplash() {
+        val state = mutableStateOf<MeetingCallUiState?>(null)
+        rule.setContent {
+            ClickMeTheme {
+                CallOverlayContent(
+                    state = state.value,
+                    isMinimized = false,
+                    dialog = null,
+                    pendingPermission = null,
+                    onMinimize = {},
+                    onExpand = {},
+                    onToggleMute = {},
+                    onToggleSpeaker = {},
+                    onEndCall = {},
+                    onOpenExternal = {},
+                    onDismissDialog = {},
+                    onPermissionResult = { _, _ -> },
+                    onChat = {},
+                    chatError = null,
+                    onDismissChatError = {},
+                ) {
+                    SplashScreen(onComposed = {})
+                }
+            }
+        }
+        rule.onNodeWithText("Book time with the best minds.", useUnmergedTree = true).assertExists()
+
+        state.value = inApp()
+        rule.waitForIdle()
+
+        rule.onNodeWithTag(CALL_OVERLAY_LAYER_TAG).assertIsDisplayed()
+        rule.onNodeWithTag(MEETING_CALL_SCREEN_TAG).assertIsDisplayed()
+        rule.onNodeWithTag(SPLASH_SCREEN_TAG).assertDoesNotExist()
     }
 
     @Test
