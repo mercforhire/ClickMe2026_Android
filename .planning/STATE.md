@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: "16.5"
 current_phase_name: "iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)"
-status: executing
-stopped_at: Phase 16.5 planned, ready to execute
+status: human_needed
+stopped_at: Phase 16.5 executed, verification human_needed
 last_updated: "2026-11-02T17:59:15.109Z"
 last_activity: 2026-11-02
-last_activity_desc: Phase 16.5 execution started
+last_activity_desc: Phase 16.5 executed (12/12); verification human_needed, 8 UAT items
 state_head: 60171437ad6b15bacb41fa11203426fe853a78ee
 progress:
   total_phases: 22
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 ## Current Position
 
 Phase: 16.5 (iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)) — EXECUTING
-Plan: 1 of 12
-Status: Executing Phase 16.5
-Last activity: 2026-11-02 — Phase 16.5 execution started
+Plan: 12 of 12 complete
+Status: Executed; verification human_needed (16.1, 16.4 and 16.5 UAT still open). Next: decide 16.5 WR-01, then resume Phase 16
+Last activity: 2026-11-02 — Phase 16.5 executed: 12/12 plans, 5231 tests green, SECURITY 44/44, UI review 20/24, verification 10/10, 8 UAT items pending
 
 Progress: [███████░░░] 65%
 
@@ -171,6 +171,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- [Phase 16.5] OPEN (advisory, 2026-11-02): all 8 items in 16.5-UAT.md are pending, so the phase stays unticked in ROADMAP.md (same as 16.1 and 16.4), to clear in the Phase 16 device matrix. Review WR-01 (Cancel Booking on a past confirmed booking reachable from Payment History; iOS shows Cancel with no status or time check) and IN-01..04 are open in 16.5-REVIEW-DISPOSITION.md and need a user decision. Tell the backend owner: `POST /bookings/:id/join` has no status check (T-16.5-06), `/feedback/submit` has no rate limiter. versionCode 2 is set at aa36dd17, not built for release and not uploaded.
 - [Phase 16.4] OPEN (advisory, 2026-11-02): all 7 items in 16.4-UAT.md are pending, so the phase stays unticked in ROADMAP.md (same as 16.1), to clear in the Phase 16 device matrix. Also check there, neither yet seen on a device: the WR-01 note preview with leading blank lines, and the WR-02 suspended-account path when saving a note (traced in code only). All 5 review findings are fixed, see 16.4-REVIEW-DISPOSITION.md.
 - [Phase 16.3] OPEN (advisory, 2026-11-01): review warnings WR-01 (`onSeeAllReviews` no-op default), WR-02 (favorite heart shown in Expert mode, where the backend answers 403), WR-03 (two failed removes can restore rows out of order), WR-04 (screen tests claim behavior they cannot detect), see 16.3-REVIEW-DISPOSITION.md. UAT test 5 (200% font backstops, FS.FV1-FS.FV3) is deferred to the Phase 16 device matrix.
 - [Phase 16.2] OPEN (advisory, 2026-10-31): review WR-01 (no My Bookings call-site test for the canClientStartReschedule allow-list), plus the first review's picker warnings: single-flight released on Sent before the pop animation, a silent Continue after slot expiry, and a restored disclosure that reappears. The incremental re-review reused ids WR-01/IN-01..03, so those older rows were dropped from 16.2-REVIEW-DISPOSITION.md (recoverable from git before d748888a). UAT test 5 (200% font / 1.5x visual backstops) is deferred to the Phase 16 device matrix.
