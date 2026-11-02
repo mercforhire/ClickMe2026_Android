@@ -4,11 +4,11 @@ milestone: v1.0
 current_phase: "16.5"
 current_phase_name: "iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)"
 status: ready_to_discuss
-stopped_at: Phase 16.4 code review closed, UAT open; ready to discuss Phase 16.5
-last_updated: "2026-11-02T06:08:29.000Z"
+stopped_at: Phase 16.5 context gathered
+last_updated: "2026-11-02T06:38:50.819Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 16.4 review findings all fixed, next is Phase 16.5
-state_head: 7fce28e460f0a5b56af90f953438c4cc4cae16f4
+state_head: 87194e00a093bf97e6dffc5615f973f0ef67454a
 progress:
   total_phases: 22
   completed_phases: 11
@@ -345,9 +345,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-02T06:08:29.000Z
-Stopped at: Phase 16.4 code review closed, UAT open; ready to discuss Phase 16.5
-Resume file: None (next: /gsd-discuss-phase 16.5, then /gsd-ui-phase 16.5 before planning)
+Last session: 2026-11-02T06:38:47.659Z
+Stopped at: Phase 16.5 context gathered
+Resume file: .planning/phases/16.5-ios-parity-payment-history-notification-preferences-feedback/16.5-CONTEXT.md
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
