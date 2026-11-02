@@ -36,10 +36,12 @@ data class BookAgainSeed(
 }
 
 /**
- * What Booking Summary shows for one booking (D-13). There is deliberately no private note here; the review the user
- * left (Feedback block) and the Leave a review control follow [SummaryReview] and the booking status (D-18).
+ * What Booking Summary shows for one booking (D-13). The review the user left (Feedback block) and the Leave a
+ * review control follow [SummaryReview] and the booking status (D-18).
  *
  * @property expertId the expert's user id, the peer for Message Expert (D-14); null disables the control.
+ * @property privateNote the client's own full note, or null when there is none or it is blank (Phase 16.4, D-08).
+ *   User-written: shown on the My Note card, never logged, so [toString] leaves it out.
  */
 data class BookingSummaryDetails(
     val bookingId: String,
@@ -55,7 +57,10 @@ data class BookingSummaryDetails(
     val priceLabel: SummaryPriceLabel,
     val bookAgain: BookAgainSeed?,
     val reschedule: RescheduleProposalUi?,
-)
+    val privateNote: String? = null,
+) {
+    override fun toString(): String = "BookingSummaryDetails(bookingId=$bookingId)"
+}
 
 /**
  * What the review-context call said about this booking (D-18). [Unknown] covers "not loaded yet", "not a completed
@@ -102,7 +107,7 @@ fun BookingSummaryUiState.Loaded.showLeaveReview(reviewedIds: Set<String>): Bool
 /**
  * Maps the booking detail to the display model. The price label follows the payment status: `captured` is "Price
  * paid", `refunded` is "Refunded", anything else (held, none, unknown) and every free topic is "Session fee".
- * Blank strings become null; a missing end time falls back to start plus the topic duration.
+ * Blank strings become null (a whitespace note written from iOS counts as no note); a missing end time falls back to start plus the topic duration.
  */
 fun ClientBookingDetail.toSummaryDetails(now: Instant): BookingSummaryDetails =
     BookingSummaryDetails(
@@ -133,4 +138,5 @@ fun ClientBookingDetail.toSummaryDetails(now: Instant): BookingSummaryDetails =
                 )
             },
         reschedule = toRescheduleProposalUi(now),
+        privateNote = privateNote?.takeIf(String::isNotBlank),
     )

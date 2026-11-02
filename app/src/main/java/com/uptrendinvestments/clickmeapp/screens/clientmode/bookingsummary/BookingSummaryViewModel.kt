@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.network.ApiException
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.toSectionMessage
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
@@ -40,6 +41,9 @@ import java.time.Clock
  * Leave a review (D-18, D-19): [leaveReviewKey] builds the Write Review route from the loaded booking. A
  * `ReviewSubmitted` for this booking in [ReviewLaunchRequest.summaryReviewed] is consumed in `init` and on every
  * later emission; it triggers a quiet reload and sets [reviewThanks] so the screen shows "Thanks for your review".
+ *
+ * My Note (Phase 16.4, D-06, D-08): [noteKey] builds the editor route; a saved note shows on return through the
+ * existing quiet reload ([refreshQuietly]), so there is no note-specific refresh.
  */
 @HiltViewModel(assistedFactory = BookingSummaryViewModel.Factory::class)
 class BookingSummaryViewModel
@@ -110,6 +114,23 @@ class BookingSummaryViewModel
                 expertName = details.expertName,
                 expertAvatarUrl = details.expertAvatarUrl,
                 opener = ReviewOpener.BookingSummary,
+                origin = origin,
+            )
+        }
+
+        /**
+         * The note editor route for the shown booking, or null before it has loaded. The key copies the summary's
+         * [origin] (D-06), so a chat-opened summary opens a note key that stays distinct on the Chats stack. The note
+         * text is never put in a key; the editor fetches it.
+         */
+        fun noteKey(): ClientBookingNoteKey? {
+            val details = (_uiState.value as? BookingSummaryUiState.Loaded)?.details ?: return null
+            return ClientBookingNoteKey(
+                bookingId = details.bookingId,
+                expertName = details.expertName,
+                topic = details.topicTitle,
+                startMillis = details.start.toEpochMilli(),
+                endMillis = details.end.toEpochMilli(),
                 origin = origin,
             )
         }

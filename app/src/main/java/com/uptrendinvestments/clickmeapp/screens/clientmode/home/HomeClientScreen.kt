@@ -35,6 +35,8 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.chatEntries
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.chat.conversations.ConversationsRoute
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteRoute
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.clientBookingNoteEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationScreen
@@ -229,7 +231,7 @@ fun HomeClientScreen(
                                 onCancelled = onCancelled,
                             )
                         },
-                        summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview ->
+                        summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview, onOpenNote ->
                             val summaryViewModel =
                                 hiltViewModel<BookingSummaryViewModel, BookingSummaryViewModel.Factory>(
                                     creationCallback = { it.create(key) },
@@ -240,6 +242,7 @@ fun HomeClientScreen(
                                 onBookAgain = onBookAgain,
                                 onOpenPaymentMethods = onOpenPaymentMethods,
                                 onLeaveReview = onLeaveReview,
+                                onOpenNote = onOpenNote,
                             )
                         },
                         reschedule = { key, onBack, onOpenPaymentMethods ->
@@ -269,6 +272,7 @@ fun HomeClientScreen(
                     chatEntries(navigator, AppMode.Client)
                     notificationsEntries(navigator, AppMode.Client)
                     writeReviewEntries(navigator)
+                    clientBookingNoteEntry(navigator) { key, onBack -> ClientBookingNoteRoute(key, onBack) }
                     clientSettingsEntries(navigator)
                 },
                 pendingChatThread = pendingChatThread,

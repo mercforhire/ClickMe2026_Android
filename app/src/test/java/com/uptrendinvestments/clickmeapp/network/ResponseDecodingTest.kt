@@ -867,6 +867,7 @@ class ResponseDecodingTest {
         assertEquals(Instant.parse("2026-10-31T00:00:00Z"), detail.authorizationExpiresAt)
         assertEquals("https://zoom.us/j/1", detail.joinLink)
         assertTrue(detail.canJoin)
+        assertEquals("secret", detail.privateNote)
         val reschedule = detail.reschedule!!
         assertEquals(Instant.parse("2026-10-30T18:00:00Z"), reschedule.proposedStart)
         assertEquals(Instant.parse("2026-10-30T19:00:00Z"), reschedule.proposedEnd)
@@ -874,6 +875,18 @@ class ResponseDecodingTest {
         assertEquals("expert", reschedule.initiatedBy)
         assertEquals("Can we move?", reschedule.note)
         assertEquals(Instant.parse("2026-10-23T12:00:00Z"), reschedule.createdAt)
+    }
+
+    @Test
+    fun clientBookingDetailToStringOmitsTheNote() {
+        val json =
+            """
+            {"booking_id":"b1","status":"completed","start_time":"2026-10-24T18:00:00Z",
+            "topic":{"id":"t1","title":"Intro"},"expert":{"id":"e1"},"private_note":"secret"}
+            """.trimIndent()
+        val detail = moshi.adapter(ClientBookingDetail::class.java).fromJson(json)!!
+        assertEquals("ClientBookingDetail(bookingId=b1, status=completed)", detail.toString())
+        assertTrue(!detail.toString().contains("secret"))
     }
 
     @Test

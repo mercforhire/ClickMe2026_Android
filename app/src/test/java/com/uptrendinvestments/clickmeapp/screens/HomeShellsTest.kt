@@ -1119,6 +1119,7 @@ class HomeShellsTest {
     private fun setClientWithBookingManagement() {
         composeRule.setContent {
             ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
                 HomeClientShell(
                     avatarUrl = null,
                     showDebugAffordances = false,
@@ -1137,6 +1138,11 @@ class HomeShellsTest {
                             Text("fake my bookings")
                             Button(onClick = { navigator.openUpcomingBooking("b1") }) { Text("open upcoming") }
                             Button(onClick = { navigator.openBookingSummary("b2") }) { Text("open summary") }
+                        }
+                    },
+                    chatsRoot = { navigator ->
+                        Button(onClick = { navigator.navigate(BookingSummaryKey("b2", StackOrigin.Chats)) }) {
+                            Text("chat open summary")
                         }
                     },
                     detailEntries = { nav ->
@@ -1168,7 +1174,7 @@ class HomeShellsTest {
                                     Button(onClick = onCancelled) { Text("cancel done") }
                                 }
                             },
-                            summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview ->
+                            summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview, onOpenNote ->
                                 Column {
                                     Text("fake summary ${key.bookingId}")
                                     Button(onClick = { onLeaveReview(WriteReviewKey(key.bookingId)) }) {
@@ -1179,6 +1185,20 @@ class HomeShellsTest {
                                         onClick = { onBookAgain(BookingKey("e1", "Ada Lovelace", "Engineer", null)) },
                                     ) { Text("summary book again") }
                                     Button(onClick = onOpenPaymentMethods) { Text("summary add card") }
+                                    Button(
+                                        onClick = {
+                                            onOpenNote(
+                                                ClientBookingNoteKey(
+                                                    key.bookingId,
+                                                    "Ada",
+                                                    "Algorithms",
+                                                    0L,
+                                                    3_600_000L,
+                                                    key.origin,
+                                                ),
+                                            )
+                                        },
+                                    ) { Text("summary my note") }
                                 }
                             },
                             reschedule = { key, onBack, onOpenPaymentMethods ->
@@ -1190,6 +1210,7 @@ class HomeShellsTest {
                             },
                         )
                         fakePaymentMethodsEntry(nav)
+                        clientBookingNoteEntry(nav) { key, _ -> Text("note ${key.bookingId} ${key.origin}") }
                         entry<WriteReviewKey>(metadata = BottomBar.hidden()) {
                             Column {
                                 Text("fake write review ${it.bookingId}")
@@ -1329,7 +1350,7 @@ class HomeShellsTest {
                                 Button(onClick = onReschedule) { Text("upcoming reschedule") }
                             },
                             cancel = { _, _, _ -> },
-                            summary = { _, _, _, _, _ -> },
+                            summary = { _, _, _, _, _, _ -> },
                             reschedule = { key, _, _ ->
                                 seen = key
                                 Text("reschedule-stub:${key.bookingId}")
@@ -1377,6 +1398,40 @@ class HomeShellsTest {
         composeRule.onNode(tab("Bookings")).assertDoesNotExist()
         composeRule.onNodeWithText("review back").performClick()
         composeRule.onNodeWithText("fake summary b2").assertExists()
+    }
+
+    @Test
+    fun summaryMyNotePushesTheNoteOnTheSameStack() {
+        setClientWithBookingManagement()
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open summary").performClick()
+        composeRule.onNodeWithText("summary my note").performClick()
+        composeRule.onNodeWithText("note b2 Default").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("note b2 Default").assertDoesNotExist()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
+    }
+
+    @Test
+    fun chatOpenedSummaryKeepsTheChatsOrigin() {
+        setClientWithBookingManagement()
+        tapTab("Chats")
+        composeRule.onNodeWithText("chat open summary").performClick()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
+        composeRule.onNodeWithText("summary my note").performClick()
+        composeRule.onNodeWithText("note b2 Chats").assertExists()
+        composeRule.onNode(tab("Chats")).assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("note b2 Chats").assertDoesNotExist()
+        composeRule.onNodeWithText("fake summary b2").assertExists()
+        pressSystemBack()
+        composeRule.onNodeWithText("chat open summary").assertExists()
+        composeRule.onNode(tab("Chats")).assertIsSelected()
     }
 
     @Test
