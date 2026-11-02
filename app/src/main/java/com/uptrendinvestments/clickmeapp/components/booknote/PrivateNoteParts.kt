@@ -272,8 +272,11 @@ private fun AddNoteRow(
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(DashOn.toPx(), DashOff.toPx())),
                             ),
                     )
-                }.clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = Spacing.sm, vertical = Spacing.sm)
+                }.clickable(
+                    onClickLabel = stringResource(R.string.booking_note_open_a11y),
+                    role = Role.Button,
+                    onClick = onClick,
+                ).padding(horizontal = Spacing.sm, vertical = Spacing.sm)
                 .testTag(PRIVATE_NOTE_ZONE_TAG),
         verticalAlignment = Alignment.CenterVertically,
     ) {
