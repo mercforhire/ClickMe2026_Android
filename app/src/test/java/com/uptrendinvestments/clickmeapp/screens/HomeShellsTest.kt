@@ -81,11 +81,16 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.Upco
 import com.uptrendinvestments.clickmeapp.screens.clientmode.writereview.WriteReviewKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.expertBookingNoteEntry
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingSummaryKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.ExpertClientProfileKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.expertClientProfileEntry
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.HomeExpertShell
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.ExpertChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.expertmode.incomingrequests.IncomingRequestsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.requestdecision.RequestDecisionKey
@@ -1866,6 +1871,124 @@ class HomeShellsTest {
 
         tapTab("Bookings")
         composeRule.onNodeWithText("note b1 Default").assertExists()
+    }
+
+    private fun expertNoteKey(origin: ExpertBookingOrigin = ExpertBookingOrigin.Bookings) =
+        ExpertBookingNoteKey("b1", "Ada", "Algorithms", 0L, 3_600_000L, origin)
+
+    /**
+     * A Bookings root that pushes the Bookings-origin note and Client Profile keys, a Chats root stand-in, and the
+     * real [expertBookingNoteEntry] and [expertClientProfileEntry] with stand-in content, so the real hidden-bar
+     * metadata and back callbacks run in the expert shell (NAV-KEYS).
+     */
+    private fun setExpertWithNoteAndProfileStandIns(routes: ShellRouteRequest) {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                val pendingRoute = pendingRouteOf(routes)
+                HomeExpertShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    bookingsRoot = { navigator ->
+                        Column {
+                            Button(onClick = { navigator.navigate(expertNoteKey()) }) { Text("open expert note") }
+                            Button(
+                                onClick = {
+                                    navigator.navigate(ExpertClientProfileKey("c1", ExpertBookingOrigin.Bookings))
+                                },
+                            ) { Text("open client profile") }
+                        }
+                    },
+                    chatsRoot = { Text("expert chats root") },
+                    detailEntries = { navigator ->
+                        expertBookingNoteEntry(navigator) { key, _ -> Text("note ${key.bookingId} ${key.origin}") }
+                        expertClientProfileEntry(navigator) { key, _ -> Text("client ${key.clientId} ${key.origin}") }
+                    },
+                    pendingShellRoute = pendingRoute,
+                    onConsumeShellRoute = { routes.consumeFor(AppMode.Expert) },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun expertNoteRouteHidesTheBarAndBackPops() {
+        setExpertWithNoteAndProfileStandIns(ShellRouteRequest())
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open expert note").performClick()
+        composeRule.onNodeWithText("note b1 Bookings").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("note b1 Bookings").assertDoesNotExist()
+        composeRule.onNodeWithText("open expert note").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+    }
+
+    @Test
+    fun clientProfileRouteHidesTheBarAndBackPops() {
+        setExpertWithNoteAndProfileStandIns(ShellRouteRequest())
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open client profile").performClick()
+        composeRule.onNodeWithText("client c1 Bookings").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("client c1 Bookings").assertDoesNotExist()
+        composeRule.onNodeWithText("open client profile").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+    }
+
+    @Test
+    fun clientProfileOnBookingsAndChatsDoesNotCollide() {
+        val routes = ShellRouteRequest()
+        setExpertWithNoteAndProfileStandIns(routes)
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open client profile").performClick()
+        composeRule.onNodeWithText("client c1 Bookings").assertExists()
+
+        routes.post(
+            ShellRoute(
+                AppMode.Expert,
+                ExpertChatsRoot,
+                listOf(ExpertClientProfileKey("c1", ExpertBookingOrigin.Chats)),
+            ),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("client c1 Chats").assertExists()
+
+        pressSystemBack()
+        composeRule.onNodeWithText("expert chats root").assertExists()
+        composeRule.onNodeWithText("client c1 Chats").assertDoesNotExist()
+
+        tapTab("Bookings")
+        composeRule.onNodeWithText("client c1 Bookings").assertExists()
+    }
+
+    @Test
+    fun expertNoteOnBookingsAndChatsDoesNotCollide() {
+        val routes = ShellRouteRequest()
+        setExpertWithNoteAndProfileStandIns(routes)
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open expert note").performClick()
+        composeRule.onNodeWithText("note b1 Bookings").assertExists()
+
+        routes.post(ShellRoute(AppMode.Expert, ExpertChatsRoot, listOf(expertNoteKey(ExpertBookingOrigin.Chats))))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("note b1 Chats").assertExists()
+
+        pressSystemBack()
+        composeRule.onNodeWithText("expert chats root").assertExists()
+        composeRule.onNodeWithText("note b1 Chats").assertDoesNotExist()
+
+        tapTab("Bookings")
+        composeRule.onNodeWithText("note b1 Bookings").assertExists()
     }
 
     @Test
