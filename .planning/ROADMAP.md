@@ -995,7 +995,7 @@ Plans:
 
 ### Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)
 
-**Goal:** Client Payment History (`/client/transactions`), notification preferences with quiet hours and debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button, an animated splash icon and the Delete Account "Before you go" card all match iOS. After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
+**Goal:** Client Payment History (`/client/transactions`), notification preferences with debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button and an animated splash screen all match iOS. Quiet hours and the Delete Account "Before you go" card are deliberately not built (16.5-CONTEXT.md D-01, D-10). After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
 **Plans:** 0 plans
