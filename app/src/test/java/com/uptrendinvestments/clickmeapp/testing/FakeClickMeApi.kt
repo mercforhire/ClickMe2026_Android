@@ -63,6 +63,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertClientProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -144,6 +145,7 @@ class FakeClickMeApi : ClickMeApi {
     var saveClientBookingNoteHandler: suspend (String, BookingNoteRequest) -> BookingNoteData = { _, _ -> notStubbed() }
     var getBookingNoteHandler: suspend (String) -> BookingNoteData = { notStubbed() }
     var saveBookingNoteHandler: suspend (String, BookingNoteRequest) -> BookingNoteData = { _, _ -> notStubbed() }
+    var getExpertClientHandler: suspend (String) -> ExpertClientProfileData = { notStubbed() }
     var categoriesHandler: suspend () -> CategoriesPayload = { notStubbed() }
     var expertDetailsHandler: suspend (String) -> PublicProfileDetailsData = { notStubbed() }
     var expertReviewsHandler: suspend (String) -> ExpertReviewsPayload = { notStubbed() }
@@ -293,6 +295,9 @@ class FakeClickMeApi : ClickMeApi {
         private set
 
     @Volatile var saveBookingNoteCalls = 0
+        private set
+
+    @Volatile var getExpertClientCalls = 0
         private set
 
     @Volatile var categoriesCalls = 0
@@ -526,6 +531,12 @@ class FakeClickMeApi : ClickMeApi {
     /** Every POST /bookings/{id}/note (booking id to body), in call order. */
     val saveBookingNoteRequests: List<Pair<String, BookingNoteRequest>>
         get() = synchronized(_saveBookingNoteRequests) { _saveBookingNoteRequests.toList() }
+
+    private val _getExpertClientRequests = mutableListOf<String>()
+
+    /** Every GET /expert/clients/{id} client id, in call order. */
+    val getExpertClientRequests: List<String>
+        get() = synchronized(_getExpertClientRequests) { _getExpertClientRequests.toList() }
 
     private val _joinCallRequests = mutableListOf<String>()
 
@@ -860,6 +871,12 @@ class FakeClickMeApi : ClickMeApi {
         saveBookingNoteCalls++
         synchronized(_saveBookingNoteRequests) { _saveBookingNoteRequests += id to body }
         return ok(saveBookingNoteHandler(id, body))
+    }
+
+    override suspend fun getExpertClient(id: String): SuccessDataResponse<ExpertClientProfileData> {
+        getExpertClientCalls++
+        synchronized(_getExpertClientRequests) { _getExpertClientRequests += id }
+        return ok(getExpertClientHandler(id))
     }
 
     override suspend fun getCategories(): SuccessDataResponse<CategoriesPayload> {

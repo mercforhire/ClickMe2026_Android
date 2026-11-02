@@ -56,6 +56,7 @@ object ApiRequestUrls {
     // Phase 16.4: private booking notes and the expert's view of a client (PARITY-AUDIT #7, #8, #9). Authed.
     const val CLIENT_BOOKING_NOTE = "client/bookings/{id}/note"
     const val BOOKING_NOTE = "bookings/{id}/note"
+    const val EXPERT_CLIENT = "expert/clients/{id}"
 
     // Phase 6: booking (availability, free booking request, client booking detail).
     const val EXPERT_AVAILABILITY = "experts/{id}/availability"

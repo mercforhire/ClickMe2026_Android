@@ -62,6 +62,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertAvailabilityScheduleData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertClientProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertReviewsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
@@ -276,6 +277,15 @@ interface ClickMeApi {
         @Path("id") id: String,
         @Body body: BookingNoteRequest,
     ): SuccessDataResponse<BookingNoteData>
+
+    /**
+     * Ports iOS getClientProfile: the expert's view of one client. 404 for a missing or deleted client, 403
+     * `NO_RELATIONSHIP` when this expert has no booking with them.
+     */
+    @GET(ApiRequestUrls.EXPERT_CLIENT)
+    suspend fun getExpertClient(
+        @Path("id") id: String,
+    ): SuccessDataResponse<ExpertClientProfileData>
 
     /** Ports iOS ClickMeAPI+ClientBookings list. [type] is the server filter, e.g. `upcoming`. */
     @GET(ApiRequestUrls.CLIENT_BOOKINGS)
