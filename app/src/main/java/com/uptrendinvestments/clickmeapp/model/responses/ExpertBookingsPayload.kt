@@ -18,9 +18,10 @@ data class ExpertBookingsPayload(
 /**
  * One expert booking row. Unlike the client feed, [status] is an object and the topic, times and money live under
  * [session]. [reschedule] is non-null only while the booking is `pending_reschedule` and carries the slim block
- * (`proposed_start`, `initiated_by`). The server's private-note preview and accent color are deliberately not
- * declared; unknown keys are ignored. [actions] is declared (Phase 16.2, `can_reschedule`) and defaults to all
- * false when the key is absent.
+ * (`proposed_start`, `initiated_by`). The server's accent color is deliberately not declared; unknown keys are
+ * ignored. [actions] is declared (Phase 16.2, `can_reschedule`) and defaults to all false when the key is absent.
+ * [privateNotePreview] is the expert's own note, cut to 140 UTF-16 units by the server (Phase 16.4, D-08).
+ * User-written: show it, never log it; toString omits it.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertBookingItem(
@@ -30,11 +31,14 @@ data class ExpertBookingItem(
     val status: ExpertStatusMeta,
     val reschedule: RescheduleDto? = null,
     val actions: ExpertBookingActionsDto = ExpertBookingActionsDto(),
+    @Json(name = "private_note_preview") val privateNotePreview: String? = null,
 ) {
     val startTime: Instant get() = session.startTime
     val endTime: Instant get() = session.endTime
     val topic: String? get() = session.topic
     val statusCode: String get() = status.code
+
+    override fun toString(): String = "ExpertBookingItem(bookingId=$bookingId, status=$statusCode)"
 }
 
 @JsonClass(generateAdapter = true)

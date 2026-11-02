@@ -17,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -27,6 +29,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.BookingStatusBadge
+import com.uptrendinvestments.clickmeapp.components.booknote.NotePreviewFooter
+import com.uptrendinvestments.clickmeapp.components.booknote.PrivateNoteAction
 import com.uptrendinvestments.clickmeapp.components.labelText
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingClientDto
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
@@ -53,11 +57,13 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-10T18:00:00Z")
 
 /**
  * An expert Past booking card: the Phase 8 `PastBookingCard` with the client in place of the expert (UI-SPEC surface 5).
- * The whole card opens the expert Booking Summary. There are no earnings on the Past card (UI-SPEC A15) and no Message,
- * Private Note or Review control (Phase 12 and 13).
+ * The whole card opens the expert Booking Summary. There are no earnings on the Past card (UI-SPEC A15) and no Message
+ * or Review control. "Private Note" is on every status (Phase 16.4, D-07, iOS `PastSessionCard`) and consumes its own
+ * tap; a non-blank [ExpertBookingItem.privateNotePreview] adds a footer strip under it that does the same.
  *
  * @param row the booking and the badge it shows (Completed, Cancelled or Missed).
  * @param onOpen opens the summary with origin Bookings.
+ * @param onPrivateNote opens the private note editor for this booking; the card's own tap is not triggered.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
  */
@@ -66,6 +72,7 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-10T18:00:00Z")
 fun ExpertPastCard(
     row: ExpertPastRow,
     onOpen: () -> Unit,
+    onPrivateNote: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
@@ -87,6 +94,7 @@ fun ExpertPastCard(
     val date = formatShortDate(item.startTime.atZone(zone).toLocalDate(), locale)
     val timeRange = formatSessionTimeRange(item.startTime, item.endTime, zone, timeFormat)
     val whenText = stringResource(R.string.my_bookings_date_time, date, timeRange)
+    val privateNoteLabel = stringResource(R.string.booking_note_private_note)
     val description =
         stringResource(R.string.expert_bookings_past_a11y, clientName, topic, date, timeRange, row.status.labelText())
     Surface(
@@ -98,7 +106,17 @@ fun ExpertPastCard(
                     onClickLabel = stringResource(R.string.expert_bookings_open_details),
                     role = Role.Button,
                     onClick = onOpen,
-                ).semantics { contentDescription = description },
+                ).semantics {
+                    contentDescription = description
+                    // TalkBack fallback: the nested note controls are also reachable as an action of the card.
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(privateNoteLabel) {
+                                onPrivateNote()
+                                true
+                            },
+                        )
+                },
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -128,6 +146,10 @@ fun ExpertPastCard(
                 color = MaterialTheme.extras.onSurfaceMuted,
                 modifier = Modifier.padding(top = Spacing.xs),
             )
+            PrivateNoteAction(onClick = onPrivateNote)
+            if (!item.privateNotePreview.isNullOrBlank()) {
+                NotePreviewFooter(preview = item.privateNotePreview, onClick = onPrivateNote)
+            }
         }
     }
 }
@@ -145,6 +167,7 @@ private fun previewRow(status: String): ExpertPastRow =
                         endTime = PREVIEW_START.plusSeconds(3600),
                     ),
                 status = ExpertStatusMeta(code = status),
+                privateNotePreview = if (status == "completed") "Bring receipts" else null,
             ),
         status = requireNotNull(pastStatusDisplay(status)),
     )
@@ -156,7 +179,7 @@ private fun ExpertPastCardPreview() {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.padding(Spacing.md)) {
                 listOf("completed", "declined", "expired").forEach { status ->
-                    ExpertPastCard(row = previewRow(status), onOpen = {})
+                    ExpertPastCard(row = previewRow(status), onOpen = {}, onPrivateNote = {})
                 }
             }
         }
