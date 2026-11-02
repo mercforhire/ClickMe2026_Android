@@ -1,10 +1,17 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.feedback
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.uptrendinvestments.clickmeapp.components.PICKER_ROW_CHECK_TAG
+import com.uptrendinvestments.clickmeapp.components.SKELETON_BLOCK_TAG
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.feedbackTypes
@@ -132,5 +139,99 @@ class FeedbackScreenTest {
         show(ready())
 
         rule.onNodeWithContentDescription("Details").assertExists()
+    }
+
+    // ---- Task 2: types states and the picker sheet -------------------------------------------------------------
+
+    @Test
+    fun loadingShowsAFormSkeletonAndNoSubmit() {
+        show(FeedbackUiState(load = FeedbackLoad.Loading))
+
+        rule.onAllNodesWithContentDescription("Loading").assertCountEquals(1)
+        rule.onAllNodesWithTag(SKELETON_BLOCK_TAG, useUnmergedTree = true).assertCountEquals(SKELETON_BLOCKS)
+        rule.onNodeWithText("Submit Feedback").assertDoesNotExist()
+        rule.onNodeWithText("Email (Optional)").assertDoesNotExist()
+    }
+
+    @Test
+    fun typesFailureShowsRetryAndNoForm() {
+        show(FeedbackUiState(load = FeedbackLoad.Failed(FieldError.Text("Server unreachable"))))
+
+        rule.onNodeWithText("Couldn't load categories").assertExists()
+        rule.onNodeWithText("Server unreachable").assertExists()
+        rule.onNodeWithText("Submit Feedback").assertDoesNotExist()
+        rule.onNodeWithText("Details").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Details").assertDoesNotExist()
+
+        rule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, retries.size)
+    }
+
+    @Test
+    fun pickerOpensAndChooses() {
+        show(ready())
+
+        rule.onNodeWithTag(FEEDBACK_TYPE_FIELD_TAG).performClick()
+        rule.waitForIdle()
+
+        // The label above the field and the sheet title share the text "Feedback Type".
+        rule.onAllNodesWithText("Feedback Type").assertCountEquals(2)
+        listOf("Feature Request", "General Feedback", "Billing Issue", "Content Feedback").forEach {
+            rule.onNodeWithText(it).assertExists()
+        }
+        // "Bug Report" is the field's value and the first row.
+        rule.onAllNodesWithText("Bug Report").assertCountEquals(2)
+        rule.onAllNodesWithTag(PICKER_ROW_CHECK_TAG, useUnmergedTree = true).assertCountEquals(1)
+
+        rule.onNodeWithText("Feature Request").performClick()
+        rule.waitForIdle()
+
+        assertEquals(listOf("feature_request"), selected)
+        rule.onAllNodesWithText("Feedback Type").assertCountEquals(1)
+        rule.onNodeWithText("General Feedback").assertDoesNotExist()
+    }
+
+    @Test
+    fun pickerStateSurvivesRecreation() {
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            ClickMeTheme {
+                FeedbackContent(
+                    state = ready(),
+                    onSelectType = {},
+                    onDetailsChange = {},
+                    onEmailChange = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onDismissDialog = {},
+                    onBack = {},
+                )
+            }
+        }
+        rule.onNodeWithTag(FEEDBACK_TYPE_FIELD_TAG).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("General Feedback").assertExists()
+
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("General Feedback").assertExists()
+    }
+
+    @Test
+    fun serverDescriptionIsNotShown() {
+        show(ready())
+        rule.onNodeWithTag(FEEDBACK_TYPE_FIELD_TAG).performClick()
+        rule.waitForIdle()
+
+        feedbackTypes().types.mapNotNull { it.description }.forEach {
+            rule.onNodeWithText(it).assertDoesNotExist()
+        }
+    }
+
+    private companion object {
+        /** Three labels, two pills and the Details block. */
+        const val SKELETON_BLOCKS = 6
     }
 }
