@@ -965,7 +965,7 @@ Plans:
 **Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans executed
 
 Plans:
 **Wave 1**
@@ -991,7 +991,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 16.4-10-PLAN.md — Expert-mode chat View profile, expert shell route tests, full gate, Phase 16 matrix rows including note independence across Android and iOS (CP-LINKS, NAV-KEYS, D-13, D-14)
+- [x] 16.4-10-PLAN.md — Expert-mode chat View profile, expert shell route tests, full gate, Phase 16 matrix rows including note independence across Android and iOS (CP-LINKS, NAV-KEYS, D-13, D-14)
 
 ### Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)
 
