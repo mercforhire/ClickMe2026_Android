@@ -43,6 +43,8 @@ import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.clientBookingNoteEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.explore.EXPLORE_LIST_TAG
@@ -60,6 +62,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSumm
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showSearch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
@@ -1740,6 +1743,74 @@ class HomeShellsTest {
         entry<RequestDecisionKey> { Text("decision-stub:${it.requestId}") }
         entry<NotificationsKey>(metadata = BottomBar.hidden()) { Text("notifications-stub:${it.origin}") }
         entry<WriteReviewKey>(metadata = BottomBar.hidden()) { Text("write-review-stub:${it.bookingId}") }
+    }
+
+    private fun noteKey(origin: StackOrigin = StackOrigin.Default) =
+        ClientBookingNoteKey("b1", "Ada", "Algorithms", 0L, 3_600_000L, origin)
+
+    /**
+     * A Bookings root that pushes the Default note key, a Chats root stand-in, and the real [clientBookingNoteEntry]
+     * with a stand-in editor, so the real hidden-bar metadata and back callback run (D-05, D-06).
+     */
+    private fun setClientWithNoteStandIn(routes: ShellRouteRequest) {
+        composeRule.setContent {
+            ClickMeTheme {
+                expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+                val pendingRoute = pendingRouteOf(routes)
+                HomeClientShell(
+                    avatarUrl = null,
+                    showDebugAffordances = false,
+                    onSwitchMode = {},
+                    onLogout = {},
+                    onDebugForceRefresh = {},
+                    debugRefreshStatus = null,
+                    bookingsRoot = { navigator ->
+                        Button(onClick = { navigator.navigate(noteKey()) }) { Text("open note") }
+                    },
+                    chatsRoot = { Text("chats root") },
+                    detailEntries = { navigator ->
+                        clientBookingNoteEntry(navigator) { key, _ -> Text("note ${key.bookingId} ${key.origin}") }
+                    },
+                    pendingShellRoute = pendingRoute,
+                    onConsumeShellRoute = { routes.consumeFor(AppMode.Client) },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun clientNoteRouteHidesTheBarAndBackPops() {
+        setClientWithNoteStandIn(ShellRouteRequest())
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open note").performClick()
+        composeRule.onNodeWithText("note b1 Default").assertExists()
+        composeRule.onNode(tab("Bookings")).assertDoesNotExist()
+
+        pressSystemBack()
+
+        composeRule.onNodeWithText("note b1 Default").assertDoesNotExist()
+        composeRule.onNodeWithText("open note").assertExists()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+    }
+
+    @Test
+    fun noteOpenOnBookingsAndChatsDoesNotCollide() {
+        val routes = ShellRouteRequest()
+        setClientWithNoteStandIn(routes)
+        tapTab("Bookings")
+        composeRule.onNodeWithText("open note").performClick()
+        composeRule.onNodeWithText("note b1 Default").assertExists()
+
+        routes.post(ShellRoute(AppMode.Client, ClientChatsRoot, listOf(noteKey(StackOrigin.Chats))))
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("note b1 Chats").assertExists()
+
+        pressSystemBack()
+        composeRule.onNodeWithText("chats root").assertExists()
+        composeRule.onNodeWithText("note b1 Chats").assertDoesNotExist()
+
+        tapTab("Bookings")
+        composeRule.onNodeWithText("note b1 Default").assertExists()
     }
 
     @Test

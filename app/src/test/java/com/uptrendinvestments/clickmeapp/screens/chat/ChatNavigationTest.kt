@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.chat.chatting.ChatThreadKey
 import com.uptrendinvestments.clickmeapp.screens.chat.reportandblock.ChatReportBlockKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
@@ -131,6 +132,10 @@ class ChatNavigationTest {
         assertNotEquals(
             ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Dashboard),
             ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Chats),
+        )
+        assertNotEquals(
+            ClientBookingNoteKey("b1", "Ada", "Algorithms", 0L, 1L, StackOrigin.Default),
+            ClientBookingNoteKey("b1", "Ada", "Algorithms", 0L, 1L, StackOrigin.Chats),
         )
     }
 
