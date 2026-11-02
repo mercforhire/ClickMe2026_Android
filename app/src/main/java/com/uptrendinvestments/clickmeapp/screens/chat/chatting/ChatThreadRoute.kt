@@ -27,7 +27,7 @@ fun ChatThreadRoute(
         mode = mode,
         onBack = navigator::goBack,
         onOpenBooking = { bookingId, isTerminal -> navigator.openChatBooking(mode, bookingId, isTerminal) },
-        onViewProfile = { navigator.openChatPeerProfile(viewModel.uiState.value.toThreadKey()) },
+        onViewProfile = { navigator.openChatPeerProfile(viewModel.uiState.value.toThreadKey(), mode) },
         onOpenReportBlock = { navigator.openChatReportBlock(viewModel.uiState.value.toThreadKey()) },
     )
 }
