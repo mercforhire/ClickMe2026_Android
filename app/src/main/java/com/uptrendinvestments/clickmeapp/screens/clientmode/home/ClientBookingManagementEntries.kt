@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelBookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
@@ -65,6 +66,8 @@ fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot, Sea
  *   origin, so a chat-opened booking stays a distinct key.
  * - D-13: [summary]'s `onBookAgain` opens Make a Booking in the same stack.
  * - D-18: [summary]'s `onLeaveReview` pushes Write Review on the same stack as the summary; Back returns to it.
+ * - Phase 16.4 D-06: [summary]'s `onOpenNote` pushes the note editor on the same stack as the summary. The summary's
+ *   ViewModel copies its origin into the key, so a chat-opened summary keeps a distinct key.
  * - Phase 16.2 D-09: [reschedule] (the picker) pops to its opener.
  * - Phase 16.2 D-06/D-08: Add a Payment Method pushes Payment Methods above the picker and nothing is retried on return.
  */
@@ -88,6 +91,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
         onBookAgain: (BookingKey) -> Unit,
         onOpenPaymentMethods: () -> Unit,
         onLeaveReview: (WriteReviewKey) -> Unit,
+        onOpenNote: (ClientBookingNoteKey) -> Unit,
     ) -> Unit,
     reschedule: @Composable (
         key: RescheduleKey,
@@ -116,6 +120,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
             navigator::goBack,
             { navigator.navigate(it) },
             { navigator.navigate(PaymentMethodsKey) },
+            { navigator.navigate(it) },
             { navigator.navigate(it) },
         )
     }

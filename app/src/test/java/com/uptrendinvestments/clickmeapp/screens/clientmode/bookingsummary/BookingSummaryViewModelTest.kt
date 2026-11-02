@@ -129,6 +129,24 @@ class BookingSummaryViewModelTest {
     }
 
     @Test
+    fun detailsCarryTheNote() {
+        assertEquals("Call back", bookingDetail(privateNote = "Call back").toSummaryDetails(now).privateNote)
+        assertNull(bookingDetail(privateNote = null).toSummaryDetails(now).privateNote)
+    }
+
+    @Test
+    fun aBlankNoteCountsAsNoNote() {
+        assertNull(bookingDetail(privateNote = "   ").toSummaryDetails(now).privateNote)
+        assertNull(bookingDetail(privateNote = "").toSummaryDetails(now).privateNote)
+    }
+
+    @Test
+    fun displayModelToStringOmitsTheNote() {
+        val text = bookingDetail(privateNote = "secret").toSummaryDetails(now).toString()
+        assertEquals("BookingSummaryDetails(bookingId=b1)", text)
+    }
+
+    @Test
     fun blankStringsBecomeNullAndTheEndFallsBackToStartPlusDuration() {
         val details =
             bookingDetail(status = "completed", expertName = "  ", expertTitle = "", end = null).toSummaryDetails(now)
@@ -227,6 +245,59 @@ class BookingSummaryViewModelTest {
             runCurrent()
             val loaded = vm.uiState.value as BookingSummaryUiState.Loaded
             assertEquals("Grace Hopper", loaded.details.expertName)
+        }
+
+    @Test
+    fun noteKeyCarriesTheHeaderFields() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            val vm = vm()
+            runCurrent()
+            val key = vm.noteKey()!!
+            val details = (vm.uiState.value as BookingSummaryUiState.Loaded).details
+            assertEquals("b1", key.bookingId)
+            assertEquals("Ada Lovelace", key.expertName)
+            assertEquals("Algorithms", key.topic)
+            assertEquals(details.start.toEpochMilli(), key.startMillis)
+            assertEquals(details.end.toEpochMilli(), key.endMillis)
+            assertEquals(StackOrigin.Default, key.origin)
+        }
+
+    @Test
+    fun noteKeyCopiesTheSummaryOrigin() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed") }
+            val vm = vm(BookingSummaryKey("b1", StackOrigin.Chats))
+            runCurrent()
+            assertEquals(StackOrigin.Chats, vm.noteKey()?.origin)
+        }
+
+    @Test
+    fun noteKeyIsNullBeforeTheBookingLoads() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { CompletableDeferred<ClientBookingDetail>().await() }
+            val vm = vm()
+            runCurrent()
+            assertNull(vm.noteKey())
+        }
+
+    @Test
+    fun aSavedNoteShowsOnReturn() =
+        runTest(main.testDispatcher) {
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed", privateNote = null) }
+            val vm = vm()
+            runCurrent()
+            assertNull((vm.uiState.value as BookingSummaryUiState.Loaded).details.privateNote)
+
+            // The editor saves a note and pops back: the screen is hidden, then shown again.
+            api.clientBookingDetailHandler = { bookingDetail(status = "completed", privateNote = "Call back") }
+            vm.onScreenHidden()
+            vm.refreshQuietly()
+            assertTrue(vm.uiState.value is BookingSummaryUiState.Loaded)
+            runCurrent()
+
+            val loaded = vm.uiState.value as BookingSummaryUiState.Loaded
+            assertEquals("Call back", loaded.details.privateNote)
         }
 
     @Test
