@@ -240,6 +240,7 @@ fun HomeClientScreen(
                                 onBookAgain = onBookAgain,
                                 onOpenPaymentMethods = onOpenPaymentMethods,
                                 onLeaveReview = onLeaveReview,
+                                onOpenNote = { navigator.navigate(it) },
                             )
                         },
                         reschedule = { key, onBack, onOpenPaymentMethods ->

@@ -53,11 +53,13 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleOutcomeDialog
 import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.booknote.MyNoteCard
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryCard
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BookingSummaryFeedback
@@ -91,6 +93,9 @@ private val BookAgainIconSize = 24.dp
  * Message Expert opens the chat with the booking's expert (D-14). A pending reschedule shows the shared reschedule
  * card first (D-01). The summary reloads quietly on resume, so returning from Payment Methods shows fresh data
  * (D-02).
+ *
+ * The My Note card opens the note editor ([onOpenNote]) from every route into the summary (Phase 16.4, D-06; a
+ * deliberate fix, iOS only wires it from My Bookings). The quiet reload shows a saved note on return (D-08).
  */
 @Composable
 fun BookingSummaryScreen(
@@ -99,6 +104,7 @@ fun BookingSummaryScreen(
     onBookAgain: (BookingKey) -> Unit,
     onOpenPaymentMethods: () -> Unit,
     onLeaveReview: (WriteReviewKey) -> Unit,
+    onOpenNote: (ClientBookingNoteKey) -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
@@ -131,6 +137,7 @@ fun BookingSummaryScreen(
         reviewThanks = reviewThanks,
         onReviewThanksConsumed = viewModel::consumeReviewThanks,
         onLeaveReview = { viewModel.leaveReviewKey()?.let(onLeaveReview) },
+        onOpenNote = { viewModel.noteKey()?.let(onOpenNote) },
         messageBusy = entryState.busyPeerId != null,
         onMessage = {
             val details = (state as? BookingSummaryUiState.Loaded)?.details
@@ -158,6 +165,7 @@ fun BookingSummaryContent(
     modifier: Modifier = Modifier,
     reviewedIds: Set<String> = emptySet(),
     onLeaveReview: () -> Unit = {},
+    onOpenNote: () -> Unit = {},
     reviewThanks: Boolean = false,
     onReviewThanksConsumed: () -> Unit = {},
     messageBusy: Boolean = false,
@@ -230,6 +238,7 @@ fun BookingSummaryContent(
                     review = state.review,
                     showLeaveReview = state.showLeaveReview(reviewedIds),
                     onLeaveReview = onLeaveReview,
+                    onOpenNote = onOpenNote,
                     messageBusy = messageBusy,
                     onMessage = onMessage,
                     modifier = bodyModifier,
@@ -280,6 +289,7 @@ private fun LoadedBody(
     review: SummaryReview,
     showLeaveReview: Boolean,
     onLeaveReview: () -> Unit,
+    onOpenNote: () -> Unit,
     messageBusy: Boolean,
     onMessage: () -> Unit,
     modifier: Modifier,
@@ -323,6 +333,7 @@ private fun LoadedBody(
         }
         BookingSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
         (review as? SummaryReview.Submitted)?.let { BookingSummaryFeedback(it.rating, it.comment) }
+        MyNoteCard(note = details.privateNote, onClick = onOpenNote, modifier = Modifier.padding(top = Spacing.lg))
         details.bookAgain?.let { seed ->
             PressScaleButton(
                 onClick = { onBookAgain(seed.toBookingKey(expertFallback)) },

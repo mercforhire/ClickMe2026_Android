@@ -8,9 +8,9 @@ import java.time.Instant
  * `GET /client/bookings/{id}` payload. Returned by `mybookings/ClientBookingsRepository.detail`; used by Request
  * Sent, Upcoming Booking Details, Cancellation and Booking Summary.
  *
- * [paymentStatus] is the server's derived display vocabulary `none | held | captured | refunded`. `private_note`
- * is deliberately not declared (D-16). [authorizationExpiresAt] is informational only, used for the accept
- * disclosure.
+ * [paymentStatus] is the server's derived display vocabulary `none | held | captured | refunded`. [privateNote] is
+ * the client's own full note (Phase 16.4, D-08). User-written: show it, never log it; toString omits it.
+ * [authorizationExpiresAt] is informational only, used for the accept disclosure.
  */
 @JsonClass(generateAdapter = true)
 data class ClientBookingDetail(
@@ -28,7 +28,10 @@ data class ClientBookingDetail(
     @Json(name = "join_link") val joinLink: String? = null,
     @Json(name = "can_join") val canJoin: Boolean = false,
     val reschedule: RescheduleDto? = null,
-)
+    @Json(name = "private_note") val privateNote: String? = null,
+) {
+    override fun toString(): String = "ClientBookingDetail(bookingId=$bookingId, status=$status)"
+}
 
 /**
  * Topic block of the booking detail. [isFree] is the topic-level flag (a sibling of `price`), not

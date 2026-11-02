@@ -1,9 +1,13 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -24,17 +28,28 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.RATING_STAR_FILLED_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_CARD_TAG
+import com.uptrendinvestments.clickmeapp.components.booknote.MY_NOTE_CARD_TAG
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
+import com.uptrendinvestments.clickmeapp.model.responses.ReviewContextData
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_BOOK_AGAIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_FEEDBACK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.subviews.BOOKING_SUMMARY_LEAVE_REVIEW_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.ClientBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleDialog
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleResponder
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.bookingDetail
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.summaryStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.clientmode.reviews.ReviewsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.PaymentMethodsRepository
+import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.testChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.util.PriceDisplay
 import org.junit.Assert.assertEquals
@@ -45,6 +60,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -74,6 +90,7 @@ class BookingSummaryScreenTest {
         bookAgain: BookAgainSeed? = BookAgainSeed("e1", "Ada Lovelace", "Engineer", null),
         reschedule: RescheduleProposalUi? = null,
         expertId: String? = "e1",
+        privateNote: String? = null,
     ) = BookingSummaryDetails(
         bookingId = "b1",
         status = summaryStatusDisplay(status),
@@ -88,6 +105,7 @@ class BookingSummaryScreenTest {
         priceLabel = priceLabel,
         bookAgain = bookAgain,
         reschedule = reschedule,
+        privateNote = privateNote,
     )
 
     private class Calls {
@@ -121,6 +139,7 @@ class BookingSummaryScreenTest {
                         onRescheduleNoticeConsumed = { calls.events += "consumed" },
                         reviewedIds = reviewedIds,
                         onLeaveReview = { calls.events += "leaveReview" },
+                        onOpenNote = { calls.events += "note" },
                         reviewThanks = reviewThanks,
                         onReviewThanksConsumed = { calls.events += "thanksConsumed" },
                         messageBusy = messageBusy,
@@ -279,10 +298,125 @@ class BookingSummaryScreenTest {
         assertTrue("button left ${button.left}", button.left >= 150.dp)
     }
 
+    // ---- My Note (Phase 16.4, D-06, D-07, D-08) ----
+
+    private val notePrompt = "Tap to jot down your thoughts \u2014 only you can see this."
+
     @Test
-    fun privateNoteDoesNotRender() {
-        setScreen(BookingSummaryUiState.Loaded(details()))
-        rule.onAllNodesWithText("My Note").assertCountEquals(0)
+    fun myNoteCardShowsTheFullNote() {
+        setScreen(BookingSummaryUiState.Loaded(details(privateNote = "Call back")))
+        rule.onNodeWithText("My Note").assertExists()
+        rule.onNodeWithText("Call back").assertExists()
+        rule.onAllNodesWithText(notePrompt).assertCountEquals(0)
+    }
+
+    @Test
+    fun myNoteCardShowsThePromptWhenThereIsNoNote() {
+        setScreen(BookingSummaryUiState.Loaded(details(privateNote = null)))
+        rule.onNodeWithText("My Note").assertExists()
+        rule.onNodeWithText(notePrompt).assertExists()
+    }
+
+    @Test
+    fun myNoteSitsAfterFeedbackAndBeforeBookAgain() {
+        setScreen(loaded(SummaryReview.Submitted(4, "Helpful")))
+
+        fun top(tag: String) =
+            rule
+                .onNodeWithTag(tag)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val feedback = top(BOOKING_SUMMARY_FEEDBACK_TAG)
+        val note = top(MY_NOTE_CARD_TAG)
+        val bookAgain = top(BOOKING_SUMMARY_BOOK_AGAIN_TAG)
+        assertTrue("feedback $feedback note $note", feedback < note)
+        assertTrue("note $note bookAgain $bookAgain", note < bookAgain)
+    }
+
+    @Test
+    fun tappingMyNoteCallsOnOpenNoteOnce() {
+        val calls = setScreen(BookingSummaryUiState.Loaded(details()))
+        rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().performClick()
+        assertEquals(listOf("note"), calls.events)
+    }
+
+    @Test
+    fun myNoteShowsOnEveryStatus() {
+        var state by mutableStateOf<BookingSummaryUiState>(BookingSummaryUiState.Loaded(details(status = "completed")))
+        rule.setContent {
+            ClickMeTheme {
+                BookingSummaryContent(
+                    state = state,
+                    rescheduleState = RescheduleUiState(),
+                    onBack = {},
+                    onRetry = {},
+                    onBookAgain = {},
+                    onAccept = {},
+                    onDecline = {},
+                    onDismissRescheduleDialog = {},
+                    onOpenPaymentMethods = {},
+                    onRescheduleNoticeConsumed = {},
+                    zone = zone,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        listOf("completed", "cancelled", "missed").forEach { status ->
+            state = BookingSummaryUiState.Loaded(details(status = status))
+            rule.waitForIdle()
+            rule.onNodeWithTag(MY_NOTE_CARD_TAG).assertExists()
+            rule.onNodeWithText("My Note").assertExists()
+        }
+    }
+
+    @Test
+    @Suppress("MagicNumber")
+    fun largeFontKeepsMyNote() {
+        val long = "A long private note about the session. ".repeat(12).trim()
+        setScreen(BookingSummaryUiState.Loaded(details(privateNote = long)), fontScale = 2f)
+        rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("My Note").assertIsDisplayed()
+        rule.onNodeWithText(long).assertIsDisplayed()
+    }
+
+    @Test
+    fun theRealViewModelCarriesTheNoteToTheCard() {
+        val api = FakeClickMeApi()
+        api.clientBookingDetailHandler = { bookingDetail(id = it, status = "completed", privateNote = "Call back") }
+        api.reviewContextHandler = { ReviewContextData() }
+        val viewModel =
+            BookingSummaryViewModel(
+                BookingSummaryKey("b1"),
+                ClientBookingsRepository(api),
+                RescheduleResponder(ClientBookingsRepository(api), PaymentMethodsRepository(api)),
+                Clock.systemUTC(),
+                ReviewsRepository(api),
+                ReviewLaunchRequest(),
+            )
+        val chatEntry = testChatEntryViewModel(api)
+        val opened = mutableListOf<ClientBookingNoteKey>()
+        rule.setContent {
+            ClickMeTheme {
+                BookingSummaryScreen(
+                    viewModel = viewModel,
+                    onBack = {},
+                    onBookAgain = {},
+                    onOpenPaymentMethods = {},
+                    onLeaveReview = {},
+                    onOpenNote = { opened += it },
+                    chatEntry = chatEntry,
+                )
+            }
+        }
+        rule.waitUntil(timeoutMillis = 5_000) {
+            rule.onAllNodesWithText("Call back").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().performClick()
+        assertEquals(1, opened.size)
+        assertEquals("b1", opened.single().bookingId)
+        assertEquals("Ada Lovelace", opened.single().expertName)
+        assertEquals("Algorithms", opened.single().topic)
     }
 
     // ---- Leave a review and Feedback (D-18, REV-01) ----

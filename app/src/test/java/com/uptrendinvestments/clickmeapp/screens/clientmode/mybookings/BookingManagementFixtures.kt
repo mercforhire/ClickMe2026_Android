@@ -68,6 +68,7 @@ fun bookingDetail(
     clientNotes: String? = null,
     authorizationExpiresAt: Instant? = null,
     reschedule: RescheduleDto? = null,
+    privateNote: String? = null,
 ): ClientBookingDetail =
     ClientBookingDetail(
         bookingId = id,
@@ -90,4 +91,5 @@ fun bookingDetail(
         authorizationExpiresAt = authorizationExpiresAt,
         joinLink = joinLink,
         reschedule = reschedule,
+        privateNote = privateNote,
     )
