@@ -185,6 +185,36 @@ class ExpertBookingsApiTest {
         }
 
     @Test
+    fun detailDecodesTheExpertNote() =
+        runTest {
+            val explicitNull =
+                detailJson().replace(
+                    """"expert_private_note":"secret",""",
+                    """"expert_private_note":null,""",
+                )
+            val absent = detailJson().replace(""""expert_private_note":"secret",""", "")
+            enqueue(200, detailJson())
+            enqueue(200, explicitNull)
+            enqueue(200, absent)
+
+            assertEquals("secret", repository.detail("abc").expertPrivateNote)
+            assertNull(repository.detail("abc").expertPrivateNote)
+            assertNull(repository.detail("abc").expertPrivateNote)
+        }
+
+    @Test
+    fun detailToStringOmitsTheNote() =
+        runTest {
+            enqueue(200, detailJson())
+
+            val detail = repository.detail("abc")
+
+            assertEquals("secret", detail.expertPrivateNote)
+            assertEquals("ExpertBookingDetail(bookingId=abc, status=pending_reschedule)", detail.toString())
+            assertFalse(detail.toString().contains("secret"))
+        }
+
+    @Test
     fun feedSendsTypePageLimitAndDecodesStatusObject() =
         runTest {
             enqueue(
