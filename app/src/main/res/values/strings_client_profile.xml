@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Client Profile, expert side (Phase 16.4, PARITY-AUDIT #9). Copy follows iOS; the D-14 and D-15 states are Android's.
+         Reuses expert_profile_go_back, section_retry, expert_bookings_earnings and expert_client_fallback_name. -->
+    <string name="client_profile_title">Client Profile</string>
+    <string name="client_profile_badge">Client</string>
+    <string name="client_profile_about">About</string>
+    <string name="client_profile_bio">Bio</string>
+    <string name="client_profile_location">Location</string>
+    <string name="client_profile_timezone">Timezone</string>
+    <string name="client_profile_languages">Languages</string>
+    <string name="client_profile_member_since">Member since</string>
+    <string name="client_profile_sessions_title">Your Sessions Together</string>
+    <plurals name="client_profile_sessions">
+        <item quantity="one">Session</item>
+        <item quantity="other">Sessions</item>
+    </plurals>
+    <string name="client_profile_client_since">Client since</string>
+    <string name="client_profile_last_session">Last session</string>
+    <string name="client_profile_no_date">—</string>
+    <string name="client_profile_history_title">Booking History</string>
+    <string name="client_profile_bucket_upcoming">Upcoming</string>
+    <string name="client_profile_bucket_completed">Completed</string>
+    <string name="client_profile_bucket_cancelled">Cancelled</string>
+    <string name="client_profile_session_fallback">Session</string>
+    <string name="client_profile_row_subtitle">%1$s - %2$s</string>
+    <!-- Spoken form of a history row (UI-SPEC C7): title, then bucket and date; the amount gets the Earnings label. -->
+    <string name="client_profile_row_a11y">%1$s. %2$s, %3$s</string>
+    <string name="client_profile_row_a11y_earnings">%1$s. %2$s %3$s</string>
+    <string name="client_profile_load_error">Couldn\'t load profile</string>
+    <string name="client_profile_no_relationship_title">No bookings with this person yet</string>
+    <string name="client_profile_no_relationship_body">You can see someone\'s profile once they have booked a session with you.</string>
+    <string name="client_profile_unavailable_title">Profile unavailable</string>
+    <string name="client_profile_unavailable_body">This person may no longer be on ClickMe.</string>
+</resources>
