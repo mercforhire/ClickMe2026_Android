@@ -83,9 +83,10 @@ data class ConsultationFeeDto(
 }
 
 /**
- * `GET /expert/bookings/{id}/details`. The private note, the server join flag and the message flag are
- * deliberately not declared (the join window is computed on the device and messaging is a later phase). The
- * cancel and reschedule flags are declared on [actions].
+ * `GET /expert/bookings/{id}/details`. The server join flag and the message flag are deliberately not declared (the
+ * join window is computed on the device and messaging is a later phase). The cancel and reschedule flags are declared
+ * on [actions]. [expertPrivateNote] is the expert's own full note (Phase 16.4, D-08). User-written: show it, never log
+ * it; toString omits it.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertBookingDetail(
@@ -97,12 +98,15 @@ data class ExpertBookingDetail(
     val session: ExpertBookingDetailSessionDto,
     @Json(name = "preparation_notes") val preparationNotes: PreparationNotesDto? = null,
     val actions: ExpertBookingActionsDto = ExpertBookingActionsDto(),
+    @Json(name = "expert_private_note") val expertPrivateNote: String? = null,
 ) {
     val startTime: Instant get() = session.schedule.startTime
     val endTime: Instant get() = session.schedule.endTime
 
     /** Free when the fee is missing or zero. */
     val isPaid: Boolean get() = session.consultationFee?.isPaid == true
+
+    override fun toString(): String = "ExpertBookingDetail(bookingId=$bookingId, status=${status.code})"
 }
 
 @JsonClass(generateAdapter = true)

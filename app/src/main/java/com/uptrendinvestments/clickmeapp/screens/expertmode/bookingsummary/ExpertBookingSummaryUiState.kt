@@ -45,6 +45,8 @@ sealed interface SummaryFee {
  * @property canCancel the server's `actions.can_cancel`, the only gate for Cancel Booking (RESEARCH C8).
  * @property canReschedule the server's `actions.can_reschedule`, the only gate for the expert's Reschedule (Phase 16.2,
  *   locked: none of the client's 24 hour or awaiting-approval rules apply).
+ * @property privateNote the expert's own full note, or null when there is none or it is blank (Phase 16.4, D-08).
+ *   User-written: show it, never log it; toString omits it.
  * @property showsJoin Join is offered for joinable and rejoinable states (D-14); the join window only enables it.
  * @property proposal the pending reschedule shown as the first block (EXP-09), or null. Only a proposal made by the
  *   client is actionable for the expert; the card shows the expert's own as read-only (D-18).
@@ -69,7 +71,10 @@ data class ExpertSummaryDetails(
     val canReschedule: Boolean,
     val showsJoin: Boolean,
     val proposal: RescheduleProposalUi? = null,
-)
+    val privateNote: String? = null,
+) {
+    override fun toString(): String = "ExpertSummaryDetails(bookingId=$bookingId, statusCode=$statusCode)"
+}
 
 /** Load state of the summary. */
 sealed interface ExpertSummaryLoad {
@@ -134,6 +139,7 @@ fun ExpertBookingDetail.toSummaryDetails(
         canReschedule = actions.canReschedule,
         showsJoin = code in JOINABLE_BOOKING_STATUSES || (code == STATUS_COMPLETED && endTime.isAfter(now)),
         proposal = rescheduleProposal(),
+        privateNote = expertPrivateNote?.takeIf { it.isNotBlank() },
     )
 }
 

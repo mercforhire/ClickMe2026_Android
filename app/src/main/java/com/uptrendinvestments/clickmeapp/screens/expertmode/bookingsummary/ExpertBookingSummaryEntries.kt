@@ -15,6 +15,9 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.reschedule.ExpertRes
  * summary (D-17). The screen only calls `onCancel` after the call guard allowed it. Reschedule pushes
  * [ExpertRescheduleKey] with the same origin and the Expert Summary opener (Phase 16.2), so the
  * picker's pop-back lands here and the send notice reaches this screen's slot.
+ *
+ * My Note pushes the [com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey] the
+ * ViewModel built; it copies this summary's origin, so the editor lands on the same stack (Phase 16.4, D-05, D-06).
  */
 fun EntryProviderScope<NavKey>.expertBookingSummaryEntries(navigator: Navigator) {
     entry<ExpertBookingSummaryKey>(metadata = BottomBar.hidden()) { key ->
@@ -28,6 +31,7 @@ fun EntryProviderScope<NavKey>.expertBookingSummaryEntries(navigator: Navigator)
             onReschedule = {
                 navigator.navigate(ExpertRescheduleKey(key.bookingId, key.origin, RescheduleOpener.ExpertSummary))
             },
+            onOpenNote = { navigator.navigate(it) },
         )
     }
 }

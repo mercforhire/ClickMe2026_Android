@@ -19,6 +19,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -81,6 +82,7 @@ class ExpertBookingSummaryViewModel
         }
 
         private val bookingId = key.bookingId
+        private val origin: ExpertBookingOrigin = key.origin
 
         // Consumed once here, so only the screen the relaunch landed on shows the note (D-11, T-15-38).
         private val showCallResumeNote = resumeNotice.consumeFor(bookingId)
@@ -202,6 +204,23 @@ class ExpertBookingSummaryViewModel
                     scheduledEnd = details.end,
                     meetingType = MeetingType.fromWire(details.meetingType),
                 ),
+            )
+        }
+
+        /**
+         * The key for the note editor of this booking, or null before the booking has loaded. It copies this summary's
+         * origin so the editor lands on the same stack (D-05, D-06). The note text is never put in a key; the editor
+         * fetches it.
+         */
+        fun noteKey(): ExpertBookingNoteKey? {
+            val details = (_uiState.value.load as? ExpertSummaryLoad.Loaded)?.details ?: return null
+            return ExpertBookingNoteKey(
+                bookingId = details.bookingId,
+                clientName = details.clientName,
+                topic = details.topic,
+                startMillis = details.start.toEpochMilli(),
+                endMillis = details.end.toEpochMilli(),
+                origin = origin,
             )
         }
 
