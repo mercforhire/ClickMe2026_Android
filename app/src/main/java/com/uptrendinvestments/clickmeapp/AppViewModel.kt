@@ -10,12 +10,23 @@ import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+
+/**
+ * The route the UI shows: [AppRoute.Splash] while the Compose splash holds, else the resolved [route]. [route]
+ * itself keeps meaning "resolved destination", so [AppViewModel.destinationResolved] and the push router's
+ * contract are unchanged.
+ */
+internal fun shownRootRoute(
+    route: AppRoute,
+    held: Boolean,
+): AppRoute = if (held) AppRoute.Splash else route
 
 /**
  * Holds the root [AppRoute] and the splash hold condition, driven by the session in [UserManager].
@@ -50,6 +61,31 @@ class AppViewModel
 
         /** True while the "account suspended" dialog should show (D-08). */
         val showSuspendedDialog: StateFlow<Boolean> = userManager.wasSuspended
+
+        @Volatile
+        private var splashComposed = false
+        private val _splashHeld = MutableStateFlow(true)
+        private var holdJob: Job? = null
+
+        /**
+         * True until [SPLASH_MIN_DISPLAY_MS] after the Compose splash first composed (D-08). The UI shows
+         * [shownRootRoute] of [route] and this flag, so [route] keeps meaning "resolved destination".
+         */
+        val splashHeld: StateFlow<Boolean> = _splashHeld.asStateFlow()
+
+        /**
+         * Starts the minimum display time once, when the Compose splash first composes. Auth keeps running from
+         * `init`, so a slow `/me` is not stacked on top of the hold.
+         */
+        fun onSplashComposed() {
+            if (holdJob != null) return
+            splashComposed = true
+            holdJob =
+                viewModelScope.launch {
+                    delay(SPLASH_MIN_DISPLAY_MS)
+                    _splashHeld.value = false
+                }
+        }
 
         init {
             // Mirrors iOS onChange(of: isLoggedIn): a session that ends while on a protected route goes to Login.
@@ -180,6 +216,12 @@ class AppViewModel
         companion object {
             /** Upper bound on how long the splash waits for auto-login (D-02). */
             const val SPLASH_HOLD_CAP_MS = 5_000L
+
+            /**
+             * Minimum time the Compose splash stays up on every cold start (D-08). Mirrors iOS
+             * `SplashViewModel.displaySeconds`; the single constant to change.
+             */
+            const val SPLASH_MIN_DISPLAY_MS = 3_000L
 
             private val HOME_ROUTES = setOf(AppRoute.ClientHome, AppRoute.ExpertHome)
 

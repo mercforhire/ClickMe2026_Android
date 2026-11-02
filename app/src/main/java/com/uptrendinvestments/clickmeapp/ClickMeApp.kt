@@ -26,6 +26,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.supportEmailIntent
 import com.uptrendinvestments.clickmeapp.screens.push.PushPermissionRequester
 import com.uptrendinvestments.clickmeapp.screens.push.PushRoutingHost
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.AccountDeletionFarewellHost
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashScreen
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 
 /**
@@ -47,6 +48,8 @@ fun ClickMeApp(
 ) {
     val route by appViewModel.route.collectAsStateWithLifecycle()
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
+    val held by appViewModel.splashHeld.collectAsStateWithLifecycle()
+    val shownRoute = shownRootRoute(route, held)
     val context = LocalContext.current
     PushRoutingHost(route = route, onSwitchMode = appViewModel::switchMode)
     PushPermissionRequester(route = route)
@@ -54,7 +57,7 @@ fun ClickMeApp(
         // Only a client <-> expert swap fades through; every other root change stays instant (UI-SPEC Motion).
         CallOverlayHost {
             AnimatedContent(
-                targetState = route,
+                targetState = shownRoute,
                 transitionSpec = {
                     if (initialState in HOMES && targetState in HOMES) {
                         fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
@@ -66,8 +69,7 @@ fun ClickMeApp(
                 label = "root-route",
             ) { targetRoute ->
                 when (targetRoute) {
-                    // The OS splash covers Splash.
-                    AppRoute.Splash -> EmptySurface()
+                    AppRoute.Splash -> SplashScreen(onComposed = appViewModel::onSplashComposed)
 
                     AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 

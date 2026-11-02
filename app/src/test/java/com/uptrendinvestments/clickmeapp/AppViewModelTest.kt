@@ -916,6 +916,128 @@ class AppViewModelTest {
             assertFalse(h.sessionStore.isSetupDeferred())
         }
 
+    // ---- Phase 16.5: the 3 s Compose splash hold (D-07, D-08, D-09) ----
+
+    @Test
+    fun splashHoldsForThreeSecondsAfterComposition() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            assertTrue("held before composition", vm.splashHeld.value)
+
+            vm.onSplashComposed()
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS - 1)
+            runCurrent()
+            assertTrue(vm.splashHeld.value)
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertFalse(vm.splashHeld.value)
+        }
+
+    @Test
+    fun composedTwiceDoesNotRestartTheHold() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+
+            vm.onSplashComposed()
+            advanceTimeBy(2_000)
+            runCurrent()
+            vm.onSplashComposed()
+            advanceTimeBy(1_000)
+            runCurrent()
+
+            assertFalse(vm.splashHeld.value)
+        }
+
+    @Test
+    fun shownRouteStaysSplashWhileHeldEvenWithAuthResolved() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS - 1)
+            runCurrent()
+
+            assertEquals(AppRoute.ClientHome, vm.route.value)
+            assertTrue(vm.destinationResolved.value)
+            assertEquals(AppRoute.Splash, shownRootRoute(vm.route.value, vm.splashHeld.value))
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(AppRoute.ClientHome, shownRootRoute(vm.route.value, vm.splashHeld.value))
+        }
+
+    @Test
+    fun shownRouteStaysSplashWhenAuthOutlastsTheHold() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS)
+            runCurrent()
+            assertFalse(vm.splashHeld.value)
+            assertEquals(AppRoute.Splash, shownRootRoute(vm.route.value, vm.splashHeld.value))
+
+            advanceTimeBy(AppViewModel.SPLASH_HOLD_CAP_MS - AppViewModel.SPLASH_MIN_DISPLAY_MS + 1)
+            runCurrent()
+            assertEquals(AppRoute.ClientHome, shownRootRoute(vm.route.value, vm.splashHeld.value))
+            gate.complete(Unit)
+            runCurrent()
+        }
+
+    @Test
+    fun loggedOutLaunchShowsLoginOnlyAfterTheHold() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this, initial = null)
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+
+            assertEquals(AppRoute.Login, vm.route.value)
+            assertEquals(AppRoute.Splash, shownRootRoute(vm.route.value, vm.splashHeld.value))
+
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS)
+            runCurrent()
+            assertEquals(AppRoute.Login, shownRootRoute(vm.route.value, vm.splashHeld.value))
+        }
+
+    @Test
+    fun holdAndCapAreBothBoundedWhenAuthHangs() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+
+            advanceTimeBy(AppViewModel.SPLASH_HOLD_CAP_MS + 1)
+            runCurrent()
+
+            assertFalse(vm.splashHeld.value)
+            assertTrue(vm.destinationResolved.value)
+            gate.complete(Unit)
+            runCurrent()
+        }
+
     @Test
     fun capPathLoadsPersistedOnboardingFlagBeforeRouteResolves() =
         runTest(main.testDispatcher) {

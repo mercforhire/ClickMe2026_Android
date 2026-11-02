@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand name: not translated. -->
+    <string name="splash_wordmark" translatable="false">ClickMe</string>
+    <string name="splash_tagline">Book time with the best minds.</string>
+    <string name="splash_a11y">ClickMe. Book time with the best minds.</string>
+</resources>
