@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ExpertRescheduleBadge
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
+import com.uptrendinvestments.clickmeapp.components.booknote.PrivateNoteZone
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPairDefaults
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.RescheduleActionButton
@@ -83,13 +84,15 @@ private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
  * Summary; Join is its own target, live within the join window (D-14). By default the icon-form Message sits beside
  * Join (Phase 12 D-14). Reschedule is shown when the caller passes [onReschedule] (Phase 16.2, gated by the list
  * row's `actions.can_reschedule`): Join then fills the first row and the second row holds the text-form Message at the
- * start and Reschedule at the end (iOS expert order). Private Note is still not on the card (Phase 8 D-16).
+ * start and Reschedule at the end (iOS expert order). The note zone is the card's last child (Phase 16.4, D-07, iOS
+ * session card); tapping it does not open the summary.
  *
  * @param now the shared join clock value; drives the Join button and the "Starting now" badge.
  * @param onOpen opens the summary; tapping Join does not.
  * @param onJoin starts the call with the client as the peer.
  * @param messageBusy true while the chat with this client is being opened; Message shows a spinner and ignores taps.
  * @param onMessage opens the chat with the client; tapping it does not open the summary.
+ * @param onPrivateNote opens the private note editor for this booking; the card's own tap is not triggered.
  * @param onReschedule opens the expert Reschedule picker; null hides the control. Tapping it does not open the summary.
  * @param zone zone the date and times are shown in; defaults to the device zone.
  * @param timeFormat the device time format so the 12 or 24 hour setting applies.
@@ -103,6 +106,7 @@ fun ExpertUpcomingCard(
     onJoin: () -> Unit,
     messageBusy: Boolean,
     onMessage: () -> Unit,
+    onPrivateNote: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
@@ -238,6 +242,11 @@ fun ExpertUpcomingCard(
                     gap = Spacing.sm,
                 )
             }
+            PrivateNoteZone(
+                preview = item.privateNotePreview,
+                onClick = onPrivateNote,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -286,6 +295,7 @@ private fun ExpertUpcomingCardPreview() {
                 onJoin = {},
                 messageBusy = false,
                 onMessage = {},
+                onPrivateNote = {},
                 modifier = Modifier.padding(Spacing.md),
             )
         }

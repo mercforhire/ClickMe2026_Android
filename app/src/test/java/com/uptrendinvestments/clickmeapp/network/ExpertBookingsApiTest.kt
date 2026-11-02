@@ -12,6 +12,7 @@ import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -127,6 +128,32 @@ class ExpertBookingsApiTest {
 
             assertFalse(item.actions.canReschedule)
             assertFalse(item.actions.canCancel)
+        }
+
+    @Test
+    fun listRowDecodesThePreview() =
+        runTest {
+            val withoutPreview = feedItem.replace(""""private_note_preview":"Bring receipts",""", "")
+            enqueue(200, feedPayload(feedItem))
+            enqueue(200, feedPayload(withoutPreview))
+
+            val withNote = repository.list(ExpertBookingsRepository.TYPE_UPCOMING).bookings.single()
+            val absent = repository.list(ExpertBookingsRepository.TYPE_UPCOMING).bookings.single()
+
+            assertEquals("Bring receipts", withNote.privateNotePreview)
+            assertNull(absent.privateNotePreview)
+        }
+
+    @Test
+    fun listRowToStringOmitsThePreview() =
+        runTest {
+            enqueue(200, feedPayload(feedItem))
+
+            val item = repository.list(ExpertBookingsRepository.TYPE_UPCOMING).bookings.single()
+
+            assertEquals("Bring receipts", item.privateNotePreview)
+            assertEquals("ExpertBookingItem(bookingId=b1, status=pending_reschedule)", item.toString())
+            assertFalse(item.toString().contains("Bring receipts"))
         }
 
     @Test

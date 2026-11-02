@@ -33,6 +33,7 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_FOOTER_TAG
+import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_ZONE_TAG
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
@@ -53,6 +54,7 @@ import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.sub
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertPastCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -715,5 +717,105 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Ada Lovelace").assertIsDisplayed()
         rule.onNodeWithText("Private Note").assertIsDisplayed()
         rule.onNodeWithText("Oct 23, 2026", substring = true).assertIsDisplayed()
+    }
+
+    // Private note on the upcoming card (Phase 16.4, D-07, D-08)
+
+    @Test
+    fun upcomingCardShowsAddWithNoPreview() {
+        serve()
+        show()
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).assertExists()
+        rule.onNodeWithText("Add private note").assertExists()
+    }
+
+    @Test
+    fun upcomingCardShowsThePreview() {
+        serve(
+            upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), privateNotePreview = "Bring receipts")),
+        )
+        show()
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).assertExists()
+        rule.onNodeWithText("Bring receipts").assertExists()
+        rule.onAllNodesWithText("Add private note").assertCountEquals(0)
+    }
+
+    @Test
+    fun upcomingCardTreatsABlankPreviewAsNoNote() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), privateNotePreview = "   ")))
+        show()
+        rule.onNodeWithText("Add private note").assertExists()
+    }
+
+    @Test
+    fun upcomingNoteZoneOpensTheNoteNotTheSummary() {
+        val item = expertBookingItem(start = now.plusSeconds(1800))
+        serve(upcoming = listOf(item))
+        val opened = mutableListOf<String>()
+        val keys = mutableListOf<ExpertBookingNoteKey>()
+        show(onOpenBooking = { opened += it }, onPrivateNote = { keys += it })
+
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).performClick()
+
+        assertEquals(listOf(item.noteKey()), keys)
+        assertEquals(ExpertBookingOrigin.Bookings, keys.single().origin)
+        assertEquals(emptyList<String>(), opened)
+
+        rule.onNodeWithTag(EXPERT_UPCOMING_CARD_TAG).clickCardBody()
+        assertEquals(listOf("b1"), opened)
+        assertEquals(1, keys.size)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp")
+    fun theZoneIsOnBothUpcomingLayouts() {
+        serve(
+            upcoming =
+                listOf(
+                    expertBookingItem(id = "b1", start = now.plusSeconds(1800), canReschedule = true),
+                    expertBookingItem(id = "b2", start = now.plusSeconds(7200), canReschedule = false),
+                ),
+        )
+        show()
+
+        val zones = rule.onAllNodesWithTag(PRIVATE_NOTE_ZONE_TAG).fetchSemanticsNodes()
+        val messages = rule.onAllNodesWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).fetchSemanticsNodes()
+        assertEquals(2, zones.size)
+        assertEquals(2, messages.size)
+        assertEquals(2, rule.onAllNodesWithTag(EXPERT_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().size)
+        assertEquals(1, rule.onAllNodesWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).fetchSemanticsNodes().size)
+        zones.indices.forEach { i ->
+            assertTrue("zone $i below Message", zones[i].boundsInRoot.top >= messages[i].boundsInRoot.bottom)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h2400dp")
+    fun largeFontKeepsTheZoneAndActionsOnThePhoneWidth() {
+        val item = expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    ExpertUpcomingCard(
+                        item = item,
+                        now = now,
+                        onOpen = {},
+                        onJoin = {},
+                        messageBusy = false,
+                        onMessage = {},
+                        onPrivateNote = {},
+                        onReschedule = {},
+                    )
+                }
+            }
+        }
+        listOf(
+            EXPERT_BOOKINGS_JOIN_TAG,
+            EXPERT_BOOKINGS_RESCHEDULE_TAG,
+            EXPERT_BOOKINGS_MESSAGE_TAG,
+            PRIVATE_NOTE_ZONE_TAG,
+        ).forEach { rule.onNodeWithTag(it).assertIsDisplayed() }
+        rule.onNodeWithText("Add private note").assertIsDisplayed()
     }
 }

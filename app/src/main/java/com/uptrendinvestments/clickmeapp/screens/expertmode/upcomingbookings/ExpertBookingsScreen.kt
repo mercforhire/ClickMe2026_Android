@@ -359,6 +359,7 @@ private fun ExpertBookingsList(
                         onJoin = { onJoin(item) },
                         messageBusy = messageBusyPeerId != null && messageBusyPeerId == item.client.id,
                         onMessage = { onMessage(item) },
+                        onPrivateNote = { onPrivateNote(item.noteKey()) },
                         modifier = Modifier.animateItem().contentMaxWidth(),
                         zone = zone,
                         timeFormat = timeFormat,
