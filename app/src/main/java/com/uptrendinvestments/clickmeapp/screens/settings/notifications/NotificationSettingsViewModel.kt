@@ -106,4 +106,16 @@ class NotificationSettingsViewModel
             _uiState.update { it.copy(values = newValues) }
             saver.onEdited(newValues)
         }
+
+        /** Re-sends the newest values after a failed save. */
+        fun retrySave() = saver.retry()
+
+        /** Saves a pending edit now, outside this ViewModel's scope. Called before the screen pops. */
+        fun flushPendingSave() = saver.flush()
+
+        override fun onCleared() {
+            // Backstop for a gesture back that bypassed the screen's own flush.
+            saver.flush()
+            super.onCleared()
+        }
     }

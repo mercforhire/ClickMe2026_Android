@@ -1,12 +1,18 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.notifications
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateNotificationPreferencesRequest
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferenceRow
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferencesData
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.SAVED_HOLD_MS
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.allNotificationRows
 import com.uptrendinvestments.clickmeapp.testing.notificationRow
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -16,6 +22,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationSettingsViewModelTest {
@@ -219,4 +226,178 @@ class NotificationSettingsViewModelTest {
                 .size == 13,
         )
     }
+
+    private fun failSaves() {
+        api.updateNotificationPreferencesHandler =
+            { throw api.httpError(500, """{"status":"error","message":"Down"}""") }
+    }
+
+    private fun NotificationSettingsViewModel.off(): Set<String> =
+        uiState.value.values
+            .filterValues { !it }
+            .keys
+
+    private fun lastSentOff(): Set<String> =
+        api.updateNotificationPreferencesRequests
+            .last()
+            .preferences
+            .filter { !it.pushEnabled }
+            .map { "${it.category}|${it.subCategory}" }
+            .toSet()
+
+    @Test
+    fun aFailedSaveShowsErrorAndKeepsTheToggles() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            failSaves()
+            vm.onToggle("booking|requests", false)
+            settleDebounce()
+
+            assertEquals(AutoSaveStatus.Error, vm.uiState.value.status)
+            assertEquals(setOf("booking|requests"), vm.off())
+            assertEquals(NotificationLoad.Loaded, vm.uiState.value.load)
+        }
+
+    @Test
+    fun retrySaveResendsTheNewestValues() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            failSaves()
+            vm.onToggle("booking|requests", false)
+            settleDebounce()
+            assertEquals(1, api.updateNotificationPreferencesCalls)
+
+            api.updateNotificationPreferencesHandler = { }
+            vm.retrySave()
+            runCurrent()
+
+            assertEquals(2, api.updateNotificationPreferencesCalls)
+            assertEquals(setOf("booking|requests"), lastSentOff())
+            assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
+
+            advanceTimeBy(SAVED_HOLD_MS)
+            runCurrent()
+            assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
+        }
+
+    @Test
+    fun aLaterEditClearsTheError() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            failSaves()
+            vm.onToggle("booking|requests", false)
+            settleDebounce()
+            assertEquals(AutoSaveStatus.Error, vm.uiState.value.status)
+
+            api.updateNotificationPreferencesHandler = { }
+            vm.onToggle("session|ended", false)
+            settleDebounce()
+
+            assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
+            assertEquals(setOf("booking|requests", "session|ended"), lastSentOff())
+        }
+
+    @Test
+    fun anEditDuringASaveIsSavedAfterIt() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            val gate = CompletableDeferred<Unit>()
+            var running = 0
+            var maxRunning = 0
+            api.updateNotificationPreferencesHandler = {
+                running++
+                maxRunning = maxOf(maxRunning, running)
+                try {
+                    if (api.updateNotificationPreferencesCalls == 1) gate.await()
+                } finally {
+                    running--
+                }
+            }
+            vm.onToggle("booking|requests", false)
+            settleDebounce()
+            assertEquals(1, api.updateNotificationPreferencesCalls)
+            assertEquals(AutoSaveStatus.Saving, vm.uiState.value.status)
+
+            vm.onToggle("review|nudge", false)
+            settleDebounce()
+            assertEquals(1, api.updateNotificationPreferencesCalls)
+
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(2, api.updateNotificationPreferencesCalls)
+            assertEquals(1, maxRunning)
+            assertEquals(setOf("booking|requests"), api.updateNotificationPreferencesRequests.first().offKeys())
+            assertEquals(setOf("booking|requests", "review|nudge"), lastSentOff())
+        }
+
+    @Test
+    fun flushOnLeaveSavesAPendingEdit() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            vm.onToggle("booking|requests", false)
+            advanceTimeBy(100)
+            runCurrent()
+            assertEquals(0, api.updateNotificationPreferencesCalls)
+
+            vm.flushPendingSave()
+            runCurrent()
+
+            assertEquals(1, api.updateNotificationPreferencesCalls)
+            assertEquals(setOf("booking|requests"), lastSentOff())
+            advanceTimeBy(NOTIFICATION_DEBOUNCE_MS * 2)
+            runCurrent()
+            assertEquals(1, api.updateNotificationPreferencesCalls)
+        }
+
+    @Test
+    fun onClearedFlushesToo() =
+        runTest(main.testDispatcher) {
+            val vm = loadedViewModel()
+            val store = ViewModelStore()
+            val factory =
+                object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T = vm as T
+                }
+            ViewModelProvider.create(store, factory)[NotificationSettingsViewModel::class]
+            vm.onToggle("message|new_message", false)
+            advanceTimeBy(100)
+            runCurrent()
+            assertEquals(0, api.updateNotificationPreferencesCalls)
+
+            store.clear()
+            runCurrent()
+
+            assertEquals(1, api.updateNotificationPreferencesCalls)
+            assertEquals(setOf("message|new_message"), lastSentOff())
+        }
+
+    @Test
+    fun loadFailureThenRetry() =
+        runTest(main.testDispatcher) {
+            api.notificationPreferencesHandler = { throw IOException("offline") }
+            val vm = viewModel()
+            runCurrent()
+            assertTrue(vm.uiState.value.load is NotificationLoad.Failed)
+            assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
+
+            api.notificationPreferencesHandler = {
+                NotificationPreferencesData(
+                    listOf(notificationRow("session", "ended", push = false, email = false, inApp = false)),
+                )
+            }
+            vm.retry()
+            runCurrent()
+
+            assertEquals(NotificationLoad.Loaded, vm.uiState.value.load)
+            assertEquals(setOf("session|ended"), vm.off())
+            assertEquals(0, api.updateNotificationPreferencesCalls)
+        }
 }
+
+private fun UpdateNotificationPreferencesRequest.offKeys(): Set<String> =
+    preferences
+        .filter { !it.pushEnabled }
+        .map { "${it.category}|${it.subCategory}" }
+        .toSet()
