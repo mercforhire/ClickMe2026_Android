@@ -27,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
@@ -72,6 +73,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FavoritesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackSubmissionData
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackTypesData
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -1420,6 +1423,32 @@ class FakeClickMeApi : ClickMeApi {
         synchronized(_updateNotificationPreferencesRequests) { _updateNotificationPreferencesRequests += body }
         updateNotificationPreferencesHandler(body)
         return SuccessMessageResponse(status = "success", message = "Preferences updated.")
+    }
+
+    // Phase 16.5: feedback.
+    var feedbackTypesHandler: suspend () -> FeedbackTypesData = { notStubbed() }
+    var submitFeedbackHandler: suspend (SubmitFeedbackRequest) -> FeedbackSubmissionData = { notStubbed() }
+
+    @Volatile var feedbackTypesCalls = 0
+        private set
+
+    @Volatile var submitFeedbackCalls = 0
+        private set
+
+    private val _submitFeedbackRequests = mutableListOf<SubmitFeedbackRequest>()
+
+    val submitFeedbackRequests: List<SubmitFeedbackRequest>
+        get() = synchronized(_submitFeedbackRequests) { _submitFeedbackRequests.toList() }
+
+    override suspend fun getFeedbackTypes(): SuccessDataResponse<FeedbackTypesData> {
+        feedbackTypesCalls++
+        return ok(feedbackTypesHandler())
+    }
+
+    override suspend fun submitFeedback(body: SubmitFeedbackRequest): SuccessDataResponse<FeedbackSubmissionData> {
+        submitFeedbackCalls++
+        synchronized(_submitFeedbackRequests) { _submitFeedbackRequests += body }
+        return ok(submitFeedbackHandler(body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

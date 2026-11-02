@@ -27,6 +27,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
@@ -71,6 +72,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FavoritesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackSubmissionData
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackTypesData
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -783,6 +786,16 @@ interface ClickMeApi {
     suspend fun updateNotificationPreferences(
         @Body body: UpdateNotificationPreferencesRequest,
     ): SuccessMessageResponse
+
+    /** Ports iOS `getFeedbackTypes`. The type list comes from the server and is never hard-coded. */
+    @GET(ApiRequestUrls.FEEDBACK_TYPES)
+    suspend fun getFeedbackTypes(): SuccessDataResponse<FeedbackTypesData>
+
+    /** Ports iOS `submitFeedback`. The backend schema is `.strict()` (see [SubmitFeedbackRequest]); 201 on success. */
+    @POST(ApiRequestUrls.FEEDBACK_SUBMIT)
+    suspend fun submitFeedback(
+        @Body body: SubmitFeedbackRequest,
+    ): SuccessDataResponse<FeedbackSubmissionData>
 
     /** Ports iOS ClickMeAPI+TaxProfile getTaxProfile. The TIN is never returned, only `tin_on_file`. */
     @GET(ApiRequestUrls.EXPERT_TAX_PROFILE)
