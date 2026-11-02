@@ -87,6 +87,7 @@ class FeedbackViewModel
                                     load = FeedbackLoad.Ready,
                                     types = types,
                                     selectedTypeId = it.selectedTypeId ?: types.first().id,
+                                    email = it.email.ifEmpty { signedInEmail() },
                                 )
                             }
                         }
@@ -100,20 +101,38 @@ class FeedbackViewModel
             _uiState.update { it.copy(selectedTypeId = id) }
         }
 
+        /** Stores the text and clears the inline error as soon as the trimmed length reaches the minimum. */
         fun onDetailsChange(text: String) {
-            _uiState.update { it.copy(details = text) }
+            _uiState.update {
+                it.copy(details = text, showDetailsError = it.showDetailsError && feedbackDetailsTooShort(text))
+            }
         }
 
         fun onEmailChange(text: String) {
-            _uiState.update { it.copy(email = text) }
+            _uiState.update { it.copy(email = text, emailError = null) }
         }
+
+        /** The signed-in user's email, from `/me` and else the cached profile; empty when neither is known (iOS). */
+        private fun signedInEmail(): String =
+            userManager.me.value?.email
+                ?: userManager.profile.value
+                    ?.personalDetails
+                    ?.email
+                ?: ""
 
         /** Sends the trimmed details and email. Ignored while sending and after success; short details never leave. */
         fun submit() {
             val state = _uiState.value
             if (state.saveState != SaveState.Idle) return
-            if (feedbackDetailsTooShort(state.details)) return
-            val typeId = state.selectedTypeId ?: return
+            if (feedbackDetailsTooShort(state.details)) {
+                _uiState.update { it.copy(showDetailsError = true) }
+                return
+            }
+            val typeId = state.selectedTypeId
+            if (typeId == null) {
+                _uiState.update { it.copy(dialog = FieldError.Res(R.string.feedback_no_category)) }
+                return
+            }
             _uiState.update { it.copy(saveState = SaveState.Saving) }
             viewModelScope.launch {
                 try {
