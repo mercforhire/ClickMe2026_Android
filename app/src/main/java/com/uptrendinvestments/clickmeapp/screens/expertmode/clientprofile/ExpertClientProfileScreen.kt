@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -21,10 +22,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
-import com.uptrendinvestments.clickmeapp.model.responses.ExpertClientProfileData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.ClientProfileAvatar
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.ClientProfileBookingHistoryHeader
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.ClientProfileBookingHistoryRow
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.ClientProfileNameBadge
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.ClientProfilePersonalInfo
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.ClientProfileRelationshipCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
@@ -87,24 +91,30 @@ fun ExpertClientProfileContent(
         ) {
             val load = state.load
             if (load is ClientProfileLoad.Loaded) {
-                ProfileList(load.profile, zone, locale)
+                ProfileList(load, zone, locale)
             }
         }
     }
 }
 
+/**
+ * The loaded profile in the iOS order: avatar and name block, About, Your Sessions Together, then the history when it
+ * has rows. Items sit [Spacing.md] apart and each section after the first adds another [Spacing.md] on top, so
+ * sections are [Spacing.xl] apart while history rows stay [Spacing.md] apart.
+ */
 @Composable
 private fun ProfileList(
-    profile: ExpertClientProfileData,
+    load: ClientProfileLoad.Loaded,
     zone: ZoneId,
     locale: Locale,
 ) {
+    val profile = load.profile
     val name = clientDisplayName(profile.personalDetails.fullName)
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag(CLIENT_PROFILE_LIST_TAG),
         contentPadding =
             PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = ListBottomPadding),
-        verticalArrangement = Arrangement.spacedBy(Spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         item(key = "header") {
             Column(
@@ -113,6 +123,25 @@ private fun ProfileList(
             ) {
                 ClientProfileAvatar(profile.personalDetails.avatarUrl)
                 ClientProfileNameBadge(name)
+            }
+        }
+        item(key = "about") {
+            ClientProfilePersonalInfo(profile, zone, locale, Modifier.contentMaxWidth().padding(top = Spacing.md))
+        }
+        item(key = "relationship") {
+            ClientProfileRelationshipCard(
+                profile.relationship,
+                zone,
+                locale,
+                Modifier.contentMaxWidth().padding(top = Spacing.md),
+            )
+        }
+        if (load.history.isNotEmpty()) {
+            item(key = "history-header") {
+                ClientProfileBookingHistoryHeader(Modifier.contentMaxWidth().padding(top = Spacing.md))
+            }
+            items(items = load.history, key = { it.item.bookingId }) { row ->
+                ClientProfileBookingHistoryRow(row, zone, locale, Modifier.contentMaxWidth())
             }
         }
     }

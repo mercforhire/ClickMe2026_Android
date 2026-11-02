@@ -2,24 +2,41 @@
 
 package com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertClientProfileData
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.subviews.CLIENT_PROFILE_HISTORY_ROW_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
+import com.uptrendinvestments.clickmeapp.testing.assertIsHeading
 import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
+import com.uptrendinvestments.clickmeapp.testing.assertTraversalOrder
+import com.uptrendinvestments.clickmeapp.testing.breakdown
+import com.uptrendinvestments.clickmeapp.testing.expertBookingItem
 import com.uptrendinvestments.clickmeapp.testing.expertClientProfile
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
+import com.uptrendinvestments.clickmeapp.util.Money
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -27,6 +44,9 @@ import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 // A tall window composes every lazy item at once.
 @RunWith(RobolectricTestRunner::class)
@@ -42,6 +62,10 @@ class ExpertClientProfileScreenTest {
 
     private val api = FakeClickMeApi()
     private var backCount = 0
+
+    // Dates, amounts and "Client since" must not depend on the machine running the test.
+    private val utc = ZoneId.of("UTC")
+    private val netAmount get() = Money.formatMajor(63.75, "USD", Locale.US)
 
     private fun stub(profile: ExpertClientProfileData = expertClientProfile()) {
         api.getExpertClientHandler = { profile }
@@ -61,8 +85,54 @@ class ExpertClientProfileScreenTest {
         }
     }
 
+    private fun at(date: String): Instant = Instant.parse("${date}T15:00:00Z")
+
+    private fun row(
+        id: String = "b1",
+        status: String = "completed",
+        topic: String? = "Algorithms",
+        start: Instant = at("2026-10-01"),
+        free: Boolean = false,
+    ): ClientHistoryRow {
+        val item: ExpertBookingItem =
+            expertBookingItem(
+                id = id,
+                statusCode = status,
+                topic = topic,
+                start = start,
+                breakdown = if (free) null else breakdown(),
+            )
+        return ClientHistoryRow(item, clientHistoryBucket(status))
+    }
+
+    private fun showLoaded(
+        profile: ExpertClientProfileData = expertClientProfile(),
+        history: List<ClientHistoryRow> = emptyList(),
+        fontScale: Float = 1f,
+    ) {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                ClickMeTheme {
+                    ExpertClientProfileContent(
+                        state = ExpertClientProfileUiState(load = ClientProfileLoad.Loaded(profile, history)),
+                        onBack = {},
+                        onRetry = {},
+                        onRefresh = {},
+                        onRefreshFailureConsumed = {},
+                        zone = utc,
+                        locale = Locale.US,
+                    )
+                }
+            }
+        }
+    }
+
+    // Cards and rows merge into one TalkBack node, so visible text is found in the unmerged tree.
     private fun shownCount(text: String) =
         rule.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().size
+
+    private fun shown(text: String) = shownCount(text) > 0
 
     @Test
     fun aLoadedProfileShowsTheBarNameAndBadge() {
@@ -87,9 +157,185 @@ class ExpertClientProfileScreenTest {
     fun anAvatarUrlDoesNotBlockTheScreen() {
         stub(expertClientProfile(fullName = "Sophia Carter"))
         show()
-        assertTrue(shownCount("Sophia Carter") == 1)
-        assertTrue(shownCount("Client") == 1)
+        assertEquals(1, shownCount("Sophia Carter"))
+        assertEquals(1, shownCount("Client"))
         rule.assertActionablesNamed()
         rule.assertTouchTargets()
+    }
+
+    @Test
+    fun aboutShowsEveryRow() {
+        showLoaded(expertClientProfile(bio = "Loves learning."))
+        assertTrue(shown("About"))
+        assertTrue(shown("Bio"))
+        assertTrue(shown("Loves learning."))
+        assertTrue(shown("Location"))
+        assertTrue(shown("Toronto, ON, CAN"))
+        assertTrue(shown("Timezone"))
+        assertTrue(shown("(GMT-05:00) Eastern Time"))
+        assertTrue(shown("Languages"))
+        assertTrue(shown("English, Spanish"))
+        assertTrue(shown("Member since"))
+        assertTrue(shown("March 2025"))
+    }
+
+    @Test
+    fun anEmptyAboutRowIsHidden() {
+        showLoaded(
+            expertClientProfile(
+                bio = null,
+                city = null,
+                stateProvince = null,
+                country = null,
+                timezone = "(GMT-05:00) Eastern Time",
+                languages = emptyList(),
+                memberSince = null,
+            ),
+        )
+        assertTrue(shown("About"))
+        assertFalse(shown("Bio"))
+        assertFalse(shown("Location"))
+        assertFalse(shown("Languages"))
+        assertFalse(shown("Member since"))
+        assertTrue(shown("Timezone"))
+    }
+
+    @Test
+    fun aBlankBioAndBlankLocationPartsCountAsEmpty() {
+        showLoaded(expertClientProfile(bio = "   ", city = "", stateProvince = "  ", country = " ", timezone = null))
+        assertFalse(shown("Bio"))
+        assertFalse(shown("Location"))
+        assertFalse(shown("Timezone"))
+        assertTrue(shown("Languages"))
+    }
+
+    @Test
+    fun blankLocationPartsAreSkippedInTheJoin() {
+        showLoaded(expertClientProfile(city = "Toronto", stateProvince = " ", country = "CAN"))
+        assertTrue(shown("Toronto, CAN"))
+    }
+
+    @Test
+    fun sessionsCardShowsCountAndMonths() {
+        showLoaded(expertClientProfile(totalSessions = 3))
+        assertTrue(shown("Your Sessions Together"))
+        assertTrue(shown("3"))
+        assertTrue(shown("Sessions"))
+        assertTrue(shown("Feb 2026"))
+        assertTrue(shown("Client since"))
+        assertTrue(shown("Oct 2026"))
+        assertTrue(shown("Last session"))
+    }
+
+    @Test
+    fun oneSessionIsSingular() {
+        showLoaded(expertClientProfile(totalSessions = 1))
+        assertEquals(1, shownCount("Session"))
+        assertFalse(shown("Sessions"))
+    }
+
+    @Test
+    fun aNullDateShowsADash() {
+        showLoaded(expertClientProfile(firstSessionDate = null, lastSessionDate = null))
+        assertEquals(2, shownCount("—"))
+    }
+
+    @Test
+    fun historyRowShowsTitleLabelDateAndAmount() {
+        showLoaded(history = listOf(row()))
+        assertTrue(shown("Booking History"))
+        assertTrue(shown("Algorithms"))
+        assertTrue(shown("Completed - Oct 1, 2026"))
+        assertTrue(shown(netAmount))
+    }
+
+    @Test
+    fun aFreeSessionShowsNoAmount() {
+        showLoaded(history = listOf(row(free = true)))
+        assertTrue(shown("Completed - Oct 1, 2026"))
+        assertFalse(shown(netAmount))
+    }
+
+    @Test
+    fun aCancelledRowShowsNoAmountAndItsLabel() {
+        showLoaded(history = listOf(row(status = "cancelled")))
+        assertTrue(shown("Cancelled - Oct 1, 2026"))
+        assertFalse(shown(netAmount))
+    }
+
+    @Test
+    fun anUpcomingRowShowsUpcoming() {
+        showLoaded(history = listOf(row(status = "confirmed", start = at("2026-11-20"))))
+        assertTrue(shown("Upcoming - Nov 20, 2026"))
+        assertTrue(shown(netAmount))
+    }
+
+    @Test
+    fun aMissingTopicReadsSession() {
+        showLoaded(history = listOf(row(topic = null)))
+        assertTrue(shown("Session"))
+        rule.onNodeWithContentDescription("Session. Completed, Oct 1, 2026. Earnings $netAmount").assertExists()
+    }
+
+    @Test
+    fun historyIsHiddenWhenEmpty() {
+        showLoaded(history = emptyList())
+        assertFalse(shown("Booking History"))
+        assertTrue(shown("Your Sessions Together"))
+    }
+
+    @Test
+    fun aHistoryRowIsOneNodeThatReadsTitleBucketDateAndEarnings() {
+        showLoaded(history = listOf(row(), row(id = "b2", status = "cancelled", topic = "Pitch deck")))
+        rule.onNodeWithContentDescription("Algorithms. Completed, Oct 1, 2026. Earnings $netAmount").assertExists()
+        // No amount shows on a cancelled row, so the spoken text has no Earnings part.
+        rule.onNodeWithContentDescription("Pitch deck. Cancelled, Oct 1, 2026").assertExists()
+    }
+
+    @Test
+    fun rowsAreNotClickable() {
+        showLoaded(history = listOf(row(), row(id = "b2", status = "confirmed", start = at("2026-11-20"))))
+        val nodes =
+            rule.onAllNodesWithTag(CLIENT_PROFILE_HISTORY_ROW_TAG, useUnmergedTree = true).fetchSemanticsNodes()
+        assertEquals(2, nodes.size)
+        nodes.forEach { node ->
+            assertFalse(SemanticsActions.OnClick in node.config)
+            assertFalse(SemanticsProperties.Role in node.config)
+        }
+    }
+
+    @Test
+    fun sectionsAreInTheIosOrder() {
+        showLoaded(history = listOf(row()))
+        rule.assertTraversalOrder("Sophia Carter", "About", "Your Sessions Together", "Booking History")
+        rule.assertIsHeading("Sophia Carter")
+        rule.assertIsHeading("About")
+        rule.assertIsHeading("Your Sessions Together")
+        rule.assertIsHeading("Booking History")
+    }
+
+    @Test
+    fun everyHistoryRowShows() {
+        showLoaded(history = (1..4).map { row(id = "b$it", topic = "Topic $it") })
+        (1..4).forEach { assertTrue(shown("Topic $it")) }
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h3000dp")
+    fun largeFontDoesNotClip() {
+        val longTopic = "A very long consultation topic that keeps going and going for several lines of text"
+        showLoaded(
+            profile = expertClientProfile(bio = "word ".repeat(40).trim()),
+            history = listOf(row(topic = longTopic)),
+            fontScale = 2f,
+        )
+        rule.onNodeWithText("Client since", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("Last session", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("Toronto, ON, CAN", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("English, Spanish", useUnmergedTree = true).assertIsDisplayed()
+        val amount = rule.onNodeWithText(netAmount, useUnmergedTree = true)
+        amount.assertIsDisplayed()
+        assertTrue(amount.getUnclippedBoundsInRoot().right <= 320.dp)
+        rule.onNodeWithText(longTopic, useUnmergedTree = true).assertIsDisplayed()
     }
 }
