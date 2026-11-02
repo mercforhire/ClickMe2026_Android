@@ -62,6 +62,7 @@ Used by 16-05, 16-07 and any gap plan.
 | versionCode | versionName | git sha | AAB sha256 (first 16) | Archive | Cert pin match | Uploaded (date) | Play status | Samsung proof (versionCode, lastUpdateTime, installer) | Rows re-run |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | 0.1.0 | d31aab18 | be68ecc836fe949e | /Users/LeonChen/ClickMe-release/clickme-0.1.0-1.aab | yes | 2026-10-30 | available | vc 1, 2026-10-30 17:57:21, com.android.vending | |
+| 2 | 0.1.0 | aa36dd17 | d337617e83b9712f | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | | not uploaded | | |
 
 ## Fix batches
 
@@ -77,4 +78,8 @@ Used by 16-05, 16-07 and any gap plan.
 - Play Console App integrity upload key certificate SHA-256 confirmed by the user to equal the pin above.
 - Play app signing cert (Google-generated key) of the installed base.apk, for Firebase registration (optional user follow-up, not done yet): SHA-256 979e9011c606c65faee98f0895bc3e4e71e57c616ed050936f5c01c2ecc91064, SHA-1 8db73866795076c1d571fb0ffdebd0521cdb0d6a (DN CN=Android, O=Google Inc.).
 - Plan-text deviation: the Task 3 check `logcat -s Realtime | state=Connected` cannot pass as written, because no code in app/src/main logs `state=` (the Realtime tag only logs warnings and dropped events, RealtimeService.kt). Realtime is exercised functionally by runbook rows R1 and D1 (chat, push). Not forced to pass.
-- versionCode 2 is set in app/build.gradle.kts at aa36dd17 (Phase 16.5 close, plan 16.5-12). Not built for release and not uploaded: run B3-B8 from that commit when Phase 16 resumes; the Uploads table gets its row then.
+- versionCode 2 is set in app/build.gradle.kts at aa36dd17 (Phase 16.5 close, plan 16.5-12). B3-B6 done 2026-11-02 from HEAD 8f45784d, whose non-planning files are identical to aa36dd17. B7-B8 (upload, Play install) are still open.
+- vc 2 gate: B2 was not re-run. It passed at 70a47258 (16.5-12 SUMMARY), and `git diff 70a47258 HEAD -- . ':!.planning'` changes only the versionCode line.
+- vc 2 B4 checks all passed: `jar verified.`, apksigner verifies (v2), AAB and APK certificate equal the pin, badging shows versionCode 2 and versionName 0.1.0, `google_app_id` present, 0 tracked secrets. jarsigner also prints about 1350 "signed in JarFile but is not signed in JarInputStream" lines; vc 1 prints the same (1349 vs 1351), and Play accepted vc 1.
+- vc 2 archive sha256: aab d337617e83b9712fd0214a8433699e92ec56b4328fc6105c3a9821393c2d3687, apk 7752ab449642c5f7c5f5ef32c385644de9896d4c881739fa1765f7cea804f28d, mapping 70c20e2a76a03834346dfbc85e9486ec2ca30478480d8bb46fc71a24841f08f4.
+- Archive incident (found 2026-11-02): /Users/LeonChen/ClickMe-release/ held only .DS_Store (modified 2026-11-01 23:36). The vc 1 archive, sessions/preflight-results.md and logs/preflight/ were gone, cause unknown. The vc 1 AAB, APK and mapping were restored from app/build/outputs before the vc 2 build overwrote them, and all three match the sha256 values above. The preflight results and P0.7 log were not recovered; 16-03 Task 1 must re-create them.
