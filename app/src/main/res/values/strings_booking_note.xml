@@ -6,4 +6,9 @@
     <string name="booking_note_card_title">My Note</string>
     <string name="booking_note_card_prompt">Tap to jot down your thoughts — only you can see this.</string>
     <string name="booking_note_open_a11y">Open private note</string>
+    <!-- Note editor (Phase 16.4-03). Uses the existing explore_session_topic_fallback for a null topic (UI-SPEC C3). -->
+    <string name="booking_note_title">My Note</string>
+    <string name="booking_note_save">Save</string>
+    <string name="booking_note_hint">Jot down your thoughts about this session — only you\'ll see this.</string>
+    <string name="booking_note_field_label">Private note</string>
 </resources>
