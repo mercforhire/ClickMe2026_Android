@@ -72,7 +72,7 @@ fun ClientProfileBookingHistoryRow(
     locale: Locale,
     modifier: Modifier = Modifier,
 ) {
-    val title = row.item.topic ?: stringResource(R.string.client_profile_session_fallback)
+    val title = row.item.topic?.takeIf { it.isNotBlank() } ?: stringResource(R.string.client_profile_session_fallback)
     val bucket = bucketLabel(row.bucket)
     val date =
         formatShortDate(

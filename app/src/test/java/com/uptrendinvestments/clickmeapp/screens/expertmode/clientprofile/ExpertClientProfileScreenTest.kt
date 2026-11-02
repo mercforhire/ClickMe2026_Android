@@ -280,6 +280,13 @@ class ExpertClientProfileScreenTest {
     }
 
     @Test
+    fun aBlankTopicReadsSession() {
+        showLoaded(history = listOf(row(topic = "   ")))
+        assertTrue(shown("Session"))
+        rule.onNodeWithContentDescription("Session. Completed, Oct 1, 2026. Earnings $netAmount").assertExists()
+    }
+
+    @Test
     fun historyIsHiddenWhenEmpty() {
         showLoaded(history = emptyList())
         assertFalse(shown("Booking History"))
