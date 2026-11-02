@@ -11,6 +11,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +26,9 @@ import kotlinx.coroutines.launch
  * Deliberate deviations from iOS: D-01 (leaving with unsaved changes asks first, iOS discards silently), D-02 (the
  * text is capped at [NOTE_MAX_LENGTH], iOS has no cap so a long note only fails on save) and D-04 (a whitespace-only
  * note is saved as an empty string, iOS saves it as typed).
+ *
+ * The typed draft lives in memory only: there is no SavedStateHandle, so it is lost if the process dies (RESEARCH A4),
+ * and the note text is never logged (T-16.4-10).
  */
 @HiltViewModel(assistedFactory = BookingNoteViewModel.Factory::class)
 class BookingNoteViewModel
@@ -38,6 +43,7 @@ class BookingNoteViewModel
         }
 
         private val _uiState = MutableStateFlow(BookingNoteUiState())
+        private var savedJob: Job? = null
         val uiState: StateFlow<BookingNoteUiState> = _uiState.asStateFlow()
 
         init {
@@ -86,7 +92,7 @@ class BookingNoteViewModel
             val state = _uiState.value
             if (!state.canSave) return
             val body = normalizeNote(state.noteText)
-            _uiState.update { it.copy(isSaving = true, saveError = null) }
+            _uiState.update { it.copy(isSaving = true, didSave = false, saveError = null) }
             viewModelScope.launch {
                 try {
                     repository.save(args.role, args.bookingId, body)
@@ -96,6 +102,37 @@ class BookingNoteViewModel
                     return@launch
                 }
                 _uiState.update { it.copy(isSaving = false, lastPersisted = body, didSave = true) }
+                savedJob?.cancel()
+                savedJob =
+                    viewModelScope.launch {
+                        delay(SAVED_STATE_MS)
+                        _uiState.update { it.copy(didSave = false) }
+                    }
             }
+        }
+
+        /** Closes the save error dialog. The text stays in the field. */
+        fun dismissSaveError() {
+            _uiState.update { it.copy(saveError = null) }
+        }
+
+        /**
+         * Asks whether the screen may close. True when nothing changed. Otherwise the discard prompt is raised and the
+         * result is false, so the caller stays on the screen until the user answers (D-01).
+         */
+        fun requestLeave(): Boolean {
+            if (!_uiState.value.hasChanges) return true
+            _uiState.update { it.copy(showDiscardPrompt = true) }
+            return false
+        }
+
+        /** Closes the discard prompt and keeps editing. */
+        fun dismissDiscardPrompt() {
+            _uiState.update { it.copy(showDiscardPrompt = false) }
+        }
+
+        private companion object {
+            /** How long the saved mark shows after a successful save (D-03). */
+            const val SAVED_STATE_MS = 1_500L
         }
     }
