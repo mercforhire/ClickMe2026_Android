@@ -965,10 +965,33 @@ Plans:
 **Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 0 plans
+**Plans:** 10 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16.4 to break down)
+**Wave 1**
+
+- [ ] 16.4-01-PLAN.md — Wire contract: four note calls behind a role-switched repository, `GET /expert/clients/:id`, DTOs, fake overrides, fixtures and wire tests (NOTE-NET, CP-NET, D-04, D-05, D-14, D-15)
+- [ ] 16.4-02-PLAN.md — Three origin-distinct route keys with Hilt-free entries and the shared note composables: upcoming zone, past action and footer, My Note card (NAV-KEYS, D-05, D-06, D-07, D-08, D-13)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16.4-03-PLAN.md — Shared note editor: load, cap and counter, Save with spinner and saved state, whitespace rule, discard gate, two Hilt routes (NOTE-EDITOR, D-01..D-05)
+- [ ] 16.4-04-PLAN.md — Client Profile ViewModel and history: merge, filter, sort, buckets, amount rule, failure and refresh states, shared `netEarningsText` (CP-HISTORY, CP-SCREEN, D-09..D-12, D-14, D-15)
+- [ ] 16.4-05-PLAN.md — Client cards: `private_note_preview`, "Private Note" and footer on past cards, note zone on upcoming cards, return refresh proven (NOTE-CLIENT, D-07, D-08)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16.4-06-PLAN.md — Client Booking Summary "My Note" from every route and the real client shell registration (NOTE-CLIENT, D-06, D-07, D-08)
+- [ ] 16.4-07-PLAN.md — Expert cards: `private_note_preview`, "Private Note" and footer on past cards, note zone on upcoming cards (NOTE-EXPERT, D-07, D-08)
+- [ ] 16.4-08-PLAN.md — Client Profile screen: header, About, Your Sessions Together, read-only history, skeleton, error, friendly 403 and 404 states, pull-to-refresh (CP-SCREEN, CP-HISTORY, D-09, D-10, D-12, D-14, D-15)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16.4-09-PLAN.md — Expert Booking Summary "My Note" and "View Profile", real expert shell registrations (NOTE-EXPERT, CP-LINKS, D-07, D-08, D-13)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 16.4-10-PLAN.md — Expert-mode chat View profile, expert shell route tests, full gate, Phase 16 matrix rows including note independence across Android and iOS (CP-LINKS, NAV-KEYS, D-13, D-14)
 
 ### Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)
 
