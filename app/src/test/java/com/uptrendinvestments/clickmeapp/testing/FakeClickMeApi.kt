@@ -50,6 +50,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ChatsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ClientTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
@@ -1367,6 +1368,27 @@ class FakeClickMeApi : ClickMeApi {
         saveTaxProfileCalls++
         synchronized(_saveTaxProfileRequests) { _saveTaxProfileRequests += body }
         return ok(saveTaxProfileHandler(body))
+    }
+
+    // Phase 16.5: client payment history.
+    var clientTransactionsHandler: suspend (page: Int, limit: Int) -> ClientTransactionsData =
+        { _, _ -> notStubbed() }
+
+    @Volatile var clientTransactionsCalls = 0
+        private set
+
+    private val _clientTransactionsQueries = mutableListOf<Pair<Int, Int>>()
+
+    val clientTransactionsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_clientTransactionsQueries) { _clientTransactionsQueries.toList() }
+
+    override suspend fun getClientTransactions(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ClientTransactionsData> {
+        clientTransactionsCalls++
+        synchronized(_clientTransactionsQueries) { _clientTransactionsQueries += page to limit }
+        return ok(clientTransactionsHandler(page, limit))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

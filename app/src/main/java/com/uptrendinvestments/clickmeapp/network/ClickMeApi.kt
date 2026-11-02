@@ -49,6 +49,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ChatsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ClientTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
@@ -122,7 +123,8 @@ import retrofit2.http.Query
  * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
  * earnings transactions ledger and the expert tax profile (get and save). Phase 16.2 adds the two
  * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Phase 16.4 adds the four note calls and
- * the expert's client profile. Other API groups arrive with their features (ROADMAP Phase 2 planning note).
+ * the expert's client profile. Phase 16.5 adds the client payment history, the notification preferences and the
+ * feedback calls. Other API groups arrive with their features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
  * wrapped by `apiCall` at the repository layer, which maps failures to `ApiException`.
@@ -755,6 +757,17 @@ interface ClickMeApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): SuccessDataResponse<EarningsTransactionsData>
+
+    /**
+     * Ports iOS `getClientTransactions`: the client's own payment history, newest first, one row per booking. Amounts
+     * are MINOR units. A page past the end is an HTTP 500, not an empty list, so callers page forward on `has_more`
+     * only (CLIENT-TRANSACTIONS.md section 7).
+     */
+    @GET(ApiRequestUrls.CLIENT_TRANSACTIONS)
+    suspend fun getClientTransactions(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ClientTransactionsData>
 
     /** Ports iOS ClickMeAPI+TaxProfile getTaxProfile. The TIN is never returned, only `tin_on_file`. */
     @GET(ApiRequestUrls.EXPERT_TAX_PROFILE)
