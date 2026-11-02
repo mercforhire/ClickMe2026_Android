@@ -1,44 +1,64 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.notifications
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.components.ErrorState
+import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
+import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
+import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
+import com.uptrendinvestments.clickmeapp.ui.theme.Motion
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
@@ -59,10 +79,15 @@ const val NOTIFICATION_DIVIDER_TAG = "notification_divider"
 const val NOTIFICATION_SWITCH_TAG = "notification_switch"
 
 private val StatusSlotSize = 48.dp
+private val StatusGlyphSize = 24.dp
+private val StatusSpinnerStroke = 2.dp
 private val RowMinHeight = 56.dp
+private val SkeletonHeadingHeight = 24.dp
+private val SkeletonHeadingWidth = 120.dp
+private val SkeletonRowCounts = listOf(7, 3, 1, 2)
 
 /**
- * Port of iOS `NotificationSettingsView` (PARITY-AUDIT #5). No quiet-hours card (D-01), no pull-to-refresh (UI-SPEC
+ * Port of iOS `NotificationSettingsView` (PARITY-AUDIT #5). Nothing beyond the 13-row grid (D-01), no pull-to-refresh (UI-SPEC
  * A5) and no failure dialog (D-02): a failed save is an error icon with Retry in the app bar. Leaving, by the arrow or
  * by system back, hands a pending edit to the application scope first; [DisposableEffect] is the backstop for any
  * other way off the screen.
@@ -117,23 +142,82 @@ fun NotificationSettingsContent(
             )
         },
     ) { inner ->
-        if (state.load is NotificationLoad.Loaded) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(inner)
-                        .verticalScroll(rememberScrollState())
-                        .contentMaxWidth()
-                        .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
-                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-            ) {
-                for (section in NOTIFICATION_SECTIONS) {
-                    NotificationSectionCard(section = section, values = state.values, onToggle = onToggle)
+        Crossfade(
+            targetState = state.load.kind(),
+            animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
+            modifier = Modifier.fillMaxSize().padding(inner),
+            label = "notificationLoad",
+        ) { kind ->
+            when (kind) {
+                LoadKind.Loading -> NotificationSkeleton()
+                LoadKind.Failed -> {
+                    val message = (state.load as? NotificationLoad.Failed)?.message
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        ErrorState(
+                            onRetry = onRetry,
+                            heading = stringResource(R.string.notification_settings_load_error_title),
+                            body = message?.asString().orEmpty(),
+                            retryLabel = stringResource(R.string.section_retry),
+                        )
+                    }
+                }
+                LoadKind.Loaded ->
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .contentMaxWidth()
+                                .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                    ) {
+                        for (section in NOTIFICATION_SECTIONS) {
+                            NotificationSectionCard(section = section, values = state.values, onToggle = onToggle)
+                        }
+                    }
+            }
+        }
+    }
+}
+
+private enum class LoadKind { Loading, Failed, Loaded }
+
+private fun NotificationLoad.kind(): LoadKind =
+    when (this) {
+        NotificationLoad.Loading -> LoadKind.Loading
+        is NotificationLoad.Failed -> LoadKind.Failed
+        NotificationLoad.Loaded -> LoadKind.Loaded
+    }
+
+/** First-load placeholder shaped like the four section cards (7, 3, 1 and 2 rows). */
+@Composable
+private fun NotificationSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .contentMaxWidth()
+                    .padding(start = Spacing.md, end = Spacing.md, top = Spacing.md, bottom = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            for (count in SkeletonRowCounts) {
+                Column {
+                    SkeletonBlock(modifier = Modifier.width(SkeletonHeadingWidth).height(SkeletonHeadingHeight))
+                    Spacer(Modifier.height(Spacing.sm))
+                    Column(
+                        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium),
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                    ) {
+                        repeat(count) {
+                            SkeletonBlock(
+                                modifier = Modifier.fillMaxWidth().height(RowMinHeight),
+                                shape = RectangleShape,
+                            )
+                        }
+                    }
                 }
             }
-        } else {
-            Box(modifier = Modifier.fillMaxSize().padding(inner))
         }
     }
 }
@@ -233,17 +317,69 @@ fun NotificationToggleRow(
     }
 }
 
-/** The save status in the app bar. Always a [StatusSlotSize] slot, so the bar never shifts between looks. */
+/**
+ * The save status in the app bar (D-02). Always at least a [StatusSlotSize] slot, so the bar never shifts between
+ * looks; the looks cross-fade over 150 ms. A failed save is an error icon and Retry here, never a dialog.
+ */
 @Composable
 fun NotificationSaveStatusAction(
     status: AutoSaveStatus,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val saving = stringResource(R.string.a11y_state_saving)
+    val saved = stringResource(R.string.a11y_state_saved)
+    val errorDescription = stringResource(R.string.notification_settings_save_error_a11y)
     Box(
-        modifier = modifier.size(StatusSlotSize).testTag(NOTIFICATION_SAVE_STATUS_TAG),
+        modifier = modifier.defaultMinSize(StatusSlotSize, StatusSlotSize).testTag(NOTIFICATION_SAVE_STATUS_TAG),
         contentAlignment = Alignment.Center,
     ) {
-        // Filled in by the status task: Idle is an empty slot.
+        Crossfade(
+            targetState = status,
+            animationSpec = tween(Motion.CONTROL_STATE_DURATION_MS),
+            label = "notificationSaveStatus",
+        ) { shown ->
+            when (shown) {
+                AutoSaveStatus.Idle -> Unit
+                AutoSaveStatus.Saving ->
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(StatusGlyphSize).semantics { contentDescription = saving },
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = StatusSpinnerStroke,
+                    )
+                AutoSaveStatus.Saved ->
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = saved,
+                        modifier = Modifier.size(StatusGlyphSize).semantics { liveRegion = LiveRegionMode.Polite },
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                AutoSaveStatus.Error ->
+                    // Wider than the idle slot: the Retry label needs room. The slot only grows toward the title, so the
+                    // back arrow and the title's start stay where they are.
+                    Row(
+                        modifier =
+                            Modifier.semantics(mergeDescendants = true) {
+                                contentDescription = errorDescription
+                                liveRegion = LiveRegionMode.Polite
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ErrorOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(StatusGlyphSize),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                        TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = StatusSlotSize)) {
+                            Text(
+                                text = stringResource(R.string.section_retry),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+            }
+        }
     }
 }

@@ -2,31 +2,43 @@
 
 package com.uptrendinvestments.clickmeapp.screens.settings.notifications
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferencesData
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.allNotificationRows
@@ -41,6 +53,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class NotificationSettingsScreenTest {
@@ -220,4 +233,152 @@ class NotificationSettingsScreenTest {
             assertEquals(1, api.updateNotificationPreferencesCalls)
             assertEquals(1, backs.size)
         }
+
+    private fun withStatus(status: AutoSaveStatus) = loaded().copy(status = status)
+
+    @Test
+    fun loadingShowsTheSkeletonAndNoStatus() {
+        setContent(NotificationSettingsUiState(load = NotificationLoad.Loading, status = AutoSaveStatus.Saving))
+
+        rule.onNodeWithContentDescription("Loading").assertExists()
+        rule.onAllNodesWithTag(NOTIFICATION_ROW_TAG).assertCountEquals(0)
+        rule.onNodeWithTag(NOTIFICATION_SAVE_STATUS_TAG).assertExists()
+        rule.onNodeWithContentDescription("Saving").assertDoesNotExist()
+    }
+
+    @Test
+    fun loadFailureShowsRetryAndNoStatus() {
+        setContent(
+            NotificationSettingsUiState(
+                load = NotificationLoad.Failed(FieldError.Text("Server unreachable")),
+                status = AutoSaveStatus.Error,
+            ),
+        )
+
+        rule.onNodeWithText("Couldn't load preferences").assertExists()
+        rule.onNodeWithText("Server unreachable").assertExists()
+        rule.onAllNodesWithTag(NOTIFICATION_ROW_TAG).assertCountEquals(0)
+        rule.onNodeWithContentDescription("Couldn't save preferences. Retry").assertDoesNotExist()
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, loadRetries.size)
+        assertEquals(0, saveRetries.size)
+    }
+
+    @Test
+    fun idleStatusIsAnEmptySlot() {
+        setContent(withStatus(AutoSaveStatus.Idle))
+
+        val slot = rule.onNodeWithTag(NOTIFICATION_SAVE_STATUS_TAG)
+        slot.assertWidthIsEqualTo(48.dp)
+        slot.assertHeightIsEqualTo(48.dp)
+        rule.onNodeWithContentDescription("Saving").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Saved").assertDoesNotExist()
+    }
+
+    @Test
+    fun savingShowsASpinnerDescribedSaving() {
+        setContent(withStatus(AutoSaveStatus.Saving))
+
+        rule.onNodeWithContentDescription("Saving").assertExists()
+    }
+
+    @Test
+    fun savedShowsACheckDescribedSaved() {
+        setContent(withStatus(AutoSaveStatus.Saved))
+
+        val node = rule.onNodeWithContentDescription("Saved")
+        node.assertExists()
+        assertEquals(LiveRegionMode.Polite, node.fetchSemanticsNode().config[SemanticsProperties.LiveRegion])
+    }
+
+    @Test
+    fun errorShowsRetryAndCallsIt() {
+        setContent(withStatus(AutoSaveStatus.Error))
+
+        val group = rule.onNodeWithContentDescription("Couldn't save preferences. Retry")
+        group.assertExists()
+        assertEquals(LiveRegionMode.Polite, group.fetchSemanticsNode().config[SemanticsProperties.LiveRegion])
+        rule.onNodeWithText("Retry").performClick()
+        assertEquals(1, saveRetries.size)
+        assertEquals(0, loadRetries.size)
+        rule.onNode(isDialog()).assertDoesNotExist()
+    }
+
+    @Test
+    fun togglesStayEnabledWhileSaving() {
+        setContent(withStatus(AutoSaveStatus.Saving))
+
+        rule
+            .onNodeWithText("Booking Requests")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+
+        assertEquals(listOf("booking|requests" to false), toggles)
+    }
+
+    @Test
+    fun errorKeepsTheToggleAsSet() {
+        setContent(
+            loaded(defaultNotificationValues() + ("booking|declines" to false)).copy(status = AutoSaveStatus.Error),
+        )
+
+        rule.onNodeWithText("Booking Declines").assertIsOff()
+    }
+
+    @Test
+    fun theBarDoesNotShiftBetweenStates() {
+        var state by mutableStateOf(withStatus(AutoSaveStatus.Idle))
+        rule.setContent {
+            ClickMeTheme {
+                NotificationSettingsContent(
+                    state = state,
+                    onToggle = { _, _ -> },
+                    onRetry = {},
+                    onRetrySave = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        fun positions() =
+            rule.onNodeWithText("Notifications").getUnclippedBoundsInRoot().left to
+                rule.onNodeWithContentDescription("Back").getUnclippedBoundsInRoot().left
+
+        val idle = positions()
+        for (status in listOf(AutoSaveStatus.Saving, AutoSaveStatus.Saved, AutoSaveStatus.Error, AutoSaveStatus.Idle)) {
+            rule.runOnIdle { state = withStatus(status) }
+            rule.waitForIdle()
+            assertEquals("status $status", idle, positions())
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun largeFontRowsWrapAndTheSwitchStays() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    NotificationSettingsContent(
+                        state = loaded(),
+                        onToggle = { _, _ -> },
+                        onRetry = {},
+                        onRetrySave = {},
+                        onBack = {},
+                    )
+                }
+            }
+        }
+
+        val row = rule.onAllNodesWithTag(NOTIFICATION_ROW_TAG).onFirst().getUnclippedBoundsInRoot()
+        val switch =
+            rule
+                .onAllNodesWithTag(NOTIFICATION_SWITCH_TAG, useUnmergedTree = true)
+                .onFirst()
+                .getUnclippedBoundsInRoot()
+        assertTrue("switch left ${switch.left} inside row ${row.left}", switch.left >= row.left)
+        assertTrue("switch right ${switch.right} inside row ${row.right}", switch.right <= row.right)
+        assertTrue("row at least 56dp tall", row.bottom - row.top >= 56.dp)
+    }
 }
