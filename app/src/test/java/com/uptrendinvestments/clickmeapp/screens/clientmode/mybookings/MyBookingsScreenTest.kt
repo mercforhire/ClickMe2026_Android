@@ -1,20 +1,24 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -24,10 +28,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_FOOTER_TAG
+import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_ZONE_TAG
 import com.uptrendinvestments.clickmeapp.components.chat.MESSAGE_BUTTON_SPINNER_TAG
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.noteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.BOOKING_CARD_RESCHEDULE_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.subviews.MY_BOOKINGS_JOIN_TAG
@@ -71,6 +80,12 @@ class MyBookingsScreenTest {
         rule.setContent { ClickMeTheme { content() } }
     }
 
+    /**
+     * Taps the card's top padding. The card's centre is no longer a safe spot: the note zone made the card taller, so
+     * the centre now lands on a button (Phase 16.4).
+     */
+    private fun SemanticsNodeInteraction.clickCardBody() = performTouchInput { click(Offset(centerX, 4f)) }
+
     private fun exists(text: String) = rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
     private fun existsTag(tag: String) = rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
@@ -94,6 +109,7 @@ class MyBookingsScreenTest {
         onClick: () -> Unit = {},
         joinEnabled: Boolean = false,
         onJoin: () -> Unit = {},
+        onPrivateNote: () -> Unit = {},
         messageBusy: Boolean = false,
         onMessage: () -> Unit = {},
         onReschedule: (() -> Unit)? = null,
@@ -102,6 +118,7 @@ class MyBookingsScreenTest {
         onClick,
         joinEnabled,
         onJoin,
+        onPrivateNote,
         messageBusy = messageBusy,
         onMessage = onMessage,
         onReschedule = onReschedule,
@@ -114,7 +131,8 @@ class MyBookingsScreenTest {
     private fun PastCard(
         row: PastRow,
         onClick: () -> Unit = {},
-    ) = PastBookingCard(row, onClick, zone = zone, timeFormat = timeFormat(), locale = locale)
+        onPrivateNote: () -> Unit = {},
+    ) = PastBookingCard(row, onClick, onPrivateNote, zone = zone, timeFormat = timeFormat(), locale = locale)
 
     private fun rescheduleItem(initiatedBy: String) =
         bookingItem(status = STATUS_PENDING_RESCHEDULE, reschedule = rescheduleDto(initiatedBy = initiatedBy))
@@ -285,6 +303,7 @@ class MyBookingsScreenTest {
         val joined = mutableListOf<String>()
         val messaged = mutableListOf<String>()
         val rescheduled = mutableListOf<String>()
+        val noteKeys = mutableListOf<ClientBookingNoteKey>()
     }
 
     @Composable
@@ -312,6 +331,7 @@ class MyBookingsScreenTest {
         reviewedBookingIds = reviewedBookingIds,
         onReviewThanksShown = { calls.reviewThanksShown++ },
         onReschedule = { calls.rescheduled += it },
+        onPrivateNote = { calls.noteKeys += it },
         onRescheduleSentShown = { calls.rescheduleSentShown++ },
         zone = zone,
         timeFormat = timeFormat(),
@@ -321,7 +341,8 @@ class MyBookingsScreenTest {
     private fun pastRow(
         id: String,
         status: String = "completed",
-    ) = PastRow(bookingItem(id = id, status = status), pastStatusDisplay(status)!!)
+        preview: String? = null,
+    ) = PastRow(bookingItem(id = id, status = status, privateNotePreview = preview), pastStatusDisplay(status)!!)
 
     private fun loaded(
         tab: BookingsTab = BookingsTab.Upcoming,
@@ -372,7 +393,7 @@ class MyBookingsScreenTest {
         val calls = Callbacks()
         show { Content(loaded(upcoming = listOf(bookingItem("b1"), bookingItem("b3"))), calls) }
         assertEquals(2, rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
-        rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG)[0].performClick()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CARD_TAG)[0].clickCardBody()
         assertEquals("b1", calls.openedUpcoming)
     }
 
@@ -465,16 +486,19 @@ class MyBookingsScreenTest {
     }
 
     @Test
-    fun content_neverOffersExcludedActions() {
+    fun content_offersOnlyTheIntendedActions() {
         val upcoming = listOf(bookingItem("b1"), bookingItem("b3", status = STATUS_PENDING_APPROVAL))
         val state = loaded(upcoming = upcoming, past = listOf(pastRow("b2")))
         var tab by mutableStateOf(BookingsTab.Upcoming)
         show { Content(state.copy(selectedTab = tab)) }
-        // Reschedule is offered on Upcoming cards (Phase 16.2 D-04 amended), never on Past.
-        listOf("Message Expert", "Private Note").forEach { assertTrue("$it on Upcoming", !exists(it)) }
+        // Reschedule and the note zone are offered on Upcoming cards (Phase 16.2 D-04 amended, Phase 16.4 D-07).
+        assertTrue("Add private note on Upcoming", exists("Add private note"))
+        assertTrue("Message Expert on Upcoming", !exists("Message Expert"))
         rule.runOnIdle { tab = BookingsTab.Past }
         rule.waitForIdle()
-        listOf("Reschedule", "Message Expert", "Private Note", "Message").forEach {
+        // Private Note is on every Past card (D-07); Reschedule and Message never are.
+        assertTrue("Private Note on Past", exists("Private Note"))
+        listOf("Reschedule", "Message Expert", "Message").forEach {
             assertTrue("$it on Past", !exists(it))
         }
         assertTrue(!existsTag(BOOKING_CARD_MESSAGE_TAG))
@@ -793,6 +817,7 @@ class MyBookingsScreenTest {
             PastBookingCard(
                 row,
                 onClick = { opens++ },
+                onPrivateNote = {},
                 onLeaveReview = { reviews++ },
                 zone = zone,
                 timeFormat = timeFormat(),
@@ -824,6 +849,7 @@ class MyBookingsScreenTest {
                     PastBookingCard(
                         pastRow("b2"),
                         onClick = {},
+                        onPrivateNote = {},
                         onLeaveReview = {},
                         zone = zone,
                         timeFormat = timeFormat(),
@@ -835,5 +861,180 @@ class MyBookingsScreenTest {
         rule.onNodeWithText("Leave a review").assertIsDisplayed()
         assertTrue(anyTextContains(dateText))
         rule.onNodeWithTag(PAST_CARD_LEAVE_REVIEW_TAG).assertIsDisplayed()
+    }
+
+    // Private note on the past card (Phase 16.4, D-07, D-08)
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp")
+    fun pastCardShowsPrivateNoteOnEveryStatus() {
+        val statuses = listOf("completed", "cancelled", "declined", "missed", "expired")
+        val past = statuses.map { pastRow("p-$it", it) }
+        show { Content(loaded(tab = pastTab, past = past)) }
+        assertEquals(statuses.size, rule.onAllNodesWithText("Private Note").fetchSemanticsNodes().size)
+        // Leave a review stays completed-only.
+        assertEquals(1, rule.onAllNodesWithText("Leave a review").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun pastNoteActionOpensTheNoteNotTheSummary() {
+        val calls = Callbacks()
+        val row = pastRow("b2", "cancelled")
+        show { Content(loaded(tab = pastTab, past = listOf(row)), calls) }
+        rule.onNodeWithText("Private Note").performClick()
+        assertEquals(listOf(row.item.noteKey()), calls.noteKeys)
+        assertEquals(null, calls.openedPast)
+
+        rule.onNodeWithText("Ada Lovelace").performClick()
+        assertEquals("b2", calls.openedPast)
+        assertEquals(1, calls.noteKeys.size)
+    }
+
+    @Test
+    fun pastFooterShowsTheServerPreview() {
+        val calls = Callbacks()
+        val row = pastRow("b2", preview = "Call back")
+        show { Content(loaded(tab = pastTab, past = listOf(row)), calls) }
+        rule.onNodeWithText("Call back").assertExists()
+        rule.onNodeWithTag(PRIVATE_NOTE_FOOTER_TAG).performClick()
+        assertEquals(listOf(row.item.noteKey()), calls.noteKeys)
+        assertEquals(null, calls.openedPast)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1200dp")
+    fun pastFooterIsHiddenForABlankPreview() {
+        val past = listOf(pastRow("n1", preview = null), pastRow("n2", preview = "   "))
+        show { Content(loaded(tab = pastTab, past = past)) }
+        assertEquals(2, rule.onAllNodesWithTag(PAST_BOOKING_CARD_TAG).fetchSemanticsNodes().size)
+        assertTrue(!existsTag(PRIVATE_NOTE_FOOTER_TAG))
+    }
+
+    @Test
+    fun pastCardExposesPrivateNoteToTalkBack() {
+        var notes = 0
+        var opens = 0
+        show { PastCard(pastRow("b2", "cancelled"), onClick = { opens++ }, onPrivateNote = { notes++ }) }
+        val actions =
+            rule
+                .onNodeWithTag(PAST_BOOKING_CARD_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsActions.CustomActions)
+                .orEmpty()
+        val action = actions.single { it.label == "Private Note" }
+        rule.runOnUiThread { action.action() }
+        assertEquals(1, notes)
+        assertEquals(0, opens)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h1200dp")
+    fun largeFontKeepsThePastControls() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    PastBookingCard(
+                        pastRow("b2"),
+                        onClick = {},
+                        onPrivateNote = {},
+                        onLeaveReview = {},
+                        zone = zone,
+                        timeFormat = timeFormat(),
+                        locale = locale,
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Private Note").assertIsDisplayed()
+        rule.onNodeWithText("Leave a review").assertIsDisplayed()
+        assertTrue(anyTextContains(dateText))
+    }
+
+    // Private note on the upcoming card (Phase 16.4, D-07, D-08)
+
+    @Test
+    fun upcomingCardShowsAddWithNoPreview() {
+        show { UpcomingCard(bookingItem(status = "confirmed")) }
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).assertExists()
+        rule.onNodeWithText("Add private note").assertExists()
+    }
+
+    @Test
+    fun upcomingCardShowsThePreview() {
+        show { UpcomingCard(bookingItem(status = "confirmed", privateNotePreview = "Call back")) }
+        rule.onNodeWithText("Call back").assertExists()
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).assertExists()
+        assertTrue(!exists("Add private note"))
+    }
+
+    @Test
+    fun upcomingCardTreatsABlankPreviewAsNoNote() {
+        show { UpcomingCard(bookingItem(status = "confirmed", privateNotePreview = "   ")) }
+        rule.onNodeWithText("Add private note").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1200dp")
+    fun upcomingNoteZoneOpensTheNoteNotDetails() {
+        val calls = Callbacks()
+        val item = bookingItem("b1")
+        show { Content(loaded(upcoming = listOf(item)), calls) }
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).performClick()
+        assertEquals(listOf(item.noteKey()), calls.noteKeys)
+        assertEquals(null, calls.openedUpcoming)
+
+        rule.onNodeWithTag(UPCOMING_BOOKING_CARD_TAG).clickCardBody()
+        assertEquals("b1", calls.openedUpcoming)
+        assertEquals(1, calls.noteKeys.size)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp")
+    fun theZoneIsOnEveryUpcomingLayout() {
+        show {
+            Column {
+                UpcomingCard(bookingItem("c1", start = farOutStart), onReschedule = {})
+                UpcomingCard(bookingItem("c2", start = farOutStart), onReschedule = null)
+                UpcomingCard(
+                    bookingItem("c3", status = STATUS_PENDING_APPROVAL, start = farOutStart),
+                    onReschedule = {},
+                )
+            }
+        }
+        val zones = rule.onAllNodesWithTag(PRIVATE_NOTE_ZONE_TAG).fetchSemanticsNodes()
+        val messages = rule.onAllNodesWithTag(BOOKING_CARD_MESSAGE_TAG).fetchSemanticsNodes()
+        assertEquals(3, zones.size)
+        assertEquals(3, messages.size)
+        // Join on the two confirmed cards, the pending banner on the third.
+        assertEquals(2, rule.onAllNodesWithTag(MY_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().size)
+        rule.onNodeWithText("Waiting for expert to accept").assertExists()
+        // The zone sits below the action row on each layout.
+        zones.indices.forEach { i ->
+            assertTrue("zone $i below Message", zones[i].boundsInRoot.top >= messages[i].boundsInRoot.bottom)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h2400dp")
+    fun largeFontKeepsTheZoneAndActionsOnThePhoneWidth() {
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    Column {
+                        UpcomingCard(bookingItem("c1", start = farOutStart), joinEnabled = true, onReschedule = {})
+                    }
+                }
+            }
+        }
+        listOf(
+            MY_BOOKINGS_JOIN_TAG,
+            BOOKING_CARD_RESCHEDULE_TAG,
+            BOOKING_CARD_MESSAGE_TAG,
+            PRIVATE_NOTE_ZONE_TAG,
+        ).forEach { rule.onNodeWithTag(it).assertIsDisplayed() }
+        rule.onNodeWithText("Add private note").assertIsDisplayed()
     }
 }

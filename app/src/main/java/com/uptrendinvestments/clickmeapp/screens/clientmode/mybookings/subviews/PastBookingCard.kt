@@ -39,6 +39,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.BookingStatusBadge
+import com.uptrendinvestments.clickmeapp.components.booknote.NotePreviewFooter
+import com.uptrendinvestments.clickmeapp.components.booknote.PrivateNoteAction
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
 import com.uptrendinvestments.clickmeapp.model.responses.BookingExpertDto
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingItem
@@ -61,16 +63,21 @@ const val PAST_BOOKING_CARD_TAG = "my_bookings_past_card"
 private val PREVIEW_START: Instant = Instant.parse("2026-10-10T18:00:00Z")
 
 /**
- * A Past booking card (iOS `PastBookingCard`). The whole card opens Booking Summary (D-12). When [onLeaveReview] is
- * non-null (a completed booking with no review this session, D-18) an end-aligned "Leave a review" pill sits under
- * the date line; it consumes its own tap and wraps onto its own row at large text. Private Note is not on the card
- * (D-16).
+ * A Past booking card (iOS `PastBookingCard`). The whole card opens Booking Summary (D-12). Under the date line a
+ * start-aligned "Private Note" action and, when [onLeaveReview] is non-null (a completed booking with no review this
+ * session, D-18), an end-aligned "Leave a review" pill share a row; each consumes its own tap and they wrap onto
+ * separate rows at large text. Private Note is on every status (Phase 16.4, D-07, iOS `PastBookingCard`) and consumes
+ * its own tap; a non-blank [ClientBookingItem.privateNotePreview] adds a footer strip under the row that does the
+ * same.
+ *
+ * @param onPrivateNote opens the private note editor for this booking; the card's own tap is not triggered.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PastBookingCard(
     row: PastRow,
     onClick: () -> Unit,
+    onPrivateNote: () -> Unit,
     modifier: Modifier = Modifier,
     onLeaveReview: (() -> Unit)? = null,
     zone: ZoneId = ZoneId.systemDefault(),
@@ -79,6 +86,7 @@ fun PastBookingCard(
 ) {
     val item = row.item
     val leaveReviewLabel = stringResource(R.string.my_bookings_past_leave_review)
+    val privateNoteLabel = stringResource(R.string.booking_note_private_note)
     val topicLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val topicValueColor = MaterialTheme.colorScheme.onSurface
     val topicLabel = stringResource(R.string.my_bookings_past_topic_label)
@@ -100,22 +108,26 @@ fun PastBookingCard(
             modifier
                 .fillMaxWidth()
                 .testTag(PAST_BOOKING_CARD_TAG)
-                .then(
-                    if (onLeaveReview != null) {
-                        // TalkBack fallback: the pill is also reachable as an action of the card (UI-SPEC a11y).
-                        Modifier.semantics {
-                            customActions =
-                                listOf(
+                .semantics {
+                    // TalkBack fallback: the nested controls are also reachable as actions of the card (UI-SPEC a11y).
+                    customActions =
+                        buildList {
+                            add(
+                                CustomAccessibilityAction(privateNoteLabel) {
+                                    onPrivateNote()
+                                    true
+                                },
+                            )
+                            if (onLeaveReview != null) {
+                                add(
                                     CustomAccessibilityAction(leaveReviewLabel) {
                                         onLeaveReview()
                                         true
                                     },
                                 )
+                            }
                         }
-                    } else {
-                        Modifier
-                    },
-                ).clickable(
+                }.clickable(
                     onClickLabel = stringResource(R.string.my_bookings_view_summary),
                     role = Role.Button,
                     onClick = onClick,
@@ -154,14 +166,19 @@ fun PastBookingCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.extras.onSurfaceMuted,
             )
-            if (onLeaveReview != null) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-                ) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                PrivateNoteAction(onClick = onPrivateNote)
+                if (onLeaveReview != null) {
                     LeaveReviewPill(label = leaveReviewLabel, onClick = onLeaveReview)
                 }
+            }
+            if (!item.privateNotePreview.isNullOrBlank()) {
+                NotePreviewFooter(preview = item.privateNotePreview, onClick = onPrivateNote)
             }
         }
     }
@@ -219,6 +236,7 @@ private fun PastBookingCardPreview() {
                     PastBookingCard(
                         row = previewRow(status),
                         onClick = {},
+                        onPrivateNote = {},
                         onLeaveReview = if (status == "completed") ({}) else null,
                     )
                 }

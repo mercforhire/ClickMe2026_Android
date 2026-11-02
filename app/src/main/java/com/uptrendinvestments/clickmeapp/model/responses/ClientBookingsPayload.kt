@@ -13,8 +13,9 @@ data class ClientBookingsPayload(
 
 /**
  * One client booking row (My Bookings, Explore Today's Sessions). [reschedule] is non-null only while the booking
- * is `pending_reschedule` and carries the slim block. `private_note_preview` is deliberately not declared (D-16);
- * unknown keys are ignored.
+ * is `pending_reschedule` and carries the slim block. [privateNotePreview] is the client's own note, cut to 140 UTF-16
+ * units by the server (Phase 16.4, D-08). User-written: show it, never log it; toString omits it. Unknown keys are
+ * ignored.
  */
 @JsonClass(generateAdapter = true)
 data class ClientBookingItem(
@@ -26,7 +27,10 @@ data class ClientBookingItem(
     @Json(name = "meeting_type") val meetingType: String? = null,
     val status: String,
     val reschedule: RescheduleDto? = null,
-)
+    @Json(name = "private_note_preview") val privateNotePreview: String? = null,
+) {
+    override fun toString(): String = "ClientBookingItem(bookingId=$bookingId, status=$status)"
+}
 
 /** Wire value of [RescheduleDto.initiatedBy] for a proposal the client may accept or decline (D-03). */
 const val RESCHEDULE_INITIATED_BY_EXPERT = "expert"

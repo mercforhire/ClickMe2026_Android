@@ -292,6 +292,63 @@ class MyBookingsViewModelTest {
             assertEquals(expectedLists(fresh, emptyList()), vm.uiState.value.lists)
         }
 
+    // Phase 16.4 D-08: a note saved elsewhere shows on return through the existing quiet reload.
+
+    @Test
+    fun aSavedNoteShowsOnReturnForAnUpcomingRow() =
+        runTest(main.testDispatcher) {
+            serve(upcoming = listOf(bookingItem(id = "u1", privateNotePreview = null)), past = emptyList())
+            val vm = vm()
+            runCurrent()
+            assertNull(
+                vm.uiState.value.lists.upcoming
+                    .single()
+                    .privateNotePreview,
+            )
+
+            serve(upcoming = listOf(bookingItem(id = "u1", privateNotePreview = "Call back")), past = emptyList())
+            vm.onScreenHidden()
+            vm.onScreenShown()
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            runCurrent()
+
+            assertEquals(
+                "Call back",
+                vm.uiState.value.lists.upcoming
+                    .single()
+                    .privateNotePreview,
+            )
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+        }
+
+    @Test
+    fun aSavedNoteShowsOnReturnForAPastRow() =
+        runTest(main.testDispatcher) {
+            val past = bookingItem(id = "p1", status = "completed", start = Instant.parse("2026-10-20T18:00:00Z"))
+            serve(upcoming = emptyList(), past = listOf(past))
+            val vm = vm()
+            runCurrent()
+            assertNull(
+                vm.uiState.value.lists.past
+                    .single()
+                    .item.privateNotePreview,
+            )
+
+            serve(upcoming = emptyList(), past = listOf(past.copy(privateNotePreview = "Call back")))
+            vm.onScreenHidden()
+            vm.onScreenShown()
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+            runCurrent()
+
+            assertEquals(
+                "Call back",
+                vm.uiState.value.lists.past
+                    .single()
+                    .item.privateNotePreview,
+            )
+            assertEquals(MyBookingsLoad.Loaded, vm.uiState.value.load)
+        }
+
     @Test
     fun aFailedQuietReloadKeepsTheListsAndDoesNotFlagARefreshFailure() =
         runTest(main.testDispatcher) {

@@ -136,6 +136,7 @@ fun HomeClientScreen(
                         onExploreExperts = navigator::showExplore,
                         onLeaveReview = { navigator.navigate(it) },
                         onReschedule = { navigator.navigate(RescheduleKey(it, RescheduleOpener.MyBookings)) },
+                        onPrivateNote = { navigator.navigate(it) },
                     )
                 },
                 chatsRoot = { navigator ->
