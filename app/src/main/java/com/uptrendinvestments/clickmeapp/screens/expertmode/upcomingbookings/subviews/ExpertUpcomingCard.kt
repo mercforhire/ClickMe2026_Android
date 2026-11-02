@@ -52,10 +52,10 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.remembe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
+import com.uptrendinvestments.clickmeapp.screens.expertmode.netEarningsText
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
-import com.uptrendinvestments.clickmeapp.util.Money
 import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -77,17 +77,6 @@ private val MessageIconTarget = 56.dp
 private val IconSize = 20.dp
 private val AvatarSize = 56.dp
 private val PREVIEW_START: Instant = Instant.parse("2026-10-24T18:00:00Z")
-
-/**
- * The net amount the expert earns from [item], formatted, or null when the breakdown has no net amount or no
- * currency. Gross never stands in for net under an "Earnings" label (RESEARCH C4), and a currency is never guessed.
- */
-internal fun ExpertBookingItem.netEarningsText(locale: Locale): String? {
-    val breakdown = session.earningsBreakdown ?: return null
-    val net = breakdown.netAmount ?: return null
-    val currency = breakdown.currency ?: session.consultationFee?.currency ?: return null
-    return Money.formatMajor(net, currency, locale)
-}
 
 /**
  * An expert Upcoming booking card (iOS expert session card, UI-SPEC surface 5). The card body opens the expert Booking
