@@ -965,7 +965,7 @@ Plans:
 **Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 5/10 plans executed
+**Plans:** 8/10 plans executed
 
 Plans:
 **Wave 1**
@@ -981,9 +981,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 16.4-06-PLAN.md — Client Booking Summary "My Note" from every route and the real client shell registration (NOTE-CLIENT, D-06, D-07, D-08)
-- [ ] 16.4-07-PLAN.md — Expert cards: `private_note_preview`, "Private Note" and footer on past cards, note zone on upcoming cards (NOTE-EXPERT, D-07, D-08)
-- [ ] 16.4-08-PLAN.md — Client Profile screen: header, About, Your Sessions Together, read-only history, skeleton, error, friendly 403 and 404 states, pull-to-refresh (CP-SCREEN, CP-HISTORY, D-09, D-10, D-12, D-14, D-15)
+- [x] 16.4-06-PLAN.md — Client Booking Summary "My Note" from every route and the real client shell registration (NOTE-CLIENT, D-06, D-07, D-08)
+- [x] 16.4-07-PLAN.md — Expert cards: `private_note_preview`, "Private Note" and footer on past cards, note zone on upcoming cards (NOTE-EXPERT, D-07, D-08)
+- [x] 16.4-08-PLAN.md — Client Profile screen: header, About, Your Sessions Together, read-only history, skeleton, error, friendly 403 and 404 states, pull-to-refresh (CP-SCREEN, CP-HISTORY, D-09, D-10, D-12, D-14, D-15)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
