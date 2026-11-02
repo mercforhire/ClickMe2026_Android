@@ -998,7 +998,7 @@ Plans:
 **Goal:** Client Payment History (`/client/transactions`), notification preferences with debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button and an animated splash screen all match iOS. Quiet hours and the Delete Account "Before you go" card are deliberately not built (16.5-CONTEXT.md D-01, D-10). After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 3/12 plans executed
+**Plans:** 7/12 plans executed
 
 Plans:
 **Wave 1**
@@ -1009,10 +1009,10 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16.5-04-PLAN.md — Splash motion and accessibility: iOS timings, reduced motion, one merged node, call drawn above (PARITY-AUDIT #13, D-07)
-- [ ] 16.5-05-PLAN.md — Payment History state and rules: paging, 500-past-the-end, refresh, status vocabulary, minor units (PARITY-AUDIT #4, D-04)
-- [ ] 16.5-06-PLAN.md — Notification preferences state and rules: `AutoSaver` debounce parameter, 13-row grid, no PATCH on load, retry, flush (PARITY-AUDIT #5, D-01, D-02)
-- [ ] 16.5-07-PLAN.md — Send Feedback state and rules: server types, 10-character gate, email rules, error mapping, sent state (PARITY-AUDIT #6, D-05, D-06)
+- [x] 16.5-04-PLAN.md — Splash motion and accessibility: iOS timings, reduced motion, one merged node, call drawn above (PARITY-AUDIT #13, D-07)
+- [x] 16.5-05-PLAN.md — Payment History state and rules: paging, 500-past-the-end, refresh, status vocabulary, minor units (PARITY-AUDIT #4, D-04)
+- [x] 16.5-06-PLAN.md — Notification preferences state and rules: `AutoSaver` debounce parameter, 13-row grid, no PATCH on load, retry, flush (PARITY-AUDIT #5, D-01, D-02)
+- [x] 16.5-07-PLAN.md — Send Feedback state and rules: server types, 10-character gate, email rules, error mapping, sent state (PARITY-AUDIT #6, D-05, D-06)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
