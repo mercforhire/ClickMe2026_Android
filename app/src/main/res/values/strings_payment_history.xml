@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Payment History (Phase 16.5, PARITY-AUDIT #4). Status labels for the 11-value client payment_status
+         vocabulary of GET /client/transactions. An unknown status reuses payouts_activity_none. -->
+    <string name="payment_history_status_paid">Paid</string>
+    <string name="payment_history_status_authorized">Authorized (not yet charged)</string>
+    <string name="payment_history_status_scheduled">Scheduled</string>
+    <string name="payment_history_status_processing">Processing</string>
+    <string name="payment_history_status_payment_needed">Payment needed</string>
+    <string name="payment_history_status_refunded">Refunded</string>
+    <string name="payment_history_status_partially_refunded">Partially refunded</string>
+    <string name="payment_history_status_failed">Payment failed</string>
+    <string name="payment_history_status_canceled">Canceled</string>
+    <string name="payment_history_status_auth_expired">Authorization expired</string>
+    <string name="payment_history_status_processed">Processed</string>
+    <string name="payment_history_status_no_payment">No payment</string>
+</resources>
