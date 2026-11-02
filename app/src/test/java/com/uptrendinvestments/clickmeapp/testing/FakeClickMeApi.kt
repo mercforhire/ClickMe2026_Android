@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.testing
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.AccountDeletionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.BookingNoteRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
@@ -36,6 +37,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingNoteData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestItem
@@ -138,6 +140,10 @@ class FakeClickMeApi : ClickMeApi {
     var getClientFavoritesHandler: suspend (page: Int, limit: Int) -> FavoritesPayload = { _, _ -> notStubbed() }
     var addFavoriteHandler: suspend (String) -> ToggleFavoriteData = { notStubbed() }
     var removeFavoriteHandler: suspend (String) -> ToggleFavoriteData = { notStubbed() }
+    var getClientBookingNoteHandler: suspend (String) -> BookingNoteData = { notStubbed() }
+    var saveClientBookingNoteHandler: suspend (String, BookingNoteRequest) -> BookingNoteData = { _, _ -> notStubbed() }
+    var getBookingNoteHandler: suspend (String) -> BookingNoteData = { notStubbed() }
+    var saveBookingNoteHandler: suspend (String, BookingNoteRequest) -> BookingNoteData = { _, _ -> notStubbed() }
     var categoriesHandler: suspend () -> CategoriesPayload = { notStubbed() }
     var expertDetailsHandler: suspend (String) -> PublicProfileDetailsData = { notStubbed() }
     var expertReviewsHandler: suspend (String) -> ExpertReviewsPayload = { notStubbed() }
@@ -275,6 +281,18 @@ class FakeClickMeApi : ClickMeApi {
         private set
 
     @Volatile var removeFavoriteCalls = 0
+        private set
+
+    @Volatile var getClientBookingNoteCalls = 0
+        private set
+
+    @Volatile var saveClientBookingNoteCalls = 0
+        private set
+
+    @Volatile var getBookingNoteCalls = 0
+        private set
+
+    @Volatile var saveBookingNoteCalls = 0
         private set
 
     @Volatile var categoriesCalls = 0
@@ -484,6 +502,30 @@ class FakeClickMeApi : ClickMeApi {
     /** Every DELETE /client/favorites/{expertId} expert id, in call order. */
     val removeFavoriteRequests: List<String>
         get() = synchronized(_removeFavoriteRequests) { _removeFavoriteRequests.toList() }
+
+    private val _getClientBookingNoteRequests = mutableListOf<String>()
+
+    /** Every GET /client/bookings/{id}/note booking id, in call order. */
+    val getClientBookingNoteRequests: List<String>
+        get() = synchronized(_getClientBookingNoteRequests) { _getClientBookingNoteRequests.toList() }
+
+    private val _saveClientBookingNoteRequests = mutableListOf<Pair<String, BookingNoteRequest>>()
+
+    /** Every POST /client/bookings/{id}/note (booking id to body), in call order. */
+    val saveClientBookingNoteRequests: List<Pair<String, BookingNoteRequest>>
+        get() = synchronized(_saveClientBookingNoteRequests) { _saveClientBookingNoteRequests.toList() }
+
+    private val _getBookingNoteRequests = mutableListOf<String>()
+
+    /** Every GET /bookings/{id}/note booking id, in call order. */
+    val getBookingNoteRequests: List<String>
+        get() = synchronized(_getBookingNoteRequests) { _getBookingNoteRequests.toList() }
+
+    private val _saveBookingNoteRequests = mutableListOf<Pair<String, BookingNoteRequest>>()
+
+    /** Every POST /bookings/{id}/note (booking id to body), in call order. */
+    val saveBookingNoteRequests: List<Pair<String, BookingNoteRequest>>
+        get() = synchronized(_saveBookingNoteRequests) { _saveBookingNoteRequests.toList() }
 
     private val _joinCallRequests = mutableListOf<String>()
 
@@ -788,6 +830,36 @@ class FakeClickMeApi : ClickMeApi {
         removeFavoriteCalls++
         synchronized(_removeFavoriteRequests) { _removeFavoriteRequests += expertId }
         return ok(removeFavoriteHandler(expertId))
+    }
+
+    override suspend fun getClientBookingNote(id: String): SuccessDataResponse<BookingNoteData> {
+        getClientBookingNoteCalls++
+        synchronized(_getClientBookingNoteRequests) { _getClientBookingNoteRequests += id }
+        return ok(getClientBookingNoteHandler(id))
+    }
+
+    override suspend fun saveClientBookingNote(
+        id: String,
+        body: BookingNoteRequest,
+    ): SuccessDataResponse<BookingNoteData> {
+        saveClientBookingNoteCalls++
+        synchronized(_saveClientBookingNoteRequests) { _saveClientBookingNoteRequests += id to body }
+        return ok(saveClientBookingNoteHandler(id, body))
+    }
+
+    override suspend fun getBookingNote(id: String): SuccessDataResponse<BookingNoteData> {
+        getBookingNoteCalls++
+        synchronized(_getBookingNoteRequests) { _getBookingNoteRequests += id }
+        return ok(getBookingNoteHandler(id))
+    }
+
+    override suspend fun saveBookingNote(
+        id: String,
+        body: BookingNoteRequest,
+    ): SuccessDataResponse<BookingNoteData> {
+        saveBookingNoteCalls++
+        synchronized(_saveBookingNoteRequests) { _saveBookingNoteRequests += id to body }
+        return ok(saveBookingNoteHandler(id, body))
     }
 
     override suspend fun getCategories(): SuccessDataResponse<CategoriesPayload> {

@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.network
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptBookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.AcceptRescheduleRequest
 import com.uptrendinvestments.clickmeapp.model.requests.AccountDeletionRequest
+import com.uptrendinvestments.clickmeapp.model.requests.BookingNoteRequest
 import com.uptrendinvestments.clickmeapp.model.requests.BookingRequestBody
 import com.uptrendinvestments.clickmeapp.model.requests.CancelBookingRequest
 import com.uptrendinvestments.clickmeapp.model.requests.ChatActionRequest
@@ -36,6 +37,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
 import com.uptrendinvestments.clickmeapp.model.responses.AcceptBookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.AvatarUploadData
+import com.uptrendinvestments.clickmeapp.model.responses.BookingNoteData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestDetail
 import com.uptrendinvestments.clickmeapp.model.responses.BookingRequestsPayload
@@ -118,7 +120,7 @@ import retrofit2.http.Query
  * the expert's own weekly availability and the profile-tags update. Phase 14 adds nine endpoints: the profile
  * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
  * earnings transactions ledger and the expert tax profile (get and save). Phase 16.2 adds the two
- * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Other API groups arrive with their
+ * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Phase 16.4 adds the four note calls and the expert's client profile. Other API groups arrive with their
  * features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
@@ -245,6 +247,35 @@ interface ClickMeApi {
     suspend fun removeFavorite(
         @Path("expertId") expertId: String,
     ): SuccessDataResponse<ToggleFavoriteData>
+
+    // Phase 16.4 note calls. Ports iOS getClientBookingNote / createClientBookingNote and the expert pair. A 404 is
+    // uniform for a missing booking and for one that is not the caller's. The POST body is strict: `note` only.
+
+    /** The client's private note on a booking. 404 when the booking is missing or not the caller's. */
+    @GET(ApiRequestUrls.CLIENT_BOOKING_NOTE)
+    suspend fun getClientBookingNote(
+        @Path("id") id: String,
+    ): SuccessDataResponse<BookingNoteData>
+
+    /** Saves the client's private note; an empty string clears it. */
+    @POST(ApiRequestUrls.CLIENT_BOOKING_NOTE)
+    suspend fun saveClientBookingNote(
+        @Path("id") id: String,
+        @Body body: BookingNoteRequest,
+    ): SuccessDataResponse<BookingNoteData>
+
+    /** The expert's private note on a booking. 404 when the booking is missing or not the caller's. */
+    @GET(ApiRequestUrls.BOOKING_NOTE)
+    suspend fun getBookingNote(
+        @Path("id") id: String,
+    ): SuccessDataResponse<BookingNoteData>
+
+    /** Saves the expert's private note; an empty string clears it. */
+    @POST(ApiRequestUrls.BOOKING_NOTE)
+    suspend fun saveBookingNote(
+        @Path("id") id: String,
+        @Body body: BookingNoteRequest,
+    ): SuccessDataResponse<BookingNoteData>
 
     /** Ports iOS ClickMeAPI+ClientBookings list. [type] is the server filter, e.g. `upcoming`. */
     @GET(ApiRequestUrls.CLIENT_BOOKINGS)
