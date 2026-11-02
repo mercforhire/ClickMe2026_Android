@@ -56,6 +56,7 @@ import com.uptrendinvestments.clickmeapp.components.RescheduleResponseCard
 import com.uptrendinvestments.clickmeapp.components.RescheduleViewer
 import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
+import com.uptrendinvestments.clickmeapp.components.booknote.MyNoteCard
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPair
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.ActionButtonPairDefaults
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
@@ -72,6 +73,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.subviews.ExpertMessageCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.subviews.ExpertSummaryCard
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
@@ -90,6 +92,9 @@ const val EXPERT_SUMMARY_JOIN_TAG = "expert_summary_join"
 /** Test tag on the Message Client button. */
 const val MESSAGE_CLIENT_TAG = "message_client"
 
+/** Test tag on the View Profile link under the client's name (Phase 16.4). */
+const val EXPERT_SUMMARY_VIEW_PROFILE_TAG = "expert_summary_view_profile"
+
 /** Test tag on the Cancel Booking button. */
 const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
 
@@ -107,9 +112,14 @@ private val ButtonSkeletonHeight = 56.dp
 
 /**
  * Expert Booking Summary (EXP-08 / EXP-09), opened from the Bookings tab or the Dashboard. Port of iOS
- * `ExpertBookingSummaryView` with Message Client (D-14) but without the meeting-link row and the private note (DEF-1,
- * RESEARCH C11, Phase 8 D-16). It has no Report or Block control: experts report and block clients only from the chat
- * (D-11).
+ * `ExpertBookingSummaryView` with Message Client (D-14) but without the meeting-link row (DEF-1, RESEARCH C11,
+ * Phase 8 D-16). It has no Report or Block control: experts report and block clients only from the chat (D-11).
+ *
+ * Phase 16.4 adds the My Note card after the client's message and before Join and Message (D-07, iOS order). It shows
+ * the expert's full note, or the prompt, on every status. [onOpenNote] receives the key of the note editor for this
+ * booking; the caller pushes it on the summary's own stack (D-05, D-08). The "View Profile" link under the client's
+ * name reports the client's id through [onViewProfile]; the caller pushes the read-only Client Profile on the same
+ * stack (D-13).
  *
  * Phase 16.2 adds Reschedule at the start of the action row with Cancel Booking at the end, shown only when the
  * server's `actions.can_reschedule` is true (no client-side time or status rule). [onReschedule] opens the expert
@@ -123,6 +133,8 @@ fun ExpertBookingSummaryScreen(
     onBack: () -> Unit,
     onCancel: () -> Unit,
     onReschedule: () -> Unit,
+    onOpenNote: (ExpertBookingNoteKey) -> Unit,
+    onViewProfile: (clientId: String) -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
@@ -150,6 +162,8 @@ fun ExpertBookingSummaryScreen(
         onRefreshFailureConsumed = viewModel::onRefreshFailureConsumed,
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onReschedule = onReschedule,
+        onOpenNote = { viewModel.noteKey()?.let(onOpenNote) },
+        onViewProfile = onViewProfile,
         rescheduleSent = rescheduleSent,
         onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         onAcceptReschedule = viewModel::acceptReschedule,
@@ -186,6 +200,8 @@ fun ExpertBookingSummaryContent(
     onRescheduleNoticeConsumed: () -> Unit,
     modifier: Modifier = Modifier,
     onReschedule: () -> Unit = {},
+    onOpenNote: () -> Unit = {},
+    onViewProfile: (String) -> Unit = {},
     rescheduleSent: Boolean = false,
     onRescheduleSentConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
@@ -265,6 +281,8 @@ fun ExpertBookingSummaryContent(
                         onJoin = onJoin,
                         onCancel = onCancel,
                         onReschedule = onReschedule,
+                        onOpenNote = onOpenNote,
+                        onViewProfile = onViewProfile,
                         onAcceptReschedule = onAcceptReschedule,
                         onDeclineReschedule = onDeclineReschedule,
                         modifier = bodyModifier,
@@ -324,6 +342,8 @@ private fun LoadedBody(
     onJoin: () -> Unit,
     onCancel: () -> Unit,
     onReschedule: () -> Unit,
+    onOpenNote: () -> Unit,
+    onViewProfile: (String) -> Unit,
     onAcceptReschedule: () -> Unit,
     onDeclineReschedule: (reason: String) -> Unit,
     modifier: Modifier,
@@ -369,8 +389,15 @@ private fun LoadedBody(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            ExpertSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
+            ExpertSummaryCard(
+                details = details,
+                onViewProfile = { onViewProfile(details.clientId) },
+                zone = zone,
+                timeFormat = timeFormat,
+                locale = locale,
+            )
             details.preparationNotes?.let { ExpertMessageCard(it) }
+            MyNoteCard(note = details.privateNote, onClick = onOpenNote)
             if (details.showsJoin) {
                 if (showCallResumeNote) CallResumeNote()
                 JoinCallButton(

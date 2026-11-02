@@ -93,6 +93,7 @@ fun expertBookingDetail(
     meetingType: String? = "in_app_voice",
     breakdown: EarningsBreakdownDto? = breakdown(),
     canReschedule: Boolean = false,
+    privateNote: String? = null,
 ): ExpertBookingDetail =
     ExpertBookingDetail(
         bookingId = id,
@@ -109,6 +110,7 @@ fun expertBookingDetail(
             ),
         preparationNotes = notes?.let { PreparationNotesDto(text = it) },
         actions = ExpertBookingActionsDto(canCancel = canCancel, canReschedule = canReschedule),
+        expertPrivateNote = privateNote,
     )
 
 @Suppress("LongParameterList")

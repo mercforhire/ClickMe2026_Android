@@ -17,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleOpener
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -60,19 +61,21 @@ class ExpertBookingSummaryViewModelTest {
 
     private val repository = ExpertBookingsRepository(api)
 
-    private fun vm(joinScope: CoroutineScope = CoroutineScope(Job() + main.testDispatcher)) =
-        ExpertBookingSummaryViewModel(
-            ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Bookings),
-            repository,
-            ExpertRescheduleResponder(repository),
-            realtime,
-            clock,
-            callStarter,
-            callGuard,
-            JoinClock(clock, joinScope),
-            notice,
-            sentRequest,
-        )
+    private fun vm(
+        joinScope: CoroutineScope = CoroutineScope(Job() + main.testDispatcher),
+        key: ExpertBookingSummaryKey = ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Bookings),
+    ) = ExpertBookingSummaryViewModel(
+        key,
+        repository,
+        ExpertRescheduleResponder(repository),
+        realtime,
+        clock,
+        callStarter,
+        callGuard,
+        JoinClock(clock, joinScope),
+        notice,
+        sentRequest,
+    )
 
     private fun loaded(vm: ExpertBookingSummaryViewModel): ExpertSummaryDetails =
         (vm.uiState.value.load as ExpertSummaryLoad.Loaded).details
@@ -80,7 +83,8 @@ class ExpertBookingSummaryViewModelTest {
     private fun detail(
         statusCode: String = "confirmed",
         notes: String? = null,
-    ) = expertBookingDetail(start = start, statusCode = statusCode, notes = notes)
+        privateNote: String? = null,
+    ) = expertBookingDetail(start = start, statusCode = statusCode, notes = notes, privateNote = privateNote)
 
     // ---- mapping ----
 
@@ -111,6 +115,87 @@ class ExpertBookingSummaryViewModelTest {
         assertNull(detail(notes = "   ").toSummaryDetails(now, Locale.US).preparationNotes)
         assertNull(detail(notes = null).toSummaryDetails(now, Locale.US).preparationNotes)
     }
+
+    // ---- private note (Phase 16.4, D-05, D-06, D-08) ----
+
+    @Test
+    fun detailsCarryTheNote() {
+        val details = detail(privateNote = "Call back").toSummaryDetails(now, Locale.US)
+
+        assertEquals("Call back", details.privateNote)
+        assertFalse(details.toString().contains("Call back"))
+        assertEquals("ExpertSummaryDetails(bookingId=b1, statusCode=confirmed)", details.toString())
+    }
+
+    @Test
+    fun aBlankNoteCountsAsNoNote() {
+        assertNull(detail(privateNote = "   ").toSummaryDetails(now, Locale.US).privateNote)
+        assertNull(detail(privateNote = "").toSummaryDetails(now, Locale.US).privateNote)
+        assertNull(detail(privateNote = null).toSummaryDetails(now, Locale.US).privateNote)
+    }
+
+    @Test
+    fun noteKeyCarriesTheHeaderFields() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail(privateNote = "Call back") }
+            val vm = vm()
+            runCurrent()
+
+            assertEquals(
+                ExpertBookingNoteKey(
+                    bookingId = "b1",
+                    clientName = "Ada Lovelace",
+                    topic = "Algorithms",
+                    startMillis = start.toEpochMilli(),
+                    endMillis = start.plusSeconds(3600).toEpochMilli(),
+                    origin = ExpertBookingOrigin.Bookings,
+                ),
+                vm.noteKey(),
+            )
+            assertFalse(vm.noteKey().toString().contains("Call back"))
+        }
+
+    @Test
+    fun noteKeyIsNullBeforeTheBookingLoads() =
+        runTest(main.testDispatcher) {
+            val gate = CompletableDeferred<ExpertBookingDetail>()
+            api.expertBookingDetailsHandler = { gate.await() }
+            val vm = vm()
+            runCurrent()
+
+            assertNull(vm.noteKey())
+        }
+
+    @Test
+    fun noteKeyCopiesTheSummaryOrigin() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm(key = ExpertBookingSummaryKey("b1", ExpertBookingOrigin.Chats))
+            runCurrent()
+
+            assertEquals(ExpertBookingOrigin.Chats, vm.noteKey()?.origin)
+        }
+
+    @Test
+    fun aSavedNoteShowsOnReturn() =
+        runTest(main.testDispatcher) {
+            api.expertBookingDetailsHandler = { detail() }
+            val vm = vm()
+            runCurrent()
+            assertNull(loaded(vm).privateNote)
+            val seen = mutableListOf<ExpertSummaryLoad>()
+
+            // The editor saved a note and popped back to this summary.
+            api.expertBookingDetailsHandler = { detail(privateNote = "Call back") }
+            vm.onScreenHidden()
+            vm.refreshQuietly()
+            seen += vm.uiState.value.load
+            runCurrent()
+            seen += vm.uiState.value.load
+
+            assertTrue(seen.all { it is ExpertSummaryLoad.Loaded })
+            assertEquals("Call back", loaded(vm).privateNote)
+        }
 
     @Test
     fun showsJoinFollowsTheStatusAndTheEndTime() {

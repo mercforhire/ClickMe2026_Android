@@ -1,11 +1,18 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -22,11 +29,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_ACCEPT_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_REASON_TAG
 import com.uptrendinvestments.clickmeapp.components.RESCHEDULE_DECLINE_TAG
+import com.uptrendinvestments.clickmeapp.components.booknote.MY_NOTE_CARD_TAG
 import com.uptrendinvestments.clickmeapp.managers.CallResumeNotice
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
@@ -39,6 +48,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.RescheduleResponseData
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleUiState
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertBookingsRepository
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -46,6 +56,8 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
+import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
+import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
 import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
 import com.uptrendinvestments.clickmeapp.testing.initiateData
 import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
@@ -82,6 +94,8 @@ class ExpertBookingSummaryScreenTest {
     private val ids = mutableListOf<String>()
     private val cancels = mutableListOf<String>()
     private val reschedules = mutableListOf<String>()
+    private val noteKeys = mutableListOf<ExpertBookingNoteKey>()
+    private val profileIds = mutableListOf<String>()
     private var backs = 0
 
     /** The clock sits 30 minutes before [start], so a session starting at [start] is inside the join window. */
@@ -124,6 +138,8 @@ class ExpertBookingSummaryScreenTest {
                     onBack = { backs++ },
                     onCancel = { cancels += bookingId },
                     onReschedule = { reschedules += bookingId },
+                    onOpenNote = { noteKeys += it },
+                    onViewProfile = { profileIds += it },
                     chatEntry = chatEntry,
                 )
             }
@@ -212,27 +228,33 @@ class ExpertBookingSummaryScreenTest {
     private fun showContent(
         state: ExpertBookingSummaryUiState,
         events: MutableList<String> = mutableListOf(),
+        fontScale: Float = 1f,
     ): MutableList<String> {
         rule.setContent {
-            ClickMeTheme {
-                ExpertBookingSummaryContent(
-                    state = state,
-                    rescheduleState = RescheduleUiState(),
-                    joinNow = now,
-                    onJoin = {},
-                    onBack = {},
-                    onRetry = { events += "retry" },
-                    onCancel = {},
-                    onAcceptReschedule = {},
-                    onDeclineReschedule = {},
-                    onDismissRescheduleDialog = {},
-                    onRescheduleNoticeConsumed = {},
-                    onRefresh = { events += "refresh" },
-                    onRefreshFailureConsumed = { events += "refreshFailureConsumed" },
-                    zone = ZoneId.of("America/Toronto"),
-                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
-                    locale = Locale.US,
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                ClickMeTheme {
+                    ExpertBookingSummaryContent(
+                        state = state,
+                        rescheduleState = RescheduleUiState(),
+                        joinNow = now,
+                        onJoin = {},
+                        onBack = {},
+                        onRetry = { events += "retry" },
+                        onCancel = {},
+                        onAcceptReschedule = {},
+                        onDeclineReschedule = {},
+                        onDismissRescheduleDialog = {},
+                        onRescheduleNoticeConsumed = {},
+                        onOpenNote = { events += "note" },
+                        onViewProfile = { events += "profile:$it" },
+                        onRefresh = { events += "refresh" },
+                        onRefreshFailureConsumed = { events += "refreshFailureConsumed" },
+                        zone = ZoneId.of("America/Toronto"),
+                        timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                        locale = Locale.US,
+                    )
+                }
             }
         }
         rule.waitForIdle()
@@ -419,11 +441,165 @@ class ExpertBookingSummaryScreenTest {
     }
 
     @Test
-    fun noRescheduleNoteReportOrBlockControls() {
+    fun noRescheduleReportBlockOrMeetingLinkControls() {
         showScreen(expertBookingDetail(start = start, notes = "Hello"))
-        listOf("Reschedule", "Private Note", "My Note", "Meeting link", "Report", "Block").forEach {
+        listOf("Reschedule", "Meeting link", "Report", "Block").forEach {
             rule.onAllNodesWithText(it, substring = true).assertCountEquals(0)
         }
+    }
+
+    // ---- My Note (Phase 16.4, D-05, D-07, D-08) ----
+
+    private val notePrompt = "Tap to jot down your thoughts — only you can see this."
+
+    @Test
+    fun myNoteCardShowsTheFullNote() {
+        showScreen(expertBookingDetail(start = start, privateNote = "Call back"))
+        rule.onNodeWithText("My Note").assertExists()
+        rule.onNodeWithText("Call back").assertExists()
+        rule.onAllNodesWithText(notePrompt).assertCountEquals(0)
+    }
+
+    @Test
+    fun myNoteCardShowsThePromptWhenThereIsNoNote() {
+        showScreen(expertBookingDetail(start = start, privateNote = null))
+        rule.onNodeWithText("My Note").assertExists()
+        rule.onNodeWithText(notePrompt).assertExists()
+    }
+
+    @Test
+    fun myNoteSitsAfterTheClientMessageAndBeforeMessageClient() {
+        showScreen(expertBookingDetail(start = start, notes = "Please review my CV"))
+
+        fun top(node: SemanticsNodeInteraction) = node.fetchSemanticsNode().positionInRoot.y
+        val message = top(rule.onNodeWithText("Client's message"))
+        val note = top(rule.onNodeWithTag(MY_NOTE_CARD_TAG))
+        val messageClient = top(rule.onNodeWithTag(MESSAGE_CLIENT_TAG))
+        assertTrue("message $message note $note", message < note)
+        assertTrue("note $note messageClient $messageClient", note < messageClient)
+    }
+
+    @Test
+    fun myNoteSitsBeforeJoin() {
+        showScreen(expertBookingDetail(start = start, statusCode = "confirmed"))
+        val note =
+            rule
+                .onNodeWithTag(MY_NOTE_CARD_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        val join =
+            rule
+                .onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG)
+                .fetchSemanticsNode()
+                .positionInRoot.y
+        assertTrue("note $note join $join", note < join)
+    }
+
+    @Test
+    fun tappingMyNoteOpensTheNoteForThisBooking() {
+        showScreen(expertBookingDetail(start = start))
+        rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().performClick()
+
+        assertEquals(
+            listOf(
+                ExpertBookingNoteKey(
+                    bookingId = "b1",
+                    clientName = "Ada Lovelace",
+                    topic = "Algorithms",
+                    startMillis = start.toEpochMilli(),
+                    endMillis = start.plusSeconds(3600).toEpochMilli(),
+                    origin = ExpertBookingOrigin.Bookings,
+                ),
+            ),
+            noteKeys,
+        )
+    }
+
+    @Test
+    fun myNoteShowsOnEveryStatus() {
+        var state by mutableStateOf(loadedState())
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingSummaryContent(
+                    state = state,
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = now,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAcceptReschedule = {},
+                    onDeclineReschedule = {},
+                    onDismissRescheduleDialog = {},
+                    onRescheduleNoticeConsumed = {},
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        listOf("confirmed", "completed", "cancelled").forEach { status ->
+            state =
+                ExpertBookingSummaryUiState(
+                    ExpertSummaryLoad.Loaded(
+                        expertBookingDetail(start = start, statusCode = status).toSummaryDetails(now, Locale.US),
+                    ),
+                )
+            rule.waitForIdle()
+            rule.onNodeWithTag(MY_NOTE_CARD_TAG).assertExists()
+            rule.onNodeWithText("My Note").assertExists()
+        }
+    }
+
+    @Test
+    @Suppress("MagicNumber")
+    fun largeFontKeepsMyNote() {
+        val long = "A long private note about the session. ".repeat(12).trim()
+        val details = expertBookingDetail(start = start, privateNote = long).toSummaryDetails(now, Locale.US)
+        showContent(ExpertBookingSummaryUiState(ExpertSummaryLoad.Loaded(details)), fontScale = 2f)
+        rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("My Note").assertIsDisplayed()
+        rule.onNodeWithText(long).assertIsDisplayed()
+    }
+
+    // ---- View Profile (Phase 16.4, D-13) ----
+
+    @Test
+    fun viewProfileLinkSitsUnderTheClientName() {
+        showScreen(expertBookingDetail(start = start))
+        rule.onNodeWithText("View Profile").assertExists()
+
+        fun top(node: SemanticsNodeInteraction) = node.fetchSemanticsNode().positionInRoot.y
+        val name = top(rule.onNodeWithText("Ada Lovelace"))
+        val link = top(rule.onNodeWithTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG))
+        val id = top(rule.onNodeWithText("ID: #B1"))
+        assertTrue("name $name link $link", name < link)
+        assertTrue("link $link id $id", link < id)
+    }
+
+    @Test
+    fun viewProfileReportsTheClientId() {
+        showScreen(expertBookingDetail(start = start))
+        rule.onNodeWithTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG).performScrollTo().performClick()
+
+        assertEquals(listOf("c1"), profileIds)
+        assertTrue(noteKeys.isEmpty())
+    }
+
+    @Test
+    fun viewProfileMeetsTheTargetAudit() {
+        showContent(loadedState())
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
+    }
+
+    @Test
+    fun largeFontKeepsTheLink() {
+        showContent(loadedState(), fontScale = 2f)
+        rule.onNodeWithText("Ada Lovelace").assertIsDisplayed()
+        rule.onNodeWithTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG).assertIsDisplayed()
+        rule.onNodeWithText("View Profile").assertIsDisplayed()
+        rule.onNodeWithText("ID: #B1").assertIsDisplayed()
     }
 
     @Test

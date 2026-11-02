@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,9 +18,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
@@ -26,6 +30,7 @@ import com.uptrendinvestments.clickmeapp.components.BookingStatusBadge
 import com.uptrendinvestments.clickmeapp.components.avatar.Avatar
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.EXPERT_SUMMARY_VIEW_PROFILE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertSummaryDetails
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.SummaryFee
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
@@ -39,6 +44,7 @@ import java.util.Locale
 
 private val ClientAvatarSize = 64.dp
 private val MeetingIconSize = 20.dp
+private val ProfileLinkMinHeight = 48.dp
 
 /**
  * The expert Booking Summary card (UI-SPEC surface 6 block 2): a header with the client's avatar, name, short id and
@@ -46,11 +52,15 @@ private val MeetingIconSize = 20.dp
  *
  * The client name and topic are untrusted server text and render as plain `Text`. There is no meeting-link row
  * (RESEARCH C11).
+ *
+ * The "View Profile" link under the client's name opens the read-only Client Profile through [onViewProfile] (iOS
+ * `clientHeader`, Phase 16.4 D-13).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ExpertSummaryCard(
     details: ExpertSummaryDetails,
+    onViewProfile: () -> Unit,
     zone: ZoneId,
     timeFormat: java.text.DateFormat,
     locale: Locale,
@@ -78,11 +88,25 @@ fun ExpertSummaryCard(
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
+                        TextButton(
+                            onClick = onViewProfile,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier =
+                                Modifier
+                                    .heightIn(
+                                        min = ProfileLinkMinHeight,
+                                    ).testTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.expert_summary_view_profile),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                         Text(
                             text = stringResource(R.string.expert_summary_id, details.shortId),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.extras.onSurfaceMuted,
-                            modifier = Modifier.padding(top = Spacing.xs),
                         )
                     }
                 }
