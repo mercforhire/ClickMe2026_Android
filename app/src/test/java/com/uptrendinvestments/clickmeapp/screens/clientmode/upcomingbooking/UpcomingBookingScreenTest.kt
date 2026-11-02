@@ -726,6 +726,39 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
+    fun confirmedAfterEndHidesCancel() {
+        setScreen(loaded(details(status = "confirmed")), joinNow = detailsStart.plusSeconds(7200))
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun confirmedAtExactlyTheEndHidesCancel() {
+        setScreen(loaded(details(status = "confirmed")), joinNow = detailsStart.plusSeconds(3600))
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun confirmedDuringTheSessionKeepsCancel() {
+        setScreen(loaded(details(status = "confirmed")), joinNow = detailsStart.plusSeconds(3599))
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun pendingRescheduleAfterEndHidesCancel() {
+        setScreen(loaded(details(status = "pending_reschedule")), joinNow = detailsStart.plusSeconds(7200))
+        rule.onNodeWithTag(MESSAGE_EXPERT_TAG).performScrollTo()
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_CANCEL_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun pendingApprovalAfterEndKeepsCancel() {
+        setScreen(loaded(details(status = "pending_approval")), joinNow = detailsStart.plusSeconds(7200))
+        rule.onNodeWithTag(UPCOMING_BOOKING_CANCEL_TAG).performScrollTo().assertExists()
+    }
+
+    @Test
     fun completedAfterEndShowsNoJoinCard() {
         setScreen(loaded(details(status = "completed")), joinNow = detailsStart.plusSeconds(3600))
         rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)

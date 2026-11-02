@@ -453,7 +453,8 @@ private fun LoadedBody(
             modifier = Modifier.fillMaxWidth().testTag(MESSAGE_EXPERT_TAG),
         )
         val showReschedule = canClientStartReschedule(details.status.raw, details.end, joinNow)
-        if (showReschedule || details.canCancel) {
+        val showCancel = details.canClientCancelNow(joinNow)
+        if (showReschedule || showCancel) {
             Spacer(Modifier.height(Spacing.lg))
             // D-05: Reschedule at the start, Cancel at the end; one alone fills the width.
             ActionButtonPair(
@@ -470,7 +471,7 @@ private fun LoadedBody(
                         null
                     },
                 end =
-                    if (details.canCancel) {
+                    if (showCancel) {
                         { buttonModifier ->
                             DestructiveOutlinedButton(
                                 onClick = onCancel,

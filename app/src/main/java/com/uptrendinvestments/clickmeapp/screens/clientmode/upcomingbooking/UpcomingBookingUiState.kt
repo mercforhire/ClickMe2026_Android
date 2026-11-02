@@ -28,8 +28,8 @@ fun shortBookingId(id: String): String = "#" + id.take(SHORT_ID_LENGTH).uppercas
  * @property price Money or Free from the topic-level flag (D-14).
  * @property paymentPill the money-state pill for paid held / captured / refunded bookings only (D-15).
  * @property showsPendingBanner the booking awaits expert approval.
- * @property canCancel Cancel is offered for confirmed, pending approval and pending reschedule only. There is no
- *   Reschedule action (DEF-1).
+ * @property canCancel the status allows Cancel: confirmed, pending approval and pending reschedule only. The screen
+ *   also applies the time rule in [canClientCancelNow].
  * @property reschedule the shared reschedule card model, present only for `pending_reschedule` (D-01, D-03).
  * @property expertId the expert's user id, sent as the peer id when Join Call starts the call (CALL-01).
  */
@@ -55,6 +55,18 @@ data class UpcomingBookingDetails(
     val reschedule: RescheduleProposalUi?,
     val expertId: String? = null,
 )
+
+/**
+ * 16.5 review WR-01: whether Cancel Booking is shown right now. Payment History can open a confirmed or
+ * pending_reschedule booking whose session has already ended, and the server's cancel has no time check, so a tap would
+ * cancel a past session. Those statuses hide Cancel from [now] at or after the end. Pending approval keeps it because
+ * no session has taken place and the client can still withdraw the request.
+ *
+ * This deliberately differs from iOS, which has no time check. [now] must come from the ticking join clock so the end
+ * bound takes effect live.
+ */
+fun UpcomingBookingDetails.canClientCancelNow(now: Instant): Boolean =
+    canCancel && (status.raw == STATUS_PENDING_APPROVAL || now.isBefore(end))
 
 /** Upcoming Booking Details load state. */
 sealed interface UpcomingBookingUiState {
