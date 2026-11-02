@@ -3,12 +3,12 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: "16.4"
 current_phase_name: "iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)"
-status: ready_to_discuss
+status: executing
 stopped_at: Phase 16.4 context gathered
-last_updated: "2026-11-02T01:37:29.549Z"
+last_updated: "2026-11-02T02:00:18.571Z"
 last_activity: 2026-11-01
-last_activity_desc: Phase 16.3 complete (UAT + verification passed), next is Phase 16.4
-state_head: 934a478d6a79212154a172f97302d31715e00ab6
+last_activity_desc: Phase 16.4 execution started
+state_head: 86f0a05b26b2e30f886a5fdbb1f35e02348d7bbd
 progress:
   total_phases: 22
   completed_phases: 11
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-11-01)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 16.4 — iOS parity: private booking notes and expert-side Client Profile (INSERTED)
+**Current focus:** Phase 16.4 — iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)
 
 ## Current Position
 
-Phase: 16.4 (iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to discuss (16.1 UAT still open: status testing, verification human_needed)
-Last activity: 2026-11-01 — Phase 16.3 complete (UAT 4/5 passed, test 5 deferred to Phase 16 matrix; verification 12/12 passed)
+Phase: 16.4 (iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)) — EXECUTING
+Plan: 1 of 10
+Status: Executing Phase 16.4
+Last activity: 2026-11-01 — Phase 16.4 execution started
 
 Progress: [███████░░░] 65%
 

@@ -965,13 +965,13 @@ Plans:
 **Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 10 plans
+**Plans:** 2/10 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 16.4-01-PLAN.md — Wire contract: four note calls behind a role-switched repository, `GET /expert/clients/:id`, DTOs, fake overrides, fixtures and wire tests (NOTE-NET, CP-NET, D-04, D-05, D-14, D-15)
-- [ ] 16.4-02-PLAN.md — Three origin-distinct route keys with Hilt-free entries and the shared note composables: upcoming zone, past action and footer, My Note card (NAV-KEYS, D-05, D-06, D-07, D-08, D-13)
+- [x] 16.4-01-PLAN.md — Wire contract: four note calls behind a role-switched repository, `GET /expert/clients/:id`, DTOs, fake overrides, fixtures and wire tests (NOTE-NET, CP-NET, D-04, D-05, D-14, D-15)
+- [x] 16.4-02-PLAN.md — Three origin-distinct route keys with Hilt-free entries and the shared note composables: upcoming zone, past action and footer, My Note card (NAV-KEYS, D-05, D-06, D-07, D-08, D-13)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
