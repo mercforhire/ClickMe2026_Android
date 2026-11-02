@@ -12,6 +12,7 @@
     <string name="profile_hub_row_saved_experts">Saved Experts</string>
     <string name="profile_hub_row_security">Security &amp; Password</string>
     <string name="profile_hub_row_payment">Payment</string>
+    <string name="profile_hub_row_payment_history">Payment History</string>
     <string name="profile_hub_row_help">FAQ &amp; Help</string>
     <string name="profile_hub_row_privacy">Privacy</string>
     <string name="profile_hub_row_public_profile">View My Public Profile</string>

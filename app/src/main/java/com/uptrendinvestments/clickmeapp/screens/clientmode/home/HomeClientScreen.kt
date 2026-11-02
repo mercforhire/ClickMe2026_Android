@@ -58,6 +58,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.client
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.MakeABookingViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.MyBookingsScreen
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHubActions
@@ -433,6 +434,7 @@ internal fun clientProfileHubActions(
         onOpenSavedExperts = { navigator.navigate(FavoritesKey) },
         onOpenSecurity = { navigator.navigate(AccountSecurityKey) },
         onOpenPayment = { navigator.navigate(PaymentMethodsKey) },
+        onOpenPaymentHistory = { navigator.navigate(ClientTransactionsKey) },
         onOpenHelp = { navigator.navigate(HelpKey) },
         onLogOut = onLogout,
     )

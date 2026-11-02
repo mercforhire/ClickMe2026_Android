@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Lock
@@ -47,6 +48,7 @@ data class ClientProfileHubActions(
     val onOpenSavedExperts: () -> Unit,
     val onOpenSecurity: () -> Unit,
     val onOpenPayment: () -> Unit,
+    val onOpenPaymentHistory: () -> Unit,
     val onOpenHelp: () -> Unit,
     val onLogOut: () -> Unit,
 )
@@ -121,6 +123,11 @@ fun ClientProfileHomeContent(
                 icon = Icons.Outlined.CreditCard,
                 onClick = actions.onOpenPayment,
             )
+            ProfileMenuRow(
+                title = stringResource(R.string.profile_hub_row_payment_history),
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+                onClick = actions.onOpenPaymentHistory,
+            )
         }
         ProfileHubSection(stringResource(R.string.profile_hub_section_support)) {
             ProfileMenuRow(
@@ -170,7 +177,17 @@ private fun ClientProfileHomeContentPreview() {
         ClientProfileHomeContent(
             card = ProfileHubCard("Ana Lee", "ana@example.com", null),
             versionLabel = "Version 0.1.0 (1)",
-            actions = ClientProfileHubActions({}, {}, {}, {}, {}, {}, {}),
+            actions =
+                ClientProfileHubActions(
+                    onEditProfile = {},
+                    onSwitchToExpert = {},
+                    onOpenSavedExperts = {},
+                    onOpenSecurity = {},
+                    onOpenPayment = {},
+                    onOpenPaymentHistory = {},
+                    onOpenHelp = {},
+                    onLogOut = {},
+                ),
         )
     }
 }

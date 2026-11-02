@@ -48,6 +48,7 @@ class ClientProfileHomeScreenTest {
             onOpenSavedExperts = count("saved"),
             onOpenSecurity = count("security"),
             onOpenPayment = count("payment"),
+            onOpenPaymentHistory = count("paymentHistory"),
             onOpenHelp = count("help"),
             onLogOut = count("logout"),
         )
@@ -84,6 +85,7 @@ class ClientProfileHomeScreenTest {
                 "Account",
                 "Security & Password",
                 "Payment",
+                "Payment History",
                 "Support",
                 "FAQ & Help",
                 "Privacy",
@@ -101,7 +103,6 @@ class ClientProfileHomeScreenTest {
         setContent()
 
         listOf(
-            "Payment History",
             "Notifications",
             "Send Feedback",
             "Pause Account",
@@ -132,11 +133,14 @@ class ClientProfileHomeScreenTest {
 
         rule.onNodeWithTag("profile_hub_user_card").performClick()
         rule.onNodeWithTag("profile_hub_mode_switch").performClick()
-        listOf("Security & Password", "Payment", "FAQ & Help").forEach {
+        listOf("Security & Password", "Payment", "Payment History", "FAQ & Help").forEach {
             rule.onNodeWithText(it).performScrollTo().performClick()
         }
 
-        assertEquals(mapOf("edit" to 1, "switch" to 1, "security" to 1, "payment" to 1, "help" to 1), calls)
+        assertEquals(
+            mapOf("edit" to 1, "switch" to 1, "security" to 1, "payment" to 1, "paymentHistory" to 1, "help" to 1),
+            calls,
+        )
     }
 
     @Test

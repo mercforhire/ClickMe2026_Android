@@ -6,6 +6,9 @@ import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBookingFromProfile
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.TransactionsKey
@@ -29,10 +32,17 @@ import com.uptrendinvestments.clickmeapp.screens.signup.profilephoto.PhotoCropSc
  * The one place that maps the Phase 14 screens' callbacks to navigation keys (feature plans built the screens with
  * plain callbacks so they could be written in parallel). Every pushed screen hides the bottom bar.
  *
- * Client side: Profile Settings, the photo crop it opens, Account Security (and Delete Account behind it) and Help.
- * The expert side is [expertSettingsEntries].
+ * Client side: Profile Settings, the photo crop it opens, Payment History (its rows open the booking on the Profile
+ * stack), Account Security (and Delete Account behind it), Help, and the shared Notifications and Send Feedback
+ * entries. The expert side is [expertSettingsEntries].
  */
 fun EntryProviderScope<NavKey>.clientSettingsEntries(navigator: Navigator) {
+    entry<ClientTransactionsKey>(metadata = BottomBar.hidden()) {
+        ClientTransactionsScreen(
+            onBack = navigator::goBack,
+            onOpenBooking = navigator::openUpcomingBookingFromProfile,
+        )
+    }
     entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) {
         ClientProfileSettingsScreen(
             viewModel = hiltViewModel(),
