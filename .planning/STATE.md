@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: "16.5"
 current_phase_name: "iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)"
-status: ready_to_discuss
-stopped_at: Phase 16.5 UI-SPEC approved
+status: ready_to_execute
+stopped_at: Phase 16.5 planned, ready to execute
 last_updated: "2026-11-02T17:10:31.830Z"
 last_activity: 2026-11-02
 last_activity_desc: Phase 16.4 review findings all fixed, next is Phase 16.5
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 
 Phase: 16.5 (iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to discuss (16.1 and 16.4 UAT still open: status testing, verification human_needed)
+Status: Ready to execute (16.1 and 16.4 UAT still open: status testing, verification human_needed)
 Last activity: 2026-11-02 — Phase 16.4 code review: all 5 findings fixed; verification 10/10, 7 UAT items still pending
 
 Progress: [███████░░░] 65%
