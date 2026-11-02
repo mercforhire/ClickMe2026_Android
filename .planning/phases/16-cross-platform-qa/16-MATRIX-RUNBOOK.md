@@ -42,6 +42,10 @@ Phase 16.3 adds rows D1.FV1-D1.FV7, D2.FV1 and FS.FV1-FS.FV3; they run on the fi
 
 Phase 16.4 adds rows D1.PN1-D1.PN5, D2.PN1-D2.PN2, D2.CP1-D2.CP3, FS.PN1 and FS.CP1, plus the backstops D1.PN6-D1.PN7, D2.PN3 and D2.CP4-D2.CP5 reported by plans 16.4-03, 16.4-06, 16.4-08 and 16.4-09; they run on the first Play build that contains Phase 16.4 (after Phase 16.5, per ROADMAP).
 
+Phase 16.1 adds rows D1.SE1-D1.SE5 and TB.SE1; they run on the first Play build that contains Phase 16.1 (after Phase 16.5, per ROADMAP).
+
+Phase 16.5 adds rows D1.PH1-D1.PH4, D1.NS1-D1.NS3, D1.FB1-D1.FB2, D1.SP1-D1.SP4, D2.NS1, D2.FB1, D2.PV1, TB.PF1 and FS.PH1, FS.NS1, FS.FB1, FS.SP1; they run on the versionCode 2 Play build.
+
 ## 0. Pre-flight
 
 Direction `D1` unless stated. Run before any money row.
@@ -175,6 +179,38 @@ Samsung = B (client). No money moves in these rows.
 | D1.PN6 | 16.4-06 manual backstop | D1 | A booking push opens Booking Summary on the Samsung (app killed, then backgrounded). Tap "My Note", save a note, press Back twice. | "My Note" opens the editor from the push-opened summary; the saved note shows on return; Back leaves the app stack in the order the push built. | Outcome per launch state. | [ ] |
 | D1.PN7 | 16.4-03 manual backstop | D1 | In the note editor look at the field border unfocused and focused, tap Save and watch the icon, open the keyboard and scroll a long note. | The border changes on focus; the Save spinner cross-fades to the check without a jump; the field, counter and Save stay reachable with the keyboard up and the text scrolls. | Note. | [ ] |
 
+### 2f-S Search tab and Explore See all (Phase 16.1)
+
+Samsung = B (client). No money moves in these rows.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D1.SE1 | PARITY #1, 16.1 UAT 1 | D1 | On the Search tab: first load; type a query; tap a chip; change the sort; open a result; press Back. | The first load shows 3 skeletons; typing waits about 300 ms before searching; a chip sends its slug; sort changes the order; a result opens Expert Profile with the bottom bar visible; Back returns to the same results. | Outcome per step. | [ ] |
+| D1.SE2 | 16.1 UAT 2 | D1 | Open Search side by side with iOS SearchExpertView. | Spacing, the 80 dp avatar with its fallback, rating alignment, tag pills, glow and the pulsing empty illustration match iOS. | Note per element. | [ ] |
+| D1.SE3 | D-01, 16.1 UAT 3 | D1 | Tap See all on both Explore headers. Type a query, switch tabs and return. Open a profile from results and re-tap the Search tab. | See all selects Search with no filter carried; the query and results survive a tab switch; re-tapping Search pops an open profile and keeps the query. | Outcome per step. | [ ] |
+| D1.SE4 | 16.1 UAT 4 | D1 | Pull to refresh on results, on the empty state and on the error state, with and without airplane mode. | Rows stay during refresh; the snackbar has Retry and sits above the keyboard. | Outcome per state. | [ ] |
+| D1.SE5 | 16.1 UAT 6 | D1 | Scroll the results, then change the query, a chip and the sort. Separately switch tabs and pull to refresh. Start a newer search while a snackbar shows. | A query, chip or sort change opens at the top; a tab switch and a pull keep the scroll position; a visible snackbar disappears when a newer search starts. | Outcome per step. | [ ] |
+
+### 2f-P Payment History, notification preferences, Feedback and the splash (Phase 16.5)
+
+Samsung = B (client). Only D1.PH4 touches money: use a paid booking already due to be voided under P0.9 and write its `PAID` line.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D1.PH1 | PARITY #4, D-04 | D1 | Open Profile, Account, Payment History. Pull to refresh. Open a row and press Back. | A skeleton shows first, then rows newest first; a held paid booking reads "Authorized (not yet charged)" and a captured one "Paid"; amounts match the Stripe dashboard; pull to refresh keeps rows; Back keeps the scroll position. | Outcome per step; amounts read against Stripe (H10). | [ ] |
+| D1.PH2 | CLIENT-TRANSACTIONS section 7 | D1 | On an account with over 20 rows scroll to the end. Repeat in airplane mode for the next page. If no account has 20 rows, mark the row [-] not run with the reason. | Pages load with no error footer at the end; in airplane mode the next page shows the footer and Retry works. | Outcome per step. | [ ] |
+| D1.PH3 | D-03, UI-SPEC A8 | D1 | Tap a row for a live, a completed, a cancelled and a failed booking. | Details open with the real status; no enabled Join and no Reschedule on the last three, including inside the join window. | Outcome per status. | [ ] |
+| D1.PH4 | D-03, 16.5-02 | D1 | Cancel a live paid booking from a Payment History row. | Bookings opens with the result notice; the Profile tab shows the hub, not Cancel; the hold is voided. | Outcome per step; PAID line (H9) and a Paid bookings created row. | [ ] |
+| D1.NS1 | PARITY #5, D-01 | D1 | Open Profile, Preferences, Notifications. Flip three rows quickly. Reopen the screen and compare with iOS. | Four sections and 13 rows, nothing about quiet hours; opening sends no PATCH (Railway logs, H10); the three flips send one PATCH; the bar shows a spinner then a check; reopening shows the values; iOS shows the same values. | Outcome per step; PATCH count from Railway logs. | [ ] |
+| D1.NS2 | D-02 | D1 | In airplane mode flip a row. Reconnect and tap Retry. | An error icon and Retry show in the bar, the toggle stays, no dialog; after Retry the check shows. | Outcome per step. | [ ] |
+| D1.NS3 | backend push gate | D1 | Turn off Booking Confirmations. A accepts a request from iOS. Turn the row back on. | No push arrives on the Samsung while the row is off. | Yes or no on the push; row restored. | [ ] |
+| D1.FB1 | PARITY #6, D-05, D-06 | D1 | Open Profile, Support, Send Feedback. Enter 9 characters and tap Submit, then 10 characters and Submit. | The first server type is selected and the email is prefilled; 9 characters show the inline minimum-length error and send no request; 10 characters show the thanks dialog and OK returns to the hub; a backend row exists (H10). | Outcome per step; backend row yes or no. | [ ] |
+| D1.FB2 | carried from iOS | D1 | In airplane mode tap Submit on a valid form. Reconnect and tap Submit. | The failure dialog shows and the form is kept; after reconnecting Submit works. | Outcome per step. | [ ] |
+| D1.SP1 | PARITY #13, D-07, D-08, A4 | D1 | Force-stop the app and cold start it; repeat logged out. | The system splash hands to the Compose splash with no color jump or flicker; the logo fades and scales, the text follows, the glow pulses; about 3 s later the right destination shows; logged out reaches Login; no notification prompt or suspended dialog shows over the splash. | Outcome per step. | [ ] |
+| D1.SP2 | D-09, RESEARCH Question 2 | D1 | During a live call swipe the task away, then tap the ongoing-call notification. | The call shows above any splash and audio never stopped; the hold does not replay in the same process. | Outcome per step; H5 call proof lines. | [ ] |
+| D1.SP3 | D-09 | D1 | With the app killed (H6) tap a booking push. | The full splash shows, then the right screen in the right tab; nothing is lost. | Outcome per step. | [ ] |
+| D1.SP4 | A10, Pitfall 1 | D1 | Change the font size during the splash. Background and return. Repeat with animations off (Remove animations). | No replay on a font change; no replay on background and return; with animations off a static final frame shows for about 3 s; the app never sits on the OS splash. | Outcome per step. | [ ] |
+
 ### 2g Payouts mirror (D-05, iOS half)
 
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
@@ -268,6 +304,16 @@ Samsung = A (expert). No money moves in these rows.
 | D2.CP4 | 16.4-09 manual backstop | D2 | From a booking event in an expert-mode chat thread open Expert Booking Summary, tap "View Profile", press Back twice. | Client Profile opens on the Chats stack; Back returns to the summary, then to the thread; the bottom bar stays hidden throughout. | Outcome per step. | [ ] |
 | D2.CP5 | 16.4-08 manual backstop | D2 | On a Client Profile look at the avatar ring and glow and the Upcoming row border. Reach the friendly 403 and 404 states (a chat peer with no booking; a removed account if one exists) and pull to refresh on each. | The ring and static glow match the iOS profile; the Upcoming row shows its border; each friendly state refreshes on pull and keeps Go back. | Note per item. | [ ] |
 
+### 4e-P Notification preferences, Feedback and View Past History, expert side (Phase 16.5)
+
+Samsung = A (expert). No money moves in these rows.
+
+| Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
+|---|---|---|---|---|---|---|
+| D2.NS1 | PARITY #5 | D2 | Open the expert hub, Preferences, Notifications. Flip a row. Open the same user on the iOS client account. | The same four sections show; the flip saves; iOS shows the value on its next load. | Outcome per step. | [ ] |
+| D2.FB1 | PARITY #6, D-06 | D2 | Open the expert hub, Support, Send Feedback and send a valid message. Tap OK. | The message sends; OK returns to the expert hub, not the client hub. | Outcome per step; backend row yes or no. | [ ] |
+| D2.PV1 | PARITY #12 | D2 | With no upcoming bookings tap View Past History. | The Past tab is selected. | Outcome. | [ ] |
+
 ### 4f Payouts (D-05, Android half)
 
 | Row ID | Source row ID | Direction | Steps | Expected | Evidence to capture | Result |
@@ -323,6 +369,8 @@ Switch on TalkBack. The SC-4 runs are TB.L1, TB.B1, TB.C1 and TB.K1 (15-UAT test
 | TB.K11 | K11, WR-B01 | D1 | Network off, pull to refresh in Conversations and in a thread; toggle airplane mode inside a thread. | Rows and messages stay; one "Retry" snackbar; the reconnect failure path shows; the snackbar sits above the keyboard and the composer (WR-B01). | Note. | [ ] |
 | TB.Y12 | Y12 | Samsung | Run Accessibility Scanner over the four SC-4 flows (log in, book, call, chat). | Touch-target, contrast and label findings are logged as bug rows. | Finding count; screenshots outside the repo. | [ ] |
 | TB.Y14 | Y14 | Samsung | Trigger a "Retry" snackbar with TalkBack on. | The snackbar stays long enough to be reached and activated. | Note. | [ ] |
+| TB.SE1 | 16.1 UAT 5 | D1 | With TalkBack on, use the search field with text, the chips, the sort button and a result card. | Typed text is read back, chips announce selection, sort announces its value, a card reads as one button. | Note. | [ ] |
+| TB.PF1 | 16.5 UI-SPEC Accessibility Contract | D1 | With TalkBack on, open Payment History, Notifications, a save error, Send Feedback and the splash. | A Payment History row reads as one button with "Open booking"; a notification row reads once as a switch with title, subtitle and state; the save error is announced; Feedback labels precede their fields; the splash is one node announced once. | Note. | [ ] |
 
 Switch TalkBack off.
 
@@ -345,6 +393,10 @@ Switch on Settings, Display, Font size at the largest, then Display size at the 
 | FS.FV3 | 16.3 UI-SPEC E5 backstop | D1 | At 200% tap the heart on a Saved Experts card whose expert has a long name. | The remove dialog title wraps without clipping and both buttons stay reachable. | Note. | [ ] |
 | FS.PN1 | 16.4 D-02 | Samsung | At 200% open the note editor with the keyboard up. Also open Booking Summary as B and as A with a saved note. | The header, the field and the counter stay reachable and nothing clips; the Save action stays reachable; the My Note card wraps without clipping on both summaries. | Note. | [ ] |
 | FS.CP1 | 16.4 D-09 | D2 | At 200% open a Client Profile with a long topic. Also view the View Profile link on Expert Booking Summary. | Stat cells wrap, the amount stays visible and nothing clips; the View Profile link wraps or stays one line without clipping and keeps a 48 dp target. | Note. | [ ] |
+| FS.PH1 | 16.5 UI-SPEC E2 backstop | D1 | At 200% open Payment History with a row that has a long topic, a long expert name and "Authorized (not yet charged)". | The row wraps and the amount stays visible. | Note. | [ ] |
+| FS.NS1 | 16.5 UI-SPEC E4 backstop | D1 | At 200% open Notifications. | Every notification title and subtitle wraps, the switch stays visible, and the row is one 48 dp target. | Note. | [ ] |
+| FS.FB1 | 16.5 UI-SPEC E8 backstop | D1 | At 200% trigger the Feedback failure dialog with a long server message. | The dialog stays readable and OK is reachable. | Note. | [ ] |
+| FS.SP1 | 16.5 UI-SPEC E9 backstop | Samsung | At 200% cold start the app on the Samsung. Then check landscape on the resizable emulator (the phone is portrait-locked). | The splash's mark, wordmark and tagline stay visible and centered on the Samsung and in landscape on the emulator. | Note. | [ ] |
 
 Switch the font and display size back.
 
