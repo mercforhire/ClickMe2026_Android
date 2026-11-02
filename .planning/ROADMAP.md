@@ -998,14 +998,14 @@ Plans:
 **Goal:** Client Payment History (`/client/transactions`), notification preferences with debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button and an animated splash screen all match iOS. Quiet hours and the Delete Account "Before you go" card are deliberately not built (16.5-CONTEXT.md D-01, D-10). After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 12 plans
+**Plans:** 3/12 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 16.5-01-PLAN.md — Wire contract: `/client/transactions`, `/notifications/preferences` and `/feedback/*`, DTOs, fake overrides and exact-wire tests (PARITY-AUDIT #4, #5, #6)
-- [ ] 16.5-02-PLAN.md — Upcoming Booking safe for every status: fail-closed Join rule, no Join card on terminal bookings, Profile-origin booking key, cancel resets the Profile tab (PARITY-AUDIT #4, D-03)
-- [ ] 16.5-03-PLAN.md — Splash stage and route gate: 3 s hold on the shown route, handoff at composition, nothing acting behind it, once per process (PARITY-AUDIT #13, D-07, D-08, D-09)
+- [x] 16.5-01-PLAN.md — Wire contract: `/client/transactions`, `/notifications/preferences` and `/feedback/*`, DTOs, fake overrides and exact-wire tests (PARITY-AUDIT #4, #5, #6)
+- [x] 16.5-02-PLAN.md — Upcoming Booking safe for every status: fail-closed Join rule, no Join card on terminal bookings, Profile-origin booking key, cancel resets the Profile tab (PARITY-AUDIT #4, D-03)
+- [x] 16.5-03-PLAN.md — Splash stage and route gate: 3 s hold on the shown route, handoff at composition, nothing acting behind it, once per process (PARITY-AUDIT #13, D-07, D-08, D-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
