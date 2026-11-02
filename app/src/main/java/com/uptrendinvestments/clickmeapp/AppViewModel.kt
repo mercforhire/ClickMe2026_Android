@@ -42,7 +42,9 @@ internal fun shownRootRoute(
  * While on a home route the root route follows [UserManager.currentMode] (D-17): the mode switch, the
  * post-publish landing and relaunch restore all flow through that one collector.
  *
- * [destinationResolved] feeds `setKeepOnScreenCondition` in MainActivity.
+ * The OS splash is released by [keepSystemSplash], at the first composition of the Compose splash; the Compose
+ * splash then stays for [SPLASH_MIN_DISPLAY_MS] (D-08) while auth runs alongside. [destinationResolved] still
+ * says when [route] holds the resolved destination.
  */
 @HiltViewModel
 class AppViewModel
@@ -72,6 +74,13 @@ class AppViewModel
          * [shownRootRoute] of [route] and this flag, so [route] keeps meaning "resolved destination".
          */
         val splashHeld: StateFlow<Boolean> = _splashHeld.asStateFlow()
+
+        /**
+         * The keep condition for the OS splash. It flips at composition, never at first draw, because
+         * core-splashscreen 1.2.0 cancels draws in an `OnPreDrawListener` while the condition is true, so a
+         * condition that waits for a draw would never flip (RESEARCH Pitfall 1).
+         */
+        fun keepSystemSplash(): Boolean = !splashComposed
 
         /**
          * Starts the minimum display time once, when the Compose splash first composes. Auth keeps running from

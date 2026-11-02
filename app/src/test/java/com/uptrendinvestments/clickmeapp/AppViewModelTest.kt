@@ -1017,6 +1017,44 @@ class AppViewModelTest {
         }
 
     @Test
+    fun keepSystemSplashFlipsAtCompositionNotAtResolution() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            assertTrue(vm.destinationResolved.value)
+            assertTrue("held until composition even when resolved", vm.keepSystemSplash())
+
+            vm.onSplashComposed()
+            assertFalse(vm.keepSystemSplash())
+        }
+
+    @Test
+    fun keepSystemSplashReleasesAtCompositionWithAuthStillPending() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val vm = h.viewModel()
+            runCurrent()
+            assertFalse(vm.destinationResolved.value)
+            assertTrue(vm.keepSystemSplash())
+
+            vm.onSplashComposed()
+
+            assertFalse(vm.destinationResolved.value)
+            assertFalse(vm.keepSystemSplash())
+            advanceTimeBy(AppViewModel.SPLASH_HOLD_CAP_MS + 1)
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+        }
+
+    @Test
     fun holdAndCapAreBothBoundedWhenAuthHangs() =
         runTest(main.testDispatcher) {
             val h = Harness(this)
