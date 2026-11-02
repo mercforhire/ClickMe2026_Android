@@ -32,6 +32,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRe
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateNotificationPreferencesRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
@@ -78,6 +79,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferencesData
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
@@ -1389,6 +1391,35 @@ class FakeClickMeApi : ClickMeApi {
         clientTransactionsCalls++
         synchronized(_clientTransactionsQueries) { _clientTransactionsQueries += page to limit }
         return ok(clientTransactionsHandler(page, limit))
+    }
+
+    // Phase 16.5: notification preferences.
+    var notificationPreferencesHandler: suspend () -> NotificationPreferencesData = { notStubbed() }
+    var updateNotificationPreferencesHandler: suspend (UpdateNotificationPreferencesRequest) -> Unit = { }
+
+    @Volatile var notificationPreferencesCalls = 0
+        private set
+
+    @Volatile var updateNotificationPreferencesCalls = 0
+        private set
+
+    private val _updateNotificationPreferencesRequests = mutableListOf<UpdateNotificationPreferencesRequest>()
+
+    val updateNotificationPreferencesRequests: List<UpdateNotificationPreferencesRequest>
+        get() = synchronized(_updateNotificationPreferencesRequests) { _updateNotificationPreferencesRequests.toList() }
+
+    override suspend fun getNotificationPreferences(): SuccessDataResponse<NotificationPreferencesData> {
+        notificationPreferencesCalls++
+        return ok(notificationPreferencesHandler())
+    }
+
+    override suspend fun updateNotificationPreferences(
+        body: UpdateNotificationPreferencesRequest,
+    ): SuccessMessageResponse {
+        updateNotificationPreferencesCalls++
+        synchronized(_updateNotificationPreferencesRequests) { _updateNotificationPreferencesRequests += body }
+        updateNotificationPreferencesHandler(body)
+        return SuccessMessageResponse(status = "success", message = "Preferences updated.")
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

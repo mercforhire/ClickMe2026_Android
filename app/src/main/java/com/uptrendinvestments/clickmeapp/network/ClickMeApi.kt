@@ -32,6 +32,7 @@ import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRe
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateNotificationPreferencesRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
@@ -77,6 +78,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferencesData
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
@@ -768,6 +770,19 @@ interface ClickMeApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): SuccessDataResponse<ClientTransactionsData>
+
+    /** Ports iOS `getNotificationPreferences`: one row per category and sub-category with the three channel flags. */
+    @GET(ApiRequestUrls.NOTIFICATION_PREFERENCES)
+    suspend fun getNotificationPreferences(): SuccessDataResponse<NotificationPreferencesData>
+
+    /**
+     * Ports iOS `updateNotificationPreferences`. The backend schema is `.strict()` at both levels, so a row carries
+     * exactly the five documented keys. Answers `{status, message}`.
+     */
+    @PATCH(ApiRequestUrls.NOTIFICATION_PREFERENCES)
+    suspend fun updateNotificationPreferences(
+        @Body body: UpdateNotificationPreferencesRequest,
+    ): SuccessMessageResponse
 
     /** Ports iOS ClickMeAPI+TaxProfile getTaxProfile. The TIN is never returned, only `tin_on_file`. */
     @GET(ApiRequestUrls.EXPERT_TAX_PROFILE)
