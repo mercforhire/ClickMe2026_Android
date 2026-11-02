@@ -89,7 +89,7 @@ internal fun Navigator.backToHomeFromRequestSent(key: RequestSentKey) {
 }
 
 /** Checks stack membership rather than the selected tab, so it describes the stack that actually holds the screen. */
-private fun Navigator.resetProfileStackHolding(key: RequestSentKey) {
+internal fun Navigator.resetProfileStackHolding(key: NavKey) {
     if (key in state.backStacks[ClientProfileRoot].orEmpty()) reselect(ClientProfileRoot)
 }
 

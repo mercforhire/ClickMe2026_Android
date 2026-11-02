@@ -60,9 +60,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientPaymentMe
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.clientProfileHubActions
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openBookingSummary
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBooking
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.openUpcomingBookingFromProfile
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.showSearch
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientBookingsRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientChatsRoot
+import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ClientProfileRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.home.subviews.ExploreRoot
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.BookingKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ClientProfileHomeContent
@@ -1121,7 +1123,10 @@ class HomeShellsTest {
         composeRule.onNode(tab("Explore")).assertIsSelected()
     }
 
-    private fun setClientWithBookingManagement() {
+    /** Captured from the Explore root so a test can switch tabs while the bar is hidden by a booking screen. */
+    private var shellNavigator: Navigator? = null
+
+    private fun setClientWithBookingManagement(withProfileBookings: Boolean = false) {
         composeRule.setContent {
             ClickMeTheme {
                 expertBackDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
@@ -1133,9 +1138,30 @@ class HomeShellsTest {
                     onDebugForceRefresh = {},
                     debugRefreshStatus = null,
                     exploreRoot = { navigator, _ ->
+                        shellNavigator = navigator
                         Column {
                             Text("fake explore")
                             Button(onClick = { navigator.openUpcomingBooking("b1") }) { Text("explore open upcoming") }
+                        }
+                    },
+                    profileRoot = { navigator, debug ->
+                        if (withProfileBookings) {
+                            Column {
+                                Text("fake profile root")
+                                Button(onClick = { navigator.openUpcomingBookingFromProfile("b1") }) {
+                                    Text("profile open b1")
+                                }
+                                Button(onClick = { navigator.openUpcomingBookingFromProfile("b2") }) {
+                                    Text("profile open b2")
+                                }
+                            }
+                        } else {
+                            ClientProfileHomeContent(
+                                card = ProfileHubCard(null, null, null),
+                                versionLabel = "",
+                                actions = clientProfileHubActions(navigator, {}, {}),
+                                debugContent = debug,
+                            )
                         }
                     },
                     bookingsRoot = { navigator ->
@@ -1294,6 +1320,55 @@ class HomeShellsTest {
         tapTab("Explore")
         composeRule.onNodeWithText("fake explore").assertExists()
         composeRule.onNodeWithText("fake upcoming b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun cancelledFromTheProfileStackReturnsTheProfileTabToItsRoot() {
+        setClientWithBookingManagement(withProfileBookings = true)
+        tapTab("Profile")
+        composeRule.onNodeWithText("profile open b1").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.onNodeWithText("upcoming cancel").performClick()
+        composeRule.onNodeWithText("fake cancel b1").assertExists()
+        composeRule.onNodeWithText("cancel done").performClick()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+        tapTab("Profile")
+        composeRule.onNode(tab("Profile")).assertIsSelected()
+        composeRule.onNodeWithText("fake profile root").assertExists()
+        composeRule.onNodeWithText("fake cancel b1").assertDoesNotExist()
+        composeRule.onNodeWithText("fake upcoming b1").assertDoesNotExist()
+    }
+
+    @Test
+    fun cancelFromBookingsLeavesAnOpenProfileStackAlone() {
+        setClientWithBookingManagement(withProfileBookings = true)
+        tapTab("Profile")
+        composeRule.onNodeWithText("profile open b2").performClick()
+        composeRule.onNodeWithText("fake upcoming b2").assertExists()
+        // The booking screen hides the bar, so the tab switch goes through the navigator the bar would call.
+        composeRule.runOnIdle { shellNavigator!!.onTabSelected(ClientBookingsRoot) }
+        composeRule.onNodeWithText("open upcoming").performClick()
+        composeRule.onNodeWithText("upcoming cancel").performClick()
+        composeRule.onNodeWithText("cancel done").performClick()
+        composeRule.onNode(tab("Bookings")).assertIsSelected()
+        composeRule.onNodeWithText("fake my bookings").assertExists()
+        tapTab("Profile")
+        composeRule.onNodeWithText("fake upcoming b2").assertExists()
+    }
+
+    @Test
+    fun sameBookingOnExploreAndProfileDoesNotCollide() {
+        setClientWithBookingManagement(withProfileBookings = true)
+        composeRule.onNodeWithText("explore open upcoming").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.runOnIdle { shellNavigator!!.onTabSelected(ClientProfileRoot) }
+        composeRule.onNodeWithText("profile open b1").performClick()
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
+        composeRule.onNodeWithText("upcoming back").performClick()
+        composeRule.onNodeWithText("fake profile root").assertExists()
+        composeRule.runOnIdle { shellNavigator!!.onTabSelected(ExploreRoot) }
+        composeRule.onNodeWithText("fake upcoming b1").assertExists()
     }
 
     @Test

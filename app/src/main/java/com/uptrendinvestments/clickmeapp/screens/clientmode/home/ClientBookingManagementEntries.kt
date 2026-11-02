@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
+import com.uptrendinvestments.clickmeapp.navigation.StackOrigin
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancelBookingKey
@@ -20,6 +21,14 @@ import com.uptrendinvestments.clickmeapp.screens.settings.paymentmethods.Payment
 
 /** Pushes Upcoming Booking Details for [bookingId] on the selected tab's stack (Explore card or Bookings card). */
 fun Navigator.openUpcomingBooking(bookingId: String) = navigate(UpcomingBookingKey(bookingId))
+
+/**
+ * Pushes Upcoming Booking Details for [bookingId] on the Profile stack: Payment History's row target (Phase 16.5
+ * D-03). The [StackOrigin.Profile] origin keeps this key distinct from the same booking open on Explore or Bookings,
+ * since the client shell flattens the start stack with the selected one and equal keys would be duplicate content keys.
+ */
+fun Navigator.openUpcomingBookingFromProfile(bookingId: String) =
+    navigate(UpcomingBookingKey(bookingId, StackOrigin.Profile))
 
 /** Pushes Booking Summary for [bookingId] on the selected tab's stack (D-12, a Past card). */
 fun Navigator.openBookingSummary(bookingId: String) = navigate(BookingSummaryKey(bookingId))
@@ -40,6 +49,17 @@ fun Navigator.openBookingSummary(bookingId: String) = navigate(BookingSummaryKey
 fun Navigator.showMyBookings() = resetAndSelect(ClientBookingsRoot, setOf(ExploreRoot, SearchRoot, ClientBookingsRoot))
 
 /**
+ * [showMyBookings] after a cancel, also returning the Profile tab to its root when that stack holds [key]. Payment
+ * History is the first path that opens Cancel on the Profile stack, and [showMyBookings] leaves that stack alone on
+ * purpose (runbook row D1.FV4), so the reset is tied to the stack that holds this screen, as Phase 16.3 CR-01 did for
+ * Request Sent. Trade-off: the Profile tab then opens on the hub, not on Payment History.
+ */
+internal fun Navigator.showMyBookingsAfterCancel(key: CancelBookingKey) {
+    resetProfileStackHolding(key)
+    showMyBookings()
+}
+
+/**
  * Mirrors iOS `returnToHome`: resets Explore to its root, then selects Explore (D-11, "Explore Experts").
  *
  * Also resets the Search stack, the same deliberate Android deviation as [showMyBookings] (user decision
@@ -56,8 +76,9 @@ fun Navigator.showExplore() = resetAndSelect(ExploreRoot, setOf(ExploreRoot, Sea
  * client shell, all with the bottom bar hidden. Hilt-free: the Hilt-backed screens arrive through [upcoming],
  * [cancel] and [summary], so HomeShellsTest drives the real metadata and navigation callbacks with fake content.
  *
- * - D-07: [cancel]'s `onCancelled` calls [showMyBookings]. The cancel ViewModel has already posted the tab and
- *   notice to `BookingsLaunchRequest`, so the screen only resets both stacks and selects Bookings.
+ * - D-07: [cancel]'s `onCancelled` calls [showMyBookingsAfterCancel]. The cancel ViewModel has already posted the tab
+ *   and notice to `BookingsLaunchRequest`, so the screen only resets the stacks (the Profile stack too when it holds
+ *   this cancel screen) and selects Bookings.
  * - D-02: `onOpenPaymentMethods` (from the reschedule card) pushes [PaymentMethodsKey] on top of the booking
  *   screen; Back pops to it and it reloads quietly. [PaymentMethodsKey] stays registered once by
  *   [clientPaymentMethodsEntry], so it is not registered here.
@@ -113,7 +134,7 @@ fun EntryProviderScope<NavKey>.clientBookingManagementEntries(
         )
     }
     entry<CancelBookingKey>(metadata = BottomBar.hidden()) { key ->
-        cancel(key, navigator::goBack, navigator::showMyBookings)
+        cancel(key, navigator::goBack) { navigator.showMyBookingsAfterCancel(key) }
     }
     entry<BookingSummaryKey>(metadata = BottomBar.hidden()) { key ->
         summary(
