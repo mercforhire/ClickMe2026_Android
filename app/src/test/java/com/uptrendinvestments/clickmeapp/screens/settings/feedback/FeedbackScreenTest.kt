@@ -1,6 +1,18 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.feedback
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -10,6 +22,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.PICKER_ROW_CHECK_TAG
 import com.uptrendinvestments.clickmeapp.components.SKELETON_BLOCK_TAG
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
@@ -17,6 +31,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.feedbackTypes
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,21 +73,22 @@ class FeedbackScreenTest {
         showThanks = showThanks,
     )
 
+    @Composable
+    private fun content(state: FeedbackUiState) {
+        FeedbackContent(
+            state = state,
+            onSelectType = { selected += it },
+            onDetailsChange = {},
+            onEmailChange = {},
+            onSubmit = { submits += Unit },
+            onRetry = { retries += Unit },
+            onDismissDialog = { dismissals += Unit },
+            onBack = { backs += Unit },
+        )
+    }
+
     private fun show(state: FeedbackUiState) {
-        rule.setContent {
-            ClickMeTheme {
-                FeedbackContent(
-                    state = state,
-                    onSelectType = { selected += it },
-                    onDetailsChange = {},
-                    onEmailChange = {},
-                    onSubmit = { submits += Unit },
-                    onRetry = { retries += Unit },
-                    onDismissDialog = { dismissals += Unit },
-                    onBack = { backs += Unit },
-                )
-            }
-        }
+        rule.setContent { ClickMeTheme { content(state) } }
     }
 
     /** System back while a Compose dialog is showing: the dialog's own back dispatcher handles it. */
@@ -230,8 +246,125 @@ class FeedbackScreenTest {
         }
     }
 
+    // ---- Task 3: the Details error, the failure dialog and the keyboard ---------------------------------------
+
+    private val tooShort = "Please describe your experience in at least 10 characters."
+    private val hint = "Describe your experience..."
+
+    @Test
+    fun detailsErrorShowsAndClears() {
+        var state by mutableStateOf(ready(showDetailsError = true))
+        rule.setContent { ClickMeTheme { content(state) } }
+
+        rule.onNodeWithText(tooShort).assertExists()
+
+        state = ready(showDetailsError = false)
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(ERROR_ANIMATION_MS)
+
+        rule.onNodeWithText(tooShort).assertDoesNotExist()
+    }
+
+    @Test
+    fun detailsPlaceholderShowsWhenEmpty() {
+        show(ready(details = ""))
+        rule.onNodeWithText(hint).assertExists()
+    }
+
+    @Test
+    fun detailsPlaceholderHidesWithText() {
+        show(ready(details = "Something"))
+        rule.onNodeWithText(hint).assertDoesNotExist()
+    }
+
+    @Test
+    fun detailsFieldGrowsAndIsNotCapped() {
+        val long = "word ".repeat(LONG_DETAILS_WORDS)
+        show(ready(details = long))
+
+        rule.onNodeWithTag(FEEDBACK_DETAILS_TAG).assertTextEquals(long)
+        rule.onAllNodesWithText("${long.length}", substring = true).assertCountEquals(0)
+        rule.onNodeWithTag(FEEDBACK_SUBMIT_TAG).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun detailsFieldHasItsNameWhenFilled() {
+        show(ready(details = "Something long enough"))
+        rule.onNodeWithContentDescription("Details").assertExists()
+    }
+
+    @Test
+    fun emailErrorShowsOnItsField() {
+        show(ready(emailError = "Invalid email"))
+
+        rule.onNodeWithText("Invalid email").assertExists()
+        rule.onNodeWithText("Couldn't send feedback").assertDoesNotExist()
+    }
+
+    @Test
+    fun failureDialogShowsItsMessageAndKeepsTheForm() {
+        show(ready(details = "The booking screen froze.", dialog = FieldError.Text("Server says no")))
+
+        rule.onNodeWithText("Couldn't send feedback").assertExists()
+        rule.onNodeWithText("Server says no").assertExists()
+        rule.onNodeWithText("The booking screen froze.").assertExists()
+        rule.onNodeWithText("ada@example.com").assertExists()
+        rule.onNodeWithText("Submit Feedback").assertExists()
+
+        rule.onNodeWithText("OK").performClick()
+
+        assertEquals(1, dismissals.size)
+        assertEquals(0, backs.size)
+    }
+
+    @Test
+    fun tooManyAttemptsAndFallbackCopyRender() {
+        show(ready(dialog = FieldError.Res(R.string.feedback_too_many_attempts)))
+        rule.onNodeWithText("Too many attempts. Please try again in a moment.").assertExists()
+    }
+
+    @Test
+    fun fallbackCopyRenders() {
+        show(ready(dialog = FieldError.Res(R.string.feedback_send_failed)))
+        rule.onNodeWithText("Couldn't send your feedback. Please try again.").assertExists()
+    }
+
+    @Test
+    fun submittingKeepsFieldsVisibleAndEnabled() {
+        show(ready(details = "The booking screen froze.", saveState = SaveState.Saving))
+
+        rule.onNodeWithTag(FEEDBACK_DETAILS_TAG).assertIsEnabled()
+        rule.onNodeWithText("The booking screen froze.").assertExists()
+        rule.onNodeWithText("ada@example.com").assertExists()
+        rule
+            .onNodeWithTag(FEEDBACK_SUBMIT_TAG)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
+        rule.onNodeWithText("Submit Feedback").assertDoesNotExist()
+    }
+
+    @Test
+    fun labelsPrecedeTheirControls() {
+        show(ready(email = ""))
+
+        fun top(node: SemanticsNodeInteraction) = node.getUnclippedBoundsInRoot().top
+        val typeLabel = top(rule.onNodeWithText("Feedback Type"))
+        val typeField = top(rule.onNodeWithTag(FEEDBACK_TYPE_FIELD_TAG))
+        val detailsLabel = top(rule.onNodeWithText("Details"))
+        val detailsField = top(rule.onNodeWithTag(FEEDBACK_DETAILS_TAG))
+        val emailLabel = top(rule.onNodeWithText("Email (Optional)"))
+        val emailField = top(rule.onNodeWithText("you@example.com"))
+
+        assertTrue(typeLabel < typeField)
+        assertTrue(typeField < detailsLabel)
+        assertTrue(detailsLabel < detailsField)
+        assertTrue(detailsField < emailLabel)
+        assertTrue(emailLabel < emailField)
+    }
+
     private companion object {
         /** Three labels, two pills and the Details block. */
         const val SKELETON_BLOCKS = 6
+        const val LONG_DETAILS_WORDS = 400
+        const val ERROR_ANIMATION_MS = 400L
     }
 }

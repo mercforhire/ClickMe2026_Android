@@ -46,6 +46,7 @@ import com.uptrendinvestments.clickmeapp.components.SkeletonBlock
 import com.uptrendinvestments.clickmeapp.components.SkeletonGroup
 import com.uptrendinvestments.clickmeapp.components.ValidatedField
 import com.uptrendinvestments.clickmeapp.components.buttons.AsyncSaveButton
+import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
@@ -142,6 +143,14 @@ fun FeedbackContent(
                 }
             }
         }
+    }
+    // A suspended account leaves `dialog` null: the global handler owns it. Both dialogs are text-only (rule R7).
+    state.dialog?.let {
+        AuthErrorDialog(
+            message = it.asString(),
+            onDismiss = onDismissDialog,
+            title = stringResource(R.string.feedback_error_title),
+        )
     }
     if (state.showThanks) FeedbackThanksDialog(onDismiss = onBack)
 }
