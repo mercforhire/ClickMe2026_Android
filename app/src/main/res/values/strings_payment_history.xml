@@ -14,4 +14,20 @@
     <string name="payment_history_status_auth_expired">Authorization expired</string>
     <string name="payment_history_status_processed">Processed</string>
     <string name="payment_history_status_no_payment">No payment</string>
+
+    <!-- Screen chrome and states (plan 16.5-08). The error body is the ViewModel's message. -->
+    <string name="payment_history_title">Payment History</string>
+    <string name="payment_history_empty_title">No payments yet</string>
+    <string name="payment_history_empty_body">Your paid sessions will appear here once you\'ve booked with an expert.</string>
+    <string name="payment_history_error_title">Couldn\'t load payments</string>
+
+    <!-- "{expert} · {date}" under the topic; "—" stands in for a missing expert. -->
+    <string name="payment_history_row_line" translatable="false">%1$s · %2$s</string>
+    <string name="payment_history_row_refunded">Refunded %1$s</string>
+    <!-- "{topic}, {expert}, {date}, {status}, {amount}" -->
+    <string name="payment_history_row_a11y" translatable="false">%1$s, %2$s, %3$s, %4$s, %5$s</string>
+    <!-- The row description followed by the partial refund line. -->
+    <string name="payment_history_row_a11y_refund" translatable="false">%1$s, %2$s</string>
+    <!-- Click label of a row: tapping opens the booking. -->
+    <string name="payment_history_row_open">Open booking</string>
 </resources>
