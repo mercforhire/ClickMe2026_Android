@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 16: Cross-Platform QA** - Internal-testing bug fixes and the two-way Android/iOS matrix (Week 8)
 - [ ] **Phase 16.1: iOS parity: Search tab and Explore See all** (INSERTED) - iOS feature parity before release
 - [x] **Phase 16.2: iOS parity: client and expert reschedule start** (INSERTED) - iOS feature parity before release (completed 2026-10-31)
-- [ ] **Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list** (INSERTED) - iOS feature parity before release
+- [x] **Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list** (INSERTED) - iOS feature parity before release (completed 2026-11-01)
 - [ ] **Phase 16.4: iOS parity: private booking notes and expert-side Client Profile** (INSERTED) - iOS feature parity before release
 - [ ] **Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card** (INSERTED) - iOS feature parity before release
 - [ ] **Phase 17: Play Store Release** - Play Console policy items and production release (Week 8)
@@ -934,7 +934,7 @@ Plans:
 **Goal:** Clients can favorite an expert from Expert Profile (optimistic toggle with rollback), see Saved Experts from the client Profile hub, and open the full Reviews list from "See all" on Expert Profile, matching iOS.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 8/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**
