@@ -242,6 +242,16 @@ class ApiRequestUrlsTest {
     }
 
     @Test
+    fun phaseSixteenFourConstants_areAuthed() {
+        assertEquals("client/bookings/{id}/note", ApiRequestUrls.CLIENT_BOOKING_NOTE)
+        assertEquals("bookings/{id}/note", ApiRequestUrls.BOOKING_NOTE)
+        assertEquals("expert/clients/{id}", ApiRequestUrls.EXPERT_CLIENT)
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/client/bookings/b1/note"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/bookings/b1/note"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/expert/clients/c1"))
+    }
+
+    @Test
     fun phaseElevenPaths_needAuthToken() {
         listOf(
             "/api/v1/expert/booking-requests",
