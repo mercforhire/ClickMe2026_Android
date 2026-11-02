@@ -9,6 +9,7 @@ import com.uptrendinvestments.clickmeapp.navigation.NavigationState
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.payments.ClientTransactionsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.expertProfileEntry
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.PayoutsKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.payouts.TransactionsKey
@@ -18,8 +19,11 @@ import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.Accoun
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfilePhotoCropKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountKey
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
@@ -52,6 +56,9 @@ class SettingsEntriesTest {
             AccountSecurityKey,
             DeleteAccountKey,
             HelpKey,
+            ClientTransactionsKey,
+            NotificationSettingsKey,
+            FeedbackKey,
         ).forEach { key ->
             assertEquals("bottom bar must be hidden on $key", true, hiddenOf(provider, key))
         }
@@ -71,9 +78,17 @@ class SettingsEntriesTest {
             AccountSecurityKey,
             DeleteAccountKey,
             HelpKey,
+            NotificationSettingsKey,
+            FeedbackKey,
         ).forEach { key ->
             assertEquals("bottom bar must be hidden on $key", true, hiddenOf(provider, key))
         }
+    }
+
+    @Test
+    fun expertEntriesDoNotRegisterPaymentHistory() {
+        val provider = entryProvider<NavKey> { expertSettingsEntries(navigator()) }
+        assertThrows(IllegalStateException::class.java) { provider(ClientTransactionsKey) }
     }
 
     @Test

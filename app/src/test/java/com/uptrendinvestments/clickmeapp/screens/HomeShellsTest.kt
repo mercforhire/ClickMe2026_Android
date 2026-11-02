@@ -108,7 +108,9 @@ import com.uptrendinvestments.clickmeapp.screens.push.ShellRoute
 import com.uptrendinvestments.clickmeapp.screens.push.ShellRouteRequest
 import com.uptrendinvestments.clickmeapp.screens.settings.accountsecurity.AccountSecurityKey
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ClientProfileSettingsKey
+import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
+import com.uptrendinvestments.clickmeapp.screens.settings.notifications.NotificationSettingsKey
 import com.uptrendinvestments.clickmeapp.testing.searchExpertUi
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -524,6 +526,43 @@ class HomeShellsTest {
     }
 
     @Test
+    fun clientHubReachesNotificationsAndFeedback() {
+        setClient(showDebug = false, hubStandIns = true)
+        listOf(
+            "Notifications" to "stand-in notification settings",
+            "Send Feedback" to "stand-in feedback",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+            composeRule.onNodeWithText(row).assertExists()
+        }
+    }
+
+    @Test
+    fun expertHubReachesNotificationsAndFeedback() {
+        setExpert(showDebug = false, hubStandIns = true)
+        listOf(
+            "Notifications" to "stand-in notification settings",
+            "Send Feedback" to "stand-in feedback",
+        ).forEach { (row, screen) ->
+            tapTab("Profile")
+            composeRule.onNodeWithText(row).performScrollTo().performClick()
+            composeRule.onNodeWithText(screen).assertExists()
+            composeRule.onNode(tab("Profile")).assertDoesNotExist()
+            pressSystemBack()
+            composeRule.onNode(tab("Profile")).assertIsSelected()
+            composeRule.onNodeWithText(screen).assertDoesNotExist()
+            composeRule.onNodeWithText(row).assertExists()
+        }
+        composeRule.onNodeWithText("Payment History").assertDoesNotExist()
+    }
+
+    @Test
     fun expertiseAndTopicsSelectsTopicsTab() {
         setExpert(showDebug = false)
         tapTab("Profile")
@@ -606,6 +645,9 @@ class HomeShellsTest {
         entry<ClientProfileSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in client settings") }
         entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
         entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+        entry<ClientTransactionsKey>(metadata = BottomBar.hidden()) { Text("stand-in payment history") }
+        entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in notification settings") }
+        entry<FeedbackKey>(metadata = BottomBar.hidden()) { Text("stand-in feedback") }
     }
 
     /** Stand-ins for the expert hub destinations, registered with the same hidden-bar metadata as the real ones. */
@@ -615,6 +657,8 @@ class HomeShellsTest {
         entry<TaxProfileKey>(metadata = BottomBar.hidden()) { Text("stand-in tax:${it.origin}") }
         entry<AccountSecurityKey>(metadata = BottomBar.hidden()) { Text("stand-in security") }
         entry<HelpKey>(metadata = BottomBar.hidden()) { Text("stand-in help") }
+        entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) { Text("stand-in notification settings") }
+        entry<FeedbackKey>(metadata = BottomBar.hidden()) { Text("stand-in feedback") }
         fakeAvailabilityEntry(navigator)
     }
 

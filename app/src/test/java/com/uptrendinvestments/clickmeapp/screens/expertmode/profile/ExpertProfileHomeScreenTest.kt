@@ -54,7 +54,9 @@ class ExpertProfileHomeScreenTest {
             onOpenPayouts = count("payouts"),
             onOpenTaxProfile = count("tax"),
             onOpenSecurity = count("security"),
+            onOpenNotifications = count("notifications"),
             onOpenHelp = count("help"),
+            onOpenFeedback = count("feedback"),
             onLogOut = count("logout"),
         )
 
@@ -90,8 +92,11 @@ class ExpertProfileHomeScreenTest {
                 "Tax & Payout Info",
                 "Account",
                 "Security & Password",
+                "Preferences",
+                "Notifications",
                 "Support",
                 "FAQ & Help",
+                "Send Feedback",
                 "Privacy",
                 "Log out",
             )
@@ -114,7 +119,9 @@ class ExpertProfileHomeScreenTest {
             "Payouts & Earnings",
             "Tax & Payout Info",
             "Security & Password",
+            "Notifications",
             "FAQ & Help",
+            "Send Feedback",
         ).forEach { rule.onNodeWithText(it).performScrollTo().performClick() }
         rule.onNodeWithTag("profile_availability_row").performScrollTo().performClick()
 
@@ -128,7 +135,9 @@ class ExpertProfileHomeScreenTest {
                 "payouts" to 1,
                 "tax" to 1,
                 "security" to 1,
+                "notifications" to 1,
                 "help" to 1,
+                "feedback" to 1,
             )
         assertEquals(expected, calls)
     }
@@ -141,8 +150,6 @@ class ExpertProfileHomeScreenTest {
             "Saved Experts",
             "Payment History",
             "Payment",
-            "Notifications",
-            "Send Feedback",
             "Discovery",
             "Pause Account",
             "coming soon",
