@@ -998,7 +998,7 @@ Plans:
 **Goal:** Client Payment History (`/client/transactions`), notification preferences with debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button and an animated splash screen all match iOS. Quiet hours and the Delete Account "Before you go" card are deliberately not built (16.5-CONTEXT.md D-01, D-10). After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 7/12 plans executed
+**Plans:** 10/12 plans executed
 
 Plans:
 **Wave 1**
@@ -1016,9 +1016,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 16.5-08-PLAN.md — Payment History screen: ledger row, pill, refund line, skeleton, empty, error, refresh and paging footers (PARITY-AUDIT #4, D-03, D-04)
-- [ ] 16.5-09-PLAN.md — Notifications screen: section cards, whole-row switches, skeleton, error, app-bar save status with Retry (PARITY-AUDIT #5, D-01, D-02)
-- [ ] 16.5-10-PLAN.md — Send Feedback screen: form, picker sheet, Details field, failure dialog, thanks dialog back to the hub (PARITY-AUDIT #6, D-05, D-06)
+- [x] 16.5-08-PLAN.md — Payment History screen: ledger row, pill, refund line, skeleton, empty, error, refresh and paging footers (PARITY-AUDIT #4, D-03, D-04)
+- [x] 16.5-09-PLAN.md — Notifications screen: section cards, whole-row switches, skeleton, error, app-bar save status with Retry (PARITY-AUDIT #5, D-01, D-02)
+- [x] 16.5-10-PLAN.md — Send Feedback screen: form, picker sheet, Details field, failure dialog, thanks dialog back to the hub (PARITY-AUDIT #6, D-05, D-06)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
