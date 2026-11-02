@@ -6,11 +6,14 @@ import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.clientTransaction
 import com.uptrendinvestments.clickmeapp.testing.clientTransactionsPage
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -100,6 +103,258 @@ class ClientTransactionsViewModelTest {
             runCurrent()
 
             assertEquals(listOf("b1"), vm.ids)
+        }
+
+    private fun serveTwoPages() {
+        api.clientTransactionsHandler = { page, _ ->
+            if (page == 1) {
+                clientTransactionsPage(rows(0, CLIENT_TRANSACTIONS_PAGE_SIZE), page = 1, hasMore = true)
+            } else {
+                clientTransactionsPage(rows(CLIENT_TRANSACTIONS_PAGE_SIZE, 5), page = page, hasMore = false)
+            }
+        }
+    }
+
+    @Test
+    fun nextPageWhenARowWithinTheLastThreeAppears() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+
+            vm.onRowVisible(16)
+            runCurrent()
+            assertEquals(listOf(1 to 20), api.clientTransactionsQueries)
+
+            vm.onRowVisible(17)
+            runCurrent()
+
+            assertEquals(listOf(1 to 20, 2 to 20), api.clientTransactionsQueries)
+            assertEquals((0 until 25).map { "b$it" }, vm.ids)
+        }
+
+    @Test
+    fun onlyOnePageRequestAtATime() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            val gate = CompletableDeferred<Unit>()
+            api.clientTransactionsHandler = { page, _ ->
+                gate.await()
+                clientTransactionsPage(rows(CLIENT_TRANSACTIONS_PAGE_SIZE, 5), page = page, hasMore = false)
+            }
+
+            vm.onRowVisible(19)
+            runCurrent()
+            assertTrue(vm.uiState.value.isPaging)
+            vm.onRowVisible(19)
+            vm.onRowVisible(18)
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(1 to 20, 2 to 20), api.clientTransactionsQueries)
+            assertFalse(vm.uiState.value.isPaging)
+        }
+
+    @Test
+    fun hasMoreFalseStopsPaging() =
+        runTest(main.testDispatcher) {
+            api.clientTransactionsHandler = { _, _ -> clientTransactionsPage(rows(0, 20), hasMore = false) }
+            val vm = vm()
+            runCurrent()
+
+            vm.onRowVisible(19)
+            runCurrent()
+
+            assertEquals(listOf(1 to 20), api.clientTransactionsQueries)
+        }
+
+    @Test
+    fun page2Status500EndsTheListSilently() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            api.clientTransactionsHandler = { _, _ -> throw api.httpError(500, SERVER_DOWN) }
+
+            vm.onRowVisible(19)
+            runCurrent()
+
+            assertNull(vm.uiState.value.pageError)
+            assertFalse(vm.uiState.value.isPaging)
+            assertEquals(CLIENT_TRANSACTIONS_PAGE_SIZE, vm.uiState.value.rows.size)
+            assertEquals(ClientTransactionsLoad.Loaded, vm.uiState.value.load)
+
+            vm.onRowVisible(19)
+            runCurrent()
+            assertEquals(listOf(1 to 20, 2 to 20), api.clientTransactionsQueries)
+        }
+
+    @Test
+    fun page2OtherFailureShowsTheFooter() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            api.clientTransactionsHandler = { _, _ -> throw api.httpError(503, SERVER_DOWN) }
+
+            vm.onRowVisible(19)
+            runCurrent()
+
+            assertEquals(FieldError.Text("Down"), vm.uiState.value.pageError)
+            assertEquals(CLIENT_TRANSACTIONS_PAGE_SIZE, vm.uiState.value.rows.size)
+
+            vm.onRowVisible(19)
+            runCurrent()
+            assertEquals(listOf(1 to 20, 2 to 20), api.clientTransactionsQueries)
+
+            serveTwoPages()
+            vm.retryPage()
+            runCurrent()
+
+            assertEquals(listOf(1 to 20, 2 to 20, 2 to 20), api.clientTransactionsQueries)
+            assertNull(vm.uiState.value.pageError)
+            assertEquals(25, vm.uiState.value.rows.size)
+        }
+
+    @Test
+    fun page2NetworkFailureShowsTheFooter() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            api.clientTransactionsHandler = { _, _ -> throw java.io.IOException("offline") }
+
+            vm.onRowVisible(19)
+            runCurrent()
+
+            assertNotNull(vm.uiState.value.pageError)
+            assertEquals(CLIENT_TRANSACTIONS_PAGE_SIZE, vm.uiState.value.rows.size)
+        }
+
+    @Test
+    fun refreshKeepsRowsThenReplacesThem() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            vm.onRowVisible(19)
+            runCurrent()
+            assertEquals(25, vm.uiState.value.rows.size)
+
+            val gate = CompletableDeferred<Unit>()
+            api.clientTransactionsHandler = { _, _ ->
+                gate.await()
+                clientTransactionsPage(rows(100, 20), hasMore = true)
+            }
+            vm.refresh()
+            runCurrent()
+            assertTrue(vm.uiState.value.isRefreshing)
+            assertEquals(25, vm.uiState.value.rows.size)
+
+            gate.complete(Unit)
+            runCurrent()
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertEquals((100 until 120).map { "b$it" }, vm.ids)
+
+            vm.onRowVisible(19)
+            runCurrent()
+            assertEquals(2 to 20, api.clientTransactionsQueries.last())
+        }
+
+    @Test
+    fun refreshFailureKeepsRowsAndFlagsIt() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            api.clientTransactionsHandler = { _, _ -> throw api.httpError(500, SERVER_DOWN) }
+
+            vm.refresh()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.refreshFailed)
+            assertFalse(vm.uiState.value.isRefreshing)
+            assertEquals(CLIENT_TRANSACTIONS_PAGE_SIZE, vm.uiState.value.rows.size)
+            assertEquals(ClientTransactionsLoad.Loaded, vm.uiState.value.load)
+            vm.consumeRefreshFailure()
+            assertFalse(vm.uiState.value.refreshFailed)
+        }
+
+    @Test
+    fun refreshCancelsAPageInFlight() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            val gate = CompletableDeferred<Unit>()
+            api.clientTransactionsHandler = { page, _ ->
+                if (page == 1) {
+                    clientTransactionsPage(rows(100, 3), hasMore = false)
+                } else {
+                    gate.await()
+                    clientTransactionsPage(rows(200, 5), page = page, hasMore = false)
+                }
+            }
+            vm.onRowVisible(19)
+            runCurrent()
+            assertTrue(vm.uiState.value.isPaging)
+
+            vm.refresh()
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf("b100", "b101", "b102"), vm.ids)
+            assertFalse(vm.uiState.value.isPaging)
+        }
+
+    @Test
+    fun retryPageDuringARefreshIsIgnored() =
+        runTest(main.testDispatcher) {
+            serveTwoPages()
+            val vm = vm()
+            runCurrent()
+            api.clientTransactionsHandler = { _, _ -> throw api.httpError(503, SERVER_DOWN) }
+            vm.onRowVisible(19)
+            runCurrent()
+            assertEquals(FieldError.Text("Down"), vm.uiState.value.pageError)
+
+            val gate = CompletableDeferred<Unit>()
+            api.clientTransactionsHandler = { _, _ ->
+                gate.await()
+                clientTransactionsPage(rows(0, CLIENT_TRANSACTIONS_PAGE_SIZE), page = 1, hasMore = true)
+            }
+            vm.refresh()
+            runCurrent()
+            vm.retryPage()
+            runCurrent()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(1 to 20, 2 to 20, 1 to 20), api.clientTransactionsQueries)
+            assertNull(vm.uiState.value.pageError)
+        }
+
+    @Test
+    fun appendDropsARepeatedBookingId() =
+        runTest(main.testDispatcher) {
+            api.clientTransactionsHandler = { page, _ ->
+                if (page == 1) {
+                    clientTransactionsPage(rows(0, 20), page = 1, hasMore = true)
+                } else {
+                    clientTransactionsPage(rows(19, 3), page = 2, hasMore = false)
+                }
+            }
+            val vm = vm()
+            runCurrent()
+
+            vm.onRowVisible(19)
+            runCurrent()
+
+            assertEquals((0 until 22).map { "b$it" }, vm.ids)
         }
 
     private companion object {
