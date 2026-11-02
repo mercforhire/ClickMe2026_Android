@@ -965,7 +965,7 @@ Plans:
 **Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 2/10 plans executed
+**Plans:** 5/10 plans executed
 
 Plans:
 **Wave 1**
@@ -975,9 +975,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16.4-03-PLAN.md — Shared note editor: load, cap and counter, Save with spinner and saved state, whitespace rule, discard gate, two Hilt routes (NOTE-EDITOR, D-01..D-05)
-- [ ] 16.4-04-PLAN.md — Client Profile ViewModel and history: merge, filter, sort, buckets, amount rule, failure and refresh states, shared `netEarningsText` (CP-HISTORY, CP-SCREEN, D-09..D-12, D-14, D-15)
-- [ ] 16.4-05-PLAN.md — Client cards: `private_note_preview`, "Private Note" and footer on past cards, note zone on upcoming cards, return refresh proven (NOTE-CLIENT, D-07, D-08)
+- [x] 16.4-03-PLAN.md — Shared note editor: load, cap and counter, Save with spinner and saved state, whitespace rule, discard gate, two Hilt routes (NOTE-EDITOR, D-01..D-05)
+- [x] 16.4-04-PLAN.md — Client Profile ViewModel and history: merge, filter, sort, buckets, amount rule, failure and refresh states, shared `netEarningsText` (CP-HISTORY, CP-SCREEN, D-09..D-12, D-14, D-15)
+- [x] 16.4-05-PLAN.md — Client cards: `private_note_preview`, "Private Note" and footer on past cards, note zone on upcoming cards, return refresh proven (NOTE-CLIENT, D-07, D-08)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
