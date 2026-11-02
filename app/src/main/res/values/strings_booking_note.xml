@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Private booking notes (Phase 16.4, PARITY-AUDIT #7, #8). Copy follows iOS unless CONTEXT marks a deliberate deviation. -->
+    <string name="booking_note_private_note">Private Note</string>
+    <string name="booking_note_add_private_note">Add private note</string>
+    <string name="booking_note_card_title">My Note</string>
+    <string name="booking_note_card_prompt">Tap to jot down your thoughts — only you can see this.</string>
+    <string name="booking_note_open_a11y">Open private note</string>
+</resources>
