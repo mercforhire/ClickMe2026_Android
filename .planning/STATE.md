@@ -1,14 +1,14 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: "16.4"
-current_phase_name: "iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)"
-status: executing
-stopped_at: Phase 16.4 executed; verification human_needed, 7 items in 16.4-UAT.md
-last_updated: "2026-11-02T04:38:00.997Z"
-last_activity: 2026-11-01
-last_activity_desc: Phase 16.4 execution resumed (wave continue)
-state_head: 98bcfced77d89c32c8558de5c3e9a54473a6b6fa
+current_phase: "16.5"
+current_phase_name: "iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)"
+status: ready_to_discuss
+stopped_at: Phase 16.4 code review closed, UAT open; ready to discuss Phase 16.5
+last_updated: "2026-11-02T06:08:29.000Z"
+last_activity: 2026-11-02
+last_activity_desc: Phase 16.4 review findings all fixed, next is Phase 16.5
+state_head: 7fce28e460f0a5b56af90f953438c4cc4cae16f4
 progress:
   total_phases: 22
   completed_phases: 11
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-11-01)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 16.4 — iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)
+**Current focus:** Phase 16.5 — iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)
 
 ## Current Position
 
-Phase: 16.4 (iOS parity: private booking notes and expert-side Client Profile (PARITY-AUDIT #7, #8, #9) (INSERTED)) — EXECUTING
-Plan: 1 of 10
-Status: Executing Phase 16.4
-Last activity: 2026-11-01 — Phase 16.4 execution resumed (wave continue)
+Phase: 16.5 (iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)) — READY TO DISCUSS
+Plan: Not started
+Status: Ready to discuss (16.1 and 16.4 UAT still open: status testing, verification human_needed)
+Last activity: 2026-11-02 — Phase 16.4 code review: all 5 findings fixed; verification 10/10, 7 UAT items still pending
 
 Progress: [███████░░░] 65%
 
@@ -171,6 +171,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- [Phase 16.4] OPEN (advisory, 2026-11-02): all 7 items in 16.4-UAT.md are pending, so the phase stays unticked in ROADMAP.md (same as 16.1), to clear in the Phase 16 device matrix. Also check there, neither yet seen on a device: the WR-01 note preview with leading blank lines, and the WR-02 suspended-account path when saving a note (traced in code only). All 5 review findings are fixed, see 16.4-REVIEW-DISPOSITION.md.
 - [Phase 16.3] OPEN (advisory, 2026-11-01): review warnings WR-01 (`onSeeAllReviews` no-op default), WR-02 (favorite heart shown in Expert mode, where the backend answers 403), WR-03 (two failed removes can restore rows out of order), WR-04 (screen tests claim behavior they cannot detect), see 16.3-REVIEW-DISPOSITION.md. UAT test 5 (200% font backstops, FS.FV1-FS.FV3) is deferred to the Phase 16 device matrix.
 - [Phase 16.2] OPEN (advisory, 2026-10-31): review WR-01 (no My Bookings call-site test for the canClientStartReschedule allow-list), plus the first review's picker warnings: single-flight released on Sent before the pop animation, a silent Continue after slot expiry, and a restored disclosure that reappears. The incremental re-review reused ids WR-01/IN-01..03, so those older rows were dropped from 16.2-REVIEW-DISPOSITION.md (recoverable from git before d748888a). UAT test 5 (200% font / 1.5x visual backstops) is deferred to the Phase 16 device matrix.
 - [Phase 1]: OUTSIDE WAIT (RESOLVED). Play Console organization account submitted for Google verification on 2026-10-20 and shown as verified on 2026-10-20. D-U-N-S: confirmed, details match. Responder: the user (watch the Play Console account email for any follow-up requests). Status: verified, no wait remaining. REL-03 (Phase 2 first signed upload registers com.uptrendinvestments.clickmeapp) and REL-05 (Phase 13 internal track) are unblocked on the account side. Closed-test requirement shown in Console: not shown yet (user unsure). Re-check in Play Console before Phase 13.
@@ -344,9 +345,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-02T04:37:57.836Z
-Stopped at: Phase 16.4 executed; verification human_needed, 7 items in 16.4-UAT.md
-Resume file: .planning/phases/16.4-ios-parity-private-booking-notes-and-expert-side-client-prof/16.4-UAT.md
+Last session: 2026-11-02T06:08:29.000Z
+Stopped at: Phase 16.4 code review closed, UAT open; ready to discuss Phase 16.5
+Resume file: None (next: /gsd-discuss-phase 16.5, then /gsd-ui-phase 16.5 before planning)
 Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
 Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
 Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
