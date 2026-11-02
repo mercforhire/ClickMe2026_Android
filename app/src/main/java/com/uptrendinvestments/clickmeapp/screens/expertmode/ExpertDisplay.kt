@@ -8,6 +8,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.MeetingType
+import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
+import com.uptrendinvestments.clickmeapp.util.Money
+import java.util.Locale
 
 /*
  * Display helpers shared by the Phase 11 expert surfaces (D-12): requests, upcoming cards, dashboard and summary.
@@ -38,4 +41,15 @@ fun meetingTypeIcon(wire: String?): ImageVector =
 fun clientDisplayName(name: String?): String {
     val fallback = stringResource(R.string.expert_client_fallback_name)
     return name?.trim()?.takeIf { it.isNotEmpty() } ?: fallback
+}
+
+/**
+ * The net amount the expert earns from [item], formatted, or null when the breakdown has no net amount or no
+ * currency. Gross never stands in for net under an "Earnings" label (RESEARCH C4), and a currency is never guessed.
+ */
+internal fun ExpertBookingItem.netEarningsText(locale: Locale): String? {
+    val breakdown = session.earningsBreakdown ?: return null
+    val net = breakdown.netAmount ?: return null
+    val currency = breakdown.currency ?: session.consultationFee?.currency ?: return null
+    return Money.formatMajor(net, currency, locale)
 }
