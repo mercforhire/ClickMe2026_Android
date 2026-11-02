@@ -534,6 +534,8 @@ class ResponseDecodingTest {
         assertEquals(Instant.parse("2026-10-21T20:00:00Z"), booking.endTime)
         assertEquals("confirmed", booking.status)
         assertNull(booking.topic)
+        // An explicit null preview is the same as an absent one.
+        assertNull(booking.privateNotePreview)
     }
 
     @Test
@@ -816,6 +818,36 @@ class ResponseDecodingTest {
             """.trimIndent()
         val payload = moshi.adapter(ClientBookingsPayload::class.java).fromJson(json)!!
         assertNull(payload.bookings.single().reschedule)
+        assertEquals("x", payload.bookings.single().privateNotePreview)
+    }
+
+    @Test
+    fun clientBookingRowWithoutThePreviewKeyDecodesToNull() {
+        val json =
+            """
+            {"bookings":[{"booking_id":"b1","expert":{"id":"e1"},"start_time":"2026-10-24T18:00:00Z",
+            "end_time":"2026-10-24T19:00:00Z","status":"confirmed"}]}
+            """.trimIndent()
+        val payload = moshi.adapter(ClientBookingsPayload::class.java).fromJson(json)!!
+        assertNull(payload.bookings.single().privateNotePreview)
+    }
+
+    @Test
+    fun clientBookingRowToStringOmitsThePreview() {
+        val json =
+            """
+            {"bookings":[{"booking_id":"b1","expert":{"id":"e1"},"start_time":"2026-10-24T18:00:00Z",
+            "end_time":"2026-10-24T19:00:00Z","status":"confirmed","private_note_preview":"secret plan"}]}
+            """.trimIndent()
+        val row =
+            moshi
+                .adapter(ClientBookingsPayload::class.java)
+                .fromJson(json)!!
+                .bookings
+                .single()
+        assertEquals("secret plan", row.privateNotePreview)
+        assertTrue(!row.toString().contains("secret plan"))
+        assertEquals("ClientBookingItem(bookingId=b1, status=confirmed)", row.toString())
     }
 
     @Test
