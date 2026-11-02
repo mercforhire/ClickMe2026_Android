@@ -27,11 +27,13 @@ import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateNotificationPreferencesRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
@@ -50,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ChatsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ClientTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
@@ -70,6 +73,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FavoritesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackSubmissionData
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackTypesData
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -77,6 +82,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferencesData
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
@@ -1367,6 +1373,82 @@ class FakeClickMeApi : ClickMeApi {
         saveTaxProfileCalls++
         synchronized(_saveTaxProfileRequests) { _saveTaxProfileRequests += body }
         return ok(saveTaxProfileHandler(body))
+    }
+
+    // Phase 16.5: client payment history.
+    var clientTransactionsHandler: suspend (page: Int, limit: Int) -> ClientTransactionsData =
+        { _, _ -> notStubbed() }
+
+    @Volatile var clientTransactionsCalls = 0
+        private set
+
+    private val _clientTransactionsQueries = mutableListOf<Pair<Int, Int>>()
+
+    val clientTransactionsQueries: List<Pair<Int, Int>>
+        get() = synchronized(_clientTransactionsQueries) { _clientTransactionsQueries.toList() }
+
+    override suspend fun getClientTransactions(
+        page: Int,
+        limit: Int,
+    ): SuccessDataResponse<ClientTransactionsData> {
+        clientTransactionsCalls++
+        synchronized(_clientTransactionsQueries) { _clientTransactionsQueries += page to limit }
+        return ok(clientTransactionsHandler(page, limit))
+    }
+
+    // Phase 16.5: notification preferences.
+    var notificationPreferencesHandler: suspend () -> NotificationPreferencesData = { notStubbed() }
+    var updateNotificationPreferencesHandler: suspend (UpdateNotificationPreferencesRequest) -> Unit = { }
+
+    @Volatile var notificationPreferencesCalls = 0
+        private set
+
+    @Volatile var updateNotificationPreferencesCalls = 0
+        private set
+
+    private val _updateNotificationPreferencesRequests = mutableListOf<UpdateNotificationPreferencesRequest>()
+
+    val updateNotificationPreferencesRequests: List<UpdateNotificationPreferencesRequest>
+        get() = synchronized(_updateNotificationPreferencesRequests) { _updateNotificationPreferencesRequests.toList() }
+
+    override suspend fun getNotificationPreferences(): SuccessDataResponse<NotificationPreferencesData> {
+        notificationPreferencesCalls++
+        return ok(notificationPreferencesHandler())
+    }
+
+    override suspend fun updateNotificationPreferences(
+        body: UpdateNotificationPreferencesRequest,
+    ): SuccessMessageResponse {
+        updateNotificationPreferencesCalls++
+        synchronized(_updateNotificationPreferencesRequests) { _updateNotificationPreferencesRequests += body }
+        updateNotificationPreferencesHandler(body)
+        return SuccessMessageResponse(status = "success", message = "Preferences updated.")
+    }
+
+    // Phase 16.5: feedback.
+    var feedbackTypesHandler: suspend () -> FeedbackTypesData = { notStubbed() }
+    var submitFeedbackHandler: suspend (SubmitFeedbackRequest) -> FeedbackSubmissionData = { notStubbed() }
+
+    @Volatile var feedbackTypesCalls = 0
+        private set
+
+    @Volatile var submitFeedbackCalls = 0
+        private set
+
+    private val _submitFeedbackRequests = mutableListOf<SubmitFeedbackRequest>()
+
+    val submitFeedbackRequests: List<SubmitFeedbackRequest>
+        get() = synchronized(_submitFeedbackRequests) { _submitFeedbackRequests.toList() }
+
+    override suspend fun getFeedbackTypes(): SuccessDataResponse<FeedbackTypesData> {
+        feedbackTypesCalls++
+        return ok(feedbackTypesHandler())
+    }
+
+    override suspend fun submitFeedback(body: SubmitFeedbackRequest): SuccessDataResponse<FeedbackSubmissionData> {
+        submitFeedbackCalls++
+        synchronized(_submitFeedbackRequests) { _submitFeedbackRequests += body }
+        return ok(submitFeedbackHandler(body))
     }
 
     /** Builds the exception Retrofit throws for a non-2xx response carrying [json] as the body. */

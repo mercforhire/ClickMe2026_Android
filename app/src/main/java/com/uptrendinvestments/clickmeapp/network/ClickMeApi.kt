@@ -27,11 +27,13 @@ import com.uptrendinvestments.clickmeapp.model.requests.SaveTaxProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SendMessageRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SetupExpertProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SignupRequest
+import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitReviewRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertMeetingUrlRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTagsRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateExpertTopicRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateMyAvailabilityRequest
+import com.uptrendinvestments.clickmeapp.model.requests.UpdateNotificationPreferencesRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdatePasswordRequest
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.requests.VerifyEmailCodeRequest
@@ -49,6 +51,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ChatsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.ClientBookingsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ClientHomeData
+import com.uptrendinvestments.clickmeapp.model.responses.ClientTransactionsData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmBookingData
 import com.uptrendinvestments.clickmeapp.model.responses.ConfirmConnectionData
 import com.uptrendinvestments.clickmeapp.model.responses.ConnectLinkData
@@ -69,6 +72,8 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertsSearchPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FaqsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.FavoritesPayload
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackSubmissionData
+import com.uptrendinvestments.clickmeapp.model.responses.FeedbackTypesData
 import com.uptrendinvestments.clickmeapp.model.responses.InitiateChatData
 import com.uptrendinvestments.clickmeapp.model.responses.JoinCallResponse
 import com.uptrendinvestments.clickmeapp.model.responses.LanguagesPayload
@@ -76,6 +81,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicPayload
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.model.responses.NotificationPreferencesData
 import com.uptrendinvestments.clickmeapp.model.responses.NotificationsPayload
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentIntentResponse
 import com.uptrendinvestments.clickmeapp.model.responses.PaymentMethodSetupData
@@ -122,7 +128,8 @@ import retrofit2.http.Query
  * PATCH, change password, account deletion (request and confirm), the expert meeting link, the help FAQ list, the
  * earnings transactions ledger and the expert tax profile (get and save). Phase 16.2 adds the two
  * reschedule-propose PATCH calls. Phase 16.3 adds the three favorites calls. Phase 16.4 adds the four note calls and
- * the expert's client profile. Other API groups arrive with their features (ROADMAP Phase 2 planning note).
+ * the expert's client profile. Phase 16.5 adds the client payment history, the notification preferences and the
+ * feedback calls. Other API groups arrive with their features (ROADMAP Phase 2 planning note).
  *
  * Paths are relative (no leading slash) so Retrofit resolves them under the `/api/v1/` base URL. Calls are
  * wrapped by `apiCall` at the repository layer, which maps failures to `ApiException`.
@@ -755,6 +762,40 @@ interface ClickMeApi {
         @Query("page") page: Int,
         @Query("limit") limit: Int,
     ): SuccessDataResponse<EarningsTransactionsData>
+
+    /**
+     * Ports iOS `getClientTransactions`: the client's own payment history, newest first, one row per booking. Amounts
+     * are MINOR units. A page past the end is an HTTP 500, not an empty list, so callers page forward on `has_more`
+     * only (CLIENT-TRANSACTIONS.md section 7).
+     */
+    @GET(ApiRequestUrls.CLIENT_TRANSACTIONS)
+    suspend fun getClientTransactions(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+    ): SuccessDataResponse<ClientTransactionsData>
+
+    /** Ports iOS `getNotificationPreferences`: one row per category and sub-category with the three channel flags. */
+    @GET(ApiRequestUrls.NOTIFICATION_PREFERENCES)
+    suspend fun getNotificationPreferences(): SuccessDataResponse<NotificationPreferencesData>
+
+    /**
+     * Ports iOS `updateNotificationPreferences`. The backend schema is `.strict()` at both levels, so a row carries
+     * exactly the five documented keys. Answers `{status, message}`.
+     */
+    @PATCH(ApiRequestUrls.NOTIFICATION_PREFERENCES)
+    suspend fun updateNotificationPreferences(
+        @Body body: UpdateNotificationPreferencesRequest,
+    ): SuccessMessageResponse
+
+    /** Ports iOS `getFeedbackTypes`. The type list comes from the server and is never hard-coded. */
+    @GET(ApiRequestUrls.FEEDBACK_TYPES)
+    suspend fun getFeedbackTypes(): SuccessDataResponse<FeedbackTypesData>
+
+    /** Ports iOS `submitFeedback`. The backend schema is `.strict()` (see [SubmitFeedbackRequest]); 201 on success. */
+    @POST(ApiRequestUrls.FEEDBACK_SUBMIT)
+    suspend fun submitFeedback(
+        @Body body: SubmitFeedbackRequest,
+    ): SuccessDataResponse<FeedbackSubmissionData>
 
     /** Ports iOS ClickMeAPI+TaxProfile getTaxProfile. The TIN is never returned, only `tin_on_file`. */
     @GET(ApiRequestUrls.EXPERT_TAX_PROFILE)

@@ -252,6 +252,19 @@ class ApiRequestUrlsTest {
     }
 
     @Test
+    fun phaseSixteenFiveConstants_areAuthed() {
+        assertEquals("client/transactions", ApiRequestUrls.CLIENT_TRANSACTIONS)
+        assertEquals("notifications/preferences", ApiRequestUrls.NOTIFICATION_PREFERENCES)
+        assertEquals("feedback/types", ApiRequestUrls.FEEDBACK_TYPES)
+        assertEquals("feedback/submit", ApiRequestUrls.FEEDBACK_SUBMIT)
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/client/transactions"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/notifications/preferences"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/feedback/types"))
+        assertTrue(ApiRequestUrls.needAuthToken("/api/v1/feedback/submit"))
+        assertEquals(5, ApiRequestUrls.publicPaths.size)
+    }
+
+    @Test
     fun phaseElevenPaths_needAuthToken() {
         listOf(
             "/api/v1/expert/booking-requests",

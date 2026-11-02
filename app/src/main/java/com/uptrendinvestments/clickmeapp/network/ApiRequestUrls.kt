@@ -12,7 +12,8 @@ package com.uptrendinvestments.clickmeapp.network
  * expert request, booking, earnings and payout groups (booking requests, expert bookings, weekly earnings, payout
  * summary and Stripe Connect). Phase 14 adds change password, account deletion, the help FAQ list, the earnings
  * transactions ledger and the expert tax profile. Phase 16.1 adds the expert search (Search tab). Phase 16.3 adds the
- * client favorites group. Phase 16.4 adds the booking note paths and the expert's client profile.
+ * client favorites group. Phase 16.4 adds the booking note paths and the expert's client profile. Phase 16.5 adds the
+ * client payment history, the notification preferences and the feedback paths.
  */
 object ApiRequestUrls {
     const val LOGIN = "auth/login"
@@ -57,6 +58,12 @@ object ApiRequestUrls {
     const val CLIENT_BOOKING_NOTE = "client/bookings/{id}/note"
     const val BOOKING_NOTE = "bookings/{id}/note"
     const val EXPERT_CLIENT = "expert/clients/{id}"
+
+    // Phase 16.5: client payment history, notification preferences and feedback (PARITY-AUDIT #4, #5, #6). Authed.
+    const val CLIENT_TRANSACTIONS = "client/transactions"
+    const val NOTIFICATION_PREFERENCES = "notifications/preferences"
+    const val FEEDBACK_TYPES = "feedback/types"
+    const val FEEDBACK_SUBMIT = "feedback/submit"
 
     // Phase 6: booking (availability, free booking request, client booking detail).
     const val EXPERT_AVAILABILITY = "experts/{id}/availability"
