@@ -998,7 +998,7 @@ Plans:
 **Goal:** Client Payment History (`/client/transactions`), notification preferences with debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button and an animated splash screen all match iOS. Quiet hours and the Delete Account "Before you go" card are deliberately not built (16.5-CONTEXT.md D-01, D-10). After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 10/12 plans executed
+**Plans:** 11/12 plans executed
 
 Plans:
 **Wave 1**
@@ -1022,7 +1022,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 16.5-11-PLAN.md — Hub rows and routes: Payment History (client), Preferences and Send Feedback (both hubs), shell tests, no Pause Account (PARITY-AUDIT #4, #5, #6, #14, D-10)
+- [x] 16.5-11-PLAN.md — Hub rows and routes: Payment History (client), Preferences and Send Feedback (both hubs), shell tests, no Pause Account (PARITY-AUDIT #4, #5, #6, #14, D-10)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
