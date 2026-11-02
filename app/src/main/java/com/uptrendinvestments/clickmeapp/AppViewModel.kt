@@ -7,6 +7,7 @@ import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.managers.UserManager
 import com.uptrendinvestments.clickmeapp.model.enums.AppMode
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashPlayedFlag
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -52,6 +53,7 @@ class AppViewModel
     constructor(
         private val userManager: UserManager,
         private val callGuard: CallGuard,
+        private val splashPlayed: SplashPlayedFlag = SplashPlayedFlag(),
     ) : ViewModel() {
         private val _route = MutableStateFlow(AppRoute.Splash)
         val route: StateFlow<AppRoute> = _route.asStateFlow()
@@ -66,7 +68,8 @@ class AppViewModel
 
         @Volatile
         private var splashComposed = false
-        private val _splashHeld = MutableStateFlow(true)
+        private val _splashHeld = MutableStateFlow(!splashPlayed.played)
+        private val _showsAnimatedSplash = MutableStateFlow(!splashPlayed.played)
         private var holdJob: Job? = null
 
         /**
@@ -76,19 +79,40 @@ class AppViewModel
         val splashHeld: StateFlow<Boolean> = _splashHeld.asStateFlow()
 
         /**
+         * True when this launch plays the Compose splash. False when the process already served it (a new activity
+         * in a live process) or the activity was restored (A10): those launches keep the OS splash until the route
+         * resolves and show an empty surface under it.
+         */
+        val showsAnimatedSplash: StateFlow<Boolean> = _showsAnimatedSplash.asStateFlow()
+
+        /**
          * The keep condition for the OS splash. It flips at composition, never at first draw, because
          * core-splashscreen 1.2.0 cancels draws in an `OnPreDrawListener` while the condition is true, so a
          * condition that waits for a draw would never flip (RESEARCH Pitfall 1).
          */
-        fun keepSystemSplash(): Boolean = !splashComposed
+        fun keepSystemSplash(): Boolean =
+            if (_showsAnimatedSplash.value) !splashComposed else !_destinationResolved.value
+
+        /**
+         * Called from `onCreate` with a non-null saved state. A rotation keeps this ViewModel and its running
+         * hold, so it is a no-op there; a process restore has a new ViewModel and is treated as already served,
+         * so a later activity in this process does not play the splash either.
+         */
+        fun onActivityRestored() {
+            if (holdJob != null) return
+            _showsAnimatedSplash.value = false
+            _splashHeld.value = false
+            splashPlayed.played = true
+        }
 
         /**
          * Starts the minimum display time once, when the Compose splash first composes. Auth keeps running from
          * `init`, so a slow `/me` is not stacked on top of the hold.
          */
         fun onSplashComposed() {
-            if (holdJob != null) return
+            if (holdJob != null || !_showsAnimatedSplash.value) return
             splashComposed = true
+            splashPlayed.played = true
             holdJob =
                 viewModelScope.launch {
                     delay(SPLASH_MIN_DISPLAY_MS)

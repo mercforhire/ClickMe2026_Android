@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
         splash.setKeepOnScreenCondition { appViewModel.keepSystemSplash() }
         // No exit animation, so the API 31+ icon fade cannot stack on the Compose splash entrance (UI-SPEC).
         splash.setOnExitAnimationListener { it.remove() }
+        // Rotation keeps the ViewModel and its running hold, so this is a no-op there; a process restore has a new
+        // ViewModel and is treated as already served.
+        if (savedInstanceState != null) appViewModel.onActivityRestored()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

@@ -17,6 +17,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.ExpertProfileData
 import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.MeData
 import com.uptrendinvestments.clickmeapp.model.responses.MyExpertTopicsPayload
+import com.uptrendinvestments.clickmeapp.screens.splash.SplashPlayedFlag
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
@@ -78,7 +79,7 @@ class AppViewModelTest {
             api.userProfileHandler = { throw IOException("not needed") }
         }
 
-        fun viewModel() = AppViewModel(manager, guard)
+        fun viewModel(splashPlayed: SplashPlayedFlag = SplashPlayedFlag()) = AppViewModel(manager, guard, splashPlayed)
     }
 
     private fun Harness.clientLaunch() {
@@ -1052,6 +1053,103 @@ class AppViewModelTest {
             runCurrent()
             gate.complete(Unit)
             runCurrent()
+        }
+
+    @Test
+    fun aFreshProcessPlays() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+
+            assertTrue(vm.splashHeld.value)
+            assertTrue(vm.showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun aSecondActivityInTheSameProcessDoesNotReplay() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val flag = SplashPlayedFlag()
+            val first = h.viewModel(flag)
+            runCurrent()
+            first.onSplashComposed()
+
+            val second = h.viewModel(flag)
+            runCurrent()
+
+            assertFalse(second.splashHeld.value)
+            assertFalse(second.showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun aServedLaunchKeepsTheSystemSplashUntilTheRouteResolves() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val flag = SplashPlayedFlag().apply { played = true }
+            val vm = h.viewModel(flag)
+            runCurrent()
+
+            assertFalse(vm.destinationResolved.value)
+            assertTrue(vm.keepSystemSplash())
+
+            gate.complete(Unit)
+            runCurrent()
+            assertTrue(vm.destinationResolved.value)
+            assertFalse(vm.keepSystemSplash())
+        }
+
+    @Test
+    fun restoringBeforeTheHoldStartedServesIt() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            val gate = CompletableDeferred<Unit>()
+            h.api.meHandler = {
+                gate.await()
+                me("client")
+            }
+            val flag = SplashPlayedFlag()
+            val vm = h.viewModel(flag)
+            runCurrent()
+
+            vm.onActivityRestored()
+
+            assertFalse(vm.splashHeld.value)
+            assertFalse(vm.showsAnimatedSplash.value)
+            assertTrue(vm.keepSystemSplash())
+            assertTrue(flag.played)
+            gate.complete(Unit)
+            runCurrent()
+            assertFalse(vm.keepSystemSplash())
+            assertFalse(h.viewModel(flag).showsAnimatedSplash.value)
+        }
+
+    @Test
+    fun aConfigurationChangeDuringTheHoldChangesNothing() =
+        runTest(main.testDispatcher) {
+            val h = Harness(this)
+            h.clientLaunch()
+            val vm = h.viewModel()
+            runCurrent()
+            vm.onSplashComposed()
+            advanceTimeBy(1_000)
+            runCurrent()
+
+            vm.onActivityRestored()
+
+            assertTrue(vm.splashHeld.value)
+            assertTrue(vm.showsAnimatedSplash.value)
+            advanceTimeBy(AppViewModel.SPLASH_MIN_DISPLAY_MS - 1_000)
+            runCurrent()
+            assertFalse(vm.splashHeld.value)
+            assertTrue(vm.showsAnimatedSplash.value)
         }
 
     @Test

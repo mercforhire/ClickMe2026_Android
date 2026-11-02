@@ -52,6 +52,7 @@ fun ClickMeApp(
     val route by appViewModel.route.collectAsStateWithLifecycle()
     val showSuspendedDialog by appViewModel.showSuspendedDialog.collectAsStateWithLifecycle()
     val held by appViewModel.splashHeld.collectAsStateWithLifecycle()
+    val showsAnimatedSplash by appViewModel.showsAnimatedSplash.collectAsStateWithLifecycle()
     val shownRoute = shownRootRoute(route, held)
     val context = LocalContext.current
     PushRoutingHost(route = shownRoute, onSwitchMode = appViewModel::switchMode)
@@ -72,7 +73,13 @@ fun ClickMeApp(
                 label = "root-route",
             ) { targetRoute ->
                 when (targetRoute) {
-                    AppRoute.Splash -> SplashScreen(onComposed = appViewModel::onSplashComposed)
+                    // A served or restored launch keeps the OS splash up until the route resolves, as before.
+                    AppRoute.Splash ->
+                        if (showsAnimatedSplash) {
+                            SplashScreen(onComposed = appViewModel::onSplashComposed)
+                        } else {
+                            EmptySurface()
+                        }
 
                     AppRoute.Login -> AuthNavHost(onLoggedIn = appViewModel::onLoggedIn)
 
