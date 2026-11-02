@@ -965,7 +965,7 @@ Plans:
 **Goal:** Clients and experts can read and write their private booking notes where iOS shows them (booking cards, Booking Summary, expert "My Note"), and experts can open a client's profile from Expert Booking Summary and the expert-mode chat header (`/expert/clients/:id`).
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 8/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -987,7 +987,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 16.4-09-PLAN.md — Expert Booking Summary "My Note" and "View Profile", real expert shell registrations (NOTE-EXPERT, CP-LINKS, D-07, D-08, D-13)
+- [x] 16.4-09-PLAN.md — Expert Booking Summary "My Note" and "View Profile", real expert shell registrations (NOTE-EXPERT, CP-LINKS, D-07, D-08, D-13)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
