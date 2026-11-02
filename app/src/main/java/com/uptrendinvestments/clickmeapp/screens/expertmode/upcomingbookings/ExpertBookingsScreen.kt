@@ -57,6 +57,8 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.noteKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertBookingsSkeleton
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertPastCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
@@ -87,12 +89,15 @@ private val TabMinHeight = 48.dp
  * @param onUpdateAvailability opens Availability from the empty Upcoming state.
  * @param onReschedule opens the expert Reschedule picker for a booking id (Phase 16.2); only called for rows whose
  *   `actions.can_reschedule` is true.
+ * @param onPrivateNote opens the expert private note editor for a card's booking (Phase 16.4); the key's origin is
+ *   Bookings. Tapping a note control never opens the summary.
  */
 @Composable
 fun ExpertBookingsScreen(
     onOpenBooking: (String) -> Unit,
     onUpdateAvailability: () -> Unit,
     onReschedule: (bookingId: String) -> Unit,
+    onPrivateNote: (ExpertBookingNoteKey) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ExpertBookingsViewModel = hiltViewModel(),
     chatEntry: ChatEntryViewModel = hiltViewModel(),
@@ -121,6 +126,7 @@ fun ExpertBookingsScreen(
         modifier = modifier,
         messageBusyPeerId = entryState.busyPeerId,
         onReschedule = onReschedule,
+        onPrivateNote = onPrivateNote,
         onMessage = { item ->
             chatEntry.open(ChatPeer(item.client.id, item.client.name, item.client.avatarUrl, isExpert = false))
         },
@@ -133,7 +139,8 @@ fun ExpertBookingsScreen(
  * selected tab (UI-SPEC surface 5). Cards offer the D-14 and D-15 actions: tapping opens the summary, Join is live
  * within the join window and Upcoming cards carry Message. [messageBusyPeerId] is the client whose chat is being
  * opened; [onMessage] opens it. An Upcoming card also offers Reschedule ([onReschedule]) when the list row's
- * `actions.can_reschedule` is true (Phase 16.2); the server flag is the only gate.
+ * `actions.can_reschedule` is true (Phase 16.2); the server flag is the only gate. Every card also carries the expert's
+ * private note: the note zone on Upcoming, "Private Note" and the preview footer on Past ([onPrivateNote], Phase 16.4).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Suppress("LongParameterList")
@@ -157,6 +164,7 @@ fun ExpertBookingsContent(
     messageBusyPeerId: String? = null,
     onMessage: (ExpertBookingItem) -> Unit = {},
     onReschedule: (String) -> Unit = {},
+    onPrivateNote: (ExpertBookingNoteKey) -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -259,6 +267,7 @@ fun ExpertBookingsContent(
                         messageBusyPeerId = messageBusyPeerId,
                         onMessage = onMessage,
                         onReschedule = onReschedule,
+                        onPrivateNote = onPrivateNote,
                     )
                 }
             }
@@ -283,6 +292,7 @@ private fun ExpertBookingsTabBody(
     messageBusyPeerId: String?,
     onMessage: (ExpertBookingItem) -> Unit,
     onReschedule: (String) -> Unit,
+    onPrivateNote: (ExpertBookingNoteKey) -> Unit,
 ) {
     when (val load = state.load) {
         ExpertBookingsLoad.Loading -> ExpertBookingsSkeleton(past = tab == BookingsTab.Past)
@@ -310,6 +320,7 @@ private fun ExpertBookingsTabBody(
                     messageBusyPeerId = messageBusyPeerId,
                     onMessage = onMessage,
                     onReschedule = onReschedule,
+                    onPrivateNote = onPrivateNote,
                 )
             }
         }
@@ -330,6 +341,7 @@ private fun ExpertBookingsList(
     messageBusyPeerId: String?,
     onMessage: (ExpertBookingItem) -> Unit,
     onReschedule: (String) -> Unit,
+    onPrivateNote: (ExpertBookingNoteKey) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag(EXPERT_BOOKINGS_LIST_TAG),
@@ -347,6 +359,7 @@ private fun ExpertBookingsList(
                         onJoin = { onJoin(item) },
                         messageBusy = messageBusyPeerId != null && messageBusyPeerId == item.client.id,
                         onMessage = { onMessage(item) },
+                        onPrivateNote = { onPrivateNote(item.noteKey()) },
                         modifier = Modifier.animateItem().contentMaxWidth(),
                         zone = zone,
                         timeFormat = timeFormat,
@@ -360,6 +373,7 @@ private fun ExpertBookingsList(
                     ExpertPastCard(
                         row = row,
                         onOpen = { onOpenBooking(row.item.bookingId) },
+                        onPrivateNote = { onPrivateNote(row.item.noteKey()) },
                         modifier = Modifier.animateItem().contentMaxWidth(),
                         zone = zone,
                         timeFormat = timeFormat,

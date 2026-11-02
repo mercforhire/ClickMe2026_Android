@@ -57,6 +57,7 @@ fun expertBookingItem(
     reschedule: RescheduleDto? = null,
     breakdown: EarningsBreakdownDto? = breakdown(),
     canReschedule: Boolean = false,
+    privateNotePreview: String? = null,
 ): ExpertBookingItem =
     ExpertBookingItem(
         bookingId = id,
@@ -73,6 +74,7 @@ fun expertBookingItem(
         status = ExpertStatusMeta(label = null, code = statusCode),
         reschedule = reschedule,
         actions = ExpertBookingActionsDto(canReschedule = canReschedule),
+        privateNotePreview = privateNotePreview,
     )
 
 @Suppress("LongParameterList")

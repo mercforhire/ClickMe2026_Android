@@ -1,14 +1,22 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollAction
@@ -22,7 +30,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.SavedStateHandle
+import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_FOOTER_TAG
+import com.uptrendinvestments.clickmeapp.components.booknote.PRIVATE_NOTE_ZONE_TAG
 import com.uptrendinvestments.clickmeapp.managers.CallStartRequest
 import com.uptrendinvestments.clickmeapp.managers.JoinClock
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingItem
@@ -31,13 +42,19 @@ import com.uptrendinvestments.clickmeapp.screens.chat.ChatLaunchRequest
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatShortDate
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsNotice
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingsTab
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.pastStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.clientmode.reschedule.RescheduleSentRequest
 import com.uptrendinvestments.clickmeapp.screens.expertmode.ExpertLaunchRequest
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.noteKey
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.ExpertBookingOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_JOIN_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_MESSAGE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_BOOKINGS_RESCHEDULE_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_PAST_CARD_TAG
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.EXPERT_UPCOMING_CARD_TAG
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertPastCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.subviews.ExpertUpcomingCard
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
@@ -76,6 +93,9 @@ class ExpertBookingsScreenTest {
     private val callStarter = FakeCallStarter()
     private val chatLaunch = ChatLaunchRequest()
 
+    /** Taps the card's top padding: inside the card's own clickable, outside every nested control. */
+    private fun SemanticsNodeInteraction.clickCardBody() = performTouchInput { click(Offset(centerX, 4f)) }
+
     private fun serve(
         upcoming: List<ExpertBookingItem> = listOf(expertBookingItem(start = now.plusSeconds(1800))),
         past: List<ExpertBookingItem> = emptyList(),
@@ -100,6 +120,7 @@ class ExpertBookingsScreenTest {
     private fun show(
         onOpenBooking: (String) -> Unit = {},
         onReschedule: (String) -> Unit = {},
+        onPrivateNote: (ExpertBookingNoteKey) -> Unit = {},
     ) {
         val vm = viewModel()
         val chatEntry = testChatEntryViewModel(api, chatLaunch)
@@ -109,6 +130,7 @@ class ExpertBookingsScreenTest {
                     onOpenBooking = onOpenBooking,
                     onUpdateAvailability = {},
                     onReschedule = onReschedule,
+                    onPrivateNote = onPrivateNote,
                     viewModel = vm,
                     chatEntry = chatEntry,
                 )
@@ -310,9 +332,10 @@ class ExpertBookingsScreenTest {
     private fun showPast(
         past: List<ExpertBookingItem>,
         onOpenBooking: (String) -> Unit = {},
+        onPrivateNote: (ExpertBookingNoteKey) -> Unit = {},
     ) {
         serve(upcoming = emptyList(), past = past)
-        show(onOpenBooking = onOpenBooking)
+        show(onOpenBooking = onOpenBooking, onPrivateNote = onPrivateNote)
         rule.onNodeWithText("Past").performClick()
         rule.waitForIdle()
     }
@@ -321,10 +344,12 @@ class ExpertBookingsScreenTest {
         id: String,
         status: String,
         hoursAgo: Long,
+        preview: String? = null,
     ) = expertBookingItem(
         id = id,
         statusCode = status,
         start = now.minusSeconds(hoursAgo * 3600),
+        privateNotePreview = preview,
     )
 
     @Test
@@ -390,6 +415,7 @@ class ExpertBookingsScreenTest {
                     onOpenBooking = {},
                     onUpdateAvailability = { availability++ },
                     onReschedule = {},
+                    onPrivateNote = {},
                     viewModel = vm,
                     chatEntry = chatEntry,
                 )
@@ -587,5 +613,209 @@ class ExpertBookingsScreenTest {
         assertTrue(rule.onAllNodesWithText("Booking cancelled").fetchSemanticsNodes().isEmpty())
         assertEquals(0, calls.noticeConsumed)
         assertEquals(0, calls.refreshFailureConsumed)
+    }
+
+    // Private note on the past card (Phase 16.4, D-07, D-08)
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp")
+    fun pastCardShowsPrivateNoteOnEveryStatus() {
+        val statuses = listOf("completed", "cancelled", "declined", "missed", "expired")
+        showPast(statuses.mapIndexed { i, status -> pastItem("p-$status", status, hoursAgo = 24L * (i + 1)) })
+        assertEquals(statuses.size, rule.onAllNodesWithText("Private Note").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun pastNoteActionOpensTheNoteNotTheSummary() {
+        val item = pastItem("p1", "cancelled", hoursAgo = 24)
+        val opened = mutableListOf<String>()
+        val keys = mutableListOf<ExpertBookingNoteKey>()
+        showPast(listOf(item), onOpenBooking = { opened += it }, onPrivateNote = { keys += it })
+
+        rule.onNodeWithText("Private Note").performClick()
+
+        assertEquals(listOf(item.noteKey()), keys)
+        assertEquals(ExpertBookingOrigin.Bookings, keys.single().origin)
+        assertEquals(emptyList<String>(), opened)
+
+        rule.onNodeWithTag(EXPERT_PAST_CARD_TAG).clickCardBody()
+        assertEquals(listOf("p1"), opened)
+        assertEquals(1, keys.size)
+    }
+
+    @Test
+    fun pastFooterShowsThePreview() {
+        val item = pastItem("p1", "completed", hoursAgo = 24, preview = "Bring receipts")
+        val opened = mutableListOf<String>()
+        val keys = mutableListOf<ExpertBookingNoteKey>()
+        showPast(listOf(item), onOpenBooking = { opened += it }, onPrivateNote = { keys += it })
+
+        rule.onNodeWithText("Bring receipts").assertExists()
+        rule.onNodeWithTag(PRIVATE_NOTE_FOOTER_TAG).performClick()
+
+        assertEquals(listOf(item.noteKey()), keys)
+        assertEquals(emptyList<String>(), opened)
+    }
+
+    @Test
+    fun pastFooterIsHiddenForABlankPreview() {
+        showPast(
+            listOf(
+                pastItem("n1", "completed", hoursAgo = 24, preview = null),
+                pastItem("n2", "cancelled", hoursAgo = 48, preview = "   "),
+            ),
+        )
+        assertEquals(2, rule.onAllNodesWithTag(EXPERT_PAST_CARD_TAG).fetchSemanticsNodes().size)
+        rule.onAllNodesWithTag(PRIVATE_NOTE_FOOTER_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun pastCardExposesPrivateNoteToTalkBack() {
+        val keys = mutableListOf<ExpertBookingNoteKey>()
+        val opened = mutableListOf<String>()
+        showPast(
+            listOf(pastItem("p1", "missed", hoursAgo = 24)),
+            onOpenBooking = { opened += it },
+            onPrivateNote = { keys += it },
+        )
+        val actions =
+            rule
+                .onNodeWithTag(EXPERT_PAST_CARD_TAG)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsActions.CustomActions)
+                .orEmpty()
+        val action = actions.single { it.label == "Private Note" }
+        rule.runOnUiThread { action.action() }
+
+        assertEquals(1, keys.size)
+        assertEquals(emptyList<String>(), opened)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h2400dp")
+    fun largeFontKeepsThePastControls() {
+        val row =
+            ExpertPastRow(
+                item = pastItem("p1", "completed", hoursAgo = 24, preview = "Bring receipts"),
+                status = requireNotNull(pastStatusDisplay("completed")),
+            )
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    ExpertPastCard(
+                        row = row,
+                        onOpen = {},
+                        onPrivateNote = {},
+                        zone = ZoneId.of("UTC"),
+                        locale = Locale.US,
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Ada Lovelace").assertIsDisplayed()
+        rule.onNodeWithText("Private Note").assertIsDisplayed()
+        rule.onNodeWithText("Oct 23, 2026", substring = true).assertIsDisplayed()
+    }
+
+    // Private note on the upcoming card (Phase 16.4, D-07, D-08)
+
+    @Test
+    fun upcomingCardShowsAddWithNoPreview() {
+        serve()
+        show()
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).assertExists()
+        rule.onNodeWithText("Add private note").assertExists()
+    }
+
+    @Test
+    fun upcomingCardShowsThePreview() {
+        serve(
+            upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), privateNotePreview = "Bring receipts")),
+        )
+        show()
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).assertExists()
+        rule.onNodeWithText("Bring receipts").assertExists()
+        rule.onAllNodesWithText("Add private note").assertCountEquals(0)
+    }
+
+    @Test
+    fun upcomingCardTreatsABlankPreviewAsNoNote() {
+        serve(upcoming = listOf(expertBookingItem(start = now.plusSeconds(1800), privateNotePreview = "   ")))
+        show()
+        rule.onNodeWithText("Add private note").assertExists()
+    }
+
+    @Test
+    fun upcomingNoteZoneOpensTheNoteNotTheSummary() {
+        val item = expertBookingItem(start = now.plusSeconds(1800))
+        serve(upcoming = listOf(item))
+        val opened = mutableListOf<String>()
+        val keys = mutableListOf<ExpertBookingNoteKey>()
+        show(onOpenBooking = { opened += it }, onPrivateNote = { keys += it })
+
+        rule.onNodeWithTag(PRIVATE_NOTE_ZONE_TAG).performClick()
+
+        assertEquals(listOf(item.noteKey()), keys)
+        assertEquals(ExpertBookingOrigin.Bookings, keys.single().origin)
+        assertEquals(emptyList<String>(), opened)
+
+        rule.onNodeWithTag(EXPERT_UPCOMING_CARD_TAG).clickCardBody()
+        assertEquals(listOf("b1"), opened)
+        assertEquals(1, keys.size)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp")
+    fun theZoneIsOnBothUpcomingLayouts() {
+        serve(
+            upcoming =
+                listOf(
+                    expertBookingItem(id = "b1", start = now.plusSeconds(1800), canReschedule = true),
+                    expertBookingItem(id = "b2", start = now.plusSeconds(7200), canReschedule = false),
+                ),
+        )
+        show()
+
+        val zones = rule.onAllNodesWithTag(PRIVATE_NOTE_ZONE_TAG).fetchSemanticsNodes()
+        val messages = rule.onAllNodesWithTag(EXPERT_BOOKINGS_MESSAGE_TAG).fetchSemanticsNodes()
+        assertEquals(2, zones.size)
+        assertEquals(2, messages.size)
+        assertEquals(2, rule.onAllNodesWithTag(EXPERT_BOOKINGS_JOIN_TAG).fetchSemanticsNodes().size)
+        assertEquals(1, rule.onAllNodesWithTag(EXPERT_BOOKINGS_RESCHEDULE_TAG).fetchSemanticsNodes().size)
+        zones.indices.forEach { i ->
+            assertTrue("zone $i below Message", zones[i].boundsInRoot.top >= messages[i].boundsInRoot.bottom)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h2400dp")
+    fun largeFontKeepsTheZoneAndActionsOnThePhoneWidth() {
+        val item = expertBookingItem(start = now.plusSeconds(1800), canReschedule = true)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                ClickMeTheme {
+                    ExpertUpcomingCard(
+                        item = item,
+                        now = now,
+                        onOpen = {},
+                        onJoin = {},
+                        messageBusy = false,
+                        onMessage = {},
+                        onPrivateNote = {},
+                        onReschedule = {},
+                    )
+                }
+            }
+        }
+        listOf(
+            EXPERT_BOOKINGS_JOIN_TAG,
+            EXPERT_BOOKINGS_RESCHEDULE_TAG,
+            EXPERT_BOOKINGS_MESSAGE_TAG,
+            PRIVATE_NOTE_ZONE_TAG,
+        ).forEach { rule.onNodeWithTag(it).assertIsDisplayed() }
+        rule.onNodeWithText("Add private note").assertIsDisplayed()
     }
 }

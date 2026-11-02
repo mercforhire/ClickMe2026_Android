@@ -252,6 +252,51 @@ class ExpertBookingsViewModelTest {
         }
 
     @Test
+    fun aSavedNoteShowsOnReturn() =
+        runTest(main.testDispatcher) {
+            val upcoming = expertBookingItem(id = "u1", start = Instant.parse("2026-10-24T18:00:00Z"))
+            val past =
+                expertBookingItem(id = "p1", statusCode = "completed", start = Instant.parse("2026-10-20T18:00:00Z"))
+            serve(upcoming = listOf(upcoming), past = listOf(past))
+            val vm = vm()
+            runCurrent()
+            assertNull(
+                vm.uiState.value.lists.upcoming
+                    .single()
+                    .privateNotePreview,
+            )
+            assertNull(
+                vm.uiState.value.lists.past
+                    .single()
+                    .item.privateNotePreview,
+            )
+
+            // The expert saves a note, comes back, and the Bookings tab reloads quietly through onScreenShown.
+            serve(
+                upcoming = listOf(upcoming.copy(privateNotePreview = "Bring receipts")),
+                past = listOf(past.copy(privateNotePreview = "Follow up")),
+            )
+            vm.onScreenHidden()
+            vm.onScreenShown()
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+            runCurrent()
+
+            assertEquals(
+                "Bring receipts",
+                vm.uiState.value.lists.upcoming
+                    .single()
+                    .privateNotePreview,
+            )
+            assertEquals(
+                "Follow up",
+                vm.uiState.value.lists.past
+                    .single()
+                    .item.privateNotePreview,
+            )
+            assertEquals(ExpertBookingsLoad.Loaded, vm.uiState.value.load)
+        }
+
+    @Test
     fun screenShownDuringCurrentLoadDoesNothing() =
         runTest(main.testDispatcher) {
             serve()
