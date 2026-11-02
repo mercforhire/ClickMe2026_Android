@@ -45,8 +45,12 @@ import com.uptrendinvestments.clickmeapp.screens.debug.DesignSystemGalleryScreen
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityOrigin
 import com.uptrendinvestments.clickmeapp.screens.expertmode.availability.AvailabilityScreen
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteRoute
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.expertBookingNoteEntry
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.expertBookingSummaryEntries
 import com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation.expertCancelEntries
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.ExpertClientProfileRoute
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientprofile.expertClientProfileEntry
 import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.bookingConfirmedEntries
 import com.uptrendinvestments.clickmeapp.screens.expertmode.dashboard.ExpertDashboardRoute
 import com.uptrendinvestments.clickmeapp.screens.expertmode.home.subviews.DashboardRoot
@@ -85,7 +89,8 @@ import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
  *
  * Phase 11 features register their routes from their own packages (`incomingRequestsEntries`,
  * `requestDecisionEntries`, `bookingConfirmedEntries`, `expertBookingSummaryEntries`, `expertCancelEntries`,
- * `expertRescheduleEntries`), and the Dashboard and Bookings tab roots come from `ExpertDashboardRoute` /
+ * `expertRescheduleEntries`, plus `expertBookingNoteEntry` and `expertClientProfileEntry` from Phase 16.4), and the
+ * Dashboard and Bookings tab roots come from `ExpertDashboardRoute` /
  * `ExpertBookingsRoute`, so a feature plan never edits this file.
  */
 @Composable
@@ -154,6 +159,9 @@ fun HomeExpertScreen(
             requestDecisionEntries(navigator)
             bookingConfirmedEntries(navigator)
             expertBookingSummaryEntries(navigator)
+            // Phase 16.4: the note editor and the read-only Client Profile are expert-shell only (D-05, D-13).
+            expertBookingNoteEntry(navigator) { key, onBack -> ExpertBookingNoteRoute(key, onBack) }
+            expertClientProfileEntry(navigator) { key, onBack -> ExpertClientProfileRoute(key, onBack) }
             expertCancelEntries(navigator)
             expertRescheduleEntries(navigator)
             chatEntries(navigator, AppMode.Expert)

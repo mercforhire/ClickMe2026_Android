@@ -56,6 +56,8 @@ import com.uptrendinvestments.clickmeapp.testing.FakeCallStarter
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.FakeRealtimeConnection
 import com.uptrendinvestments.clickmeapp.testing.MutableClock
+import com.uptrendinvestments.clickmeapp.testing.assertActionablesNamed
+import com.uptrendinvestments.clickmeapp.testing.assertTouchTargets
 import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
 import com.uptrendinvestments.clickmeapp.testing.initiateData
 import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
@@ -93,6 +95,7 @@ class ExpertBookingSummaryScreenTest {
     private val cancels = mutableListOf<String>()
     private val reschedules = mutableListOf<String>()
     private val noteKeys = mutableListOf<ExpertBookingNoteKey>()
+    private val profileIds = mutableListOf<String>()
     private var backs = 0
 
     /** The clock sits 30 minutes before [start], so a session starting at [start] is inside the join window. */
@@ -136,6 +139,7 @@ class ExpertBookingSummaryScreenTest {
                     onCancel = { cancels += bookingId },
                     onReschedule = { reschedules += bookingId },
                     onOpenNote = { noteKeys += it },
+                    onViewProfile = { profileIds += it },
                     chatEntry = chatEntry,
                 )
             }
@@ -243,6 +247,7 @@ class ExpertBookingSummaryScreenTest {
                         onDismissRescheduleDialog = {},
                         onRescheduleNoticeConsumed = {},
                         onOpenNote = { events += "note" },
+                        onViewProfile = { events += "profile:$it" },
                         onRefresh = { events += "refresh" },
                         onRefreshFailureConsumed = { events += "refreshFailureConsumed" },
                         zone = ZoneId.of("America/Toronto"),
@@ -555,6 +560,46 @@ class ExpertBookingSummaryScreenTest {
         rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("My Note").assertIsDisplayed()
         rule.onNodeWithText(long).assertIsDisplayed()
+    }
+
+    // ---- View Profile (Phase 16.4, D-13) ----
+
+    @Test
+    fun viewProfileLinkSitsUnderTheClientName() {
+        showScreen(expertBookingDetail(start = start))
+        rule.onNodeWithText("View Profile").assertExists()
+
+        fun top(node: SemanticsNodeInteraction) = node.fetchSemanticsNode().positionInRoot.y
+        val name = top(rule.onNodeWithText("Ada Lovelace"))
+        val link = top(rule.onNodeWithTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG))
+        val id = top(rule.onNodeWithText("ID: #B1"))
+        assertTrue("name $name link $link", name < link)
+        assertTrue("link $link id $id", link < id)
+    }
+
+    @Test
+    fun viewProfileReportsTheClientId() {
+        showScreen(expertBookingDetail(start = start))
+        rule.onNodeWithTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG).performScrollTo().performClick()
+
+        assertEquals(listOf("c1"), profileIds)
+        assertTrue(noteKeys.isEmpty())
+    }
+
+    @Test
+    fun viewProfileMeetsTheTargetAudit() {
+        showContent(loadedState())
+        rule.assertActionablesNamed()
+        rule.assertTouchTargets()
+    }
+
+    @Test
+    fun largeFontKeepsTheLink() {
+        showContent(loadedState(), fontScale = 2f)
+        rule.onNodeWithText("Ada Lovelace").assertIsDisplayed()
+        rule.onNodeWithTag(EXPERT_SUMMARY_VIEW_PROFILE_TAG).assertIsDisplayed()
+        rule.onNodeWithText("View Profile").assertIsDisplayed()
+        rule.onNodeWithText("ID: #B1").assertIsDisplayed()
     }
 
     @Test

@@ -5,6 +5,7 @@
          content_loading, expert_meeting_in_app_voice, expert_meeting_skype_zoom, topics_duration_*. -->
     <string name="expert_summary_title">Booking Summary</string>
     <string name="expert_summary_id">ID: #%1$s</string>
+    <string name="expert_summary_view_profile">View Profile</string>
     <string name="expert_summary_date">Date</string>
     <string name="expert_summary_time">Time</string>
     <string name="expert_summary_duration">Duration</string>

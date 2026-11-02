@@ -92,6 +92,9 @@ const val EXPERT_SUMMARY_JOIN_TAG = "expert_summary_join"
 /** Test tag on the Message Client button. */
 const val MESSAGE_CLIENT_TAG = "message_client"
 
+/** Test tag on the View Profile link under the client's name (Phase 16.4). */
+const val EXPERT_SUMMARY_VIEW_PROFILE_TAG = "expert_summary_view_profile"
+
 /** Test tag on the Cancel Booking button. */
 const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
 
@@ -114,7 +117,9 @@ private val ButtonSkeletonHeight = 56.dp
  *
  * Phase 16.4 adds the My Note card after the client's message and before Join and Message (D-07, iOS order). It shows
  * the expert's full note, or the prompt, on every status. [onOpenNote] receives the key of the note editor for this
- * booking; the caller pushes it on the summary's own stack (D-05, D-08).
+ * booking; the caller pushes it on the summary's own stack (D-05, D-08). The "View Profile" link under the client's
+ * name reports the client's id through [onViewProfile]; the caller pushes the read-only Client Profile on the same
+ * stack (D-13).
  *
  * Phase 16.2 adds Reschedule at the start of the action row with Cancel Booking at the end, shown only when the
  * server's `actions.can_reschedule` is true (no client-side time or status rule). [onReschedule] opens the expert
@@ -129,6 +134,7 @@ fun ExpertBookingSummaryScreen(
     onCancel: () -> Unit,
     onReschedule: () -> Unit,
     onOpenNote: (ExpertBookingNoteKey) -> Unit,
+    onViewProfile: (clientId: String) -> Unit,
     modifier: Modifier = Modifier,
     chatEntry: ChatEntryViewModel = hiltViewModel(),
 ) {
@@ -157,6 +163,7 @@ fun ExpertBookingSummaryScreen(
         onCancel = { if (viewModel.attemptCancel()) onCancel() },
         onReschedule = onReschedule,
         onOpenNote = { viewModel.noteKey()?.let(onOpenNote) },
+        onViewProfile = onViewProfile,
         rescheduleSent = rescheduleSent,
         onRescheduleSentConsumed = viewModel::consumeRescheduleSent,
         onAcceptReschedule = viewModel::acceptReschedule,
@@ -194,6 +201,7 @@ fun ExpertBookingSummaryContent(
     modifier: Modifier = Modifier,
     onReschedule: () -> Unit = {},
     onOpenNote: () -> Unit = {},
+    onViewProfile: (String) -> Unit = {},
     rescheduleSent: Boolean = false,
     onRescheduleSentConsumed: () -> Unit = {},
     zone: ZoneId = ZoneId.systemDefault(),
@@ -274,6 +282,7 @@ fun ExpertBookingSummaryContent(
                         onCancel = onCancel,
                         onReschedule = onReschedule,
                         onOpenNote = onOpenNote,
+                        onViewProfile = onViewProfile,
                         onAcceptReschedule = onAcceptReschedule,
                         onDeclineReschedule = onDeclineReschedule,
                         modifier = bodyModifier,
@@ -334,6 +343,7 @@ private fun LoadedBody(
     onCancel: () -> Unit,
     onReschedule: () -> Unit,
     onOpenNote: () -> Unit,
+    onViewProfile: (String) -> Unit,
     onAcceptReschedule: () -> Unit,
     onDeclineReschedule: (reason: String) -> Unit,
     modifier: Modifier,
@@ -379,7 +389,13 @@ private fun LoadedBody(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            ExpertSummaryCard(details = details, zone = zone, timeFormat = timeFormat, locale = locale)
+            ExpertSummaryCard(
+                details = details,
+                onViewProfile = { onViewProfile(details.clientId) },
+                zone = zone,
+                timeFormat = timeFormat,
+                locale = locale,
+            )
             details.preparationNotes?.let { ExpertMessageCard(it) }
             MyNoteCard(note = details.privateNote, onClick = onOpenNote)
             if (details.showsJoin) {
