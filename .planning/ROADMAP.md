@@ -998,10 +998,35 @@ Plans:
 **Goal:** Client Payment History (`/client/transactions`), notification preferences with debounced auto-save, Send Feedback (both hubs), the expert "View Past History" empty-state button and an animated splash screen all match iOS. Quiet hours and the Delete Account "Before you go" card are deliberately not built (16.5-CONTEXT.md D-01, D-10). After this phase: versionCode 2 build, matrix rows for 16.1-16.5, then resume Phase 16.
 **Requirements**: TBD (gap list and evidence: .planning/PARITY-AUDIT.md)
 **Depends on:** Phase 16.1
-**Plans:** 0 plans
+**Plans:** 12 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16.5 to break down)
+**Wave 1**
+
+- [ ] 16.5-01-PLAN.md — Wire contract: `/client/transactions`, `/notifications/preferences` and `/feedback/*`, DTOs, fake overrides and exact-wire tests (PARITY-AUDIT #4, #5, #6)
+- [ ] 16.5-02-PLAN.md — Upcoming Booking safe for every status: fail-closed Join rule, no Join card on terminal bookings, Profile-origin booking key, cancel resets the Profile tab (PARITY-AUDIT #4, D-03)
+- [ ] 16.5-03-PLAN.md — Splash stage and route gate: 3 s hold on the shown route, handoff at composition, nothing acting behind it, once per process (PARITY-AUDIT #13, D-07, D-08, D-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16.5-04-PLAN.md — Splash motion and accessibility: iOS timings, reduced motion, one merged node, call drawn above (PARITY-AUDIT #13, D-07)
+- [ ] 16.5-05-PLAN.md — Payment History state and rules: paging, 500-past-the-end, refresh, status vocabulary, minor units (PARITY-AUDIT #4, D-04)
+- [ ] 16.5-06-PLAN.md — Notification preferences state and rules: `AutoSaver` debounce parameter, 13-row grid, no PATCH on load, retry, flush (PARITY-AUDIT #5, D-01, D-02)
+- [ ] 16.5-07-PLAN.md — Send Feedback state and rules: server types, 10-character gate, email rules, error mapping, sent state (PARITY-AUDIT #6, D-05, D-06)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16.5-08-PLAN.md — Payment History screen: ledger row, pill, refund line, skeleton, empty, error, refresh and paging footers (PARITY-AUDIT #4, D-03, D-04)
+- [ ] 16.5-09-PLAN.md — Notifications screen: section cards, whole-row switches, skeleton, error, app-bar save status with Retry (PARITY-AUDIT #5, D-01, D-02)
+- [ ] 16.5-10-PLAN.md — Send Feedback screen: form, picker sheet, Details field, failure dialog, thanks dialog back to the hub (PARITY-AUDIT #6, D-05, D-06)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16.5-11-PLAN.md — Hub rows and routes: Payment History (client), Preferences and Send Feedback (both hubs), shell tests, no Pause Account (PARITY-AUDIT #4, #5, #6, #14, D-10)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 16.5-12-PLAN.md — Close: View Past History verified, audit corrected, full gate on one commit, matrix rows for 16.1 and 16.5, versionCode 2 in a one-line commit; no upload (PARITY-AUDIT #12, D-01, D-10)
 
 ### Phase 17: Play Store Release
 
