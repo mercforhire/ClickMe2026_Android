@@ -4,10 +4,10 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-03 preflight done on versionCode 3; 16-04 session A next
-last_updated: "2026-11-03T03:51:53.883Z"
-last_activity: 2026-11-02
-last_activity_desc: Phase 16 execution started
+stopped_at: 16-04 session A paused after D1.14; 13 of 141 rows have verdicts; D1.13 next
+last_updated: "2026-11-03T05:20:00.000Z"
+last_activity: 2026-11-03
+last_activity_desc: Session A paused after 13 rows
 state_head: 9e0010fb893203a8ed88d217408447c5c96e05ef
 progress:
   total_phases: 22
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 Phase: 16 (Cross-Platform QA) — EXECUTING
 Plan: 4 of 8
 Status: Executing Phase 16
-Last activity: 2026-11-02 — Phase 16 execution started
+Last activity: 2026-11-03 — Session A paused after 13 of 141 rows
 
 Progress: [███████░░░] 65%
 
@@ -349,7 +349,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-02T15:58:59.576Z
-Stopped at: Phase 16.5 UI-SPEC approved
-Resume file: .planning/phases/16.5-ios-parity-payment-history-notification-preferences-feedback/16.5-UI-SPEC.md
-Resume: 16-03 preflight done on versionCode 3 (13 rows pass, 2 not run, 0 fails). Next: `/gsd-execute-phase 16` runs 16-04 session A (Direction 1 and tier-1 passes), the first real charge at D1.18.
+Last session: 2026-11-03T05:20:00.000Z
+Stopped at: 16-04 Task 2 (session A) paused by the user after D1.14
+Resume file: /Users/LeonChen/ClickMe-release/sessions/session-A-results.md
+Resume: `/gsd-execute-phase 16` resumes 16-04 at Task 2, D1.13. Task 1 is done (commit a6fee637; session-A row in the runbook; results file seeded): do NOT re-run it or re-seed the results file. Re-run Harness H1-H4 first. Helpers `capture.sh ROW` and `record.sh ROW VERDICT NOTE` are in /Users/LeonChen/ClickMe-release/sessions/. Results are not in the runbook yet; Task 3 moves them. Backup of the verdicts, since that folder was found emptied once: pass D1.01-04, D1.06-09, D1.11, D1.14 (keep the plain call notification); fail D1.05 (Read label needs a reopen, both apps), D1.10 (Samsung stuck on Waiting after iPhone hang-up and rejoin, voice works; D1.10 first attempt had no hang-up in the log); not run D1.12 (no headset, GSM part not reported). FREE findings: Read label not live; End Call cut off and under the navigation bar while the ending-soon banner shows; iOS 5-minute TEMP overtime cutoff confirmed on device (Android 60 minutes); stuck on Waiting. No paid booking yet, no charge. D1.11 row wording is out of date: hanging up leaves the call for one person only (CALL-08). First real charge is at D1.18.
