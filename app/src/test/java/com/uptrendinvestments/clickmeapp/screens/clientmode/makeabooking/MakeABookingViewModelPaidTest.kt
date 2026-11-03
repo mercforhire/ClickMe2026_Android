@@ -218,6 +218,111 @@ class MakeABookingViewModelPaidTest {
             assertEquals(0, api.confirmBookingCalls)
         }
 
+    /** Sends one FlowController option callback through the host's routing. Returns whether it called `confirm()`. */
+    private fun optionCallback(
+        vm: MakeABookingViewModel,
+        didCancel: Boolean,
+        hasPaymentOption: Boolean,
+    ): Boolean {
+        var confirmed = false
+        routePaymentOptionResult(
+            paidStep = vm.uiState.value.paidStep,
+            didCancel = didCancel,
+            hasPaymentOption = hasPaymentOption,
+            confirm = { confirmed = true },
+            reportSheetOutcome = vm::onSheetOutcome,
+        )
+        return confirmed
+    }
+
+    /**
+     * The event order of Stripe 23.24.0 on a device: selection, `confirm()`, then on success the SDK's reset callback
+     * (no option, not cancelled) strictly before the Completed result.
+     */
+    @Test
+    fun thePostCompletionResetThenCompletedReachesConfirm() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            bookAndRun(vm)
+            vm.onStripeRequestLaunched()
+            assertTrue(optionCallback(vm, didCancel = false, hasPaymentOption = true))
+
+            assertFalse(optionCallback(vm, didCancel = false, hasPaymentOption = false))
+            vm.onSheetOutcome(SheetOutcome.Completed)
+            runCurrent()
+            assertEquals(listOf("seti_1_secret_x"), reader.requestedSecrets)
+            assertEquals(
+                ConfirmBookingRequest("pi_1", "e1", "t2", "2026-10-23T01:00:00Z", "in_app_voice", "pm_new", null),
+                api.confirmBookingRequests.single(),
+            )
+            assertEquals("b9", vm.uiState.value.completedBookingId)
+            assertNull(dialog(vm))
+        }
+
+    /** D-18: a dismissal with a saved card preselected must not authorize it; the SetupIntent stays reusable. */
+    @Test
+    fun aDismissedSheetWithAPreselectedCardCancelsAndNeverConfirms() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            bookAndRun(vm)
+            vm.onStripeRequestLaunched()
+            assertFalse(optionCallback(vm, didCancel = true, hasPaymentOption = true))
+            val s = vm.uiState.value
+            assertEquals(PaidStep.Idle, s.paidStep)
+            assertFalse(s.isSubmitting)
+            assertNull(s.dialogError)
+            assertEquals(0, api.confirmBookingCalls)
+
+            bookAndRun(vm)
+            assertEquals(1, api.setupIntentCalls)
+        }
+
+    /** A dismissal that leaves no selection (the preselected card was removed in the sheet) is still a dismissal. */
+    @Test
+    fun aDismissedSheetWithNoSelectionCancels() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            bookAndRun(vm)
+            vm.onStripeRequestLaunched()
+            assertFalse(optionCallback(vm, didCancel = true, hasPaymentOption = false))
+            assertEquals(PaidStep.Idle, vm.uiState.value.paidStep)
+            assertFalse(vm.uiState.value.isSubmitting)
+            assertEquals(0, api.confirmBookingCalls)
+        }
+
+    /** A failed confirm sends no reset callback: it reaches the Failed path and leaves the form usable. */
+    @Test
+    fun aFailedConfirmAfterASelectionShowsTheDialogAndFreesTheScreen() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            bookAndRun(vm)
+            vm.onStripeRequestLaunched()
+            assertTrue(optionCallback(vm, didCancel = false, hasPaymentOption = true))
+
+            vm.onSheetOutcome(SheetOutcome.Failed(null))
+            val s = vm.uiState.value
+            assertEquals(res(R.string.make_a_booking_error_sheet_failed), s.dialogError)
+            assertEquals(PaidStep.Idle, s.paidStep)
+            assertFalse(s.isSubmitting)
+            assertEquals(0, api.confirmBookingCalls)
+
+            vm.dismissError()
+            bookAndRun(vm)
+            assertEquals(2, api.setupIntentCalls)
+            assertTrue(vm.uiState.value.stripeRequest is StripeRequest.PresentSheet)
+        }
+
+    @Test
+    fun anOptionCallbackOutsideTheSheetStepDoesNothing() =
+        runTest(main.testDispatcher) {
+            val vm = paidVm()
+            assertFalse(optionCallback(vm, didCancel = false, hasPaymentOption = true))
+            assertFalse(optionCallback(vm, didCancel = true, hasPaymentOption = true))
+            assertFalse(optionCallback(vm, didCancel = false, hasPaymentOption = false))
+            assertEquals(PaidStep.Idle, vm.uiState.value.paidStep)
+            assertNull(dialog(vm))
+        }
+
     @Test
     fun aCancelledSheetResetsSilentlyAndReusesTheAttemptIdAndTheSetupIntent() =
         runTest(main.testDispatcher) {
