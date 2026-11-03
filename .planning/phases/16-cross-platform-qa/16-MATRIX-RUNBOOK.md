@@ -44,7 +44,7 @@ Phase 16.4 adds rows D1.PN1-D1.PN5, D2.PN1-D2.PN2, D2.CP1-D2.CP3, FS.PN1 and FS.
 
 Phase 16.1 adds rows D1.SE1-D1.SE5 and TB.SE1; they run on the first Play build that contains Phase 16.1 (after Phase 16.5, per ROADMAP).
 
-Phase 16.5 adds rows D1.PH1-D1.PH5, D1.NS1-D1.NS3, D1.FB1-D1.FB2, D1.SP1-D1.SP4, D2.NS1, D2.FB1, D2.PV1, TB.PF1 and FS.PH1, FS.NS1, FS.FB1, FS.SP1; they run on the versionCode 2 Play build.
+Phase 16.5 adds rows D1.PH1-D1.PH5, D1.NS1-D1.NS3, D1.FB1-D1.FB2, D1.SP1-D1.SP4, D2.NS1, D2.FB1, D2.PV1, TB.PF1 and FS.PH1, FS.NS1, FS.FB1, FS.SP1; they run on the versionCode 3 Play build.
 
 ## 0. Pre-flight
 
@@ -207,7 +207,7 @@ Samsung = B (client). Only D1.PH4 touches money: use a paid booking already due 
 | D1.NS3 | backend push gate | D1 | Turn off Booking Confirmations. A accepts a request from iOS. Turn the row back on. | No push arrives on the Samsung while the row is off. | Yes or no on the push; row restored. | [ ] |
 | D1.FB1 | PARITY #6, D-05, D-06 | D1 | Open Profile, Support, Send Feedback. Enter 9 characters and tap Submit, then 10 characters and Submit. | The first server type is selected and the email is prefilled; 9 characters show the inline minimum-length error and send no request; 10 characters show the thanks dialog and OK returns to the hub; a backend row exists (H10). | Outcome per step; backend row yes or no. | [ ] |
 | D1.FB2 | carried from iOS | D1 | In airplane mode tap Submit on a valid form. Reconnect and tap Submit. | The failure dialog shows and the form is kept; after reconnecting Submit works. | Outcome per step. | [ ] |
-| D1.SP1 | PARITY #13, D-07, D-08, A4 | D1 | Force-stop the app and cold start it; repeat logged out. | The system splash hands to the Compose splash with no color jump or flicker; the logo fades and scales, the text follows, the glow pulses; about 3 s later the right destination shows; logged out reaches Login; no notification prompt or suspended dialog shows over the splash. | Outcome per step. | [ ] |
+| D1.SP1 | PARITY #13, D-07, D-08, A4 | D1 | Force-stop the app and cold start it; repeat logged out. | The system splash is plain dark with no logo (note how long it feels on a cold start; iOS shows the logo and title at once, and Android 12+ cannot show text at this stage). It hands to the Compose splash with no color jump or flicker; the whole logo fades and scales, the 52 bold wordmark and tagline follow, the glow pulses; about 3 s later the right destination shows; logged out reaches Login; no notification prompt or suspended dialog shows over the splash. | Outcome per step. | [ ] |
 | D1.SP2 | D-09, RESEARCH Question 2 | D1 | During a live call swipe the task away, then tap the ongoing-call notification. | The call shows above any splash and audio never stopped; the hold does not replay in the same process. | Outcome per step; H5 call proof lines. | [ ] |
 | D1.SP3 | D-09 | D1 | With the app killed (H6) tap a booking push. | The full splash shows, then the right screen in the right tab; nothing is lost. | Outcome per step. | [ ] |
 | D1.SP4 | A10, Pitfall 1 | D1 | Change the font size during the splash. Background and return. Repeat with animations off (Remove animations). | No replay on a font change; no replay on background and return; with animations off a static final frame shows for about 3 s; the app never sits on the OS splash. | Outcome per step. | [ ] |

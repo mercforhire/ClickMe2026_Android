@@ -62,7 +62,8 @@ Used by 16-05, 16-07 and any gap plan.
 | versionCode | versionName | git sha | AAB sha256 (first 16) | Archive | Cert pin match | Uploaded (date) | Play status | Samsung proof (versionCode, lastUpdateTime, installer) | Rows re-run |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | 0.1.0 | d31aab18 | be68ecc836fe949e | /Users/LeonChen/ClickMe-release/clickme-0.1.0-1.aab | yes | 2026-10-30 | available | vc 1, 2026-10-30 17:57:21, com.android.vending | |
-| 2 | 0.1.0 | f2d6745c | 98e11a4b12e69676 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | | not uploaded | | |
+| 2 | 0.1.0 | f2d6745c | 98e11a4b12e69676 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | 2026-11-02 | uploaded; never seen on the Samsung; superseded by vc 3 | | |
+| 3 | 0.1.0 | 5e776574 | 8bdadb7e4bc4bbf4 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-3.aab | yes | | not uploaded | | |
 
 ## Fix batches
 
@@ -83,3 +84,6 @@ Used by 16-05, 16-07 and any gap plan.
 - vc 2 B4 checks all passed: `jar verified.`, apksigner verifies (v2), AAB and APK certificate equal the pin, badging shows versionCode 2 and versionName 0.1.0, `google_app_id` present, 0 tracked secrets. jarsigner also prints about 1350 "signed in JarFile but is not signed in JarInputStream" lines; vc 1 prints the same count within 2, and Play accepted vc 1.
 - vc 2 archive sha256: aab 98e11a4b12e6967693c3d6c40bb71ceb1090632b5527e037f5bb178550933f35, apk fd8dff3e9f527f5cc14ca522cb15e9ae8137e3e2aeac08d8087a8d1d8cfe4692, mapping 888b69d86003bac4c4214cc2afaa83ca5fd69d21be7a4d8e3e70392806537e25.
 - Archive incident (found 2026-11-02): /Users/LeonChen/ClickMe-release/ held only .DS_Store (modified 2026-11-01 23:36). The vc 1 archive, sessions/preflight-results.md and logs/preflight/ were gone, cause unknown. The vc 1 AAB, APK and mapping were restored from app/build/outputs before the vc 2 build overwrote them, and all three match the sha256 values above. The preflight results and P0.7 log were not recovered; 16-03 Task 1 must re-create them.
+- vc 3 (2026-11-02) adds the two splash fixes to vc 2: the system splash no longer shows the cropped logo (2466fc09), and the wordmark and tagline use the iOS sizes (cb3b68c6). Built from the bump commit 5e776574. B2 passed on cb3b68c6: 5238 tests per flavor with 0 failures, ktlint, assembleDevDebug, both lint variants, design rules and self-test. The bump commit changes only the versionCode line. All B4 checks pass.
+- vc 3 archive sha256: aab 8bdadb7e4bc4bbf462e635d367b3d02aca68bf1d6f4780b0ce3848dc1eb7192f, apk ffb1525d26d8995b3d66fc4c3f1085a730f5adf955f0b05545bbf068867e260e, mapping ad38c1fb3fce7608373cceaabeac4857c4b1c30a5a57d0d99b805dccd65bd955.
+- Samsung install history: on 2026-11-02 the Samsung held a debug sideload (installer null, Android Debug key, versionCode 1) that blocked Play updates. It was uninstalled with the user's approval, and Play then installed vc 1 at 19:26:16. Do not sideload to the Samsung during the matrix.
