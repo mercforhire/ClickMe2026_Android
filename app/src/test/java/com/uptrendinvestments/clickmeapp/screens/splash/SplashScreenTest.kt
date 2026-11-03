@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
@@ -16,7 +17,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.sp
 import com.uptrendinvestments.clickmeapp.testing.lineCountsOf
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
@@ -198,6 +203,44 @@ class SplashScreenTest {
         rule.onAllNodes(hasText("ClickMe")).assertCountEquals(0)
         rule.onAllNodes(hasText("Book time with the best minds.")).assertCountEquals(0)
         rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertCountEquals(0)
+    }
+
+    private fun styleOf(text: String): TextStyle {
+        val layouts = mutableListOf<TextLayoutResult>()
+        rule
+            .onNodeWithText(text, useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult]
+            .action!!
+            .invoke(layouts)
+        return layouts.single().layoutInput.style
+    }
+
+    @Test
+    fun textMatchesTheIosSizes() {
+        rule.setContent { ClickMeTheme { SplashScreen(onComposed = {}) } }
+        rule.waitForIdle()
+
+        val wordmark = styleOf("ClickMe")
+        assertEquals(52.sp, wordmark.fontSize)
+        assertEquals(FontWeight.Bold, wordmark.fontWeight)
+        assertEquals(20.sp, styleOf("Book time with the best minds.").fontSize)
+    }
+
+    @Test
+    fun wordmarkDoesNotScaleWithTheFontSizeLikeIos() {
+        lateinit var scaled: Density
+        rule.setContent {
+            scaled = Density(LocalDensity.current.density, fontScale = 2f)
+            CompositionLocalProvider(LocalDensity provides scaled) {
+                ClickMeTheme { SplashScreen(onComposed = {}) }
+            }
+        }
+        rule.waitForIdle()
+
+        // Font scaling is non-linear, so compare the rendered size in dp rather than the sp value.
+        assertEquals(52f, with(scaled) { styleOf("ClickMe").fontSize.toDp().value }, 0.5f)
+        assertEquals(20.sp, styleOf("Book time with the best minds.").fontSize)
     }
 
     @Test

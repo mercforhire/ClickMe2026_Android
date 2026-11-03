@@ -11,7 +11,8 @@ import com.uptrendinvestments.clickmeapp.R
 
 /**
  * Nunito variable font (SIL OFL), Android stand-in for iOS SF Rounded. One bundled file,
- * two weights (400 and 600) selected through the variable font's wght axis (API 26+).
+ * three weights selected through the variable font's wght axis (API 26+): 400 and 600 for the type scale, 700 for the
+ * splash wordmark only.
  */
 val NunitoFamily =
     FontFamily(
@@ -24,6 +25,12 @@ val NunitoFamily =
             R.font.nunito,
             FontWeight.SemiBold,
             variationSettings = FontVariation.Settings(FontVariation.weight(600)),
+        ),
+        // Only the splash wordmark uses this weight (iOS 52pt bold).
+        Font(
+            R.font.nunito,
+            FontWeight.Bold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(700)),
         ),
     )
 

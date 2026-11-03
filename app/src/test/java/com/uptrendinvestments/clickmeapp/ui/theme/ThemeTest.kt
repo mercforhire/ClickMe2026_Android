@@ -93,10 +93,10 @@ class ThemeTest {
     }
 
     @Test
-    fun nunitoFamilyDeclaresRegularAndSemiBoldFromOneResource() {
+    fun nunitoFamilyDeclaresRegularSemiBoldAndSplashBoldFromOneResource() {
         val family = NunitoFamily as FontListFontFamily
-        assertEquals(listOf(FontWeight.Normal, FontWeight.SemiBold), family.fonts.map { it.weight })
-        assertEquals(listOf(R.font.nunito, R.font.nunito), family.fonts.map { (it as ResourceFont).resId })
+        assertEquals(listOf(FontWeight.Normal, FontWeight.SemiBold, FontWeight.Bold), family.fonts.map { it.weight })
+        assertEquals(List(3) { R.font.nunito }, family.fonts.map { (it as ResourceFont).resId })
     }
 
     @Test

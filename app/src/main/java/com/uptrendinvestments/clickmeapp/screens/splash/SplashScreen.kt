@@ -27,8 +27,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
@@ -93,20 +96,40 @@ internal fun SplashContent(
             ) {
                 Text(
                     text = stringResource(R.string.splash_wordmark),
-                    style = MaterialTheme.typography.displaySmall,
+                    style = wordmarkStyle(),
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(Spacing.sm))
+                Spacer(Modifier.height(WORDMARK_TAGLINE_GAP))
                 Text(
                     text = stringResource(R.string.splash_tagline),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style =
+                        MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = TAGLINE_FONT_SIZE,
+                            lineHeight = TAGLINE_LINE_HEIGHT,
+                        ),
                     color = MaterialTheme.extras.onSurfaceMuted,
                     textAlign = TextAlign.Center,
                 )
             }
         }
     }
+}
+
+/**
+ * iOS `.system(size: 52, weight: .bold)` with 0.5 kerning. Like the iOS size, it does not follow the system font size,
+ * so the brand name stays whole on one line at 200%. This screen is the one exception to the app type scale (user
+ * decision 2026-11-02).
+ */
+@Composable
+private fun wordmarkStyle(): TextStyle {
+    val density = LocalDensity.current
+    return MaterialTheme.typography.displaySmall.copy(
+        fontSize = with(density) { WORDMARK_SIZE.toSp() },
+        lineHeight = with(density) { WORDMARK_LINE_HEIGHT.toSp() },
+        fontWeight = FontWeight.Bold,
+        letterSpacing = with(density) { WORDMARK_KERNING.toSp() },
+    )
 }
 
 /** The mark over its soft pulsing halo, fading and scaling in together. */
@@ -157,5 +180,11 @@ private fun SplashLogo(motion: SplashMotionValues) {
 /** Test tag of the splash root. */
 internal const val SPLASH_SCREEN_TAG = "splash_screen"
 
+private val WORDMARK_SIZE = 52.dp
+private val WORDMARK_LINE_HEIGHT = 62.dp
+private val WORDMARK_KERNING = 0.5.dp
+private val WORDMARK_TAGLINE_GAP = 12.dp
+private val TAGLINE_FONT_SIZE = 20.sp
+private val TAGLINE_LINE_HEIGHT = 28.sp
 private val GLOW_BOX = 190.dp
 private val GLOW_RADIUS = 160.dp
