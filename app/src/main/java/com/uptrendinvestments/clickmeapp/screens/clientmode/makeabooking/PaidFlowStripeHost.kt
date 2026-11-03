@@ -18,9 +18,31 @@ import com.uptrendinvestments.clickmeapp.stripe.toChallengeOutcome
 import com.uptrendinvestments.clickmeapp.stripe.toSheetOutcome
 import com.uptrendinvestments.clickmeapp.stripe.userFacingStripeMessage
 
-/** Holds the controller so the option callback, built before the controller exists, can confirm on it. */
-private class FlowControllerHolder {
-    var controller: PaymentSheet.FlowController? = null
+/**
+ * Lets the option callback confirm on a controller that does not exist yet (BUG-06). After an activity recreation
+ * the FlowController registers its result launcher inside `Builder.build()`, and because the activity is already
+ * started the SDK delivers the pending option result right there, before the new controller is bound. A confirm
+ * requested that early is kept and runs once, from [runPending], after [bind]. Only [request] sets it, and
+ * [routePaymentOptionResult] calls that for a real selection alone, so a dismissal never authorizes a card (D-18).
+ */
+internal class ConfirmGate {
+    private var confirm: (() -> Unit)? = null
+    private var pending = false
+
+    fun bind(confirm: () -> Unit) {
+        this.confirm = confirm
+    }
+
+    fun request() {
+        val bound = confirm
+        if (bound == null) pending = true else bound()
+    }
+
+    fun runPending() {
+        if (!pending) return
+        pending = false
+        confirm?.invoke()
+    }
 }
 
 /**
@@ -87,7 +109,7 @@ fun PaidFlowStripeHost(
     val latestChallenge by rememberUpdatedState(onChallengeOutcome)
     val appearance = rememberClickMePaymentSheetAppearance()
 
-    val holder = remember { FlowControllerHolder() }
+    val gate = remember { ConfirmGate() }
     val flowController =
         remember {
             PaymentSheet.FlowController.Builder(
@@ -97,13 +119,15 @@ fun PaidFlowStripeHost(
                         paidStep = latestStep,
                         didCancel = result.didCancel,
                         hasPaymentOption = result.paymentOption != null,
-                        confirm = { holder.controller?.confirm() },
+                        confirm = { gate.request() },
                         reportSheetOutcome = { latestSheet(it) },
                     )
                 },
             )
         }.build()
-    holder.controller = flowController
+    gate.bind(flowController::confirm)
+    // A confirm asked for while the controller was being built runs now, outside composition.
+    LaunchedEffect(gate) { gate.runPending() }
 
     LaunchedEffect(request) {
         when (val r = request) {
