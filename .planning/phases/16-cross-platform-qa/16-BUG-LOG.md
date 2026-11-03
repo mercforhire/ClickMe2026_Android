@@ -40,4 +40,7 @@ Write the Severity cell as `blocking (clause)`, `fix-if-cheap` or `post-release`
 | ID | Source (runbook row or free-form) | Steps | Device and build | Owner (android/ios/backend) | Severity (D-07) | Status | Fix commit | Re-test result |
 |---|---|---|---|---|---|---|---|---|
 
-No bugs logged yet.
+| BUG-01 | FREE (preflight) | Cold start: the system splash showed a cropped logo and no title, unlike iOS. | SM-A075F, vc 3, com.android.vending | android | fix-if-cheap | verified | 2466fc09, cb3b68c6 | User accepted the splash on vc 3, 2026-11-02; D1.SP1 still runs |
+| BUG-02 | FREE (2026-10-30, carried over) | Client Search tab was a placeholder on vc 1 (DEF-2). | SM-A075F, vc 3, com.android.vending | android | fix-if-cheap | verified | Phase 16.1 | User confirmed Search works on vc 3, 2026-11-02 |
+| BUG-03 | FREE (2026-10-30, carried over) | Stripe tax ID (TIN) prompt seen on client account B. Clients have no payouts, so it is not needed. A Connect status was not read because P0.8 was skipped. | SM-A075F, vc 1, com.android.vending | backend | post-release | reported (backend) |  |  |
+| BUG-04 | FREE (preflight) | Settings, Apps, ClickMe, Notifications shows only allow and vibration settings; the five channels exist in dumpsys. May be behind a Notification categories entry on One UI. | SM-A075F, vc 3, com.android.vending | android | post-release | post-release |  |  |

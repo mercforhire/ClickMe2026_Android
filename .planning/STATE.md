@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: "16.5"
-current_phase_name: "iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)"
-status: human_needed
-stopped_at: Phase 16.5 executed, verification human_needed
-last_updated: "2026-11-02T17:59:15.109Z"
+current_phase: 16
+current_phase_name: Cross-Platform QA
+status: executing
+stopped_at: 16-03 preflight done on versionCode 3; 16-04 session A next
+last_updated: "2026-11-03T03:51:53.883Z"
 last_activity: 2026-11-02
-last_activity_desc: Phase 16.5 executed (12/12); verification human_needed, 8 UAT items
-state_head: 60171437ad6b15bacb41fa11203426fe853a78ee
+last_activity_desc: Phase 16 execution started
+state_head: 9e0010fb893203a8ed88d217408447c5c96e05ef
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 297
-  completed_plans: 276
+  completed_plans: 289
 milestone_name: milestone
 ---
 
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-11-01)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 16.5 — iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)
+**Current focus:** Phase 16 — Cross-Platform QA
 
 ## Current Position
 
-Phase: 16.5 (iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card (PARITY-AUDIT #4, #5, #6, #12, #13, #14) (INSERTED)) — EXECUTING
-Plan: 12 of 12 complete
-Status: Executed; verification human_needed (16.1, 16.4 and 16.5 UAT still open). Next: user uploads vc 3 and updates from Play, then 16-03 preflight resumes
-Last activity: 2026-11-02 — Phase 16.5 executed: 12/12 plans, 5231 tests green, SECURITY 44/44, UI review 20/24, verification 10/10, 8 UAT items pending
+Phase: 16 (Cross-Platform QA) — EXECUTING
+Plan: 4 of 8
+Status: Executing Phase 16
+Last activity: 2026-11-02 — Phase 16 execution started
 
 Progress: [███████░░░] 65%
 
@@ -96,9 +96,11 @@ Recent decisions affecting current work:
 - [Phase 11]: Phase 11 gate plan committed on branch gsd/phase-11-plan-15 because main is protected by the executor commit guard
 - [Quick 261028-to1]: User decision 2026-10-28 (option B): block NEW long-lead paid bookings for launch. For a paid topic only slots starting at most 6 days (144 h, `PAID_BOOKING_MAX_LEAD`, the backend `LONG_LEAD_THRESHOLD_MS` with strict greater-than) after now are selectable, with the note "Paid sessions can be booked up to 6 days ahead."; a free topic is unchanged. A 422 `LONG_LEAD_REQUIRES_SAVED_CARD` from payment-intent is an error dialog and resets the paid flow (nothing is ever confirmed without a payment intent). The new `booking` / `payment_actions` push (and `event_type` `PAYMENT_ACTION_REQUIRED`) routes to the client booking detail only: no recover-payment call or UI, no `payment_action_required` fields. Reschedule code is untouched (the reschedule-conversion gap is accepted). Android deviates from iOS on purpose. It is now closed server-side by backend 261028-uph, see [Quick 261028-ve4].
 - [Quick 261028-ve4]: Android adopts the backend 261028-uph contract (backend `2e790bf..8d4450f`, on the backend's `main` deploy branch as of 2026-10-28; the deploy is not verified from Android). New ErrorCode entries `LONG_LEAD_NOT_AVAILABLE` and `RESCHEDULE_TOO_FAR_AHEAD` sit in the Android-only block (iOS `ErrorCode.swift` lacks both, and the enum keeps iOS order). `LONG_LEAD_NOT_AVAILABLE` shows the paid-window copy as a backstop, since Android never confirms without a payment intent. `RESCHEDULE_TOO_FAR_AHEAD` on a client or expert accept shows the server text, else "Paid sessions can be rescheduled up to 6 days ahead. Ask for a time within the next 6 days.", and reloads the booking. The reschedule-conversion gap accepted in 261028-to1 is closed server-side: paid reschedules to a start more than 6 days out are refused on propose and accept, and accept re-checks against the server clock. Android has no propose-reschedule UI (DEF-1), so there is no picker to cap.
-- [Phase 16] Live-money plan: option-a (floor CA$5.00 default, confirm at P0.2; 2 captures, D1.25 and D2.12; every other paid row is a void; 3DS route: own challenging card), confirmed 2026-10-30 (D-01 to D-04 deltas from 16-RESEARCH)
+- [Phase 16] Live-money plan: option-a (floor CA$5.00, 500 minor units read at P0.2; 2 captures, D1.25 and D2.12; every other paid row is a void; 3DS route: accept not run, changed by the user 2026-11-02; D1.22 not run, no failing card), confirmed 2026-10-30, 3DS route updated 2026-11-02 (D-01 to D-04 deltas from 16-RESEARCH)
 
 ### Pending Todos
+
+- Report to iOS/backend (Phase 16 BUG-03, post-release): Stripe tax ID prompt seen on client account B; clients have no payouts.
 
 - Report the iOS issues back to the iOS side: Join is a no-op from My Bookings, the 5-minute overtime test value, report reasons sent as labels, no blocked state in chat, the cancellation comment is dropped.
 - The backend/iOS owners should rotate the hard-coded JWT in `Debug/PreviewSecrets.swift`. This is outside the Android code.
@@ -349,7 +351,4 @@ Items acknowledged and carried forward from previous milestone close:
 Last session: 2026-11-02T15:58:59.576Z
 Stopped at: Phase 16.5 UI-SPEC approved
 Resume file: .planning/phases/16.5-ios-parity-payment-history-notification-preferences-feedback/16.5-UI-SPEC.md
-Done in 16-03: Task 1 (fa66325e, preflight session opened on vc 1), Task 2 (e4ebd9f0, live-money plan option-a; 3DS: own challenging card). Plan head: .git/gsd-plan-head-before-16-03. Results file /Users/LeonChen/ClickMe-release/sessions/preflight-results.md (R1.2 pre-recorded N/A by design). No preflight row results reported yet.
-Why paused: on 2026-10-30 the user chose to port the Search tab (DEF-2, "search: A") and then said "disregard deadline, make sure all features match IOS version". A parity audit (iOS vs Android) drives inserted phases 16.1 (Search) .. 16.N; sessions A/B (16-04, 16-06) must run on a build containing every parity feature, with matrix rows added for them.
-Pending to log when preflight resumes: FREE-1 client Search tab is a placeholder (DEF-2) -> resolved by phase 16.1. Stripe TIN prompt seen on client account B: not needed (clients have no payouts); A's Connect account status still to check at P0.8.
-Resume: after the parity phases ship in a new internal-track build, `/gsd-execute-phase 16` (re-run preflight on that build; Task 1 harness re-check).
+Resume: 16-03 preflight done on versionCode 3 (13 rows pass, 2 not run, 0 fails). Next: `/gsd-execute-phase 16` runs 16-04 session A (Direction 1 and tier-1 passes), the first real charge at D1.18.
