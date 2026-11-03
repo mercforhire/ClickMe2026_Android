@@ -65,7 +65,7 @@ class ClickMePaymentSheetStyleTest {
             .invoke(this)
 
     @Test
-    fun `configuration carries the ClickMe merchant, no delayed methods, the customer and no button label`() {
+    fun `configuration carries the ClickMe merchant, no delayed methods, no Link, the customer and no button label`() {
         val appearance = PaymentSheet.Appearance()
 
         val actual = clickMeSheetConfiguration("cus_1", "ek_1", appearance)
@@ -75,6 +75,7 @@ class ClickMePaymentSheetStyleTest {
                 .Builder("ClickMe")
                 .customer(PaymentSheet.CustomerConfiguration("cus_1", "ek_1"))
                 .allowsDelayedPaymentMethods(false)
+                .link(PaymentSheet.LinkConfiguration(PaymentSheet.LinkConfiguration.Display.Never))
                 .appearance(appearance)
                 .build()
         assertEquals(expected, actual)
@@ -82,6 +83,14 @@ class ClickMePaymentSheetStyleTest {
         assertEquals("ClickMe", actual.member("MerchantDisplayName"))
         assertEquals(false, actual.member("AllowsDelayedPaymentMethods"))
         assertNull(actual.member("PrimaryButtonLabel"))
+    }
+
+    /** BUG-07: Link can dismiss without a callback or drop the chosen card on logout, so the sheet never offers it. */
+    @Test
+    fun `configuration never shows Link`() {
+        val link = clickMeSheetConfiguration("cus_1", "ek_1", PaymentSheet.Appearance()).member("Link")
+
+        assertEquals(PaymentSheet.LinkConfiguration.Display.Never, link?.member("Display"))
     }
 
     @Test

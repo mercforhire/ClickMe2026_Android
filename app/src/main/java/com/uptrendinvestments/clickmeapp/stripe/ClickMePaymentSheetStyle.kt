@@ -31,6 +31,9 @@ fun clickMeSheetConfiguration(
             .Builder(CLICKME_MERCHANT_DISPLAY_NAME)
             .customer(PaymentSheet.CustomerConfiguration(customerId, ephemeralKey))
             .allowsDelayedPaymentMethods(false)
+            // BUG-07: Link can close the sheet without any callback (a stuck spinner) and its logout can drop the
+            // chosen card, so ClickMe never offers it.
+            .link(PaymentSheet.LinkConfiguration(PaymentSheet.LinkConfiguration.Display.Never))
             .appearance(appearance)
     if (primaryButtonLabel != null) builder.primaryButtonLabel(primaryButtonLabel)
     return builder.build()
