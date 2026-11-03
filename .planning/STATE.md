@@ -100,6 +100,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
+- [2026-11-03] [planning] Sync Android bug fixes to iOS — [todo file](.planning/todos/pending/2026-11-02-sync-android-bug-fixes-to-ios.md)
 - Report to iOS/backend (Phase 16 BUG-03, post-release): Stripe tax ID prompt seen on client account B; clients have no payouts.
 
 - Report the iOS issues back to the iOS side: Join is a no-op from My Bookings, the 5-minute overtime test value, report reasons sent as labels, no blocked state in chat, the cancellation comment is dropped.
