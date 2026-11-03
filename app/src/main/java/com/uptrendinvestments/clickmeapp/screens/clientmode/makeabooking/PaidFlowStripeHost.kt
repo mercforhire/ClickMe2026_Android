@@ -12,6 +12,8 @@ import com.uptrendinvestments.clickmeapp.stripe.ChallengeOutcome
 import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
 import com.uptrendinvestments.clickmeapp.stripe.clickMeSheetConfiguration
 import com.uptrendinvestments.clickmeapp.stripe.isPostCompletionReset
+import com.uptrendinvestments.clickmeapp.stripe.logStripeFailure
+import com.uptrendinvestments.clickmeapp.stripe.loggingFailure
 import com.uptrendinvestments.clickmeapp.stripe.rememberClickMePaymentSheetAppearance
 import com.uptrendinvestments.clickmeapp.stripe.shouldConfirmSelection
 import com.uptrendinvestments.clickmeapp.stripe.toChallengeOutcome
@@ -113,7 +115,7 @@ fun PaidFlowStripeHost(
     val flowController =
         remember {
             PaymentSheet.FlowController.Builder(
-                resultCallback = { latestSheet(it.toSheetOutcome()) },
+                resultCallback = { latestSheet(it.loggingFailure("sheet").toSheetOutcome()) },
                 paymentOptionResultCallback = { result ->
                     routePaymentOptionResult(
                         paidStep = latestStep,
@@ -141,6 +143,7 @@ fun PaidFlowStripeHost(
                     if (success) {
                         latestConfigured()
                     } else {
+                        logStripeFailure("configure", error)
                         latestSheet(SheetOutcome.Failed(error.userFacingStripeMessage()))
                     }
                 }
@@ -157,7 +160,7 @@ fun PaidFlowStripeHost(
         rememberPaymentLauncher(
             publishableKey = AppConfig.stripePublishableKey,
             stripeAccountId = challengeAccount,
-            callback = { latestChallenge(it.toChallengeOutcome()) },
+            callback = { latestChallenge(it.loggingFailure("challenge").toChallengeOutcome()) },
         )
 
     LaunchedEffect(request, challengeAccount) {
