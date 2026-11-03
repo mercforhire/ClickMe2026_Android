@@ -62,8 +62,8 @@ Used by 16-05, 16-07 and any gap plan.
 | versionCode | versionName | git sha | AAB sha256 (first 16) | Archive | Cert pin match | Uploaded (date) | Play status | Samsung proof (versionCode, lastUpdateTime, installer) | Rows re-run |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | 0.1.0 | d31aab18 | be68ecc836fe949e | /Users/LeonChen/ClickMe-release/clickme-0.1.0-1.aab | yes | 2026-10-30 | available | vc 1, 2026-10-30 17:57:21, com.android.vending | |
-| 2 | 0.1.0 | f2d6745c | 98e11a4b12e69676 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | 2026-11-02 | uploaded; never seen on the Samsung; superseded by vc 3 | | |
-| 3 | 0.1.0 | 5e776574 | 8bdadb7e4bc4bbf4 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-3.aab | yes | | not uploaded | | |
+| 2 | 0.1.0 | f2d6745c | 98e11a4b12e69676 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | 2026-11-02 | available; on the Samsung 2026-11-02 20:27:12 before vc 3; superseded by vc 3, no rows run | | |
+| 3 | 0.1.0 | 5e776574 | 8bdadb7e4bc4bbf4 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-3.aab | yes | 2026-11-02 | available | vc 3, 2026-11-02 20:43:25, com.android.vending | |
 
 ## Fix batches
 
