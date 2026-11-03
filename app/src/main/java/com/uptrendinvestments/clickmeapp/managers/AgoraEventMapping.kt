@@ -34,6 +34,18 @@ internal fun mapUserOffline(
     reason: Int,
 ): EngineEvent = EngineEvent.RemoteOffline(uid, reason)
 
+/**
+ * Decoding remote audio proves the peer is in the channel and talking, so it is reported as [EngineEvent.RemoteJoined].
+ * When the peer hangs up and rejoins quickly, Agora can skip both the offline and the joined callback and report only
+ * audio state changes (BUG-09), so this is the only signal that brings a call back from Waiting. A repeat for a peer
+ * who is already Ready changes nothing. Stopped and frozen mean the audio went quiet, not that the peer left (that is
+ * [mapUserOffline]), and starting is followed by decoding, so only decoding maps.
+ */
+internal fun mapRemoteAudioStateChanged(
+    uid: Int,
+    state: Int,
+): EngineEvent? = if (state == Constants.REMOTE_AUDIO_STATE_DECODING) EngineEvent.RemoteJoined(uid) else null
+
 private val TERMINAL_DISCONNECT_REASONS =
     setOf(
         Constants.CONNECTION_CHANGED_BANNED_BY_SERVER,

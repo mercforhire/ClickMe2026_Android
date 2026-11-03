@@ -122,15 +122,30 @@ class AgoraManagerCreateEngineTest {
                 Constants.REMOTE_AUDIO_REASON_REMOTE_UNMUTED,
                 2500,
             )
+            handler.onRemoteAudioStateChanged(
+                UID,
+                Constants.REMOTE_AUDIO_STATE_STOPPED,
+                Constants.REMOTE_AUDIO_REASON_REMOTE_MUTED,
+                2600,
+            )
             handler.onClientRoleChanged(Constants.CLIENT_ROLE_AUDIENCE, Constants.CLIENT_ROLE_BROADCASTER, null)
             runCurrent()
-            assertEquals(2, events.size)
+            // BUG-09: decoding audio is now an event (the peer is back); stopped audio, role changes and logs are not.
+            assertEquals(
+                listOf(
+                    EngineEvent.RemoteJoined(UID),
+                    EngineEvent.RemoteOffline(UID, 1),
+                    EngineEvent.RemoteJoined(UID),
+                ),
+                events.toList(),
+            )
 
             assertEquals(
                 listOf(
                     "remote joined elapsed=1500",
                     "remote offline reason=1",
                     "remote audio state=2 reason=6",
+                    "remote audio state=0 reason=5",
                     "client role old=2 new=1",
                 ),
                 logs().filter { it.type == Log.INFO }.map { it.msg },

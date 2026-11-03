@@ -106,6 +106,7 @@ class AgoraManager
                     elapsed: Int,
                 ) {
                     Log.i(TAG, "remote audio state=$state reason=$reason")
+                    mapRemoteAudioStateChanged(uid, state)?.let(_events::tryEmit)
                 }
 
                 override fun onClientRoleChanged(
