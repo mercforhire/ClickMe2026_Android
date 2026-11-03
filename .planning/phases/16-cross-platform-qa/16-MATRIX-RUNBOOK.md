@@ -33,6 +33,7 @@ Commands may need adapting on One UI (RESEARCH A9); record the command actually 
 | Session | Date | Build (dumpsys versionCode) | Installer | Backend /health | Transport | Rows run | Fails |
 |---|---|---|---|---|---|---|---|
 | preflight | 2026-11-02 | versionCode=3 | com.android.vending | 8d4450f | 1868 | 13 | 0 |
+| session-A | 2026-11-02 | versionCode=3 | com.android.vending | 8d4450f | 1868 | 0 | 0 |
 
 Later plans add the sessions `preflight`, `session-A`, `batch-A`, `session-B`, `batch-B` and `close-out`.
 
