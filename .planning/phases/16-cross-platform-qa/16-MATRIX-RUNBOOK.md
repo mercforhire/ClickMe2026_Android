@@ -44,7 +44,7 @@ Phase 16.4 adds rows D1.PN1-D1.PN5, D2.PN1-D2.PN2, D2.CP1-D2.CP3, FS.PN1 and FS.
 
 Phase 16.1 adds rows D1.SE1-D1.SE5 and TB.SE1; they run on the first Play build that contains Phase 16.1 (after Phase 16.5, per ROADMAP).
 
-Phase 16.5 adds rows D1.PH1-D1.PH4, D1.NS1-D1.NS3, D1.FB1-D1.FB2, D1.SP1-D1.SP4, D2.NS1, D2.FB1, D2.PV1, TB.PF1 and FS.PH1, FS.NS1, FS.FB1, FS.SP1; they run on the versionCode 2 Play build.
+Phase 16.5 adds rows D1.PH1-D1.PH5, D1.NS1-D1.NS3, D1.FB1-D1.FB2, D1.SP1-D1.SP4, D2.NS1, D2.FB1, D2.PV1, TB.PF1 and FS.PH1, FS.NS1, FS.FB1, FS.SP1; they run on the versionCode 2 Play build.
 
 ## 0. Pre-flight
 
@@ -201,6 +201,7 @@ Samsung = B (client). Only D1.PH4 touches money: use a paid booking already due 
 | D1.PH2 | CLIENT-TRANSACTIONS section 7 | D1 | On an account with over 20 rows scroll to the end. Repeat in airplane mode for the next page. If no account has 20 rows, mark the row [-] not run with the reason. | Pages load with no error footer at the end; in airplane mode the next page shows the footer and Retry works. | Outcome per step. | [ ] |
 | D1.PH3 | D-03, UI-SPEC A8 | D1 | Tap a row for a live, a completed, a cancelled and a failed booking. | Details open with the real status; no enabled Join and no Reschedule on the last three, including inside the join window. | Outcome per status. | [ ] |
 | D1.PH4 | D-03, 16.5-02 | D1 | Cancel a live paid booking from a Payment History row. | Bookings opens with the result notice; the Profile tab shows the hub, not Cancel; the hold is voided. | Outcome per step; PAID line (H9) and a Paid bookings created row. | [ ] |
+| D1.PH5 | 16.5 review WR-01 | D1 | Open a Payment History row for a confirmed booking whose session has ended. If no account has one, mark the row [-] not run with the reason. | No Cancel Booking button. Reschedule may still show (no time gate on confirmed, 16.2 D-04). Do not tap anything that changes the booking. | Screenshot or note. | [ ] |
 | D1.NS1 | PARITY #5, D-01 | D1 | Open Profile, Preferences, Notifications. Flip three rows quickly. Reopen the screen and compare with iOS. | Four sections and 13 rows, nothing about quiet hours; opening sends no PATCH (Railway logs, H10); the three flips send one PATCH; the bar shows a spinner then a check; reopening shows the values; iOS shows the same values. | Outcome per step; PATCH count from Railway logs. | [ ] |
 | D1.NS2 | D-02 | D1 | In airplane mode flip a row. Reconnect and tap Retry. | An error icon and Retry show in the bar, the toggle stays, no dialog; after Retry the check shows. | Outcome per step. | [ ] |
 | D1.NS3 | backend push gate | D1 | Turn off Booking Confirmations. A accepts a request from iOS. Turn the row back on. | No push arrives on the Samsung while the row is off. | Yes or no on the push; row restored. | [ ] |
