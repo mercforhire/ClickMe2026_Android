@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Deliberately invisible. Android 12+ zooms the system splash icon and crops it to a circle, and it cannot show the
+    wordmark, so a logo here looks deformed and cannot match the iOS launch screen. The first visible content is the
+    Compose splash (screens/splash/SplashScreen.kt), with the mark, wordmark and tagline.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+</shape>
