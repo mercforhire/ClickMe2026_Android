@@ -11,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.config.AppConfig
 import com.uptrendinvestments.clickmeapp.stripe.ChallengeOutcome
 import com.uptrendinvestments.clickmeapp.stripe.SheetOutcome
 import com.uptrendinvestments.clickmeapp.stripe.clickMeSheetConfiguration
+import com.uptrendinvestments.clickmeapp.stripe.isPostCompletionReset
 import com.uptrendinvestments.clickmeapp.stripe.rememberClickMePaymentSheetAppearance
 import com.uptrendinvestments.clickmeapp.stripe.shouldConfirmSelection
 import com.uptrendinvestments.clickmeapp.stripe.toChallengeOutcome
@@ -20,6 +21,27 @@ import com.uptrendinvestments.clickmeapp.stripe.userFacingStripeMessage
 /** Holds the controller so the option callback, built before the controller exists, can confirm on it. */
 private class FlowControllerHolder {
     var controller: PaymentSheet.FlowController? = null
+}
+
+/**
+ * What one FlowController option callback means for the paid flow. The ViewModel's step stands in for a "sheet
+ * presented" flag and survives rotation. A selection confirms; the SDK's reset after a completed setup is ignored
+ * because [SheetOutcome.Completed] follows it through the result callback ([isPostCompletionReset]); anything else is
+ * a dismissal, which never authorizes a card (D-18).
+ */
+internal fun routePaymentOptionResult(
+    paidStep: PaidStep,
+    didCancel: Boolean,
+    hasPaymentOption: Boolean,
+    confirm: () -> Unit,
+    reportSheetOutcome: (SheetOutcome) -> Unit,
+) {
+    if (paidStep != PaidStep.CollectingPaymentMethod) return
+    when {
+        shouldConfirmSelection(didCancel, hasPaymentOption) -> confirm()
+        isPostCompletionReset(didCancel, hasPaymentOption) -> Unit
+        else -> reportSheetOutcome(SheetOutcome.Canceled)
+    }
 }
 
 /**
@@ -71,14 +93,13 @@ fun PaidFlowStripeHost(
             PaymentSheet.FlowController.Builder(
                 resultCallback = { latestSheet(it.toSheetOutcome()) },
                 paymentOptionResultCallback = { result ->
-                    // The ViewModel's step stands in for a "sheet presented" flag and survives rotation.
-                    if (latestStep == PaidStep.CollectingPaymentMethod) {
-                        if (shouldConfirmSelection(result.didCancel, result.paymentOption != null)) {
-                            holder.controller?.confirm()
-                        } else {
-                            latestSheet(SheetOutcome.Canceled)
-                        }
-                    }
+                    routePaymentOptionResult(
+                        paidStep = latestStep,
+                        didCancel = result.didCancel,
+                        hasPaymentOption = result.paymentOption != null,
+                        confirm = { holder.controller?.confirm() },
+                        reportSheetOutcome = { latestSheet(it) },
+                    )
                 },
             )
         }.build()

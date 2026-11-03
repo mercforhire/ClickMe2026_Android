@@ -47,3 +47,17 @@ fun shouldConfirmSelection(
     didCancel: Boolean,
     hasPaymentOption: Boolean,
 ): Boolean = !didCancel && hasPaymentOption
+
+/**
+ * Whether a FlowController option callback is the SDK clearing its selection after a completed setup, not a sheet
+ * closing. `DefaultFlowController.onPaymentResult` sends `PaymentOptionResult(null, false)` and only then launches
+ * the `Completed` result, so treating it as a dismissal resets the flow and drops the `Completed`.
+ *
+ * Checked against every call site in Stripe 23.24.0; recheck on an SDK upgrade. A real dismissal always has
+ * `didCancel = true`, including a dismissal that leaves no selection. Every other `didCancel = false` call carries a
+ * non-null option.
+ */
+fun isPostCompletionReset(
+    didCancel: Boolean,
+    hasPaymentOption: Boolean,
+): Boolean = !didCancel && !hasPaymentOption

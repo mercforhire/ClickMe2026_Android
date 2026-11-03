@@ -112,4 +112,12 @@ class StripeResultMappingTest {
         assertFalse(shouldConfirmSelection(didCancel = false, hasPaymentOption = false))
         assertFalse(shouldConfirmSelection(didCancel = true, hasPaymentOption = false))
     }
+
+    @Test
+    fun onlyNoOptionWithoutACancelIsThePostCompletionReset() {
+        assertTrue(isPostCompletionReset(didCancel = false, hasPaymentOption = false))
+        assertFalse(isPostCompletionReset(didCancel = true, hasPaymentOption = false))
+        assertFalse(isPostCompletionReset(didCancel = true, hasPaymentOption = true))
+        assertFalse(isPostCompletionReset(didCancel = false, hasPaymentOption = true))
+    }
 }
