@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-04 session A paused after D1.14; 13 of 141 rows have verdicts; D1.13 next
+stopped_at: Session A recorded, 55 of 141 rows; Fix batch A (16-05) next
 last_updated: "2026-11-03T05:20:00.000Z"
 last_activity: 2026-11-03
-last_activity_desc: Session A paused after 13 rows
+last_activity_desc: Session A recorded and triaged
 state_head: 9e0010fb893203a8ed88d217408447c5c96e05ef
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 297
-  completed_plans: 289
+  completed_plans: 290
 milestone_name: milestone
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 ## Current Position
 
 Phase: 16 (Cross-Platform QA) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Executing Phase 16
-Last activity: 2026-11-03 — Session A paused after 13 of 141 rows
+Last activity: 2026-11-03 — Session A recorded and triaged: 49 pass, 4 fail, 2 not run, 86 carried
 
 Progress: [███████░░░] 65%
 
@@ -100,6 +100,13 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
+- [Phase 16] BUG-13 (backend): Read label; blocks Android release: no
+- [Phase 16] BUG-14 (ios): overtime cutoff; blocks Android release: no
+- [Phase 16] BUG-15 (ios): Join window; blocks Android release: no
+- [Phase 16] BUG-16 (ios): tag pills; blocks Android release: no
+- [Phase 16] BUG-17 (backend): lone card default; blocks Android release: no
+- [Phase 16] BUG-18 (android, ios): private note on Upcoming Details; blocks Android release: no
+- [Phase 16] BUG-19 (ios, android, backend): expert sees the review; blocks Android release: no
 - [2026-11-03] [planning] Sync Android bug fixes to iOS — [todo file](.planning/todos/pending/2026-11-02-sync-android-bug-fixes-to-ios.md)
 - Report to iOS/backend (Phase 16 BUG-03, post-release): Stripe tax ID prompt seen on client account B; clients have no payouts.
 
@@ -349,7 +356,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-03T05:20:00.000Z
-Stopped at: 16-04 Task 2 (session A) paused by the user after D1.14
-Resume file: /Users/LeonChen/ClickMe-release/sessions/session-A-results.md
-Resume: `/gsd-execute-phase 16` resumes 16-04 at Task 2, D1.13. Task 1 is done (commit a6fee637; session-A row in the runbook; results file seeded): do NOT re-run it or re-seed the results file. Re-run Harness H1-H4 first. Helpers `capture.sh ROW` and `record.sh ROW VERDICT NOTE` are in /Users/LeonChen/ClickMe-release/sessions/. Results are not in the runbook yet; Task 3 moves them. Backup of the verdicts, since that folder was found emptied once: pass D1.01-04, D1.06-09, D1.11, D1.14 (keep the plain call notification); fail D1.05 (Read label needs a reopen, both apps), D1.10 (Samsung stuck on Waiting after iPhone hang-up and rejoin, voice works; D1.10 first attempt had no hang-up in the log); not run D1.12 (no headset, GSM part not reported). FREE findings: Read label not live; End Call cut off and under the navigation bar while the ending-soon banner shows; iOS 5-minute TEMP overtime cutoff confirmed on device (Android 60 minutes); stuck on Waiting. No paid booking yet, no charge. D1.11 row wording is out of date: hanging up leaves the call for one person only (CALL-08). First real charge is at D1.18.
+Last session: 2026-11-03
+Stopped at: 16-04 complete; 16-05 Fix batch A next
+Resume file: .planning/phases/16-cross-platform-qa/16-04-SUMMARY.md
+Resume: `/gsd-execute-phase 16` runs 16-05. Input: BUG-05 (blocking) and BUG-06 to BUG-12 (fix-if-cheap), approved by the user 2026-11-03. BUG-05 fix is on branch worktree-agent-a9a263da2ef1d7f1f, commit f94d6bbf; merge it first. No money has moved. The first real hold is the D1.18 re-run on the fix build. Say client account and expert account to the user, not A and B.
