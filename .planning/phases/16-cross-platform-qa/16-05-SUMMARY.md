@@ -63,7 +63,7 @@ Proof: installer `com.android.vending`, versionCode 4, lastUpdateTime 2026-11-03
 - **D1.19:** the snackbar was not stated.
 - **D1.23:** the challenge and JPY parts were not run (no 3DS card, no JPY topic).
 - **BUG-12:** readability at the largest font was not stated.
-- **Smoke:** the call join and push steps are the user's report; I did not read those log lines.
+- **Smoke:** reported as a pass by the user, but the smoke log and the phone's log buffer show no call starting after 21:51, so the call join step has no log evidence. Call joins on this build earlier the same evening are logged (D1.10.log, 20:41-21:30). The push step has no log evidence either way.
 
 ## Paid bookings
 
