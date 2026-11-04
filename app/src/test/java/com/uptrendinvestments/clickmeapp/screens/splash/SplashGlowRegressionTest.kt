@@ -35,6 +35,9 @@ class SplashGlowRegressionTest {
 
     private val logoAlpha = mutableFloatStateOf(1f)
     private val glowAlpha = mutableFloatStateOf(1f)
+    private val logoScale = mutableFloatStateOf(1f)
+    private val textAlpha = mutableFloatStateOf(0f)
+    private val glowScale = mutableFloatStateOf(1f)
 
     private fun show() {
         rule.mainClock.autoAdvance = false
@@ -42,10 +45,10 @@ class SplashGlowRegressionTest {
             val motion =
                 SplashMotionValues(
                     logoAlphaState = logoAlpha,
-                    logoScaleState = mutableFloatStateOf(1f),
-                    textAlphaState = mutableFloatStateOf(0f),
+                    logoScaleState = logoScale,
+                    textAlphaState = textAlpha,
                     glowAlphaState = glowAlpha,
-                    glowScaleState = mutableFloatStateOf(1f),
+                    glowScaleState = glowScale,
                 )
             ClickMeTheme { SplashContent(motion) }
         }

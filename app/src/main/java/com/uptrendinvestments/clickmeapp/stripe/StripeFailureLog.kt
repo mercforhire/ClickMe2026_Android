@@ -8,6 +8,9 @@ import com.stripe.android.paymentsheet.PaymentSheetResult
 /** Logcat tag for Stripe sheet and challenge failures. The release build keeps these lines, like `ClickMeCall`. */
 const val STRIPE_LOG_TAG = "StripeSheet"
 
+/** The status code of a [StripeException] that has none. Stripe's own constant is restricted to its library group. */
+private const val NO_STATUS_CODE = 0
+
 /**
  * BUG-08: what a Stripe failure was, for the log only. The user sees the app's own copy for anything that is not a
  * card error ([userFacingStripeMessage]), so without this line the real cause is gone.
@@ -22,7 +25,7 @@ internal fun describeStripeFailure(error: Throwable?): String {
     if (error is StripeException) {
         error.stripeError?.type?.let { parts += "type=$it" }
         error.stripeError?.code?.let { parts += "code=$it" }
-        if (error.statusCode != StripeException.DEFAULT_STATUS_CODE) parts += "status=${error.statusCode}"
+        if (error.statusCode != NO_STATUS_CODE) parts += "status=${error.statusCode}"
         error.requestId?.let { parts += "request=$it" }
     }
     error.cause?.let { parts += "cause=${it.javaClass.simpleName}" }
