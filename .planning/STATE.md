@@ -357,13 +357,19 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-04
-Stopped at: 16-06 Task 2 (session B live rows) paused by the user on 2026-11-04 before D1.RS4; no row run and no capture started that session; Task 1 done at ac0bc4c2
+Stopped at: 16-06 Task 2 (session B live rows) paused by the user on 2026-11-04 evening before D2.05, to continue later that night; Direction 1, the switch and D2.01-D2.04 are done; Task 1 done at ac0bc4c2
 Resume file: /Users/LeonChen/ClickMe-release/sessions/session-B-results.md
-Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 51 rows have no verdict; D1.24 part 1 passed but the row stays open for part 2. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
+Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 32 rows have no verdict (D2.05-D2.20). The phones are switched: Samsung = expert account, iPhone = client account. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
 
 **Live money:** holds 3d5b80b2 (D1.RS4), e8ba8e6a (D1.24 part 2) and 165e4b0f (D1.24 part 2, D1.RS5) are CA$5.00 each, authorized, not charged. Cancel each in the session that tests it: a converted booking is charged 24 hours before its new time. D1.20's hold is reported cancelled; Section 7 confirms it in Stripe. The holds' booked session times were not read: read them on resume, and test and cancel each hold before its session time, because the completion sweep can act on a booking after its session ends (`expirePastSessions.js` Sweep C, not read in detail). `authExpirySweep.js` does not touch live bookings.
 
-**Next order:** D1.RS4 first with both cards saved. Then read hold 2's card from its booking row, delete that card and test recovery on hold 2. Then delete the other card and test no-card recovery on hold 3. The expert account needs Nov 10 slots earlier in the day than the test. Then D1.RS3, D1.RS8, D1.PH1-PH4, D1.25, D1.29 last, then SW.1-SW.4 and Direction 2.
+**Superseded 2026-11-04:** all three holds above are cancelled and void; 53ka5k, b2m66n and lTnYmn read canceled. One capture is open: 5449f1b7, C3eR3Z, CA$5.00, refund by hand in Section 7. Free booking from D2.02-D2.03 is confirmed for Sunday 7 PM.
+
+**Next order:** one free 30-minute booking for D2.05-D2.07: start capture, join from the Dashboard card, an Upcoming card and Booking Summary, then 5+ minutes backgrounded, then client hangup and rejoin, then the final 5 minutes. A full run takes the session's whole length to its end time. Then D2.08 onward in runbook order.
+
+**Runbook premises found wrong, for Task 3:** D1.RS5 and D1.24 recovery can't be reached live (card always saved, clone cached). D1.RS8 needs a slot exactly one hour before another booking, not a 30-minute gap. D2.04 needs five requests, not four.
+
+**More findings for Task 3 triage (FREE lines in the results file):** SW.1 failed on iOS: logout leaves the push token (owner ios). A deleted card may still be charged after a move (owner backend, read in code only). The expert's decline note never reaches the client (owner backend, both apps). The user wants the booking ID on every Payment History row. Evidence not obtained: D1.25 Railway count, D1.29 report enum value, D1.RS4 copy.
 
 **Findings for Task 3 triage:** the iOS expert Upcoming card's Reschedule button does nothing (owner ios; no handler passed at `HomeExpertView.swift:156` and `ExpertDashboardView.swift:235`). The runbook's unsaved one-off card can't be produced, because both apps always save the card (D1.RS5, D1.24). Still unanswered: how the user proposed the D1.24 part 1 reschedules on the iPhone. Airplane-mode rows drop wireless ADB, so their logs come back empty.
 
