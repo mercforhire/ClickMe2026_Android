@@ -4,7 +4,7 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-05 complete on versionCode 4; session B (16-06) next
+stopped_at: 16-06 Task 2 paused; session B resumes with three live holds
 last_updated: "2026-11-03T05:20:00.000Z"
 last_activity: 2026-11-03
 last_activity_desc: Session A recorded and triaged
@@ -357,6 +357,14 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-03
-Stopped at: 16-05 complete; 16-06 session B next
-Resume file: .planning/phases/16-cross-platform-qa/16-05-SUMMARY.md
-Resume: `/gsd-execute-phase 16` runs 16-06. It covers Direction 2 plus 84 rows carried from session A (paid D1 rows, D1.29, and all Section 5). Both holds made so far are void; no money has been charged. Open for batch B: BUG-22, BUG-23; BUG-08 not exercised; expert Dashboard tab label at large font still to read. Say client account and expert account to the user, not A and B. The client account also opens in expert mode after a fresh login because it has a topic.
+Stopped at: 16-06 Task 2 (session B live rows) paused overnight; Task 1 done at ac0bc4c2
+Resume file: /Users/LeonChen/ClickMe-release/sessions/session-B-results.md
+Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 51 rows have no verdict; D1.24 part 1 passed but the row stays open for part 2. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
+
+**Live money:** holds 3d5b80b2 (D1.RS4), e8ba8e6a (D1.24 part 2) and 165e4b0f (D1.24 part 2, D1.RS5) are CA$5.00 each, authorized, not charged. Cancel each in the session that tests it: a converted booking is charged 24 hours before its new time. D1.20's hold is reported cancelled; Section 7 confirms it in Stripe.
+
+**Next order:** D1.RS4 first with both cards saved. Then read hold 2's card from its booking row, delete that card and test recovery on hold 2. Then delete the other card and test no-card recovery on hold 3. The expert account needs Nov 10 slots earlier in the day than the test. Then D1.RS3, D1.RS8, D1.PH1-PH4, D1.25, D1.29 last, then SW.1-SW.4 and Direction 2.
+
+**Findings for Task 3 triage:** the iOS expert Upcoming card's Reschedule button does nothing (owner ios; no handler passed at `HomeExpertView.swift:156` and `ExpertDashboardView.swift:235`). The runbook's unsaved one-off card can't be produced, because both apps always save the card (D1.RS5, D1.24). Still unanswered: how the user proposed the D1.24 part 1 reschedules on the iPhone. Airplane-mode rows drop wireless ADB, so their logs come back empty.
+
+Open for batch B: BUG-22, BUG-23; BUG-08 not exercised; expert Dashboard tab label at large font still to read. Say client account and expert account to the user, not A and B. The client account also opens in expert mode after a fresh login because it has a topic.
