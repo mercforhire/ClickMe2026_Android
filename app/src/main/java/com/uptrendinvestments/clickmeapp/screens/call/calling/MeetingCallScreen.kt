@@ -68,8 +68,9 @@ private val SideBySideMinWidth = 560.dp
  * session with [toMeetingCallUiState] and wires the callbacks.
  *
  * The layer is full screen and applies its own edge-to-edge insets (D-08): `safeDrawing` at the top and sides,
- * `navigationBars` at the bottom. The column is a min-height-fill scroll: a normal phone gets the weighted spacer, and
- * at 200% font scale the whole column scrolls so End Call stays reachable.
+ * `navigationBars` at the bottom. End Call is pinned at the bottom, above the navigation bar (BUG-10). Everything above
+ * it is a min-height-fill scroll: a normal phone gets the weighted spacer, and when the content is taller than the
+ * space (the ending-soon banner with the time-left chip, 200% font scale) it scrolls while End Call stays on screen.
  *
  * TalkBack reads the layer in the order of UI-SPEC Flow 3 through traversal indexes inside a traversal group. The
  * variant content is its own group because `AnimatedContent` puts a semantics node between it and the root column,
@@ -91,56 +92,78 @@ fun MeetingCallScreen(
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: DateFormat = rememberDeviceTimeFormat(),
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize().testTag(MEETING_CALL_SCREEN_TAG)) {
+    val endLabel =
+        if (state.connectionType == ConnectionType.SkypeZoom) R.string.call_end_session else R.string.call_end_call
+    Box(modifier = modifier.fillMaxSize().testTag(MEETING_CALL_SCREEN_TAG)) {
         MeetingCallBackground()
         Column(
             modifier =
                 Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                    .verticalScroll(rememberScrollState())
-                    .heightIn(min = maxHeight)
                     .semantics { isTraversalGroup = true },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.safeDrawing))
-            Spacer(Modifier.height(Spacing.md))
-            EndingSoonBanner(state.timer)
-            Spacer(Modifier.weight(1f))
-            AnimatedContent(
-                targetState = state.connectionType,
-                modifier = Modifier.fillMaxWidth(),
-                transitionSpec = {
-                    fadeIn(tween(VARIANT_FADE_MS)) togetherWith fadeOut(tween(VARIANT_FADE_MS))
-                },
-                label = "callVariant",
-            ) { variant ->
-                when (variant) {
-                    ConnectionType.InAppVoice ->
-                        InAppContent(
-                            state = state,
-                            onMinimize = onMinimize,
-                            onToggleMute = onToggleMute,
-                            onToggleSpeaker = onToggleSpeaker,
-                            onEndCall = onEndCall,
-                            onChat = onChat,
-                            chatBusy = chatBusy,
-                            zone = zone,
-                            timeFormat = timeFormat,
-                        )
-                    ConnectionType.SkypeZoom ->
-                        ExternalContent(
-                            state = state,
-                            onMinimize = onMinimize,
-                            onEndCall = onEndCall,
-                            onOpenExternal = onOpenExternal,
-                            onChat = onChat,
-                            chatBusy = chatBusy,
-                            zone = zone,
-                            timeFormat = timeFormat,
-                        )
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .heightIn(min = maxHeight)
+                            .semantics { isTraversalGroup = true },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.safeDrawing))
+                    Spacer(Modifier.height(Spacing.md))
+                    EndingSoonBanner(state.timer)
+                    Spacer(Modifier.weight(1f))
+                    AnimatedContent(
+                        targetState = state.connectionType,
+                        modifier = Modifier.fillMaxWidth(),
+                        transitionSpec = {
+                            fadeIn(tween(VARIANT_FADE_MS)) togetherWith fadeOut(tween(VARIANT_FADE_MS))
+                        },
+                        label = "callVariant",
+                    ) { variant ->
+                        when (variant) {
+                            ConnectionType.InAppVoice ->
+                                InAppContent(
+                                    state = state,
+                                    onMinimize = onMinimize,
+                                    onToggleMute = onToggleMute,
+                                    onToggleSpeaker = onToggleSpeaker,
+                                    onChat = onChat,
+                                    chatBusy = chatBusy,
+                                    zone = zone,
+                                    timeFormat = timeFormat,
+                                )
+                            ConnectionType.SkypeZoom ->
+                                ExternalContent(
+                                    state = state,
+                                    onMinimize = onMinimize,
+                                    onOpenExternal = onOpenExternal,
+                                    onChat = onChat,
+                                    chatBusy = chatBusy,
+                                    zone = zone,
+                                    timeFormat = timeFormat,
+                                )
+                        }
+                    }
+                    Spacer(Modifier.height(Spacing.xl))
                 }
             }
+            // BUG-10: End Call sits below the scrolling content, so a tall content column (the ending-soon banner and
+            // time-left chip, a large font) scrolls above it instead of pushing it off screen or under the navigation bar.
+            MeetingCallEndButton(
+                label = stringResource(endLabel),
+                isEnding = state.isEndingCall,
+                onClick = onEndCall,
+                modifier =
+                    Modifier
+                        .padding(horizontal = Spacing.lg)
+                        .semantics { traversalIndex = CALL_END_TRAVERSAL_INDEX },
+            )
             Spacer(Modifier.height(Spacing.lg))
             Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
@@ -153,7 +176,6 @@ private fun InAppContent(
     onMinimize: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
-    onEndCall: () -> Unit,
     onChat: () -> Unit,
     chatBusy: Boolean,
     zone: ZoneId,
@@ -176,7 +198,6 @@ private fun InAppContent(
             onMinimize = onMinimize,
             onToggleMute = onToggleMute,
             onToggleSpeaker = onToggleSpeaker,
-            onEndCall = onEndCall,
             onChat = onChat,
             chatBusy = chatBusy,
             zone = zone,
@@ -206,7 +227,7 @@ private fun InAppContent(
     }
 }
 
-/** Name, status, controls and End call. [compact] tightens the vertical gaps on a short window (below 480 dp). */
+/** Name, status and controls. [compact] tightens the vertical gaps on a short window (below 480 dp). */
 @Composable
 private fun InAppPanel(
     state: MeetingCallUiState,
@@ -214,7 +235,6 @@ private fun InAppPanel(
     onMinimize: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
-    onEndCall: () -> Unit,
     onChat: () -> Unit,
     chatBusy: Boolean,
     zone: ZoneId,
@@ -248,16 +268,6 @@ private fun InAppPanel(
             chatBusy = chatBusy,
             audioControlsEnabled = !state.isEndingCall,
         )
-        Spacer(Modifier.height(if (compact) Spacing.md else Spacing.xl))
-        MeetingCallEndButton(
-            label = stringResource(R.string.call_end_call),
-            isEnding = state.isEndingCall,
-            onClick = onEndCall,
-            modifier =
-                Modifier
-                    .padding(horizontal = Spacing.lg)
-                    .semantics { traversalIndex = CALL_END_TRAVERSAL_INDEX },
-        )
     }
 }
 
@@ -265,7 +275,6 @@ private fun InAppPanel(
 private fun ExternalContent(
     state: MeetingCallUiState,
     onMinimize: () -> Unit,
-    onEndCall: () -> Unit,
     onOpenExternal: () -> Unit,
     onChat: () -> Unit,
     chatBusy: Boolean,
@@ -312,16 +321,6 @@ private fun ExternalContent(
             onChat = onChat,
             chatEnabled = state.peerId != null,
             chatBusy = chatBusy,
-        )
-        Spacer(Modifier.height(Spacing.xl))
-        MeetingCallEndButton(
-            label = stringResource(R.string.call_end_session),
-            isEnding = state.isEndingCall,
-            onClick = onEndCall,
-            modifier =
-                Modifier
-                    .padding(horizontal = Spacing.lg)
-                    .semantics { traversalIndex = CALL_END_TRAVERSAL_INDEX },
         )
     }
 }

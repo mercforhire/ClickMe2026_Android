@@ -192,7 +192,7 @@ class MeetingCallScreenTest {
         rule.onNodeWithTag(CALL_CONTROL_MINIMIZE_TAG).performClick()
         rule.onNodeWithTag(CALL_CONTROL_MUTE_TAG).performClick()
         rule.onNodeWithTag(CALL_CONTROL_SPEAKER_TAG).performClick()
-        rule.onNodeWithTag(CALL_END_BUTTON_TAG).performScrollTo().performClick()
+        rule.onNodeWithTag(CALL_END_BUTTON_TAG).performClick()
         assertEquals(listOf(1, 1, 1, 1), listOf(minimize, mute, speaker, endCall))
     }
 
@@ -204,7 +204,7 @@ class MeetingCallScreenTest {
         show(external(), onMinimize = { minimize++ }, onEndCall = { endCall++ }, onOpenExternal = { open++ })
         rule.onNodeWithTag(EXTERNAL_OPEN_TAG).performClick()
         rule.onNodeWithTag(CALL_CONTROL_MINIMIZE_TAG).performClick()
-        rule.onNodeWithTag(CALL_END_BUTTON_TAG).performScrollTo().performClick()
+        rule.onNodeWithTag(CALL_END_BUTTON_TAG).performClick()
         assertEquals(listOf(1, 1, 1), listOf(open, minimize, endCall))
     }
 
@@ -252,7 +252,8 @@ class MeetingCallScreenTest {
                 }
             }
         }
-        rule.onNodeWithTag(CALL_END_BUTTON_TAG).performScrollTo().assertIsDisplayed()
+        // BUG-10: End Call is pinned below the scrolling content, so it is displayed without scrolling.
+        rule.onNodeWithTag(CALL_END_BUTTON_TAG).assertIsDisplayed()
     }
 
     @Test
@@ -302,8 +303,9 @@ class MeetingCallScreenTest {
             .action
             ?.invoke(results)
         assertTrue("name lines: ${results.map { it.lineCount }}", results.single().lineCount <= 2)
-        listOf(CALL_CONTROL_MUTE_TAG, CALL_CONTROL_SPEAKER_TAG, CALL_END_BUTTON_TAG).forEach { tag ->
+        listOf(CALL_CONTROL_MUTE_TAG, CALL_CONTROL_SPEAKER_TAG).forEach { tag ->
             rule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
         }
+        rule.onNodeWithTag(CALL_END_BUTTON_TAG).assertIsDisplayed()
     }
 }
