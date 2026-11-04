@@ -4,7 +4,7 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-05 versionCode 4 built and archived; waiting for the Play upload and batch A re-test
+stopped_at: 16-05 complete on versionCode 4; session B (16-06) next
 last_updated: "2026-11-03T05:20:00.000Z"
 last_activity: 2026-11-03
 last_activity_desc: Session A recorded and triaged
@@ -13,7 +13,7 @@ progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 297
-  completed_plans: 290
+  completed_plans: 291
 milestone_name: milestone
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 ## Current Position
 
 Phase: 16 (Cross-Platform QA) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Executing Phase 16
-Last activity: 2026-11-03 — Session A recorded and triaged: 49 pass, 4 fail, 2 not run, 86 carried
+Last activity: 2026-11-03 — Batch A re-tested on versionCode 4, smoke pass
 
 Progress: [███████░░░] 65%
 
@@ -357,6 +357,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-03
-Stopped at: 16-05 Task 3, waiting for the user to upload versionCode 4
-Resume file: /Users/LeonChen/ClickMe-release/clickme-0.1.0-4.aab
-Resume: `/gsd-execute-phase 16` resumes 16-05 at Task 3. Tasks 1-2 done: BUG-05 to BUG-12 fixed, gate green (5270 tests per flavor), chore commit 469acd78. After upload run H1-H2, then re-run D1.10, D1.18, D1.SP1 and the BUG-06, BUG-07, BUG-10, BUG-12 checks, then the smoke. Results go to /Users/LeonChen/ClickMe-release/sessions/batch-A-results.md. No money has moved. The D1.18 re-run places the first real hold; ask before it. Say client account and expert account to the user, not A and B.
+Stopped at: 16-05 complete; 16-06 session B next
+Resume file: .planning/phases/16-cross-platform-qa/16-05-SUMMARY.md
+Resume: `/gsd-execute-phase 16` runs 16-06. It covers Direction 2 plus 84 rows carried from session A (paid D1 rows, D1.29, and all Section 5). Both holds made so far are void; no money has been charged. Open for batch B: BUG-22, BUG-23; BUG-08 not exercised; expert Dashboard tab label at large font still to read. Say client account and expert account to the user, not A and B. The client account also opens in expert mode after a fresh login because it has a topic.
