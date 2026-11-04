@@ -64,11 +64,13 @@ Used by 16-05, 16-07 and any gap plan.
 | 1 | 0.1.0 | d31aab18 | be68ecc836fe949e | /Users/LeonChen/ClickMe-release/clickme-0.1.0-1.aab | yes | 2026-10-30 | available | vc 1, 2026-10-30 17:57:21, com.android.vending | |
 | 2 | 0.1.0 | f2d6745c | 98e11a4b12e69676 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | 2026-11-02 | available; on the Samsung 2026-11-02 20:27:12 before vc 3; superseded by vc 3, no rows run | | |
 | 3 | 0.1.0 | 5e776574 | 8bdadb7e4bc4bbf4 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-3.aab | yes | 2026-11-02 | available | vc 3, 2026-11-02 20:43:25, com.android.vending | |
+| 4 | 0.1.0 | 469acd78 | f4ea03f0c5add845 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-4.aab | yes | | not uploaded | pending | |
 
 ## Fix batches
 
 | Batch | After session | Bugs fixed | versionCode | Gate | Uploaded | Re-test |
 |---|---|---|---|---|---|---|
+| A | session-A | BUG-05, BUG-06, BUG-07, BUG-08, BUG-09, BUG-10, BUG-11, BUG-12 | 4 | green | | |
 
 ## Notes
 

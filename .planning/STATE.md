@@ -4,7 +4,7 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: Session A recorded, 55 of 141 rows; Fix batch A (16-05) next
+stopped_at: 16-05 versionCode 4 built and archived; waiting for the Play upload and batch A re-test
 last_updated: "2026-11-03T05:20:00.000Z"
 last_activity: 2026-11-03
 last_activity_desc: Session A recorded and triaged
@@ -357,6 +357,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-03
-Stopped at: 16-04 complete; 16-05 Fix batch A next
-Resume file: .planning/phases/16-cross-platform-qa/16-04-SUMMARY.md
-Resume: `/gsd-execute-phase 16` runs 16-05. Input: BUG-05 (blocking) and BUG-06 to BUG-12 (fix-if-cheap), approved by the user 2026-11-03. BUG-05 fix is on branch worktree-agent-a9a263da2ef1d7f1f, commit f94d6bbf; merge it first. No money has moved. The first real hold is the D1.18 re-run on the fix build. Say client account and expert account to the user, not A and B.
+Stopped at: 16-05 Task 3, waiting for the user to upload versionCode 4
+Resume file: /Users/LeonChen/ClickMe-release/clickme-0.1.0-4.aab
+Resume: `/gsd-execute-phase 16` resumes 16-05 at Task 3. Tasks 1-2 done: BUG-05 to BUG-12 fixed, gate green (5270 tests per flavor), chore commit 469acd78. After upload run H1-H2, then re-run D1.10, D1.18, D1.SP1 and the BUG-06, BUG-07, BUG-10, BUG-12 checks, then the smoke. Results go to /Users/LeonChen/ClickMe-release/sessions/batch-A-results.md. No money has moved. The D1.18 re-run places the first real hold; ask before it. Say client account and expert account to the user, not A and B.
