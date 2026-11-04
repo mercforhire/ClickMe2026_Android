@@ -356,12 +356,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-03
-Stopped at: 16-06 Task 2 (session B live rows) paused overnight; Task 1 done at ac0bc4c2
+Last session: 2026-11-04
+Stopped at: 16-06 Task 2 (session B live rows) paused by the user on 2026-11-04 before D1.RS4; no row run and no capture started that session; Task 1 done at ac0bc4c2
 Resume file: /Users/LeonChen/ClickMe-release/sessions/session-B-results.md
 Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 51 rows have no verdict; D1.24 part 1 passed but the row stays open for part 2. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
 
-**Live money:** holds 3d5b80b2 (D1.RS4), e8ba8e6a (D1.24 part 2) and 165e4b0f (D1.24 part 2, D1.RS5) are CA$5.00 each, authorized, not charged. Cancel each in the session that tests it: a converted booking is charged 24 hours before its new time. D1.20's hold is reported cancelled; Section 7 confirms it in Stripe.
+**Live money:** holds 3d5b80b2 (D1.RS4), e8ba8e6a (D1.24 part 2) and 165e4b0f (D1.24 part 2, D1.RS5) are CA$5.00 each, authorized, not charged. Cancel each in the session that tests it: a converted booking is charged 24 hours before its new time. D1.20's hold is reported cancelled; Section 7 confirms it in Stripe. The holds' booked session times were not read: read them on resume, and test and cancel each hold before its session time, because the completion sweep can act on a booking after its session ends (`expirePastSessions.js` Sweep C, not read in detail). `authExpirySweep.js` does not touch live bookings.
 
 **Next order:** D1.RS4 first with both cards saved. Then read hold 2's card from its booking row, delete that card and test recovery on hold 2. Then delete the other card and test no-card recovery on hold 3. The expert account needs Nov 10 slots earlier in the day than the test. Then D1.RS3, D1.RS8, D1.PH1-PH4, D1.25, D1.29 last, then SW.1-SW.4 and Direction 2.
 
