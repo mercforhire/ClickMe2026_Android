@@ -35,6 +35,7 @@ Commands may need adapting on One UI (RESEARCH A9); record the command actually 
 | preflight | 2026-11-02 | versionCode=3 | com.android.vending | 8d4450f | 1868 | 13 | 0 |
 | session-A | 2026-11-02 to 2026-11-03 | versionCode=3 | com.android.vending | 8d4450f | 1868, 2525, 2827, 3079, 3080, 3242 | 53 | 4 |
 | batch-A | 2026-11-03 | versionCode=4 | com.android.vending | 2ec82af | 4076 | 10 | 0 |
+| session-B | 2026-11-03 | versionCode=4 | com.android.vending | 2ec82af | 4076 | 0 | 0 |
 
 Later plans add the sessions `preflight`, `session-A`, `batch-A`, `session-B`, `batch-B` and `close-out`.
 
