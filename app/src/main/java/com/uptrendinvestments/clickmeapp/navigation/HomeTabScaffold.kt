@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -16,8 +17,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
@@ -29,6 +32,9 @@ object BottomBar {
 
     fun hidden(): Map<String, Any> = mapOf(HIDE_KEY to true)
 }
+
+/** The smallest a tab label gets on screen, however large the system font is: five tabs share the bar width. */
+private val TAB_LABEL_MIN_SIZE = 10.dp
 
 private fun fadeThrough(): ContentTransform =
     fadeIn(tween(Motion.TAB_FADE_IN_MS, delayMillis = Motion.TAB_FADE_OUT_MS)) togetherWith
@@ -72,9 +78,20 @@ fun HomeTabScaffold(
                                 )
                             },
                             label = {
+                                // BUG-12: a tab label is one word. At large font sizes it shrinks to fit its tab rather
+                                // than breaking mid-word, and never below TAB_LABEL_MIN_SIZE on screen.
+                                val style = MaterialTheme.typography.labelMedium
+                                val floor = with(LocalDensity.current) { TAB_LABEL_MIN_SIZE.toSp() }
                                 Text(
                                     text = stringResource(tab.labelRes),
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = style,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    autoSize =
+                                        TextAutoSize.StepBased(
+                                            minFontSize = minOf(floor.value, style.fontSize.value).sp,
+                                            maxFontSize = style.fontSize,
+                                        ),
                                 )
                             },
                             alwaysShowLabel = true,
