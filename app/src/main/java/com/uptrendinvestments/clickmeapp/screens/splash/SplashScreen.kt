@@ -132,18 +132,25 @@ private fun wordmarkStyle(): TextStyle {
     )
 }
 
-/** The mark over its soft pulsing halo, fading and scaling in together. */
+/**
+ * The mark over its soft pulsing halo, fading and scaling in together.
+ *
+ * The fade is applied to each part, not to the box around them (BUG-11): a layer with alpha below 1 renders offscreen
+ * and clips to its own 190 dp bounds, which cut the 160 dp halo to a hard-edged square until the fade ended. Only the
+ * scale stays on the outer layer, which needs no offscreen buffer.
+ */
 @Composable
 private fun SplashLogo(motion: SplashMotionValues) {
     val glowColor = MaterialTheme.colorScheme.primary
     val glowRadiusPx = with(LocalDensity.current) { GLOW_RADIUS.toPx() }
     Box(
         modifier =
-            Modifier.graphicsLayer {
-                alpha = motion.logoAlpha
-                scaleX = motion.logoScale
-                scaleY = motion.logoScale
-            },
+            Modifier
+                .testTag(SPLASH_LOGO_TAG)
+                .graphicsLayer {
+                    scaleX = motion.logoScale
+                    scaleY = motion.logoScale
+                },
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -154,7 +161,7 @@ private fun SplashLogo(motion: SplashMotionValues) {
                         scaleX = motion.glowScale
                         scaleY = motion.glowScale
                     }.drawBehind {
-                        val alpha = motion.glowAlpha
+                        val alpha = motion.glowAlpha * motion.logoAlpha
                         drawCircle(
                             brush =
                                 Brush.radialGradient(
@@ -172,13 +179,16 @@ private fun SplashLogo(motion: SplashMotionValues) {
         Image(
             painter = painterResource(R.drawable.clickme_mark),
             contentDescription = null,
-            modifier = Modifier.size(148.dp),
+            modifier = Modifier.size(148.dp).graphicsLayer { alpha = motion.logoAlpha },
         )
     }
 }
 
 /** Test tag of the splash root. */
 internal const val SPLASH_SCREEN_TAG = "splash_screen"
+
+/** Test tag of the mark and glow box. */
+internal const val SPLASH_LOGO_TAG = "splash_logo"
 
 private val WORDMARK_SIZE = 52.dp
 private val WORDMARK_LINE_HEIGHT = 62.dp
