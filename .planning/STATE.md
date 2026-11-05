@@ -4,10 +4,10 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-06 Task 2 paused before D2.CP1; 16 session B rows left
-last_updated: "2026-11-05T17:46:27.000Z"
+stopped_at: 16-06 complete; 16-07 (fix batch B) next, waiting on user answers to the 16-06 SUMMARY questions
+last_updated: "2026-11-05T22:40:00.000Z"
 last_activity: 2026-11-05
-last_activity_desc: Session B D2.12, D2.RS1-RS4, D2.FV1, D2.PN1-PN2 recorded
+last_activity_desc: Session B recorded and triaged, BUG-24 to BUG-33
 state_head: 9e0010fb893203a8ed88d217408447c5c96e05ef
 progress:
   total_phases: 22
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 ## Current Position
 
 Phase: 16 (Cross-Platform QA) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Executing Phase 16
-Last activity: 2026-11-03 — Batch A re-tested on versionCode 4, smoke pass
+Last activity: 2026-11-05 — Session B recorded and triaged (16-06 complete)
 
 Progress: [███████░░░] 65%
 
@@ -107,6 +107,11 @@ Recent decisions affecting current work:
 - [Phase 16] BUG-17 (backend): lone card default; blocks Android release: no
 - [Phase 16] BUG-18 (android, ios): private note on Upcoming Details; blocks Android release: no
 - [Phase 16] BUG-19 (ios, android, backend): expert sees the review; blocks Android release: no
+- [Phase 16] BUG-24 (ios): logout leaves the device_tokens push row (SW.1); blocks Android release: no
+- [Phase 16] BUG-25 (ios): client cannot respond to an expert reschedule from the Upcoming Booking screen (D2.RS1, user rated critical); blocks Android release: user decision pending
+- [Phase 16] BUG-26 (ios): expert Upcoming card Reschedule does nothing; blocks Android release: no
+- [Phase 16] BUG-27 (backend): a deleted card may still be charged after a move (code reading, not proven live); blocks Android release: no
+- [Phase 16] BUG-28 (backend, ios, android): the expert's decline note never reaches the client; blocks Android release: no
 - [2026-11-03] [planning] Sync Android bug fixes to iOS — [todo file](.planning/todos/pending/2026-11-02-sync-android-bug-fixes-to-ios.md)
 - Report to iOS/backend (Phase 16 BUG-03, post-release): Stripe tax ID prompt seen on client account B; clients have no payouts.
 
@@ -356,27 +361,15 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-04
-Stopped at: 16-06 Task 2 (session B live rows) paused by the user on 2026-11-05 at 12:46 EST before D2.CP1, back in about 3 hours; Direction 1, the switch, D2.01-D2.13, D2.RS1-RS4, D2.FV1 and D2.PN1-PN2 are done; Task 1 done at ac0bc4c2
-Resume file: /Users/LeonChen/ClickMe-release/sessions/session-B-results.md
-Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 16 rows have no verdict (D2.CP1-CP3, D2.PN3, D2.CP4-CP5, D2.NS1, D2.FB1, D2.PV1, D2.14-D2.20). No capture is running: run the capture script before each row. The phones are switched: Samsung = expert account, iPhone = client account. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
+Last session: 2026-11-05
+Stopped at: 16-06 complete (session B recorded and triaged, merge fb797beb); next is 16-07, fix batch B
+Resume file: .planning/phases/16-cross-platform-qa/16-06-SUMMARY.md
+Resume: `/gsd-execute-phase 16` runs 16-07. Get the user's answers to the 16-06 SUMMARY "Questions for the user" first: whether BUG-25 (iOS client cannot respond to an expert reschedule, user rated critical) blocks the Android release; BUG-24 severity; a live check for BUG-27 or not; the D2.14/D2.15 payout-link gap (expert account already onboarded, no new Connect account allowed); whether BUG-28 or BUG-29 go into batch B.
 
-**Live money:** holds 3d5b80b2 (D1.RS4), e8ba8e6a (D1.24 part 2) and 165e4b0f (D1.24 part 2, D1.RS5) are CA$5.00 each, authorized, not charged. Cancel each in the session that tests it: a converted booking is charged 24 hours before its new time. D1.20's hold is reported cancelled; Section 7 confirms it in Stripe. The holds' booked session times were not read: read them on resume, and test and cancel each hold before its session time, because the completion sweep can act on a booking after its session ends (`expirePastSessions.js` Sweep C, not read in detail). `authExpirySweep.js` does not touch live bookings.
+**Fix batch B input (android):** no blocking rows; fix-if-cheap BUG-30 (Profile Setup Next button behind the navigation bar, SignupOverviewScreen.kt bottomBar has no navigationBarsPadding; sweep other bottomBar buttons) and BUG-31 (photo crop circle opaque black, PhotoCropScreen.kt BlendMode.Clear in the image layer; saved photo is fine), plus BUG-22 and BUG-23 from batch A. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
 
-**Superseded 2026-11-04:** all three holds above are cancelled and void; 53ka5k, b2m66n and lTnYmn read canceled. One capture is open: 5449f1b7, C3eR3Z, CA$5.00, refund by hand in Section 7. Free booking from D2.02-D2.03 was confirmed for Sunday 7 PM; D2.13 may have moved it.
+**Batch B re-test:** the 70 Samsung setting-pass rows moved there (D-14 deviation, user option A), which adds one account swap; at that swap also check the Android client's response card for an expert reschedule (the half BUG-25 breaks on iOS).
 
-**Live money, 2026-11-05 12:46:** no live holds. Two captures are open, both planned, refund each by hand in Section 7: 5449f1b7, C3eR3Z (D1.25) and 43d0562b, See2oK (D2.12, succeeded CAD 500, fee 50). The plan allows no more captures. Voids: 277cd5ac, KJcrmX (D2.10) and Hlqzg7 (D2.RS2, D2.RS4; booking first 8 still not given, read it from Stripe metadata). Free booking FE144C62 is stuck in pending_reschedule because of the iOS bug below: the user should cancel it from the Samsung.
+**Money for 16-08 Section 7:** no live holds. Refund by hand: D1.25 (5449f1b7, C3eR3Z, CA$5.00) and D2.12 (43d0562b, See2oK, CA$5.00, fee 0.50). Confirm voids in Stripe: BFQEmT, 53ka5k, b2m66n, lTnYmn, KJcrmX, Hlqzg7.
 
-**Next order:** D2.CP1 onward in results-file order; the D2.CP1 capture was stopped, so start it again. D2.CP3 needs a chat with someone who has no booking with the expert; if none exists record that.
-
-**Critical finding for Task 3 (user's rating, 2026-11-05):** D2.RS1 failed on iOS: the client can't respond to any expert reschedule, because "Tap to review" opens Upcoming Booking, which has no Accept or Decline (and its pill reads Confirmed), and Accept exists only on Booking Summary, reached from Past or a leave-review push. Android's half passed. Owner ios; the user decides in Task 3 whether it blocks the Android release. D2.RS2's iOS saved-card recovery could not be exercised because of it. Check the Android client's response card at the batch B account swap. Also: the expert bookings list shows no booking ID (enhancement, like Payment History). D2.12 logged 2 confirm-connection lines, one uppercase id and one lowercase, likely one per app: confirm in code and correct the runbook's "exactly once". 45 log audio freezes in D2.12's 33 minutes; audibility on that call not stated.
-
-**For Task 3, from this run:** the Play build logs no `Realtime` lines in either session, so D2.08's evidence can't be obtained and rests on the user report. Audio froze for 2-4 s about six times in 5 minutes during D2.06 and throughout D2.05-D2.08 (`remote audio state=3 reason=1`), starting before backgrounding; the user did not hear them (confirmed 2026-11-04), so log-only, no bug row unless they become audible. The call notification shows "Starts at 11:00 p.m." with no chronometer until the scheduled start, then the chronometer (seen 23:00:30). D2.04 note: the decline note finding stands. D2.13's exact buffer outcome was not stated. D2.11 not run under P0.9.
-
-**Runbook premises found wrong, for Task 3:** D1.RS5 and D1.24 recovery can't be reached live (card always saved, clone cached). D1.RS8 needs a slot exactly one hour before another booking, not a 30-minute gap. D2.04 needs five requests, not four.
-
-**More findings for Task 3 triage (FREE lines in the results file):** SW.1 failed on iOS: logout leaves the push token (owner ios). A deleted card may still be charged after a move (owner backend, read in code only). The expert's decline note never reaches the client (owner backend, both apps). The user wants the booking ID on every Payment History row. Evidence not obtained: D1.25 Railway count, D1.29 report enum value, D1.RS4 copy.
-
-**Findings for Task 3 triage:** the iOS expert Upcoming card's Reschedule button does nothing (owner ios; no handler passed at `HomeExpertView.swift:156` and `ExpertDashboardView.swift:235`). The runbook's unsaved one-off card can't be produced, because both apps always save the card (D1.RS5, D1.24). Still unanswered: how the user proposed the D1.24 part 1 reschedules on the iPhone. Airplane-mode rows drop wireless ADB, so their logs come back empty.
-
-Open for batch B: BUG-22, BUG-23; BUG-08 not exercised; expert Dashboard tab label at large font still to read. Say client account and expert account to the user, not A and B. The client account also opens in expert mode after a fresh login because it has a topic.
+**Phones now:** Samsung signed in as the expert account, iPhone as the client account; the Throwaway account is deleted. Say client account and expert account to the user, not A and B.
