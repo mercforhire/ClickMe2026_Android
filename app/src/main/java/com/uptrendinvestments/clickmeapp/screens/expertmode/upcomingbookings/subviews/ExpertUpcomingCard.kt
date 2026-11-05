@@ -52,6 +52,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatS
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.expertShortBookingId
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.screens.expertmode.netEarningsText
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -155,6 +156,12 @@ fun ExpertUpcomingCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = Spacing.xs),
+                        )
+                        Text(
+                            text = stringResource(R.string.expert_summary_id, expertShortBookingId(item.bookingId)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.extras.onSurfaceMuted,
                             modifier = Modifier.padding(top = Spacing.xs),
                         )
                     }

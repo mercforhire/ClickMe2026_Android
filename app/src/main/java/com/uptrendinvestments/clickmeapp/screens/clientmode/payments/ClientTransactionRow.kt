@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.responses.ClientTransactionItem
+import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.shortBookingId
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
 import java.time.ZoneId
@@ -107,6 +108,11 @@ fun ClientTransactionRow(
                 )
                 Text(
                     text = stringResource(R.string.payment_history_row_line, expertText ?: none, date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.extras.onSurfaceMuted,
+                )
+                Text(
+                    text = stringResource(R.string.upcoming_booking_id, shortBookingId(item.bookingId)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.extras.onSurfaceMuted,
                 )

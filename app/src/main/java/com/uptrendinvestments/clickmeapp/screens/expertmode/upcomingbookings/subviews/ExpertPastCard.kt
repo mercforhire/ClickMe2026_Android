@@ -40,6 +40,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatS
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.pastStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.expertShortBookingId
 import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
 import com.uptrendinvestments.clickmeapp.screens.expertmode.upcomingbookings.ExpertPastRow
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -146,6 +147,11 @@ fun ExpertPastCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.extras.onSurfaceMuted,
                 modifier = Modifier.padding(top = Spacing.xs),
+            )
+            Text(
+                text = stringResource(R.string.expert_summary_id, expertShortBookingId(item.bookingId)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.extras.onSurfaceMuted,
             )
             PrivateNoteAction(onClick = onPrivateNote)
             if (!item.privateNotePreview.isNullOrBlank()) {
