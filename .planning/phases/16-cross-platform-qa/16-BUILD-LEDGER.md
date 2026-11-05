@@ -65,12 +65,14 @@ Used by 16-05, 16-07 and any gap plan.
 | 2 | 0.1.0 | f2d6745c | 98e11a4b12e69676 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-2.aab | yes | 2026-11-02 | available; on the Samsung 2026-11-02 20:27:12 before vc 3; superseded by vc 3, no rows run | | |
 | 3 | 0.1.0 | 5e776574 | 8bdadb7e4bc4bbf4 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-3.aab | yes | 2026-11-02 | available | vc 3, 2026-11-02 20:43:25, com.android.vending | |
 | 4 | 0.1.0 | 469acd78 | f4ea03f0c5add845 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-4.aab | yes | 2026-11-03 | available | vc 4, 2026-11-03 20:25:37, com.android.vending | D1.10, D1.18, D1.19, D1.23, D1.SP1, smoke |
+| 5 | 0.1.0 | d5fd82d9 | 5da687b5bfeeef81 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-5.aab | yes |  | not uploaded | pending |  |
 
 ## Fix batches
 
 | Batch | After session | Bugs fixed | versionCode | Gate | Uploaded | Re-test |
 |---|---|---|---|---|---|---|
 | A | session-A | BUG-05, BUG-06, BUG-07, BUG-08, BUG-09, BUG-10, BUG-11, BUG-12 | 4 | green | 2026-11-03 | 7 verified, BUG-08 not exercised; smoke pass |
+| B | session-B | BUG-29, BUG-30, BUG-31 | 5 | green |  |  |
 
 ## Notes
 
@@ -89,3 +91,7 @@ Used by 16-05, 16-07 and any gap plan.
 - vc 3 (2026-11-02) adds the two splash fixes to vc 2: the system splash no longer shows the cropped logo (2466fc09), and the wordmark and tagline use the iOS sizes (cb3b68c6). Built from the bump commit 5e776574. B2 passed on cb3b68c6: 5238 tests per flavor with 0 failures, ktlint, assembleDevDebug, both lint variants, design rules and self-test. The bump commit changes only the versionCode line. All B4 checks pass.
 - vc 3 archive sha256: aab 8bdadb7e4bc4bbf462e635d367b3d02aca68bf1d6f4780b0ce3848dc1eb7192f, apk ffb1525d26d8995b3d66fc4c3f1085a730f5adf955f0b05545bbf068867e260e, mapping ad38c1fb3fce7608373cceaabeac4857c4b1c30a5a57d0d99b805dccd65bd955.
 - Samsung install history: on 2026-11-02 the Samsung held a debug sideload (installer null, Android Debug key, versionCode 1) that blocked Play updates. It was uninstalled with the user's approval, and Play then installed vc 1 at 19:26:16. Do not sideload to the Samsung during the matrix.
+- vc 5 (2026-11-05, batch B) adds BUG-31 (e928cc8e, photo crop circle), BUG-30 (5c3be4c4, Profile Setup Next and Publish clear the navigation bar) and BUG-29 (33951e9c, booking ID on Payment History and expert booking rows) to vc 4. Built from the bump commit d5fd82d9 on branch gsd/phase-16-plan-07, which changes only the versionCode line. B2 passed on 85423656 (the later test-only color-constant commit 32a88358 re-ran the photo tests, ktlint and design rules): 5276 tests in the dev flavor with 0 failures, prod unit tests, ktlint, assembleDevDebug, lintDevDebug and lintProdDebug at -Xmx4g, design rules and self-test. All B4 checks pass: `jar verified.` (1351 "signed in JarFile" lines as before), apksigner verifies (v2), AAB and APK certificate equal the pin, badging versionCode 5 versionName 0.1.0, `google_app_id` present, 0 tracked secrets.
+- vc 5 archive sha256: aab 5da687b5bfeeef81804a1acd0714b5c00a0a7e0e373c81cdac6a418e7ffd2b9f, apk 6ab05852c766cdb1f04b810928e7edc8d111ea8686a9e4b35843cf486606d203, mapping 8e66a2c5303be6ab344d44e5941daee4b53e848148a132a1f6e734094af66ede.
+- Archive incident 2 (found 2026-11-05 at the vc 5 archive step): /Users/LeonChen/ClickMe-release/ held no vc 1-4 files (aab, apk, mapping), only logs/, sessions/ and .DS_Store (modified 17:54 that day). The sha256 values above stay as the record, but the vc 4 mapping file needed to retrace R8 frames from session B is gone; a vc 4 stack trace cannot be retraced. Cause unknown (same as incident 1). The vc 5 files were copied after the incident and are present.
+- Batch B scope: BUG-22 and BUG-23 are deferred to the next batch (fix-if-cheap budget of 3 rows was used by BUG-29, BUG-30, BUG-31). BUG-28's Android half waits for a backend change (no client booking read exposes `decline_reason_text` yet).
