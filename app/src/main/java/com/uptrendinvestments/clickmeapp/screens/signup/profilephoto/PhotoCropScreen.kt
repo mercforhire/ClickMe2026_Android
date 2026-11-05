@@ -43,12 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
@@ -310,7 +309,7 @@ private fun CropCanvas(
         contentAlignment = Alignment.Center,
     ) {
         if (ready) {
-            Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
+            Canvas(Modifier.fillMaxSize()) {
                 val image = bitmap
                 val topLeft =
                     Offset(
@@ -323,8 +322,15 @@ private fun CropCanvas(
                 }) {
                     drawImage(image)
                 }
-                drawRect(scrim)
-                drawCircle(Color.Transparent, radius = radiusPx, center = center, blendMode = BlendMode.Clear)
+                // BUG-31: the scrim is an even-odd path with the guide circle cut out. Cutting it with BlendMode.Clear in
+                // this layer also erased the photo, so the circle showed the screen background.
+                val scrimPath =
+                    Path().apply {
+                        fillType = PathFillType.EvenOdd
+                        addRect(Rect(Offset.Zero, size))
+                        addOval(Rect(center, radiusPx))
+                    }
+                drawPath(scrimPath, scrim)
                 drawCircle(ring, radius = radiusPx, center = center, style = Stroke(width = RingWidth.toPx()))
             }
         }
