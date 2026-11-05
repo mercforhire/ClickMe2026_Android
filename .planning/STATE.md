@@ -108,10 +108,10 @@ Recent decisions affecting current work:
 - [Phase 16] BUG-18 (android, ios): private note on Upcoming Details; blocks Android release: no
 - [Phase 16] BUG-19 (ios, android, backend): expert sees the review; blocks Android release: no
 - [Phase 16] BUG-24 (ios): logout leaves the device_tokens push row (SW.1); blocks Android release: no
-- [Phase 16] BUG-25 (ios): client cannot respond to an expert reschedule from the Upcoming Booking screen (D2.RS1, user rated critical); blocks Android release: user decision pending
+- [Phase 16] BUG-25 (ios): client cannot respond to an expert reschedule from the Upcoming Booking screen (D2.RS1, user rated critical); blocks Android release: no (user decision 2026-11-05)
 - [Phase 16] BUG-26 (ios): expert Upcoming card Reschedule does nothing; blocks Android release: no
 - [Phase 16] BUG-27 (backend): a deleted card may still be charged after a move (code reading, not proven live); blocks Android release: no
-- [Phase 16] BUG-28 (backend, ios, android): the expert's decline note never reaches the client; blocks Android release: no
+- [Phase 16] BUG-28 (backend, ios, android): the expert's decline note never reaches the client; blocks Android release: no; Android half in fix batch B (user decision 2026-11-05)
 - [2026-11-03] [planning] Sync Android bug fixes to iOS — [todo file](.planning/todos/pending/2026-11-02-sync-android-bug-fixes-to-ios.md)
 - Report to iOS/backend (Phase 16 BUG-03, post-release): Stripe tax ID prompt seen on client account B; clients have no payouts.
 
@@ -364,9 +364,9 @@ Items acknowledged and carried forward from previous milestone close:
 Last session: 2026-11-05
 Stopped at: 16-06 complete (session B recorded and triaged, merge fb797beb); next is 16-07, fix batch B
 Resume file: .planning/phases/16-cross-platform-qa/16-06-SUMMARY.md
-Resume: `/gsd-execute-phase 16` runs 16-07. Get the user's answers to the 16-06 SUMMARY "Questions for the user" first: whether BUG-25 (iOS client cannot respond to an expert reschedule, user rated critical) blocks the Android release; BUG-24 severity; a live check for BUG-27 or not; the D2.14/D2.15 payout-link gap (expert account already onboarded, no new Connect account allowed); whether BUG-28 or BUG-29 go into batch B.
+Resume: `/gsd-execute-phase 16` runs 16-07. User answers to the 16-06 questions (2026-11-05): BUG-25 does not block Android (report to iOS as critical); BUG-24 stays fix-if-cheap; the D2.14/D2.15 payout-link gap is accepted and goes into the sign-off as untested; BUG-27 gets no live check; BUG-28 and BUG-29 move into fix batch B. BUG-28 needs a backend change first (store is done: decline_reason_text; expose it on the client booking read), then the Android client shows it; the iOS half is reported, not done here.
 
-**Fix batch B input (android):** no blocking rows; fix-if-cheap BUG-30 (Profile Setup Next button behind the navigation bar, SignupOverviewScreen.kt bottomBar has no navigationBarsPadding; sweep other bottomBar buttons) and BUG-31 (photo crop circle opaque black, PhotoCropScreen.kt BlendMode.Clear in the image layer; saved photo is fine), plus BUG-22 and BUG-23 from batch A. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
+**Fix batch B input (android):** no blocking rows; fix-if-cheap BUG-30 (Profile Setup Next button behind the navigation bar, SignupOverviewScreen.kt bottomBar has no navigationBarsPadding; sweep other bottomBar buttons) and BUG-31 (photo crop circle opaque black, PhotoCropScreen.kt BlendMode.Clear in the image layer; saved photo is fine), plus BUG-22 and BUG-23 from batch A, plus BUG-29 (booking ID on Payment History and expert bookings list rows) and the Android half of BUG-28 (show the expert's decline note to the client, after the backend exposes it). Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
 
 **Batch B re-test:** the 70 Samsung setting-pass rows moved there (D-14 deviation, user option A), which adds one account swap; at that swap also check the Android client's response card for an expert reschedule (the half BUG-25 breaks on iOS).
 
