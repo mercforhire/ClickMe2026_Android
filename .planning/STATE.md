@@ -4,10 +4,10 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-06 Task 2 paused before D2.RS1; D2.12 paid session due 2026-11-05 11:00 local
-last_updated: "2026-11-05T04:43:00.000Z"
-last_activity: 2026-11-04
-last_activity_desc: Session B D2.05-D2.11 and D2.13 recorded
+stopped_at: 16-06 Task 2 paused before D2.CP1; 16 session B rows left
+last_updated: "2026-11-05T17:46:27.000Z"
+last_activity: 2026-11-05
+last_activity_desc: Session B D2.12, D2.RS1-RS4, D2.FV1, D2.PN1-PN2 recorded
 state_head: 9e0010fb893203a8ed88d217408447c5c96e05ef
 progress:
   total_phases: 22
@@ -357,17 +357,19 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-04
-Stopped at: 16-06 Task 2 (session B live rows) paused by the user on 2026-11-04 at 23:43 EST before D2.RS1; Direction 1, the switch and D2.01-D2.11 and D2.13 are done, D2.12 runs 2026-11-05 11:00 local; Task 1 done at ac0bc4c2
+Stopped at: 16-06 Task 2 (session B live rows) paused by the user on 2026-11-05 at 12:46 EST before D2.CP1, back in about 3 hours; Direction 1, the switch, D2.01-D2.13, D2.RS1-RS4, D2.FV1 and D2.PN1-PN2 are done; Task 1 done at ac0bc4c2
 Resume file: /Users/LeonChen/ClickMe-release/sessions/session-B-results.md
-Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 24 rows have no verdict (D2.12, D2.RS1-RS4, D2.FV1, D2.PN1-PN3, D2.CP1-CP5, D2.NS1, D2.FB1, D2.PV1, D2.14-D2.20). No capture is running: run the capture script before each row. The phones are switched: Samsung = expert account, iPhone = client account. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
+Resume: `/gsd-execute-phase 16` resumes 16-06 Task 2; do not re-seed the results file. Use `session-B-capture.sh ROW` and `session-B-record.sh ROW VERDICT NOTE` in that folder. 16 rows have no verdict (D2.CP1-CP3, D2.PN3, D2.CP4-CP5, D2.NS1, D2.FB1, D2.PV1, D2.14-D2.20). No capture is running: run the capture script before each row. The phones are switched: Samsung = expert account, iPhone = client account. The user moved the 70 settings rows to the batch B re-test (option A): that adds one account swap, a D-14 deviation to record in Task 3.
 
 **Live money:** holds 3d5b80b2 (D1.RS4), e8ba8e6a (D1.24 part 2) and 165e4b0f (D1.24 part 2, D1.RS5) are CA$5.00 each, authorized, not charged. Cancel each in the session that tests it: a converted booking is charged 24 hours before its new time. D1.20's hold is reported cancelled; Section 7 confirms it in Stripe. The holds' booked session times were not read: read them on resume, and test and cancel each hold before its session time, because the completion sweep can act on a booking after its session ends (`expirePastSessions.js` Sweep C, not read in detail). `authExpirySweep.js` does not touch live bookings.
 
 **Superseded 2026-11-04:** all three holds above are cancelled and void; 53ka5k, b2m66n and lTnYmn read canceled. One capture is open: 5449f1b7, C3eR3Z, CA$5.00, refund by hand in Section 7. Free booking from D2.02-D2.03 was confirmed for Sunday 7 PM; D2.13 may have moved it.
 
-**Live money, 2026-11-04 23:43:** hold 43d0562b, See2oK, CA$5.00 (amount from P0.9, not read back), accepted by the expert account, session 2026-11-05 11:00 local. It is D2.12, the second planned capture: start capture before joining, both phones join and stay to the scheduled end, read Stripe about 15 minutes later, refund by hand in Section 7. Do not reschedule or cancel it for D2.RS2. Hold 277cd5ac, KJcrmX is canceled (D2.10). No D2.RS2 hold exists (user confirmed 2026-11-04).
+**Live money, 2026-11-05 12:46:** no live holds. Two captures are open, both planned, refund each by hand in Section 7: 5449f1b7, C3eR3Z (D1.25) and 43d0562b, See2oK (D2.12, succeeded CAD 500, fee 50). The plan allows no more captures. Voids: 277cd5ac, KJcrmX (D2.10) and Hlqzg7 (D2.RS2, D2.RS4; booking first 8 still not given, read it from Stripe metadata). Free booking FE144C62 is stuck in pending_reschedule because of the iOS bug below: the user should cancel it from the Samsung.
 
-**Next order:** D2.12 at its session time whatever else is running. Otherwise D2.RS1 onward in results-file order; D2.RS2 needs its own new paid booking and ends in a cancel.
+**Next order:** D2.CP1 onward in results-file order; the D2.CP1 capture was stopped, so start it again. D2.CP3 needs a chat with someone who has no booking with the expert; if none exists record that.
+
+**Critical finding for Task 3 (user's rating, 2026-11-05):** D2.RS1 failed on iOS: the client can't respond to any expert reschedule, because "Tap to review" opens Upcoming Booking, which has no Accept or Decline (and its pill reads Confirmed), and Accept exists only on Booking Summary, reached from Past or a leave-review push. Android's half passed. Owner ios; the user decides in Task 3 whether it blocks the Android release. D2.RS2's iOS saved-card recovery could not be exercised because of it. Check the Android client's response card at the batch B account swap. Also: the expert bookings list shows no booking ID (enhancement, like Payment History). D2.12 logged 2 confirm-connection lines, one uppercase id and one lowercase, likely one per app: confirm in code and correct the runbook's "exactly once". 45 log audio freezes in D2.12's 33 minutes; audibility on that call not stated.
 
 **For Task 3, from this run:** the Play build logs no `Realtime` lines in either session, so D2.08's evidence can't be obtained and rests on the user report. Audio froze for 2-4 s about six times in 5 minutes during D2.06 and throughout D2.05-D2.08 (`remote audio state=3 reason=1`), starting before backgrounding; the user did not hear them (confirmed 2026-11-04), so log-only, no bug row unless they become audible. The call notification shows "Starts at 11:00 p.m." with no chronometer until the scheduled start, then the chronometer (seen 23:00:30). D2.04 note: the decline note finding stands. D2.13's exact buffer outcome was not stated. D2.11 not run under P0.9.
 
