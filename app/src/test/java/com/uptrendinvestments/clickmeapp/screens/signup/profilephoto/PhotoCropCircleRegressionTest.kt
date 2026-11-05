@@ -36,7 +36,7 @@ class PhotoCropCircleRegressionTest {
     private val redPhoto =
         Bitmap
             .createBitmap(200, 100, Bitmap.Config.ARGB_8888)
-            .apply { eraseColor(0xFFFF0000.toInt()) }
+            .apply { eraseColor(android.graphics.Color.RED) }
             .asImageBitmap()
 
     private val readyState =
