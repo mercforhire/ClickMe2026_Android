@@ -193,9 +193,9 @@ From the PRD's Polish (Week 7).
 
 From the PRD's Week 8 QA and cross-platform matrix.
 
-- [ ] **QA-01**: Bugs reported from internal testing are triaged, and the release-blocking ones are fixed.
-- [ ] **QA-02**: The cross-platform matrix passes with an Android client and an iOS expert: Stripe test cards including 3DS, push from a killed app, a call kept alive in the background and across rejoin, and payout onboarding.
-- [ ] **QA-03**: The same matrix passes with an iOS client and an Android expert.
+- [x] **QA-01**: Bugs reported from internal testing are triaged, and the release-blocking ones are fixed.
+- [x] **QA-02**: The cross-platform matrix passes with an Android client and an iOS expert: Stripe test cards including 3DS, push from a killed app, a call kept alive in the background and across rejoin, and payout onboarding.
+- [x] **QA-03**: The same matrix passes with an iOS client and an Android expert.
 
 ### Play Store & Release
 
@@ -346,9 +346,9 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | POL-02 | Phase 15 | Pending |
 | POL-03 | Phase 15 | Pending |
 | POL-04 | Phase 15 | Pending |
-| QA-01 | Phase 16 | Pending |
-| QA-02 | Phase 16 | Pending |
-| QA-03 | Phase 16 | Pending |
+| QA-01 | Phase 16 | Complete |
+| QA-02 | Phase 16 | Complete |
+| QA-03 | Phase 16 | Complete |
 | REL-01 | Phase 1 | Complete |
 | REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 2 | Pending |

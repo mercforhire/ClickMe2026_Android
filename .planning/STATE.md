@@ -1,19 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: 16
-current_phase_name: Cross-Platform QA
-status: executing
-stopped_at: Completed 16-07-PLAN.md (batch B re-tested on vc 5); next 16-08 close-out
-last_updated: "2026-11-06T03:03:01.772Z"
+current_phase: 17
+current_phase_name: Play Store Release
+status: ready_to_plan
+stopped_at: Phase 16 complete (verified, signed off 2026-11-05); next Phase 17 Play Store Release
+last_updated: "2026-11-06T03:33:53.749Z"
 last_activity: 2026-11-05
-last_activity_desc: Fix batch B (16-07) built, uploaded as vc 5 and re-tested; BUG-29/30/31 verified
-state_head: dfcc1e4e6c86236df3b9b0f65119cecf3ca175e9
+last_activity_desc: Phase 16 complete, transitioned to Phase 2
+state_head: f631a2c248a8c70fed1fac9c3e9698b9da81165f
 progress:
   total_phases: 22
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 297
-  completed_plans: 293
+  completed_plans: 294
+  percent: 71
 milestone_name: milestone
 ---
 
@@ -28,18 +29,18 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 
 ## Current Position
 
-Phase: 16 (Cross-Platform QA) — EXECUTING
-Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-11-05 — 16-07 complete: vc 5 on Play, BUG-29/30/31 verified, smoke 5/5, BUG-34 logged
+Phase: 17 — Play Store Release
+Plan: 0 (not planned yet)
+Status: Ready to plan
+Last activity: 2026-11-05 — Phase 16 complete, next is Phase 17 (Play Store Release)
 
-Progress: [███████░░░] 65%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 191
+- Total plans completed: 199
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -60,6 +61,7 @@ Progress: [███████░░░] 65%
 | 12 | 17 | - | - |
 | 16.2 | 16 | - | - |
 | 16.3 | 8 | - | - |
+| 16 | 8 | - | - |
 
 **Recent Trend:**
 
@@ -364,11 +366,11 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-06T03:02:59.951Z
-Stopped at: Completed 16-07-PLAN.md (batch B re-tested on vc 5); next 16-08 close-out
+Stopped at: Phase 16 complete, ready to execute Phase 2
 Resume file: None
 Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and cleanup incl. deleting the D2.17 throwaway with TalkBack optional, Section 8 sign-off). 16-07 skips by user decision: all 23 TalkBack rows (POL-04 / Phase 15 SC-4 unconfirmed on device), FS.FB1, FS.Y12, PD.Y3, 7 IM rows, PL.C9, PL.K12, EM.1. BUG-34 (call controls unreachable at 200% font, no scroll) is fix-if-cheap by user decision.
 
-**Next fix batch input (android):** BUG-22 + BUG-34 together (MeetingCallScreen.kt), BUG-23, the remember-email feature (pre-fill last email on Login after any sign-out; branch feature/remember-login-email, Android 0c9ecc55 in worktree ../ClickMe_Android-remember-email; iOS b0629d9 in ../ClickMe2026-remember-email for the user to merge), and the Android half of BUG-28 once the backend exposes decline_reason_text. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
+**Next fix batch input (android):** BUG-22 + BUG-34 together (MeetingCallScreen.kt), BUG-23, the remember-email feature (pre-fill last email on Login after any sign-out; branch feature/remember-login-email, Android 0c9ecc55; iOS b0629d9 on the same branch in the iOS repo for the user to merge (worktrees removed 2026-11-05)), and the Android half of BUG-28 once the backend exposes decline_reason_text. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
 
 **Batch B re-test:** the 70 Samsung setting-pass rows moved there (D-14 deviation, user option A), which adds one account swap; at that swap also check the Android client's response card for an expert reschedule (the half BUG-25 breaks on iOS).
 

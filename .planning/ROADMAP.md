@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 13: Push, Notifications & Internal Testing** - FCM registration, PushRouter deep links, notifications list, Write Review, internal testing track (Week 6)
 - [ ] **Phase 14: Payouts & Account Settings** - Stripe Connect onboarding and earnings, profile hubs, edit profile, change password, delete account, help (Week 7)
 - [ ] **Phase 15: Polish & Hardening** - Loading/empty/error states everywhere, process death, edge-to-edge, TalkBack (Week 7)
-- [ ] **Phase 16: Cross-Platform QA** - Internal-testing bug fixes and the two-way Android/iOS matrix (Week 8)
+- [x] **Phase 16: Cross-Platform QA** - Internal-testing bug fixes and the two-way Android/iOS matrix (Week 8) (completed 2026-11-05)
 - [ ] **Phase 16.1: iOS parity: Search tab and Explore See all** (INSERTED) - iOS feature parity before release
 - [x] **Phase 16.2: iOS parity: client and expert reschedule start** (INSERTED) - iOS feature parity before release (completed 2026-10-31)
 - [x] **Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list** (INSERTED) - iOS feature parity before release (completed 2026-11-01)
@@ -822,7 +822,7 @@ Plans:
   2. With an Android client and an iOS expert, the matrix passes: Stripe test cards including 3DS, push from a killed app, a call kept alive in the background and across rejoin, and payout onboarding. (Week 8 checkpoint, user-confirmed)
   3. With an iOS client and an Android expert, the same matrix passes. (Week 8 checkpoint, user-confirmed)
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 Plans:
 **Wave 1**
 
@@ -851,7 +851,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 16-08-PLAN.md — Close-out: write-back to sources, money sweep (voids and refunds), D-10 record, user sign-off (D-09, user checkpoints)
+- [x] 16-08-PLAN.md — Close-out: write-back to sources, money sweep (voids and refunds), D-10 record, user sign-off (D-09, user checkpoints)
 
 ### Phase 16.1: iOS parity: Search tab and Explore See all (PARITY-AUDIT #1) (INSERTED)
 
@@ -1064,7 +1064,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
 | 15. Polish & Hardening | 20/20 | In Progress | - |
-| 16. Cross-Platform QA | 7/8 | In Progress | - |
+| 16. Cross-Platform QA | 8/8 | Complete    | 2026-11-05 |
 | 17. Play Store Release | 0/TBD | Not started | - |
 
 ## Backlog
