@@ -14,6 +14,19 @@ Section 1 decides it. Gate shown: run sections 10 to 13 (closed track, 14 days, 
 
 Sections and the plans that run them: 1 to 5 start today; 6 is the 17-08 checkpoint; 7 to 10 are 17-08 and 17-09 work; 11 to 13 are 17-09; 14 to 16 are 17-10.
 
+Readiness (17-08 preflight, 2026-11-06). Checked read-only before the Console session; the AAB check passed, so the session may proceed.
+- READY: `/Users/LeonChen/ClickMe-release/clickme-1.0.0-6.aab` sha256 starts `9ec7495080f93805` and equals the 16-BUILD-LEDGER row 6 sum (full sum 9ec7495080f93805bfa9412d075bf6c252bd1bcd048b11f11325e6ddd651e81e); the APK and the mapping file are archived next to it.
+- READY: `17-CONSOLE-PASTE.md` has its 11 numbered sections (1 privacy policy to 11 release) and no line pairing the word password with a value (two matches: the "no password" statement and the in-app delete path).
+- READY: `17-DELETE-ACCOUNT-PAGE.html` parses (`xmllint --noout`).
+- READY: `17-PAYMENTS-DECISION.md` has 13 numbered table rows.
+- READY: five phone screenshots `01-explore.jpg` to `05-chat.jpg` pass `scripts/play-store-screenshot.sh check` (1080 x 1920, no alpha), more than the four required. Approval is still open: every "Approved at 17-08" cell is empty, and rows 1, 2, 4 and 5 carry third-party content (see 17-STORE-ASSETS.md).
+- READY: `play-icon-512.png` is 512 x 512 with alpha.
+- OPEN (user): feature graphic `ASSETS/feature-graphic.jpg` (or `.png`) does not exist yet (checklist section 5).
+- OPEN (user): foreground-service video link is not recorded in 17-STORE-ASSETS.md row 9 (checklist section 4).
+- OPEN (Task 2): 17-PAYMENTS-DECISION.md rows 1 to 13 still say "(pending 17-08)", and 17-CONSOLE-PASTE.md still carries five "(confirm at 17-08 #n)" markers plus the explanatory sentence in its intro; both clear when the answers are recorded.
+- PENDING Task 3 (not a preflight failure): `https://www.uptrendinvestments.net/clickme/delete-account.html` returns 404 and the published `privacy.html` has no "Firebase Cloud Messaging" yet, because neither page is published until section 7.
+- NOT RUN (device absent): the Samsung is not on ADB, so the installed versionCode check (H1 and H2) is deferred to Task 3. Ledger row 6 still reads "not uploaded".
+
 ## 1. Production-access gate (D-01)
 
 Needs: Play Console, organization account. This is a 15-minute look, and it decides the branch above.
