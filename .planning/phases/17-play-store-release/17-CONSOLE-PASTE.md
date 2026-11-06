@@ -233,7 +233,7 @@ ClickMe works with the ClickMe app on iOS, so you can book and talk with experts
 Questions or feedback: clickmeapp@uptrendinvestments.net
 ```
 
-**Category:** Business (fallback if Console rejects it: Education). **Tags:** pick the closest from Console's list (for example Education, Business).
+**Category:** Business (fallback if Console rejects it: Education). **Tags** (Store settings > App category > Manage tags; chosen 2026-11-06 from Console's list): Business, Education, Communication, Self-help. Optional 5th: Lifestyle. Do not use Video call (the app is voice only), Text messaging, or the Job seeking tags.
 
 **Contact details**
 
