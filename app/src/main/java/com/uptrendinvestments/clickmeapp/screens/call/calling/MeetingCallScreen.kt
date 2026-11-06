@@ -57,6 +57,9 @@ import java.time.ZoneId
 
 const val MEETING_CALL_SCREEN_TAG = "meeting_call_screen"
 
+/** The scrolling column above the pinned End Call; the reachability tests swipe it. */
+const val CALL_SCROLL_CONTENT_TAG = "call_scroll_content"
+
 /** Cross-fade when the variant changes after the join response overrides the client-side hint (D-05). */
 private const val VARIANT_FADE_MS = 200
 
@@ -111,6 +114,7 @@ fun MeetingCallScreen(
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                             .heightIn(min = maxHeight)
+                            .testTag(CALL_SCROLL_CONTENT_TAG)
                             .semantics { isTraversalGroup = true },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
