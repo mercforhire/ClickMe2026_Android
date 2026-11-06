@@ -372,6 +372,6 @@ Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and
 
 **Batch B re-test:** the 70 Samsung setting-pass rows moved there (D-14 deviation, user option A), which adds one account swap; at that swap also check the Android client's response card for an expert reschedule (the half BUG-25 breaks on iOS).
 
-**Money for 16-08 Section 7:** no live holds. Refund by hand: D1.25 (5449f1b7, C3eR3Z, CA$5.00) and D2.12 (43d0562b, See2oK, CA$5.00, fee 0.50). Confirm voids in Stripe: BFQEmT, 53ka5k, b2m66n, lTnYmn, KJcrmX, Hlqzg7.
+**Money for 16-08 Section 7 (settled 2026-11-05):** all 8 holds voided and confirmed canceled in Stripe, 0 in requires_capture; the 2 captures (C3eR3Z, See2oK, CA$5.00 each) are kept, not refunded, by user decision (deviation from D-04; the user owns both accounts), and stay in earnings, payout and revenue records. P16. Original note: no live holds. Refund by hand: D1.25 (5449f1b7, C3eR3Z, CA$5.00) and D2.12 (43d0562b, See2oK, CA$5.00, fee 0.50). Confirm voids in Stripe: BFQEmT, 53ka5k, b2m66n, lTnYmn, KJcrmX, Hlqzg7.
 
 **Phones now:** Samsung signed in as the expert account, iPhone as the client account; the Throwaway account is deleted. Say client account and expert account to the user, not A and B.
