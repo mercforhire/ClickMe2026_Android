@@ -31,3 +31,5 @@ These affect live iOS users and should not wait for Android to be final, if the 
 5. Run it as its own GSD milestone in the iOS repo, with fix, test and device-check steps, then ship a new iOS build.
 
 Phase 16 and the Android release come first, except for any urgent item above that the user chooses to fix sooner.
+
+**Added 2026-11-06 (Phase 17):** iOS `Views/Screens/Settings/Help/HelpView.swift` line 20 has `supportEmail = "support@clickme.app"`, which the user says is wrong. The correct address is `clickmeapp@uptrendinvestments.net`, as in the published privacy policy. Android fixed this in b80f99e9 (`AppLinks.SUPPORT_EMAIL`).
