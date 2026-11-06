@@ -54,3 +54,15 @@ skipped: 0
 blocked: 0
 
 ## Gaps
+
+## Phase 16 device results (16-MATRIX-RUNBOOK.md)
+
+Results from the Phase 16 device matrix on the Play internal-track build (versionCode 5, Samsung SM-A075F). The tests above and the frontmatter are unchanged; verify-work owns them. TalkBack was not run in Phase 16: the user skipped all 23 TalkBack rows on 2026-11-05, so POL-04 and Phase 15 SC-4 are not confirmed on a device (semantics are covered by Robolectric tests only).
+
+- Test 1 (L1, B1, C1, K1 with TalkBack): TB.L1, TB.B1, TB.C1, TB.K1 not run, skipped by user decision 2026-11-05. Not confirmed.
+- Test 2 (Y1-Y7, Y11): PD.Y1 pass, PD.Y4 pass, PD.Y5 pass, PD.Y6 pass, PD.Y7 and FS.Y7 pass, PD.Y11 pass (R8 under Play, deep screen restored), all vc 5, 2026-11-05. PD.Y3 (signup walk with Don't keep activities) not run, skipped by user decision. The push half of the force-stop case (PD.C7) is not testable on Android: a force-stopped app receives no FCM. 6 of 7 rows pass.
+- Test 3 (Y2, Y8, Y9, Y16, C4, C5): LW.Y2 and LW.C4 not run in Phase 16, post-release (resizable emulator, D-06); IM.Y8, IM.Y9, IM.Y16 and IM.C5 not run, skipped by user decision 2026-11-05. Not confirmed.
+- Test 4 (Y12 Accessibility Scanner): TB.Y12 and FS.Y12 not run, skipped by user decision 2026-11-05. Not confirmed.
+- Test 5 (SC-1 Week 7: E3, M2, M3, N3, T5, T7, Y13): T2.E3, T2.M2, T2.M3, T2.N3, T2.T5, T2.T7, T2.Y13 not run in Phase 16, post-release (D-06).
+- Test 6 (M8 focus after Retry): T2.M8 not run in Phase 16, post-release (D-06). Decision D6 stays open.
+- Test 7 (B4 day-cell taps): TB.B4 not run, skipped by user decision 2026-11-05. Decision D7 stays open.

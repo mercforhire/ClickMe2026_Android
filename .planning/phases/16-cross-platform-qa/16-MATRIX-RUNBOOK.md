@@ -37,6 +37,7 @@ Commands may need adapting on One UI (RESEARCH A9); record the command actually 
 | batch-A | 2026-11-03 | versionCode=4 | com.android.vending | 2ec82af | 4076 | 10 | 0 |
 | session-B | 2026-11-03 to 2026-11-05 | versionCode=4 | com.android.vending | 2ec82af | 4076 | 47 | 2 |
 | batch-B | 2026-11-05 | versionCode=5 | com.android.vending | 2ec82af (backend repo HEAD, /health not queried) | 4735, 8048 | 42 (3 fix re-tests, 5 smoke, 34 settings rows) | 1 (FS.C3, BUG-34) |
+| close-out | 2026-11-05 | versionCode=5 | com.android.vending | 2ec82af | 8048 | 0 | 0 |
 
 Later plans add the sessions `preflight`, `session-A`, `batch-A`, `session-B`, `batch-B` and `close-out`.
 
@@ -469,85 +470,85 @@ Resizable AVD from the android-37.0 image (RESEARCH Open Question 3); confirm sc
 
 | Row ID | Source row ID | Check (one line) | Result |
 |---|---|---|---|
-| LW.L9 | L9 | Login and the four recovery screens are centered at 600 dp, app bars span the window, nothing clipped. | [ ] |
-| LW.B9 | B9 | Make a Booking and Request Sent capped at 600 dp; resizing mid-booking keeps every selection and the notes. | [ ] |
-| LW.C4 | C4 | At 900x400 Mute, Speaker and End call show without scrolling; a narrow short window scrolls; phone layout unchanged. | [ ] |
-| LW.C10 | C10 | Resize the window during a call: no clipped controls, call state kept. | [ ] |
-| LW.K13 | K13 | Conversations rows and Report & Block capped at 600 dp. | [ ] |
-| LW.Y2 | Y2 | Resize through phone, 900x400 and 900 dp square: content never clipped, input kept, max width 600 dp. | [ ] |
+| LW.L9 | L9 | Login and the four recovery screens are centered at 600 dp, app bars span the window, nothing clipped. | [-] not run in Phase 16: post-release (D-06) |
+| LW.B9 | B9 | Make a Booking and Request Sent capped at 600 dp; resizing mid-booking keeps every selection and the notes. | [-] not run in Phase 16: post-release (D-06) |
+| LW.C4 | C4 | At 900x400 Mute, Speaker and End call show without scrolling; a narrow short window scrolls; phone layout unchanged. | [-] not run in Phase 16: post-release (D-06) |
+| LW.C10 | C10 | Resize the window during a call: no clipped controls, call state kept. | [-] not run in Phase 16: post-release (D-06) |
+| LW.K13 | K13 | Conversations rows and Report & Block capped at 600 dp. | [-] not run in Phase 16: post-release (D-06) |
+| LW.Y2 | Y2 | Resize through phone, 900x400 and 900 dp square: content never clipped, input kept, max width 600 dp. | [-] not run in Phase 16: post-release (D-06) |
 
 ### 6.2 Tier 2-4 checklist rows
 
 | Row ID | Source row ID | Check (one line) | Result |
 |---|---|---|---|
-| T2.S1 | S1 | All 12 signup surfaces at 200% font with the keyboard open: no clipped text, buttons stack. | [ ] |
-| T2.S2 | S2 | Country, language and expertise search sheets stay visible above the keyboard and the list scrolls. | [ ] |
-| T2.S3 | S3 | TalkBack on the Profile Photo crop offers and performs the custom zoom and move actions. | [ ] |
-| T2.S4 | S4 | Don't keep activities at each signup step: same step, typed text kept, Verify Email code empty. | [ ] |
-| T2.S5 | S5 | Signup screens capped at 600 dp on a large window; app bars full width. | [ ] |
-| T2.S6 | S6 | Review and Overview announce in-flight and error states; Publish reachable; retry works. | [ ] |
-| T2.E1 | E1 | Explore, the View all sheet and Expert Profile at 200%: nothing clips, Book Session reachable. | [ ] |
-| T2.E2 | E2 | Category sheet search and results stay usable with the keyboard open. | [ ] |
-| T2.E3 | E3 | Pull to refresh feels normal; a failed refresh keeps all sections and shows one Retry snackbar. | [ ] |
-| T2.E4 | E4 | With no categories the copy reads "No categories yet" and "Check back soon."; decide if the copy is right. | [ ] |
-| T2.E5 | E5 | Expert Profile with TalkBack: "Book Session with {name}", sections in order, headings navigate. | [ ] |
-| T2.E6 | E6 | Expert Profile on a large window: hero glow full width, sections capped at 600 dp. | [ ] |
-| T2.M1 | M1 | My Bookings, Upcoming Details with a reschedule card, Cancel step 2 and Booking Summary at 200%. | [ ] |
-| T2.M2 | M2 | Failed refresh shows exactly one "Couldn't refresh" snackbar with Retry; TalkBack announces it. | [ ] |
-| T2.M3 | M3 | ErrorState and EmptyState headings navigate as headings and announce once; long headings wrap at 200%. | [ ] |
-| T2.M4 | M4 | Kill the process on Cancel confirm and reopen: the confirm step shows and nothing cancels until Confirm. | [ ] |
-| T2.M5 | M5 | A JPY booking cancel shows the refund snackbar with no decimals (no JPY topic in production: likely not run). | [ ] |
-| T2.M6 | M6 | Decline-reschedule sheet keeps the reason, counter and Decline button visible with the keyboard; text survives a kill. | [ ] |
-| T2.M7 | M7 | My Bookings, Upcoming Details, Booking Summary and Cancel capped at 600 dp on a large window. | [ ] |
-| T2.M8 | M8 | After Retry succeeds on a detail screen, note where TalkBack focus lands (not implemented, log only). | [ ] |
-| T2.N1 | N1 | Notifications list, Write Review, Booking Summary with Feedback and the Past card pill at 200%. | [ ] |
-| T2.N2 | N2 | TalkBack reads the star group, the nested Past card action and the notification rows correctly. | [ ] |
-| T2.N3 | N3 | Offline foreground push on Notifications: rows stay, one Retry snackbar, Retry reloads. | [ ] |
-| T2.N4 | N4 | Notifications and Write Review on a large window: centered 600 dp column, footer background spans. | [ ] |
-| T2.X1 | X1 | Topics, Topic Editor with an error, an overlapping day banner and the Time Range sheet at 200%. | [ ] |
-| T2.X2 | X2 | TalkBack reads the Time Range sheet; the sheet keeps state after recreation and process death. | [ ] |
-| T2.X3 | X3 | Topic Editor focus moves to the first invalid field; description stays above the keyboard; error survives rotation-equivalent. | [ ] |
-| T2.X4 | X4 | Dashboard, request card, Request Decision, Decline sheet, Confirmed, Upcoming card and Cancel step 2 at 200%. | [ ] |
-| T2.X5 | X5 | TalkBack on the Decline and Accept sheets; Booking Confirmed starts on its headline. | [ ] |
-| T2.X6 | X6 | Tab return and realtime events reload without flicker; Confirmed with animations off shows its final state. | [ ] |
-| T2.X7 | X7 | Decline and Accept sheets survive Don't keep activities with text kept and nothing sent. | [ ] |
-| T2.X8 | X8 | Offline refresh on Dashboard, Bookings, Requests, Topics and Availability: one Retry snackbar each, above the bar and keyboard. | [ ] |
-| T2.X9 | X9 | Expert screens capped and centered at 600 dp with full-width app bars on a large window. | [ ] |
-| T2.T1 | T1 | Both hubs, settings, Account Security, Delete Account, Help, Payouts, Activity and Tax at 200%. | [ ] |
-| T2.T2 | T2 | TalkBack announces the save status, password toggle state, FAQ state and selected delete reason. | [ ] |
-| T2.T3 | T3 | The four forms survive Don't keep activities; TIN, account identifier and deletion password come back empty. | [ ] |
-| T2.T4 | T4 | The Tax saved snackbar sits above the gesture bar and the keyboard. | [ ] |
-| T2.T5 | T5 | Offline pull to refresh on Payouts, Activity and Help: content stays, one Retry snackbar. | [ ] |
-| T2.T6 | T6 | A wrong current password keeps the cursor and keyboard; a server error dialog keeps all typed values. | [ ] |
-| T2.T7 | T7 | The Payment Methods loading skeleton matches the loaded rows without a jump. | [ ] |
-| T2.T8 | T8 | After deleting the Throwaway, TalkBack announces the Farewell headline first. | [ ] |
-| T2.T9 | T9 | Log out and Delete dialogs survive Don't keep activities and never auto-confirm. | [ ] |
-| T2.T10 | T10 | Settings screens centered at 600 dp with full-width app bars on a large window. | [ ] |
-| T2.Y10 | Y10 | With animation scales off, Request Sent, Booking Confirmed and sheets show their final state at once. | [ ] |
-| T2.Y13 | Y13 | On a throttled network, skeleton to content and error to retried content show no jump or flicker. | [ ] |
-| T2.Y15 | Y15 | After Don't keep activities, scroll position is restored where data is available (best effort; note regressions). | [ ] |
+| T2.S1 | S1 | All 12 signup surfaces at 200% font with the keyboard open: no clipped text, buttons stack. | [-] not run in Phase 16: post-release (D-06) |
+| T2.S2 | S2 | Country, language and expertise search sheets stay visible above the keyboard and the list scrolls. | [-] not run in Phase 16: post-release (D-06) |
+| T2.S3 | S3 | TalkBack on the Profile Photo crop offers and performs the custom zoom and move actions. | [-] not run in Phase 16: post-release (D-06) |
+| T2.S4 | S4 | Don't keep activities at each signup step: same step, typed text kept, Verify Email code empty. | [-] not run in Phase 16: post-release (D-06) |
+| T2.S5 | S5 | Signup screens capped at 600 dp on a large window; app bars full width. | [-] not run in Phase 16: post-release (D-06) |
+| T2.S6 | S6 | Review and Overview announce in-flight and error states; Publish reachable; retry works. | [-] not run in Phase 16: post-release (D-06) |
+| T2.E1 | E1 | Explore, the View all sheet and Expert Profile at 200%: nothing clips, Book Session reachable. | [-] not run in Phase 16: post-release (D-06) |
+| T2.E2 | E2 | Category sheet search and results stay usable with the keyboard open. | [-] not run in Phase 16: post-release (D-06) |
+| T2.E3 | E3 | Pull to refresh feels normal; a failed refresh keeps all sections and shows one Retry snackbar. | [-] not run in Phase 16: post-release (D-06) |
+| T2.E4 | E4 | With no categories the copy reads "No categories yet" and "Check back soon."; decide if the copy is right. | [-] not run in Phase 16: post-release (D-06) |
+| T2.E5 | E5 | Expert Profile with TalkBack: "Book Session with {name}", sections in order, headings navigate. | [-] not run in Phase 16: post-release (D-06) |
+| T2.E6 | E6 | Expert Profile on a large window: hero glow full width, sections capped at 600 dp. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M1 | M1 | My Bookings, Upcoming Details with a reschedule card, Cancel step 2 and Booking Summary at 200%. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M2 | M2 | Failed refresh shows exactly one "Couldn't refresh" snackbar with Retry; TalkBack announces it. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M3 | M3 | ErrorState and EmptyState headings navigate as headings and announce once; long headings wrap at 200%. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M4 | M4 | Kill the process on Cancel confirm and reopen: the confirm step shows and nothing cancels until Confirm. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M5 | M5 | A JPY booking cancel shows the refund snackbar with no decimals (no JPY topic in production: likely not run). | [-] not run in Phase 16: post-release (D-06) |
+| T2.M6 | M6 | Decline-reschedule sheet keeps the reason, counter and Decline button visible with the keyboard; text survives a kill. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M7 | M7 | My Bookings, Upcoming Details, Booking Summary and Cancel capped at 600 dp on a large window. | [-] not run in Phase 16: post-release (D-06) |
+| T2.M8 | M8 | After Retry succeeds on a detail screen, note where TalkBack focus lands (not implemented, log only). | [-] not run in Phase 16: post-release (D-06) |
+| T2.N1 | N1 | Notifications list, Write Review, Booking Summary with Feedback and the Past card pill at 200%. | [-] not run in Phase 16: post-release (D-06) |
+| T2.N2 | N2 | TalkBack reads the star group, the nested Past card action and the notification rows correctly. | [-] not run in Phase 16: post-release (D-06) |
+| T2.N3 | N3 | Offline foreground push on Notifications: rows stay, one Retry snackbar, Retry reloads. | [-] not run in Phase 16: post-release (D-06) |
+| T2.N4 | N4 | Notifications and Write Review on a large window: centered 600 dp column, footer background spans. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X1 | X1 | Topics, Topic Editor with an error, an overlapping day banner and the Time Range sheet at 200%. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X2 | X2 | TalkBack reads the Time Range sheet; the sheet keeps state after recreation and process death. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X3 | X3 | Topic Editor focus moves to the first invalid field; description stays above the keyboard; error survives rotation-equivalent. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X4 | X4 | Dashboard, request card, Request Decision, Decline sheet, Confirmed, Upcoming card and Cancel step 2 at 200%. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X5 | X5 | TalkBack on the Decline and Accept sheets; Booking Confirmed starts on its headline. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X6 | X6 | Tab return and realtime events reload without flicker; Confirmed with animations off shows its final state. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X7 | X7 | Decline and Accept sheets survive Don't keep activities with text kept and nothing sent. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X8 | X8 | Offline refresh on Dashboard, Bookings, Requests, Topics and Availability: one Retry snackbar each, above the bar and keyboard. | [-] not run in Phase 16: post-release (D-06) |
+| T2.X9 | X9 | Expert screens capped and centered at 600 dp with full-width app bars on a large window. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T1 | T1 | Both hubs, settings, Account Security, Delete Account, Help, Payouts, Activity and Tax at 200%. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T2 | T2 | TalkBack announces the save status, password toggle state, FAQ state and selected delete reason. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T3 | T3 | The four forms survive Don't keep activities; TIN, account identifier and deletion password come back empty. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T4 | T4 | The Tax saved snackbar sits above the gesture bar and the keyboard. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T5 | T5 | Offline pull to refresh on Payouts, Activity and Help: content stays, one Retry snackbar. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T6 | T6 | A wrong current password keeps the cursor and keyboard; a server error dialog keeps all typed values. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T7 | T7 | The Payment Methods loading skeleton matches the loaded rows without a jump. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T8 | T8 | After deleting the Throwaway, TalkBack announces the Farewell headline first. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T9 | T9 | Log out and Delete dialogs survive Don't keep activities and never auto-confirm. | [-] not run in Phase 16: post-release (D-06) |
+| T2.T10 | T10 | Settings screens centered at 600 dp with full-width app bars on a large window. | [-] not run in Phase 16: post-release (D-06) |
+| T2.Y10 | Y10 | With animation scales off, Request Sent, Booking Confirmed and sheets show their final state at once. | [-] not run in Phase 16: post-release (D-06) |
+| T2.Y13 | Y13 | On a throttled network, skeleton to content and error to retried content show no jump or flicker. | [-] not run in Phase 16: post-release (D-06) |
+| T2.Y15 | Y15 | After Don't keep activities, scroll position is restored where data is available (best effort; note regressions). | [-] not run in Phase 16: post-release (D-06) |
 
 ### 6.3 Other deferred STATE items not in the matrix
 
 | Row ID | Source row ID | Check (one line) | Result |
 |---|---|---|---|
-| OT.P3-2 | P3 SC-2 | Recovery flow on the Play build: Forgot Password to Password Changed, Back behavior, autofill. | [ ] |
-| OT.P3-4 | P3 SC-4 | Airplane mode 10 s then off: `Realtime` returns to Connected within about 2 s of the network. | [ ] |
-| OT.P4-1 | P4 SC-1 | Full signup with a new email (no username or phone) through Publish to the client home. | [ ] |
-| OT.P4-2 | P4 SC-2 | Verify Email sends nothing on open; Resend disabled for 30 s; wrong code shows the inline error. | [ ] |
-| OT.P4-3 | P4 SC-3 | Quit mid-setup and relaunch to the hub with completed steps checked. | [ ] |
-| OT.P4-4 | P4 SC-4 | After publish: carousel shows once; mode switch to Expert and back keeps mode after relaunch. | [ ] |
-| OT.P5-1 | P5 SC-1 | Explore hero, Trending Categories, Featured Topics, Today's Sessions, chip filter and View all. | [ ] |
-| OT.P5-2 | P5 SC-2 | Category cache: View all shows from cache in airplane mode after a relaunch. | [ ] |
-| OT.P5-3 | P5 SC-3 | Expert Profile hero, sections, Book Session and the unavailable-profile message. | [ ] |
-| OT.P10-a | P10 (a) | Topics: create, edit, delete a paid topic; price below the floor shows the live error. | [ ] |
-| OT.P10-b | P10 (b) | Availability: overlapping slots show the banner and disable Save; Save during a call is refused. | [ ] |
-| OT.P10-c | P10 (c) | Timezone: a UTC-zone expert on a non-UTC device sees the device zone filled and stored. | [ ] |
-| OT.P10-e | P10 (e) | French (Canada) locale: typing "12,50" saves 1250 minor units. | [ ] |
-| OT.P10-g | P10 (g) | Edit Expertise offline shows the load error; a topic with 45 or 600 minutes keeps its duration after a title edit. | [ ] |
-| OT.P14-b | P14 (b) | Activity amounts match the ledger, statuses, paging past 20 rows, preview and See all. | [ ] |
-| OT.P14-c | P14 (c) | Hubs and settings auto-save; avatar pick and crop; languages and country persist; change password. | [ ] |
-| OT.P14-e | P14 (e) | Tax & Payout Info saves without and with a TIN. | [ ] |
+| OT.P3-2 | P3 SC-2 | Recovery flow on the Play build: Forgot Password to Password Changed, Back behavior, autofill. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P3-4 | P3 SC-4 | Airplane mode 10 s then off: `Realtime` returns to Connected within about 2 s of the network. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P4-1 | P4 SC-1 | Full signup with a new email (no username or phone) through Publish to the client home. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P4-2 | P4 SC-2 | Verify Email sends nothing on open; Resend disabled for 30 s; wrong code shows the inline error. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P4-3 | P4 SC-3 | Quit mid-setup and relaunch to the hub with completed steps checked. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P4-4 | P4 SC-4 | After publish: carousel shows once; mode switch to Expert and back keeps mode after relaunch. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P5-1 | P5 SC-1 | Explore hero, Trending Categories, Featured Topics, Today's Sessions, chip filter and View all. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P5-2 | P5 SC-2 | Category cache: View all shows from cache in airplane mode after a relaunch. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P5-3 | P5 SC-3 | Expert Profile hero, sections, Book Session and the unavailable-profile message. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P10-a | P10 (a) | Topics: create, edit, delete a paid topic; price below the floor shows the live error. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P10-b | P10 (b) | Availability: overlapping slots show the banner and disable Save; Save during a call is refused. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P10-c | P10 (c) | Timezone: a UTC-zone expert on a non-UTC device sees the device zone filled and stored. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P10-e | P10 (e) | French (Canada) locale: typing "12,50" saves 1250 minor units. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P10-g | P10 (g) | Edit Expertise offline shows the load error; a topic with 45 or 600 minutes keeps its duration after a title edit. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P14-b | P14 (b) | Activity amounts match the ledger, statuses, paging past 20 rows, preview and See all. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P14-c | P14 (c) | Hubs and settings auto-save; avatar pick and crop; languages and country persist; change password. | [-] not run in Phase 16: post-release (D-06) |
+| OT.P14-e | P14 (e) | Tax & Payout Info saves without and with a TIN. | [-] not run in Phase 16: post-release (D-06) |
 | OT.PP | P4 visual bullet, P14 (c) | Photo picker and avatar crop on API 26-32. `[-] not run: no API 26-32 AVD`. | [-] not run: no API 26-32 AVD |
 
 ## 7. End of run: money sweep and cleanup
@@ -583,24 +584,173 @@ Rows are added from the `PAID` lines of each results file, at the moment the boo
 
 ## 8. Sign-off (D-09)
 
-A fill-in template. Claude fills the counts at close-out; the user confirms. Phase 16 cannot close until the confirmation line below is filled (D-09).
+Claude filled the counts at close-out (2026-11-05); the user confirms. Phase 16 cannot close until the confirmation line below is filled (D-09). Counts are by Result cell; a pass can carry a caveat, listed after the counts.
 
-- **Direction 1 (QA-02) counts:** pass ___ / fail ___ / not run ___
-- **Direction 2 (QA-03) counts:** pass ___ / fail ___ / not run ___
-- **Tier-1 counts (Section 5):** pass ___ / fail ___ / not run ___
-- **Open blocking bugs (must be 0):** ___
-- **3DS outcome (D-02):** a real live 3DS challenge passed in D1 and in D2, or not run with the reason: ___
-- **Money result (D-04):** every hold voided ___, every capture refunded ___, Section 7 ticked ___
+- **Direction 1 (QA-02) counts:** pass 64 / fail 1 / not run 6 (D1.* rows, 71). Fail: D1.05 (BUG-13, backend, the Read label does not update live). Not run: D1.12, D1.21, D1.22, D1.24 (part 1 passed), D1.RS5, D1.PH5.
+- **Direction 2 (QA-03) counts:** pass 35 / fail 2 / not run 3 (SW.* and D2.* rows, 40). Fail: SW.1 (BUG-24, ios: logout leaves the push token row) and D2.RS1 (BUG-25, ios: an iOS client cannot answer an expert reschedule, rated critical by the user). Not run: D2.11, D2.14, D2.15.
+- **Tier-1 counts (Section 5):** pass 33 / fail 1 / not run 36 (70 rows). Fail: FS.C3 (BUG-34, android, fix-if-cheap). Not run: 36 rows skipped by user decision 2026-11-05 (the 23 TalkBack rows, FS.FB1, FS.Y12, PD.Y3, IM.K7, IM.K8, IM.K9, IM.C5, IM.Y8, IM.Y9, IM.Y16, PL.C9, PL.K12, EM.1).
+- **Pre-flight and release smoke (Sections 0 and 1):** P0.* pass 9 / fail 0 / not run 1 (P0.8); R1.* pass 4 / fail 0 / not run 1 (R1.2).
+- **Passes that carry a caveat:** D1.23 (challenge and JPY parts not run), D1.25 (Railway confirm-connection count not checked), D2.04 (expired-request part not run, none exists), D2.08 (user report only, the Play build logs no Realtime lines), D2.16 (weak proof, the account was already complete), D2.RS2 (the iOS accept was unreachable because of BUG-25), PD.C7 (direct relaunch only; the push half is not testable on Android), PD.C8 (FCM wake-up-dies-before-UI sub-case not exercised), FS.B10 (a paid Request Sent was not confirmed), FS.K6 (blocked banner and Request Decision footer not viewed), FS.SP1 (Samsung half only), IM.L6 (autofill suggestion not stated), D1.RS8 (the case tested was a slot exactly one hour before another booking).
+- **Open blocking bugs (must be 0):** android-owned blocking bugs open: 0 (BUG-22, BUG-23 and BUG-34 are fix-if-cheap and end as post-release). One ios-owned bug of blocking severity is open: BUG-25 (a proposed reschedule cannot be answered on the iOS client Upcoming Booking screen), reported to iOS as critical; user decision 2026-11-05: it does not block the Android release (Android ships on its own). Cross-repo fixes verified on the device: none were needed.
+- **3DS outcome (D-02):** not run: no live 3DS challenge was passed on Android or iOS. The user's cards showed no setup challenge (the Mastercard 2018 gave none), so the P0.9 plan, changed by the user on 2026-11-02, accepted not running D1.21 and D2.11; D1.22 (declining card) was also not run for lack of a failing card. QA-02 and QA-03 "test cards including 3DS" is therefore not met with a live challenge. Only the confirm-time Stripe paths that need no challenge were exercised (D1.18-D1.20, D1.23, D2.09-D2.12).
+- **Money result (D-04):** pending the Task 2 money sweep. Stripe objects on record: 8 voided holds (Paid bookings created rows 1-6, 8, 10) and 2 captures to refund by hand (rows 7 and 9). Section 7 not yet ticked.
+- **TalkBack (POL-04, Phase 15 SC-4):** not confirmed on a device. The user skipped all 23 TalkBack rows on 2026-11-05 (option 1 of 3 offered); Phase 15 semantics are proven by Robolectric tests only, and 15-UAT tests 1, 3 and 4 stay unconfirmed. The accessibility-scanner pass (Y12) was skipped with them.
 - **Accepted gaps (D-10):**
-  - The user is the only internal tester, so the SC-5 and REL-05 "few real users on a mix of devices" part is accepted at release.
+  - The user is the only internal tester, so the SC-5 and REL-05 "few real users on a mix of devices" part is accepted at release (carries Phase 13 D-22). The emulator covered the Android 17 row only, and EM.1 was not run.
   - JPY is not runnable (no JPY topic in production).
-  - Large-window rows are outside D-06 (Section 6.1).
-  - Tier 2-4 rows not run (Section 6.2 and 6.3).
+  - Large-window rows are outside D-06 (Section 6.1); they were not run.
+  - Tier 2-4 rows not run (Section 6.2 and 6.3), each marked post-release.
   - Photo picker on API 26-32 (no AVD).
+  - No live 3DS challenge (above); no declining-card run.
+  - TalkBack and Accessibility Scanner not run (above).
+  - Payouts onboarding (D2.14, D2.15) not run: the expert account was already onboarded and a new Connect account is forbidden (D-05).
+  - Saved-card recovery for a reschedule (D1.24 part 2, D1.RS5) is unreachable live (BUG-32 runbook premise, BUG-27 backend).
+  - Open iOS and backend bugs travel on the STATE report list: BUG-13, BUG-14, BUG-15, BUG-16, BUG-17, BUG-24, BUG-25, BUG-26, BUG-27, BUG-28 (Pending Todos).
+  - Android post-release items: BUG-22 and BUG-34 (call controls at font 200%), BUG-23 (review pill after restart), BUG-04, BUG-20, BUG-21, BUG-18, BUG-19 and the BUG-28 Android half.
+- **Open must-pass rows (Sections 0-5 not a pass), with result and reason:**
+  - 23 TalkBack rows (TB.L1, TB.L2, TB.L3, TB.L7, TB.B1, TB.B3, TB.B4, TB.B5, TB.B8, TB.C1, TB.C2, TB.C7, TB.K1, TB.K2, TB.K3, TB.K4, TB.K5, TB.K10, TB.K11, TB.Y12, TB.Y14, TB.SE1, TB.PF1): not run, skipped by user decision 2026-11-05. POL-04 and Phase 15 SC-4 are not confirmed on a device.
+  - P0.8: not run: skipped by the user 2026-11-02, who states access works; A Connect status not read
+  - R1.2: not run: release build logs no state= lines (16-02 deviation); realtime proven by P0.5 and later chat rows
+  - D1.05: fail (BUG-13, vc 3)
+  - D1.12: not run: no headset
+  - D1.21: not run: 3DS accept not run per P0.9 (no challenging card)
+  - D1.22: not run: no failing card per P0.9
+  - D1.24: not run: part 1 (accept, decline with and without reason, free bookings) passed per user 2026-11-03; saved-card recovery unreachable live, runbook premise wrong (card always saved, clone cached), skipped by user 2026-11-04
+  - D1.RS5: not run: unreachable live: both apps always save the card and the booking stores it, so PAYMENT_METHOD_REQUIRED cannot be raised; runbook premise wrong
+  - D1.PH5: not run: no confirmed ended booking in Payment History on the client account, user 2026-11-03
+  - SW.1: fail (BUG-24, vc 4)
+  - D2.11: not run: 3DS accept not run per P0.9 (no challenging card)
+  - D2.RS1: fail (BUG-25, vc 4)
+  - D2.14: not run: expert account already onboarded, Payouts shows the ready state with no Set up payouts entry; a new Connect account is forbidden (D-05)
+  - D2.15: not run: no onboarding link reachable on the onboarded expert account, same reason as D2.14
+  - FS.C3: fail (BUG-34, vc 5): pre-join call screen at font 200% does not scroll; Mute, Speaker, Minimize and Chat unreachable behind End Call. Connected pair, final-5-minute banner and external variant not viewed
+  - FS.Y12: not run: skipped by user decision 2026-11-05
+  - FS.FB1: not run: skipped by user decision 2026-11-05
+  - PD.Y3: not run: skipped by user decision 2026-11-05
+  - IM.C5: not run: skipped by user decision 2026-11-05
+  - IM.K7: not run: skipped by user decision 2026-11-05
+  - IM.K8: not run: skipped by user decision 2026-11-05
+  - IM.K9: not run: skipped by user decision 2026-11-05
+  - IM.Y8: not run: skipped by user decision 2026-11-05
+  - IM.Y9: not run: skipped by user decision 2026-11-05
+  - IM.Y16: not run: skipped by user decision 2026-11-05
+  - PL.C9: not run: skipped by user decision 2026-11-05
+  - PL.K12: not run: skipped by user decision 2026-11-05
+  - EM.1: not run: skipped by user decision 2026-11-05
 
-Write-back table (left empty; close-out fills it so every deferred STATE item and checklist row has a result):
+Write-back table (every deferred STATE item and checklist source has a result; "vc N" is the build the row passed on):
 
 | Source item | Runbook rows | Result |
 |---|---|---|
+| 02 spike inputs file | Sections 1-5 | superseded by Phase 16 (D-08); the matrix ran on the Play build with no spike inputs |
+| 02-09 Stripe spike | D1.15-D1.20, D1.23; D1.21, D1.22, D2.11 | superseded by Phase 16 (D-08): card save, hold, cancel and retry rows pass vc 3-4; live 3DS not run (D1.21, D2.11: no challenging card per P0.9), D1.22 not run |
+| 02-15, 02-16 | 16-02, R1.1 | closed by 16-02: signed vc 1 R8 cold start ok, Play internal-track upload (REL-03); login on the Play build pass vc 3; forced refresh and the ESP round-trip not separately run |
+| P3 SC-1 Login | R1.1, IM.L2 | pass vc 3 and vc 5; the airplane-mode dialog was not separately run |
+| P3 SC-2 Recovery | FS.L5, IM.L5, IM.L6, OT.P3-2, TB.L7 | partial: recovery screens with the keyboard at 200% and code-entry focus pass vc 5; the full recovery flow (OT.P3-2) and the TalkBack order (TB.L7) not run, post-release |
+| P3 rotation line | FS.L4, FS.L5, IM.L4, PD.L8 | pass vc 5 |
+| P3 SC-3 Events | R1.2, D1.03, D2.08 | R1.2 not run as written (the release build logs no state= lines); realtime exercised functionally: D1.03 pass vc 3, D2.08 pass vc 4; D1.05 fail BUG-13 (backend, Read label not live) |
+| P3 SC-4 Reconnect | OT.P3-4 | not run, post-release |
+| P3 Lifecycle | R1.2 | not run (the release build logs no state= lines), post-release |
+| P3 Release smoke | R1.1, PD.Y11 | pass vc 3 and vc 5 (login and realtime on the signed Play build under R8; deep screen restored) |
+| P4 SC-1 Signup | OT.P4-1, D2.17 | OT.P4-1 not run, post-release; the Throwaway signup through Profile Setup to Publish in D2.17 passed vc 4 and was re-checked vc 5 (BUG-30, BUG-31 verified) |
+| P4 SC-2 Verify Email | OT.P4-2 | not run, post-release |
+| P4 SC-3 Resume | OT.P4-3 | not run, post-release |
+| P4 SC-4 After publish | OT.P4-4 | not run, post-release |
+| P4 photo picker and visual bullets | OT.PP, T2.S1-T2.S3, D2.17 | photo picker on API 26-32 not run (no AVD); T2.S1-T2.S3 not run, post-release; the crop preview fix (BUG-31) verified vc 5 |
+| P5 SC-1 Explore | OT.P5-1 | not run, post-release (Explore used in D1.01 and D1.SE1-D1.SE5, pass vc 3) |
+| P5 SC-2 Category cache | OT.P5-2 | not run, post-release |
+| P5 SC-3 Expert Profile | OT.P5-3 | not run, post-release (Expert Profile used in D1.01, D1.16 and D1.FV1, pass vc 3) |
+| P5 visual and accessibility | T2.E1-T2.E6 | not run, post-release |
+| P7 Stripe key and mode | P0.9, Section 7 | ran live with real cards on the Play build under the D-01 money plan (option-a, 2 captures); the sandbox path was not used; the money result is in 16-MATRIX-RUNBOOK.md Section 8 |
+| P7 SC-1 Payment Methods | P0.4, D1.15 | pass vc 3 |
+| P7 SC-2 Short-lead | D1.17, D1.18, D1.19, D1.20 | pass vc 3 (D1.17) and vc 4 (D1.18-D1.20, was BUG-05) |
+| P7 SC-3 Long-lead and gate | D1.16 | pass vc 3 (the long-lead half is descoped) |
+| P7 SC-4 3DS | D1.21, D2.11 | not run: no challenging card (P0.9 plan, user 2026-11-02); no live 3DS challenge was passed, accepted gap |
+| P7 SC-5 Errors and money | D1.23, FS.B10, D1.18 | partial: rotation with the sheet open pass vc 4 (was BUG-06), Payment Methods at 200% pass vc 5, release-build booking with Stripe pass vc 4; the JPY and 3DS-challenge parts not run |
+| P8 SC-1 My Bookings | D1.03, D1.27 | pass vc 3 |
+| P8 SC-2 Upcoming Booking Details | D1.03, D1.06, D1.13 | pass vc 3 |
+| P8 SC-3 Cancel | D1.19, D1.20 | pass vc 4 (held paid booking cancelled, Stripe canceled) |
+| P8 SC-4 Reschedule response | D1.24 part 1, D1.RS5, BUG-25 | partial: accept and decline with and without a reason passed per the user (vc 3-4); PAYMENT_METHOD_REQUIRED recovery not run (unreachable live, BUG-32 and BUG-27 backend); Book Again not recorded; Android client answering an expert reschedule user-reported working vc 5 |
+| P8 visual and system | T2.M1, T2.M4, T2.M5 | not run, post-release |
+| P9 SC-1 Join | D1.06, D1.07, D1.13 | pass vc 3 (native-app open for Skype or Zoom not separately recorded; the unopenable-link case WR-07 passed) |
+| P9 SC-2 Background 5+ min | D1.09, D1.11, D2.06 | pass vc 3 and vc 4 |
+| P9 SC-3 Pill and guard | D1.08 | pass vc 3 |
+| P9 SC-4 Hang-up and rejoin | D1.10, D2.07 | pass vc 4 (was BUG-09) |
+| P9 SC-5 Paid session end to end | D1.25, D2.12 | pass vc 4 (D1.25; Railway confirm-connection count not checked) and vc 4 (D2.12; confirm-connection sent once per app, two Railway lines); captures refunded in Section 7 |
+| P9 Android 17 audio hardening | EM.1 | not run: skipped by user decision 2026-11-05, post-release |
+| P9 device and OEM sweep | FS.C3, TB.C1, TB.C2, PL.C9, IM.C5, D1.12, P0.7, PD.C8 | partial: FS.C3 fail BUG-34 (vc 5, same cause as BUG-22); TalkBack order, notification-permission-denied, pill over gesture and 3-button navigation not run; Bluetooth and GSM not run (D1.12: no headset); Samsung battery state P0.7 pass vc 3; cold-start notification tap PD.C8 pass vc 5 |
+| P10 (a) Topics | OT.P10-a | not run, post-release |
+| P10 (b) Availability | OT.P10-b | not run, post-release |
+| P10 (c) Timezone | OT.P10-c | not run, post-release |
+| P10 (d) cross-client | D2.01, D1.29, OT.P10-a | partial: slots match in the expert's timezone (D2.01) and Unblock restores the composer (D1.29) pass vc 4; the new-topic listing part not run (OT.P10-a) |
+| P10 (e) French locale | OT.P10-e | not run, post-release |
+| P10 (f) 200% and TalkBack | T2.X1, T2.X2, T2.X3 | not run, post-release |
+| P10 (g) Gap closure | OT.P10-g | not run, post-release |
+| P11 (a) Dashboard | D2.03, SW.3, D2.14 | partial: pending count, Confirmed and the expert Dashboard pass vc 4; the payout card and Custom Tab return not run (D2.14: expert account already onboarded) |
+| P11 (b) Requests | D2.02, D2.03, D2.04 | pass vc 4 (expired-request part not run: none exists) |
+| P11 (c) Join | D2.05 | pass vc 4 |
+| P11 (d) Reschedule and cancel | D2.13, D2.10 | pass vc 4 (SLOT_UNAVAILABLE seen; held paid booking cancelled, Stripe canceled) |
+| P11 (e) 200% and TalkBack | FS.CP1, T2.X4, T2.X5, T2.X6 | partial: Client Profile and Booking Summary at 200% pass vc 5 (FS.CP1); T2.X4-T2.X6 not run, post-release |
+| G-11-1 11-UAT test 1 | D2.03, D2.05 | pass vc 4 (accept, both sides in the same call) |
+| G-11-1 09-HUMAN-UAT item 1 | D1.06, D1.07, D1.13 | pass vc 3 |
+| G-11-1 09-HUMAN-UAT item 2 | D1.09, D2.06 | pass vc 3 and vc 4 |
+| G-11-1 09-HUMAN-UAT item 5 | D1.10, D2.07 | pass vc 4 |
+| G-11-5 (1) fresh build | SW.4, D2.20, H2 | pass: H2 each session proved the Play build (vc 3 to vc 5), installer com.android.vending |
+| G-11-5 (2) same booking | D2.05 | pass vc 4 (backend row has both joined_at values) |
+| G-11-5 (3) engine profile | D1.07, D2.05 | pass vc 3 and vc 4 (channelProfile:0 in agoraapi.log) |
+| G-11-5 (4) remote peer | D1.07, D2.05 | pass vc 3 and vc 4 (remote joined, remote audio state=2) |
+| G-11-5 (5) the four checks | see G-11-1 rows | pass (the four G-11-1 boxes above) |
+| G-11-6 (5) | D1.06, D1.09, D1.10, D2.06, D2.07 | pass vc 3 and vc 4 |
+| P12 (a) Message entry points | D2.08, D1.05 | partial: expert-side entries pass vc 4 (D2.08, user report only); D1.05 fail BUG-13 (backend, Read label not live) |
+| P12 (b) cross-client chat | D1.05, D2.08 | D1.05 fail BUG-13 (backend: the Read label does not update live; the server saved it); D2.08 pass vc 4 |
+| P12 (c) Report and block | D1.29 | pass vc 4 (the 10/hour report limit message not run) |
+| P12 (d) Blocked states | D1.29 | pass vc 4 (the RECIPIENT_UNAVAILABLE suspended-account case not run) |
+| P12 (e) 200%, TalkBack, IME | FS.K6, PD.K8, PD.K9, TB.K1-TB.K11, IM.K7-IM.K9, PL.K12 | partial: FS.K6, PD.K8, PD.K9 pass vc 5; the TalkBack rows, IM.K7-IM.K9 and PL.K12 not run (skipped by user decision 2026-11-05) |
+| P13 (a) Permission and token | P0.6, R1.3, R1.4, SW.2, SW.1 | Android half pass vc 3-4 (prompt once, android token row present after start, refreshed on return); SW.1 fail BUG-24 (ios: the iPhone keeps its push token row after logout) |
+| P13 (b) Push routing | P0.5, D1.01, D1.02, D1.04, D2.02, batch-B smoke H6 | pass vc 3, vc 4 and vc 5 (push from a killed app opens the right screen) |
+| P13 (c) Channels | R1.5, D1.04 | pass vc 3 (BUG-04 post-release: the channel list sits behind a category entry on One UI) |
+| P13 (d) Notifications list | D1.28 | pass vc 3 |
+| P13 (e) Write Review | D1.26 | pass vc 3 |
+| P13 (f) Internal-track install | D-10 | installed from Play on the Samsung (vc 1 to vc 5); the wider tester group is an accepted gap (D-10, single tester) |
+| P13 (g) 200% and TalkBack | T2.N1, T2.N2 | not run, post-release |
+| P13 release checklist (10) | R1.3, R1.4, R1.5, D1.02, D1.04, D2.02 | pass vc 3 and vc 4 (iOS logout leftover is BUG-24, reported to ios) |
+| P14 (a) Payouts | D2.14, D2.15, D2.16, D1.30 | D2.14 and D2.15 not run (expert account already onboarded; a new Connect account is forbidden, D-05); D2.16 forged intent pass vc 4 (weak proof); D1.30 iOS half pass vc 3 |
+| P14 (b) Activity | OT.P14-b | not run, post-release |
+| P14 (c) Settings | OT.P14-c | not run, post-release |
+| P14 (d) Delete account | D2.17, D2.18, D2.19 | pass vc 4 (409 shown, then deleted; the iPhone and a fresh Android login both reject it); Help FAQ and Email Us not run |
+| P14 (e) Tax | OT.P14-e | not run, post-release |
+| P14 (f) 200% and TalkBack | T2.T1, T2.T2 | not run, post-release |
+| P15 checklist (15-DEVICE-CHECKLIST.md) | all 101 rows | 17 pass, 5 partial, 1 fail (C3, BUG-34), 78 not run; results in the Result cells |
+| 09-HUMAN-UAT 1 (SC-1 join) | D1.06, D1.07, D1.13 | pass vc 3 |
+| 09-HUMAN-UAT 2 (SC-2 background) | D1.09, D1.11, D2.06 | pass vc 3 and vc 4 |
+| 09-HUMAN-UAT 3 (Android 17 audio hardening) | EM.1 | not run: skipped by user decision 2026-11-05, post-release |
+| 09-HUMAN-UAT 4 (SC-3 pill and guard) | D1.08 | pass vc 3 |
+| 09-HUMAN-UAT 5 (SC-4 hang-up and rejoin) | D1.10, D2.07 | pass vc 4 (was BUG-09) |
+| 09-HUMAN-UAT 6 (SC-5 paid session) | D1.25, D2.12 | pass vc 4; captures refunded in Section 7 |
+| 09-HUMAN-UAT 7 (device and OEM sweep) | FS.C3, TB.C1, TB.C2, PL.C9, IM.C5, D1.12, P0.7 | partial: battery state P0.7 pass vc 3; FS.C3 fail BUG-34; Bluetooth and GSM not run (no headset); TalkBack, notification-denied and navigation-mode rows not run |
+| 09-HUMAN-UAT 8 (CallStyle decision) | D1.14 | answered by the user 2026-11-02 (recorded in the results file) |
+| 09-HUMAN-UAT 9 (review-fix device checks) | D1.11, D1.13 | WR-06, WR-07 and WR-09 pass vc 3; WR-05 is recorded only if it happens, none recorded |
+| 15-UAT test 1 (SC-4 TalkBack runs) | TB.L1, TB.B1, TB.C1, TB.K1 | not run: skipped by user decision 2026-11-05; POL-04 and Phase 15 SC-4 not confirmed on a device |
+| 15-UAT test 2 (recreation and process death) | PD.Y1, PD.Y3-PD.Y7, PD.Y11 | 6 of 7 pass vc 5; PD.Y3 not run (skipped by user decision) |
+| 15-UAT test 3 (large window, cutout, navigation) | LW.Y2, LW.C4, IM.Y8, IM.Y9, IM.Y16, IM.C5 | not run (large window post-release; IM rows skipped by user decision) |
+| 15-UAT test 4 (Accessibility Scanner) | TB.Y12, FS.Y12 | not run: skipped by user decision 2026-11-05 |
+| 15-UAT test 5 (Week 7 loading, empty and error states) | T2.E3, T2.M2, T2.M3, T2.N3, T2.T5, T2.T7, T2.Y13 | not run, post-release (D-06) |
+| 15-UAT test 6 (M8 focus after Retry) | T2.M8 | not run, post-release (D-06) |
+| 15-UAT test 7 (B4 day-cell taps) | TB.B4 | not run: skipped by user decision 2026-11-05 |
+| 15 gap list: androidTest accessibility suite | none | not run, post-release (JVM audit stays the substitute) |
+| 15 gap list: Stripe-card rows | D1.15-D1.23, D1.25, D2.09-D2.12 | pass except D1.21, D1.22 and D2.11 (not run, no challenging or failing card) |
+| 15 gap list: live-call rows with the iOS peer | D1.06-D1.13, D2.05-D2.07 | pass except D1.12 (no headset) |
+| 15 gap list: cross-device chat, booking and request rows | D1.01-D1.05, D1.29, D2.01-D2.04, D2.08, D2.13 | pass except D1.05 (BUG-13, backend) |
+| 15 gap list: photo picker on API 26-32 | OT.PP | not run: no API 26-32 AVD |
+| 15 gap list: 45.7 dp day cells | TB.B4 | not run: skipped by user decision 2026-11-05 |
+| 15 gap list: focus after Retry on detail screens | T2.M8 | not run, post-release |
+| 15 gap list: call pill first (conditional fix) | TB.C2 | not run: skipped by user decision 2026-11-05 |
+| 15 gap list: filled field speech (conditional fix) | TB.L3 | not run: skipped by user decision 2026-11-05 |
+| 15 gap list: bubble speech (conditional fix) | TB.K3 | not run: skipped by user decision 2026-11-05 |
+| 15 gap list: Book Now scroll footer under 480 dp | none | not applicable: phones are locked to portrait (PD.Y1 pass vc 5) |
+| 15 gap list: cap the Farewell button | T2.T8, T2.T10 | not run, post-release |
+| 15 gap list: wider tester group | none | accepted gap (D-10, single tester) |
+| 15 gap list: portrait lock review | PD.Y1 | lock confirmed on the Samsung vc 5; the Play pre-launch review needs Play data |
+| FND-14 (Phase 9 background audio) | D1.09, D2.06 | replaced and pass vc 3 and vc 4 |
 
 Confirmed by the user on YYYY-MM-DD: option ___ (accept the matrix and tier-1 results / accept with the listed gaps / do not accept, reason: ___)
