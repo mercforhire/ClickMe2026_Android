@@ -4,17 +4,16 @@ milestone: v1.0
 current_phase: 17
 current_phase_name: Play Store Release
 status: ready_to_plan
-stopped_at: Phase 16 complete (verified, signed off 2026-11-05); next Phase 17 Play Store Release
-last_updated: "2026-11-06T03:33:53.749Z"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-11-06T04:12:30.343Z"
 last_activity: 2026-11-05
 last_activity_desc: Phase 16 complete, next is Phase 17 (Play Store Release)
-state_head: f631a2c248a8c70fed1fac9c3e9698b9da81165f
+state_head: 37dc594440e809ddb2571f3a839673449f746902
 progress:
   total_phases: 22
   completed_phases: 12
   total_plans: 297
   completed_plans: 294
-  percent: 71
 milestone_name: milestone
 ---
 
@@ -365,9 +364,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-06T03:02:59.951Z
-Stopped at: Phase 16 complete, next is Phase 17 (Play Store Release); run /gsd-plan-phase 17
-Resume file: None
+Last session: 2026-11-06T04:12:28.566Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-play-store-release/17-CONTEXT.md
 Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and cleanup incl. deleting the D2.17 throwaway with TalkBack optional, Section 8 sign-off). 16-07 skips by user decision: all 23 TalkBack rows (POL-04 / Phase 15 SC-4 unconfirmed on device), FS.FB1, FS.Y12, PD.Y3, 7 IM rows, PL.C9, PL.K12, EM.1. BUG-34 (call controls unreachable at 200% font, no scroll) is fix-if-cheap by user decision.
 
 **Next fix batch input (android):** BUG-22 + BUG-34 together (MeetingCallScreen.kt), BUG-23, the remember-email feature (pre-fill last email on Login after any sign-out; branch feature/remember-login-email, Android 0c9ecc55; iOS b0629d9 on the same branch in the iOS repo for the user to merge (worktrees removed 2026-11-05)), and the Android half of BUG-28 once the backend exposes decline_reason_text. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
