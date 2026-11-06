@@ -54,6 +54,8 @@ Category: "Social" or the closest communication category Console offers (users c
 | Users can interact or exchange content with each other | Yes (chat and voice between users) |
 | Users can block other users or their content | Yes (chat Report & Block: block and unblock a user) |
 | Users can report or flag other users or their content | Yes (chat Report & Block: report with a reason, reviewed on the backend) |
+| Chat moderation | Yes (human moderation: reports alert the admin; the admin console reviews reports and suspends, bans or terminates accounts; messages are kept server-side for review). No automated profanity or keyword filter |
+| Interactions limited to invited friends only | No (open marketplace: any signed-in user can find, book and message experts) |
 | Digital purchases or payments | Yes (paid sessions, charged through Stripe) |
 | Shares the user's location with other users | No |
 | Violence, blood, fear | No |
