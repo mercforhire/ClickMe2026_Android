@@ -613,7 +613,8 @@ class FeedbackViewModelTest {
                 )
             runCurrent()
 
-            assertEquals("secret-details", vm.uiState.value.details)
-            assertFalse(vm.uiState.value.toString().contains("secret"))
+            val state = vm.uiState.value
+            assertEquals("secret-details", state.details)
+            assertFalse(state.toString().contains("secret"))
         }
 }
