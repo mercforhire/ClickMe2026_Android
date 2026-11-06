@@ -7,7 +7,7 @@ status: ready_to_plan
 stopped_at: Phase 16 complete (verified, signed off 2026-11-05); next Phase 17 Play Store Release
 last_updated: "2026-11-06T03:33:53.749Z"
 last_activity: 2026-11-05
-last_activity_desc: Phase 16 complete, transitioned to Phase 2
+last_activity_desc: Phase 16 complete, next is Phase 17 (Play Store Release)
 state_head: f631a2c248a8c70fed1fac9c3e9698b9da81165f
 progress:
   total_phases: 22
@@ -366,7 +366,7 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-11-06T03:02:59.951Z
-Stopped at: Phase 16 complete, ready to execute Phase 2
+Stopped at: Phase 16 complete, next is Phase 17 (Play Store Release); run /gsd-plan-phase 17
 Resume file: None
 Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and cleanup incl. deleting the D2.17 throwaway with TalkBack optional, Section 8 sign-off). 16-07 skips by user decision: all 23 TalkBack rows (POL-04 / Phase 15 SC-4 unconfirmed on device), FS.FB1, FS.Y12, PD.Y3, 7 IM rows, PL.C9, PL.K12, EM.1. BUG-34 (call controls unreachable at 200% font, no scroll) is fix-if-cheap by user decision.
 
