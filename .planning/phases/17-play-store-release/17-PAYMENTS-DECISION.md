@@ -51,6 +51,10 @@ Result: **prints nothing** (baseline at HEAD: nothing). The same search over the
 
 Stripe is permitted. Play Billing is not required for ClickMe sessions, under FAQ 10281818 (the service is between two individuals and is not replayable).
 
+### Confirmation
+
+Confirmed by the user on 2026-11-06: keep Stripe under FAQ 10281818 (option-stripe-faq).
+
 ### Residual risk
 
 This is a Help Center FAQ, not the policy text (RESEARCH Pitfall 10). A reviewer who enforces only the policy page could reject Stripe. Keep this dated copy as evidence. D-05 is rated costly, which is why you confirm it at 17-08 (row 1) rather than it being assumed.
@@ -65,25 +69,27 @@ The store listing and screenshots describe paid one-on-one sessions between two 
 
 ## 2. Answers for the 17-08 checkpoint
 
-`Recommended` is the default if you say "all recommended". `Answer` is filled at 17-08.
+Confirmed by the user on 2026-11-06 (collected by the orchestrator at the 17-08 checkpoint): D-05 option-stripe-faq; rows 2-11 all recommended; row 12 gate not shown; row 13 chosen but not purchased.
+
+`Recommended` is the default if you say "all recommended". `Answer` was filled at 17-08.
 
 | # | Question | Recommended | Source | Answer |
 |---|----------|-------------|--------|--------|
-| 1 | D-05 payments: which path? Options: keep Stripe under FAQ 10281818 / move to Play Billing / ask Play support before submitting | Keep Stripe under FAQ 10281818, with the dated copy in section 1 as evidence | D-05; RESEARCH Summary, Pitfall 10; section 1 above | (pending 17-08) |
-| 2 | Card data in Data safety: collected and shared? | Collected = Yes (Stripe's SDK transmits it from the device); Shared = No, Stripe is a service provider (flagged assumption A5). Alternative if you want zero doubt: Shared = Yes | RESEARCH Data safety Decision 1; A5 | (pending 17-08) |
-| 3 | NFC permission (added by Stripe's SDK): any Console action? | No Console action; optional reviewer note that card-tap input is possible (A12) | RESEARCH Data safety Decision 2; merged prod manifest | (pending 17-08) |
-| 4 | Push content: declare that notifications carry booking updates and message previews? | Yes, declare it, and publish privacy edit E2 | RESEARCH Data safety Decision 3; `chats.controller.js` 140-character preview; `17-PRIVACY-POLICY-EDITS.md` E2 | (pending 17-08) |
-| 5 | Privacy policy names Agora, Stripe and Firebase Cloud Messaging? | Publish edits E1 to E4 (Agora and Stripe are already named; E1 adds Firebase Cloud Messaging) | RESEARCH Data safety Decision 4; `17-PRIVACY-POLICY-EDITS.md` | (pending 17-08) |
-| 6 | Financial features declaration | "My app doesn't provide any financial features" (flagged assumption A8) | RESEARCH Console Declarations; A8 | (pending 17-08) |
-| 7 | Developer name on the deletion page | "Uptrend Investments Inc." (confirm the exact string shown on the store listing) | Plan 17-03 Task 1; RESEARCH Open Question 5 | (pending 17-08) |
-| 8 | Retention wording for payment, payout and tax records | "As long as financial and tax law requires" (flagged assumption A11); or give explicit periods | RESEARCH A11 and Open Question 6; live policy sentence "kept for as long as financial and tax law requires" | (pending 17-08) |
-| 9 | Email deletion requests: response time | Reply from clickmeapp@uptrendinvestments.net to confirm the request, then delete within 30 days of confirmation. Contact address settled by the user on 2026-11-06: clickmeapp@uptrendinvestments.net (support@clickme.app is wrong and is no longer used) | Plan 17-03 Task 1; `17-PRIVACY-POLICY-EDITS.md` finding 1 | (pending 17-08: response time only) |
-| 10 | Branch `feature/remember-login-email` (Android 0c9ecc55) in 1.0.0 | No (default; vc 6 is built without it). Yes means it merges and ships as a closed-track fix build before production (D-04 allows fix builds) | RESEARCH Open Question 4; STATE.md line 372 | (pending 17-08) |
-| 11 | Ongoing-call notification style (Phase 9 open item "ask before release") | Keep the plain style (default). CallStyle would be a closed-track fix build | STATE.md line 141; Phase 9 | (pending 17-08) |
-| 12 | Production-access gate on the Play Console Dashboard today (D-01): shown or not shown | Observation, no default. Shown means 17-09 runs the closed test; not shown means 17-09 can go straight to production | D-01; RESEARCH Open Question 1 | (pending 17-08) |
-| 13 | Tester service (D-02) | Testers Community Pro, 25 testers, CA$33 (runner-up TestFi, 16 testers, $39.99); buy at least 20 testers | D-02; RESEARCH "Paid tester services compared" (vendor-stated, fetched 2026-11-05) | (pending 17-08) |
+| 1 | D-05 payments: which path? Options: keep Stripe under FAQ 10281818 / move to Play Billing / ask Play support before submitting | Keep Stripe under FAQ 10281818, with the dated copy in section 1 as evidence | D-05; RESEARCH Summary, Pitfall 10; section 1 above | Keep Stripe under FAQ 10281818 (option-stripe-faq), as recommended |
+| 2 | Card data in Data safety: collected and shared? | Collected = Yes (Stripe's SDK transmits it from the device); Shared = No, Stripe is a service provider (flagged assumption A5). Alternative if you want zero doubt: Shared = Yes | RESEARCH Data safety Decision 1; A5 | As recommended: collected = Yes, shared = No (Stripe is a service provider, A5) |
+| 3 | NFC permission (added by Stripe's SDK): any Console action? | No Console action; optional reviewer note that card-tap input is possible (A12) | RESEARCH Data safety Decision 2; merged prod manifest | As recommended: no Console action |
+| 4 | Push content: declare that notifications carry booking updates and message previews? | Yes, declare it, and publish privacy edit E2 | RESEARCH Data safety Decision 3; `chats.controller.js` 140-character preview; `17-PRIVACY-POLICY-EDITS.md` E2 | As recommended: declare booking updates and message previews; publish privacy edit E2 |
+| 5 | Privacy policy names Agora, Stripe and Firebase Cloud Messaging? | Publish edits E1 to E4 (Agora and Stripe are already named; E1 adds Firebase Cloud Messaging) | RESEARCH Data safety Decision 4; `17-PRIVACY-POLICY-EDITS.md` | As recommended: publish privacy edits E1 to E4 |
+| 6 | Financial features declaration | "My app doesn't provide any financial features" (flagged assumption A8) | RESEARCH Console Declarations; A8 | As recommended: "My app doesn't provide any financial features" (A8) |
+| 7 | Developer name on the deletion page | "Uptrend Investments Inc." (confirm the exact string shown on the store listing) | Plan 17-03 Task 1; RESEARCH Open Question 5 | As recommended: "Uptrend Investments Inc." |
+| 8 | Retention wording for payment, payout and tax records | "As long as financial and tax law requires" (flagged assumption A11); or give explicit periods | RESEARCH A11 and Open Question 6; live policy sentence "kept for as long as financial and tax law requires" | As recommended: "as long as financial and tax law requires" (A11) |
+| 9 | Email deletion requests: response time | Reply from clickmeapp@uptrendinvestments.net to confirm the request, then delete within 30 days of confirmation. Contact address settled by the user on 2026-11-06: clickmeapp@uptrendinvestments.net (support@clickme.app is wrong and is no longer used) | Plan 17-03 Task 1; `17-PRIVACY-POLICY-EDITS.md` finding 1 | As recommended: reply from clickmeapp@uptrendinvestments.net to confirm the request, then delete within 30 days of confirmation |
+| 10 | Branch `feature/remember-login-email` (Android 0c9ecc55) in 1.0.0 | No (default; vc 6 is built without it). Yes means it merges and ships as a closed-track fix build before production (D-04 allows fix builds) | RESEARCH Open Question 4; STATE.md line 372 | As recommended: No. No merge; vc 6 ships without the branch |
+| 11 | Ongoing-call notification style (Phase 9 open item "ask before release") | Keep the plain style (default). CallStyle would be a closed-track fix build | STATE.md line 141; Phase 9 | As recommended: plain notification (keep the current style) |
+| 12 | Production-access gate on the Play Console Dashboard today (D-01): shown or not shown | Observation, no default. Shown means 17-09 runs the closed test; not shown means 17-09 can go straight to production | D-01; RESEARCH Open Question 1 | Gate not shown (checked 2026-11-06: Test and release > Production offers "Create new release"; the Dashboard shows no 12-tester card). Internal-track smoke of vc 6, then production; no closed test, no 14-day log |
+| 13 | Tester service (D-02) | Testers Community Pro, 25 testers, CA$33 (runner-up TestFi, 16 testers, $39.99); buy at least 20 testers | D-02; RESEARCH "Paid tester services compared" (vendor-stated, fetched 2026-11-05) | Testers Community Pro (25 testers, CA$33) was chosen but is not needed because the gate is not shown. Chosen; not purchased (gate not shown). Do not buy |
 
-## Flagged assumptions awaiting 17-08
+## Flagged assumptions (answered at 17-08; acceptance is known only after Google's review)
 
 - A5: Google accepts Stripe as a "service provider", so card data is collected but not shared (row 2).
 - A8: ClickMe has no "financial features" in Google's sense (row 6).

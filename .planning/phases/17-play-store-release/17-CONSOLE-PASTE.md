@@ -4,7 +4,7 @@ This file supersedes `.planning/phases/13-push-notifications-internal-testing/13
 
 This file contains no password, keystore value or token. The reviewer password is typed into Console by the account owner.
 
-Answers that depend on the 17-08 checkpoint carry "(confirm at 17-08 #n)", where n is the row number of the table in `17-PAYMENTS-DECISION.md` section 2. Do not submit those answers until 17-08 has confirmed them.
+The answers that depended on the pre-submission checkpoint were confirmed by the user on 2026-11-06 (rows 1-13 of the table in `17-PAYMENTS-DECISION.md` section 2); each is marked "(confirmed 2026-11-06, row n)" where it appears below.
 
 ## 1. Privacy policy
 
@@ -90,9 +90,9 @@ Data types. Declare exactly these rows and no others. Columns follow the Console
 | Personal info: User IDs | Account id used on bookings, chats and reviews | Yes | No | No | Required | App functionality, Account management |
 | Personal info: Other info | Bio, expertise tags, languages, country and province, time zone, expert availability, topic titles and prices | Yes | No | No | Required for experts; optional for clients | App functionality, Personalization |
 | Photos and videos: Photos | Profile photo chosen with the system photo picker and uploaded | Yes | No | No | Required for experts; optional for clients | App functionality |
-| Messages: Other in-app messages | Chat messages between clients and experts, report and block reasons. Notifications can carry a message preview of up to 140 characters delivered by Firebase Cloud Messaging (a service provider) (confirm at 17-08 #4) | Yes | No | No | Optional | App functionality |
+| Messages: Other in-app messages | Chat messages between clients and experts, report and block reasons. Notifications can carry a message preview of up to 140 characters delivered by Firebase Cloud Messaging (a service provider) (confirmed 2026-11-06, row 4) | Yes | No | No | Optional | App functionality |
 | Audio: Voice or sound recordings | Live voice during a session, streamed through Agora (a service provider acting for the app); the app does not record or store audio | Yes | No (Agora is a service provider acting for the app) | Yes (processed in real time, not stored by the app) | Optional (needed to take part in a call) | App functionality |
-| Financial info: User payment info | Card details typed into Stripe's PaymentSheet; Stripe's SDK sends them from the device, and the app never reads card numbers | Yes | No, Stripe is a service provider (confirm at 17-08 #2) | No | Optional (only for paid sessions) | App functionality |
+| Financial info: User payment info | Card details typed into Stripe's PaymentSheet; Stripe's SDK sends them from the device, and the app never reads card numbers | Yes | No, Stripe is a service provider (confirmed 2026-11-06, row 2) | No | Optional (only for paid sessions) | App functionality |
 | Financial info: Purchase history | Booking amounts and the Payment History screen | Yes | No | No | Optional | App functionality |
 | Financial info: Other financial info | Expert earnings and payout status | Yes | No | No | Optional (experts only) | App functionality |
 | App activity: Other user-generated content | Reviews, booking notes, cancellation and decline reasons | Yes | No | No | Optional | App functionality |
@@ -112,7 +112,7 @@ https://www.uptrendinvestments.net/clickme/delete-account.html
 
 Notes:
 
-- The NFC permission comes from Stripe's SDK (the app's own manifest has none) and needs no Data safety row (confirm at 17-08 #3).
+- The NFC permission comes from Stripe's SDK (the app's own manifest has none) and needs no Data safety row (confirmed 2026-11-06, row 3).
 - No advertising ID is used and no ad, analytics or crash-reporting SDK is in the app.
 - Committed to Play Families Policy: No. Independent security review: No.
 - The Data safety answers must match the published privacy policy after edits E1-E4 in `17-PRIVACY-POLICY-EDITS.md`. Publish those edits before submitting this form.
@@ -122,7 +122,7 @@ Notes:
 
 Console path: Policy and programs > App content > Financial features
 
-Select: "My app doesn't provide any financial features" (confirm at 17-08 #6).
+Select: "My app doesn't provide any financial features" (confirmed 2026-11-06, row 6).
 
 Reason, for your own reference: Stripe takes payment for an expert's time and pays out experts. The app offers no banking, lending, investing, crypto, money transfer or wallet feature. This is flagged assumption A8: experts may teach finance topics, but the app gives no financial advice itself.
 
@@ -184,7 +184,7 @@ Console path: Policy and programs > App content (the remaining tasks Console lis
 | Health apps | No (or "not applicable", as Console phrases it) |
 | Data safety | See section 6 |
 
-Use what Console lists; answer No to any other program declaration the app does not belong to. The NFC permission comes from Stripe's SDK; Console is not expected to ask about it (flagged assumption A12, confirm at 17-08 #3). If it does, answer that NFC is optional card-tap input inside Stripe's PaymentSheet and the app never reads NFC tags itself.
+Use what Console lists; answer No to any other program declaration the app does not belong to. The NFC permission comes from Stripe's SDK; Console is not expected to ask about it (flagged assumption A12, confirmed 2026-11-06, row 3: no Console action). If it does, answer that NFC is optional card-tap input inside Stripe's PaymentSheet and the app never reads NFC tags itself.
 
 ## 10. Store listing
 
@@ -255,6 +255,8 @@ sips -g pixelWidth -g pixelHeight -g hasAlpha <file>
 ## 11. Release
 
 Console path: Test and release > Testing > Closed testing, and Test and release > Production
+
+**Track (row 12, 2026-11-06):** the production-access gate is not shown, so vc 6 goes to **Internal testing** first (Test and release > Testing > Internal testing), then to Production after smoke run 1. The closed-testing text below is not needed and is kept only in case the gate appears later.
 
 **Countries**
 
