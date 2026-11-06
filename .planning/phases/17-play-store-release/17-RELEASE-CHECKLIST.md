@@ -103,7 +103,9 @@ Needs: an image editor. Save as `ASSETS/feature-graphic.jpg` (or `.png`): 1024 x
 
 Check: `sips -g pixelWidth -g pixelHeight -g hasAlpha /Users/LeonChen/ClickMe-release/store-assets/feature-graphic.jpg` prints 1024, 500 and `hasAlpha: no`.
 
-- [ ] (5) Feature graphic saved
+Result 2026-11-06: `feature-graphic.jpg` rendered by Claude, approved by the user; sips prints 1024, 500, `hasAlpha: no`.
+
+- [x] (5) Feature graphic saved
 
 ## 6. Decisions at the 17-08 checkpoint (D-05)
 

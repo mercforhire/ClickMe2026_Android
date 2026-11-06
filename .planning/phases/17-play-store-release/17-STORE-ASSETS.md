@@ -13,7 +13,7 @@ Capture tool: `scripts/play-store-screenshot.sh` (`prep`, `capture <name> [--nat
 | 5 | 05-chat.jpg | A chat thread between the user's own accounts, with booking and session cards | OK 1080x1920 alpha=no | executor | retake requested 2026-11-06 (not approved) | yes: same two-person profile photo; message texts are keyboard gibberish ("Bdhdhd", "Hdhdd"), consider replacing the frame | no (retake requested 2026-11-06) |
 | 6 | 06-in-call.jpg | In-call screen, captured in smoke run 1 (plan 17-09) | not run | executor | open: planned for 17-09 | not assessed | [ ] |
 | 7 | play-icon-512.png | 512 x 512 Play icon rendered from the existing adaptive launcher icon (surface background plus `ic_launcher_foreground`, no mask; Google applies its own) | 512x512, alpha yes, 64 KB (limit 1024 KB) | executor | captured | none | [ ] |
-| 8 | feature-graphic.jpg | 1024 x 500 feature graphic | not made | user | open: user makes it (JPEG or 24-bit PNG, no alpha) | none | [ ] |
+| 8 | feature-graphic.jpg | 1024 x 500 feature graphic: logo mark cut from play-icon-512 on #131313 with a green glow, "ClickMe" (Nunito 700), tagline "Live 1-on-1 voice sessions with experts" (Nunito 600) | OK 1024x500 alpha=no, 60 KB JPEG | Claude (rendered 2026-11-06 with CoreGraphics at the user's request) | made | none | yes (user, 2026-11-06) |
 | 9 | foreground-service-video | 30-60 s screen recording of the microphone foreground service, unlisted link | not made | user | open: user records and links it | none | [ ] |
 
 ## Open items
