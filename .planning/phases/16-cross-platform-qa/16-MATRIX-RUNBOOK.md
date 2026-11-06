@@ -756,4 +756,4 @@ Write-back table (every deferred STATE item and checklist source has a result; "
 | 15 gap list: portrait lock review | PD.Y1 | lock confirmed on the Samsung vc 5; the Play pre-launch review needs Play data |
 | FND-14 (Phase 9 background audio) | D1.09, D2.06 | replaced and pass vc 3 and vc 4 |
 
-Confirmed by the user on YYYY-MM-DD: option ___ (accept the matrix and tier-1 results / accept with the listed gaps / do not accept, reason: ___)
+Confirmed by the user on 2026-11-05: option-confirm ("confirm")
