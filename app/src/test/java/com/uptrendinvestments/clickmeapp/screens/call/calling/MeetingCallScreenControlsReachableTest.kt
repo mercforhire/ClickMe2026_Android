@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.call.calling
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -12,6 +13,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -55,7 +59,7 @@ class MeetingCallScreenControlsReachableTest {
     private val start = Instant.parse("2026-10-24T10:00:00Z")
     private val end = start.plusSeconds(1800)
     private val timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT, Locale.US)
-    private val navBar = 48
+    private var navBar = 48
 
     private lateinit var view: View
 
@@ -126,6 +130,73 @@ class MeetingCallScreenControlsReachableTest {
         }
     }
 
+    /** The pre-join Waiting state of BUG-34: the countdown to the start, no banner. */
+    private fun waiting() = state(status = CallStatus.WaitingForPeer, now = start.minusSeconds(3100))
+
+    private fun showInOverlay(
+        fontScale: Float,
+        state: MeetingCallUiState,
+    ) {
+        rule.setContent {
+            view = LocalView.current
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale = fontScale)) {
+                ClickMeTheme {
+                    CallOverlayContent(
+                        state = state,
+                        isMinimized = false,
+                        dialog = null,
+                        pendingPermission = null,
+                        onMinimize = {},
+                        onExpand = {},
+                        onToggleMute = {},
+                        onToggleSpeaker = {},
+                        onEndCall = {},
+                        onOpenExternal = {},
+                        onDismissDialog = {},
+                        onPermissionResult = { _, _ -> },
+                    ) {
+                        Box(Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+        rule.dispatchInsets(view, navigationBarInsets(navBar))
+        rule.waitForIdle()
+        rule.onNodeWithTag(CALL_OVERLAY_LAYER_TAG).assertExists()
+    }
+
+    /** Swipes the call content like a finger, at most [maxSwipes] times, until every control is above End Call. */
+    private fun swipeUntilControlsAboveEndCall(
+        fontScale: Float,
+        maxSwipes: Int = 3,
+    ) {
+        // Content that already fits above End Call has nothing to scroll: a swipe is only required to move it when
+        // some control is still below End Call.
+        val muteTop = { rule.onNodeWithTag(CALL_CONTROL_MUTE_TAG).getUnclippedBoundsInRoot().top }
+        val needsScroll = !controlsAboveEndCall(ALL_CONTROLS)
+        val before = muteTop()
+        rule.onNodeWithTag(CALL_SCROLL_CONTENT_TAG).performTouchInput { swipeUp() }
+        rule.waitForIdle()
+        val after = muteTop()
+        assertTrue(
+            "A swipe up did not move the content: Mute top stayed $before (now $after)",
+            !needsScroll || after < before,
+        )
+        var swipes = 1
+        while (swipes < maxSwipes && !controlsAboveEndCall(ALL_CONTROLS)) {
+            rule.onNodeWithTag(CALL_SCROLL_CONTENT_TAG).performTouchInput { swipeUp() }
+            rule.waitForIdle()
+            swipes++
+        }
+        assertControlsAboveEndCall(ALL_CONTROLS, fontScale)
+    }
+
+    private fun controlsAboveEndCall(tags: List<String>): Boolean {
+        val endTop = rule.onNodeWithTag(CALL_END_BUTTON_TAG).getUnclippedBoundsInRoot().top
+        return tags.all { rule.onNodeWithTag(it).getUnclippedBoundsInRoot().bottom <= endTop }
+    }
+
     @Test
     fun controlsSitAboveEndCallWithTheBannerAndChipAtNormalFont() {
         show(360.dp, 800.dp, 1f, state())
@@ -135,7 +206,58 @@ class MeetingCallScreenControlsReachableTest {
         assertControlsAboveEndCall(ALL_CONTROLS, 1f)
     }
 
+    @Test
+    @Config(qualifiers = BUG_34_WINDOW)
+    fun controlsReachableByScrollAtTwoHundredPercentInTheWaitingState() {
+        navBar = BUG_34_NAV_BAR_PX
+        show(339.dp, 753.dp, 2f, waiting())
+
+        ALL_CONTROLS.forEach { tag ->
+            rule.onNodeWithTag(tag).performScrollTo()
+            assertControlsAboveEndCall(listOf(tag), 2f)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = BUG_34_WINDOW)
+    fun aSwipeUpScrollsTheCallContentAtTwoHundredPercent() {
+        navBar = BUG_34_NAV_BAR_PX
+        show(339.dp, 753.dp, 2f, waiting())
+
+        swipeUntilControlsAboveEndCall(2f)
+    }
+
+    @Test
+    @Config(qualifiers = BUG_34_WINDOW)
+    fun aSwipeUpScrollsTheCallContentInsideTheOverlayAtTwoHundredPercent() {
+        navBar = BUG_34_NAV_BAR_PX
+        showInOverlay(2f, waiting())
+
+        swipeUntilControlsAboveEndCall(2f)
+    }
+
+    /**
+     * BUG-34 on the device: the controls start below End Call and a swipe did not bring them up. The Robolectric
+     * swipe scrolls even on the old layout (the no-scroll cause could not be reproduced on the JVM), so this pins the
+     * part that is reproducible: with the glow out of layout the controls fit above End Call at rest, a 200% font and
+     * the largest display zoom included, with no need to scroll at all.
+     */
+    @Test
+    @Config(qualifiers = BUG_34_WINDOW)
+    fun controlsFitAboveEndCallAtRestAtTwoHundredPercentInTheWaitingState() {
+        navBar = BUG_34_NAV_BAR_PX
+        show(339.dp, 753.dp, 2f, waiting())
+
+        assertControlsAboveEndCall(ALL_CONTROLS, 2f)
+    }
+
     private companion object {
+        /** 720x1600 px at 340 dpi with the largest display zoom: 339x753 dp (BUG-34 device). */
+        const val BUG_34_WINDOW = "w339dp-h753dp-340dpi"
+
+        /** The 3-button navigation bar on the BUG-34 device is about 100 px (47 dp) tall (FS.C3-200pct.png). */
+        const val BUG_34_NAV_BAR_PX = 100
+
         val ALL_CONTROLS =
             listOf(
                 CALL_CONTROL_MINIMIZE_TAG,
