@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.bookingnote
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.BookingNoteRequest
 import com.uptrendinvestments.clickmeapp.model.responses.BookingNoteData
@@ -32,8 +33,10 @@ class BookingNoteViewModelTest {
         api.saveClientBookingNoteHandler = { id, body -> bookingNoteData(id, body.note.ifEmpty { null }) }
     }
 
-    private fun vm(role: NoteRole = NoteRole.Client) =
-        BookingNoteViewModel(BookingNoteArgs(role, "b1"), BookingNoteRepository(api))
+    private fun vm(
+        role: NoteRole = NoteRole.Client,
+        handle: SavedStateHandle = SavedStateHandle(),
+    ) = BookingNoteViewModel(BookingNoteArgs(role, "b1"), handle, BookingNoteRepository(api))
 
     private fun BookingNoteViewModel.state() = uiState.value
 
@@ -388,6 +391,51 @@ class BookingNoteViewModelTest {
             vm.dismissDiscardPrompt()
             assertFalse(vm.state().showDiscardPrompt)
             assertEquals("Edited", vm.state().noteText)
+        }
+
+    // Process death (Phase 17 D-09, POL-02)
+
+    @Test
+    fun restoresTheNoteDraftAfterProcessDeath() =
+        runTest(main.testDispatcher) {
+            val vm = vm(handle = SavedStateHandle(mapOf("note" to "my draft")))
+            runCurrent()
+            assertEquals("my draft", vm.state().noteText)
+            assertEquals("Old", vm.state().lastPersisted)
+            assertTrue(vm.state().hasChanges)
+            assertEquals(BookingNoteLoad.Loaded, vm.state().load)
+        }
+
+    @Test
+    fun editsAreMirroredToSavedState() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = vm(handle = handle)
+            runCurrent()
+            vm.onTextChange("abc")
+            assertEquals("abc", handle.get<String>("note"))
+        }
+
+    @Test
+    fun savedDraftIsClearedAfterASuccessfulSave() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = vm(handle = handle)
+            runCurrent()
+            vm.onTextChange("New")
+            assertTrue(handle.contains("note"))
+            vm.save()
+            runCurrent()
+            assertFalse(handle.contains("note"))
+            assertEquals("New", vm.state().lastPersisted)
+        }
+
+    @Test
+    fun restoredDraftIsCappedAtTheNoteMaximum() =
+        runTest(main.testDispatcher) {
+            val vm = vm(handle = SavedStateHandle(mapOf("note" to "a".repeat(NOTE_MAX_LENGTH + 10))))
+            runCurrent()
+            assertEquals(NOTE_MAX_LENGTH, vm.state().noteText.length)
         }
 
     // Privacy

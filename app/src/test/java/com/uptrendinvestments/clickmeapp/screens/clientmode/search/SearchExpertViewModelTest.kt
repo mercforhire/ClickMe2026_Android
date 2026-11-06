@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.clientmode.search
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.CategoryStore
 import com.uptrendinvestments.clickmeapp.model.responses.CategoriesPayload
@@ -42,14 +43,14 @@ class SearchExpertViewModelTest {
 
     private val boom = """{"status":"error","code":"INTERNAL_ERROR","message":"Boom"}"""
 
-    private fun TestScope.viewModel(): SearchExpertViewModel {
+    private fun TestScope.viewModel(handle: SavedStateHandle = SavedStateHandle()): SearchExpertViewModel {
         val store =
             CategoryStore(
                 api,
                 testPreferencesDataStore(backgroundScope, tmp),
                 MutableClock(Instant.parse("2026-10-30T12:00:00Z")),
             )
-        return SearchExpertViewModel(SearchRepository(api), store)
+        return SearchExpertViewModel(SearchRepository(api), store, handle)
     }
 
     private fun stubBrowse() {
@@ -74,6 +75,62 @@ class SearchExpertViewModelTest {
 
             advanceUntilIdle()
             assertEquals(1, api.searchExpertsCalls)
+        }
+
+    // ---- Process death (Phase 17 D-09, POL-02) ------------------------------------------------------------------
+
+    private fun restoredHandle(sort: String = "rating") =
+        SavedStateHandle(
+            mapOf("search_query" to "yoga ", "search_category" to "wellness", "search_sort" to sort),
+        )
+
+    @Test
+    fun restoresQueryCategoryAndSortAfterProcessDeath() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            val vm = viewModel(restoredHandle())
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals("yoga ", state.query)
+            assertEquals("wellness", state.selectedCategorySlug)
+            assertEquals(SearchSort.HighestRated, state.sort)
+        }
+
+    @Test
+    fun restoredQueryIsSearchedAtOnceWithoutDebounce() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            viewModel(restoredHandle())
+            runCurrent()
+
+            assertEquals(listOf(SearchExpertsQuery("yoga", "wellness", "rating", 1, 20)), api.searchExpertsQueries)
+        }
+
+    @Test
+    fun editsAreMirroredToSavedState() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            val handle = SavedStateHandle()
+            val vm = viewModel(handle)
+            runCurrent()
+            vm.onQueryChange("pi")
+            vm.onCategorySelected("tech")
+            vm.onSortSelected(SearchSort.HighestRated)
+
+            assertEquals("pi", handle.get<String>("search_query"))
+            assertEquals("tech", handle.get<String>("search_category"))
+            assertEquals("rating", handle.get<String>("search_sort"))
+        }
+
+    @Test
+    fun unknownSavedSortFallsBackToMostPopular() =
+        runTest(main.testDispatcher) {
+            stubBrowse()
+            val vm = viewModel(restoredHandle(sort = "bogus"))
+            runCurrent()
+
+            assertEquals(SearchSort.MostPopular, vm.uiState.value.sort)
         }
 
     @Test

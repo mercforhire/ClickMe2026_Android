@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.model.requests.BookingNoteRequest
 import com.uptrendinvestments.clickmeapp.model.responses.BookingNoteData
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -69,7 +70,8 @@ class BookingNoteScreenTest {
         role: NoteRole,
         calls: Calls = Calls(),
     ): BookingNoteViewModel {
-        val viewModel = BookingNoteViewModel(BookingNoteArgs(role, "b1"), BookingNoteRepository(api))
+        val viewModel =
+            BookingNoteViewModel(BookingNoteArgs(role, "b1"), SavedStateHandle(), BookingNoteRepository(api))
         rule.setContent {
             ClickMeTheme {
                 dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher

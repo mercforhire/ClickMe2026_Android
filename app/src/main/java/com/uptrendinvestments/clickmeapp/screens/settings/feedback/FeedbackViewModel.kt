@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.feedback
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
@@ -24,6 +25,13 @@ import javax.inject.Inject
 private const val HTTP_UNPROCESSABLE = 422
 private const val HTTP_TOO_MANY_REQUESTS = 429
 
+// SavedStateHandle keys (Phase 17 D-09, POL-02). Only the selected type, the details and an email the user edited are
+// stored; the signed-in email prefill never is.
+private const val KEY_FEEDBACK_TYPE = "feedback_type"
+private const val KEY_FEEDBACK_DETAILS = "feedback_details"
+private const val KEY_FEEDBACK_EMAIL = "feedback_email"
+private const val KEY_FEEDBACK_EMAIL_EDITED = "feedback_email_edited"
+
 /** The feedback types load: [Loading] on entry and Retry; [Failed] (also an empty list) is the error state. */
 sealed interface FeedbackLoad {
     data object Loading : FeedbackLoad
@@ -37,7 +45,9 @@ sealed interface FeedbackLoad {
 
 /**
  * Send Feedback state. [details] and [email] are user-written, so [toString] prints [load] and [saveState] only and
- * the state is never logged or put in saved state (RESEARCH V8).
+ * the state is never logged. The selected type, the details and an email the user edited are mirrored to
+ * SavedStateHandle so the form survives process death (Phase 17 D-09, POL-02, superseding Phase 16.5 RESEARCH V8 for
+ * these fields); the signed-in email prefill is not stored.
  */
 data class FeedbackUiState(
     val load: FeedbackLoad = FeedbackLoad.Loading,
@@ -64,8 +74,16 @@ class FeedbackViewModel
     constructor(
         private val repository: FeedbackRepository,
         private val userManager: UserManager,
+        private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val _uiState = MutableStateFlow(FeedbackUiState())
+        private val _uiState =
+            MutableStateFlow(
+                FeedbackUiState(
+                    selectedTypeId = savedStateHandle.get<String>(KEY_FEEDBACK_TYPE),
+                    details = savedStateHandle.get<String>(KEY_FEEDBACK_DETAILS).orEmpty(),
+                    email = savedStateHandle.get<String>(KEY_FEEDBACK_EMAIL).orEmpty(),
+                ),
+            )
         val uiState: StateFlow<FeedbackUiState> = _uiState.asStateFlow()
 
         private var loadJob: Job? = null
@@ -87,12 +105,18 @@ class FeedbackViewModel
                                 it.copy(load = FeedbackLoad.Failed(FieldError.Res(R.string.login_error_unknown)))
                             }
                         } else {
+                            // An email the user edited is kept exactly, even when cleared; otherwise the signed-in
+                            // email prefills an empty field and is never written to the handle.
+                            val emailEdited = savedStateHandle.get<Boolean>(KEY_FEEDBACK_EMAIL_EDITED) == true
                             _uiState.update {
                                 it.copy(
                                     load = FeedbackLoad.Ready,
                                     types = types,
-                                    selectedTypeId = it.selectedTypeId ?: types.first().id,
-                                    email = it.email.ifEmpty { signedInEmail() },
+                                    // A restored type that is no longer offered falls back to the first one.
+                                    selectedTypeId =
+                                        it.selectedTypeId?.takeIf { id -> types.any { type -> type.id == id } }
+                                            ?: types.first().id,
+                                    email = if (emailEdited) it.email else it.email.ifEmpty { signedInEmail() },
                                 )
                             }
                         }
@@ -103,17 +127,21 @@ class FeedbackViewModel
         }
 
         fun onSelectType(id: String) {
+            savedStateHandle[KEY_FEEDBACK_TYPE] = id
             _uiState.update { it.copy(selectedTypeId = id) }
         }
 
         /** Stores the text and clears the inline error as soon as the trimmed length reaches the minimum. */
         fun onDetailsChange(text: String) {
+            savedStateHandle[KEY_FEEDBACK_DETAILS] = text
             _uiState.update {
                 it.copy(details = text, showDetailsError = it.showDetailsError && feedbackDetailsTooShort(text))
             }
         }
 
         fun onEmailChange(text: String) {
+            savedStateHandle[KEY_FEEDBACK_EMAIL] = text
+            savedStateHandle[KEY_FEEDBACK_EMAIL_EDITED] = true
             _uiState.update { it.copy(email = text, emailError = null) }
         }
 
@@ -148,11 +176,20 @@ class FeedbackViewModel
                             email = state.email.trim().ifEmpty { null },
                         ),
                     )
+                    // Sent: a recreated screen must never show a filled form that could be sent twice.
+                    clearSavedForm()
                     _uiState.update { it.copy(saveState = SaveState.Saved, showThanks = true) }
                 } catch (e: ApiException) {
                     _uiState.update { applySendFailure(it.copy(saveState = SaveState.Idle), e) }
                 }
             }
+        }
+
+        private fun clearSavedForm() {
+            savedStateHandle.remove<String>(KEY_FEEDBACK_TYPE)
+            savedStateHandle.remove<String>(KEY_FEEDBACK_DETAILS)
+            savedStateHandle.remove<String>(KEY_FEEDBACK_EMAIL)
+            savedStateHandle.remove<Boolean>(KEY_FEEDBACK_EMAIL_EDITED)
         }
 
         fun dismissDialog() {

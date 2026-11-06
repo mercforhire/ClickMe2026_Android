@@ -2,6 +2,7 @@
 
 package com.uptrendinvestments.clickmeapp.screens.settings.feedback
 
+import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.buttons.SaveState
 import com.uptrendinvestments.clickmeapp.model.requests.SubmitFeedbackRequest
@@ -39,7 +40,8 @@ class FeedbackViewModelTest {
             it.api.submitFeedbackHandler = { feedbackSubmission() }
         }
 
-    private fun SignupTestHarness.vm() = FeedbackViewModel(FeedbackRepository(api), userManager)
+    private fun SignupTestHarness.vm(handle: SavedStateHandle = SavedStateHandle()) =
+        FeedbackViewModel(FeedbackRepository(api), userManager, handle)
 
     @Test
     fun loadsTypesAndPreselectsTheFirst() =
@@ -502,5 +504,117 @@ class FeedbackViewModelTest {
 
             assertEquals(2, h.api.submitFeedbackCalls)
             assertEquals(SaveState.Saved, vm.uiState.value.saveState)
+        }
+
+    // Process death (Phase 17 D-09, POL-02)
+
+    private val feedbackKeys = listOf("feedback_type", "feedback_details", "feedback_email", "feedback_email_edited")
+
+    @Test
+    fun restoresTheFormAfterProcessDeath() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            val handle =
+                SavedStateHandle(
+                    mapOf(
+                        "feedback_type" to "feature_request",
+                        "feedback_details" to "Ten chars plus",
+                        "feedback_email" to "me@x.com",
+                        "feedback_email_edited" to true,
+                    ),
+                )
+            val vm = h.vm(handle)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals(FeedbackLoad.Ready, state.load)
+            assertEquals("feature_request", state.selectedTypeId)
+            assertEquals("Ten chars plus", state.details)
+            assertEquals("me@x.com", state.email)
+        }
+
+    @Test
+    fun signedInPrefillIsNotWrittenToSavedState() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.knowMe("me@example.com")
+            val handle = SavedStateHandle()
+            val vm = h.vm(handle)
+            runCurrent()
+
+            assertEquals("me@example.com", vm.uiState.value.email)
+            assertFalse(handle.contains("feedback_email"))
+            assertFalse(handle.contains("feedback_email_edited"))
+
+            vm.onEmailChange("typed@example.com")
+            assertEquals("typed@example.com", handle.get<String>("feedback_email"))
+            assertEquals(true, handle.get<Boolean>("feedback_email_edited"))
+        }
+
+    @Test
+    fun aClearedEmailStaysClearedAfterProcessDeath() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            h.knowMe("me@example.com")
+            val vm = h.vm(SavedStateHandle(mapOf("feedback_email" to "", "feedback_email_edited" to true)))
+            runCurrent()
+
+            assertEquals("", vm.uiState.value.email)
+        }
+
+    @Test
+    fun staleRestoredTypeFallsBackToTheFirstType() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            val vm = h.vm(SavedStateHandle(mapOf("feedback_type" to "retired_type")))
+            runCurrent()
+
+            assertEquals("bug_report", vm.uiState.value.selectedTypeId)
+        }
+
+    @Test
+    fun editsAreMirroredToSavedState() =
+        runTest(main.testDispatcher) {
+            val handle = SavedStateHandle()
+            val vm = harness().vm(handle)
+            runCurrent()
+            vm.onSelectType("billing")
+            vm.onDetailsChange("some details")
+
+            assertEquals("billing", handle.get<String>("feedback_type"))
+            assertEquals("some details", handle.get<String>("feedback_details"))
+        }
+
+    @Test
+    fun savedFormIsClearedAfterASuccessfulSend() =
+        runTest(main.testDispatcher) {
+            val h = harness()
+            val handle = SavedStateHandle()
+            val vm = h.vm(handle)
+            runCurrent()
+            vm.onSelectType("billing")
+            vm.onDetailsChange("0123456789")
+            vm.onEmailChange("a@b.co")
+            feedbackKeys.forEach { assertTrue(it, handle.contains(it)) }
+
+            vm.submit()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.showThanks)
+            feedbackKeys.forEach { assertFalse(it, handle.contains(it)) }
+        }
+
+    @Test
+    fun toStringStaysRedactedWithRestoredText() =
+        runTest(main.testDispatcher) {
+            val vm =
+                harness().vm(
+                    SavedStateHandle(mapOf("feedback_details" to "secret-details", "feedback_email" to "secret@x.com")),
+                )
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals("secret-details", state.details)
+            assertFalse(state.toString().contains("secret"))
         }
 }
