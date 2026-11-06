@@ -1040,20 +1040,20 @@ Plans:
   2. The production release is live on Google Play. The target is ~Dec 11–13, or as early as ~Dec 7–8 if Weeks 1–7 hold. (Week 8 checkpoint, user-confirmed)
   3. A fresh install from Google Play can sign up, book a session with the iOS app on the other side, and join the call against the production backend.
 
-**Plans:** 10 plans (7 executor plans, 3 human release gates)
+**Plans:** 6/10 plans executed (7 executor plans, 3 human release gates)
 
 Plans:
 **Wave 1**
 
-- [ ] 17-01-PLAN.md — POL-02: booking note, Send Feedback and Search survive process death via SavedStateHandle, with restore tests (D-09)
-- [ ] 17-02-PLAN.md — BUG-22 and BUG-34: call controls reachable above the pinned End Call at font 1.0 with the banner and at 200% in the Waiting state, test first (D-09)
-- [ ] 17-03-PLAN.md — Account-deletion web page, privacy-policy edit sheet, payments-policy evidence and the one-table decision sheet (D-05, D-06)
-- [ ] 17-04-PLAN.md — Paste-ready Console file: Data safety v2, App access, content rating, target audience, FGS declaration, store listing, release fields; Phase 13 drafts corrected (REL-04, REL-06)
-- [ ] 17-05-PLAN.md — Store assets: adb screenshot script, at least four 1080x1920 screenshots, 512 Play icon from the adaptive icon (D-16)
+- [x] 17-01-PLAN.md — POL-02: booking note, Send Feedback and Search survive process death via SavedStateHandle, with restore tests (D-09)
+- [x] 17-02-PLAN.md — BUG-22 and BUG-34: call controls reachable above the pinned End Call at font 1.0 with the banner and at 200% in the Waiting state, test first (D-09)
+- [x] 17-03-PLAN.md — Account-deletion web page, privacy-policy edit sheet, payments-policy evidence and the one-table decision sheet (D-05, D-06)
+- [x] 17-04-PLAN.md — Paste-ready Console file: Data safety v2, App access, content rating, target audience, FGS declaration, store listing, release fields; Phase 13 drafts corrected (REL-04, REL-06)
+- [x] 17-05-PLAN.md — Store assets: adb screenshot script, at least four 1080x1920 screenshots, 512 Play icon from the adaptive icon (D-16)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 17-06-PLAN.md — Release checklist: gate branch, tester service, closed-test log, smoke tables, production-access drafts, 100% CA+US rollout (D-01 to D-04, D-13 to D-15)
+- [x] 17-06-PLAN.md — Release checklist: gate branch, tester service, closed-test log, smoke tables, production-access drafts, 100% CA+US rollout (D-01 to D-04, D-13 to D-15)
 - [ ] 17-07-PLAN.md — Release build versionCode 6 / 1.0.0: gate, signed bundle, B4 checks, exported-component review, archive and ledger (D-10)
 
 **Wave 3** *(human gate)*
@@ -1091,7 +1091,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
 | 15. Polish & Hardening | 20/20 | In Progress | - |
 | 16. Cross-Platform QA | 8/8 | Complete    | 2026-11-05 |
-| 17. Play Store Release | 0/10 | Planned | - |
+| 17. Play Store Release | 6/10 | In Progress | - |
 
 ## Backlog
 
