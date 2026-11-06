@@ -190,10 +190,93 @@ Use what Console lists; answer No to any other program declaration the app does 
 
 Console path: Grow users > Store presence > Main store listing
 
-(stub: replaced in task 3)
+**App name:** `ClickMe`
+
+**Short description** (limit 80 characters; this text is 68):
+
+```
+Book 1-on-1 voice sessions with experts. Chat, pay securely, review.
+```
+
+**Full description** (limit 4,000 characters; this text is 2120 characters). Every sentence describes a shipped screen (feature-truth pass against Phases 16.1 to 16.5). Nothing about recordings, replays, digital goods, tips or credits, and no ranking or promotional wording:
+
+```
+ClickMe connects you with real people who know their craft, through live one-on-one voice sessions.
+
+Find an expert
+Browse featured topics and trending categories on the Explore tab, or use the Search tab to search by expertise, language and category. Open any expert's profile to see their background, topics, prices and reviews from other clients, and save experts to come back to them later.
+
+Book a session
+Pick a topic, choose a day and a time slot shown in your own time zone, add a note for the expert and send your request. Many topics are free. Paid sessions are paid securely through Stripe and you are told clearly what will be charged and when. You can follow every request from My Bookings, reschedule or cancel from the booking details, and see past sessions. Add a private note to any booking that only you can read, and review your charges in Payment History.
+
+Talk by voice
+Join your session at the scheduled time with in-app voice. The call keeps running when you leave the app or turn the screen off, with an ongoing notification that lets you return or end the call. Some experts also meet on Skype or Zoom, and ClickMe opens the link for you.
+
+Chat before and after
+Message an expert from their profile or from a booking, and keep the conversation in one place. You can report or block a conversation at any time.
+
+Reviews you can trust
+After a session you can leave a review so other clients know what to expect.
+
+Share what you know
+Switch to Expert Mode to build your profile, add your topics and prices, set your weekly availability and your time zone, and review incoming booking requests. Accept or decline with a reason, see your upcoming sessions on a dashboard, and message your clients.
+
+Stay in the loop
+Notifications tell you when a request is answered, a booking changes, a session is about to start or a message arrives. You choose which categories you want in the app's Notification Preferences and in your device's notification settings.
+
+ClickMe works with the ClickMe app on iOS, so you can book and talk with experts on either platform.
+
+Questions or feedback: support@clickme.app
+```
+
+**Category:** Business (fallback if Console rejects it: Education). **Tags:** pick the closest from Console's list (for example Education, Business).
+
+**Contact details**
+
+- Email: `support@clickme.app`
+- Website: `https://www.uptrendinvestments.net/clickme/`
+- Privacy policy URL: `https://www.uptrendinvestments.net/clickme/privacy.html` (as section 1)
+
+**Graphics.** Exact specs (Google Play Console Help, store listing assets, answer 9866151):
+
+| Asset | Spec | Who makes it | Where it is |
+|---|---|---|---|
+| App icon | 512 x 512, 32-bit PNG with alpha, at most 1024 KB; no text claims, no ranking, price or category text | Executor, plan 17-05 | `/Users/LeonChen/ClickMe-release/store-assets/play-icon-512.png` |
+| Feature graphic | 1024 x 500, JPEG or 24-bit PNG with no alpha; avoid fine detail and anything near the edges, which can be cut off | The user (D-16) | The user's own folder; no repo path |
+| Phone screenshots (2 to 8) | JPEG or 24-bit PNG with no alpha; each side 320-3840 px; longest side at most twice the shortest; at least four at 1080 x 1920 (9:16) to be eligible for featuring; real app UI only, no device frames, a clean status bar, no third person's name, photo or messages | Executor, plan 17-05; the in-call screenshot is added after smoke run 1 | `/Users/LeonChen/ClickMe-release/store-assets/`, manifest `17-STORE-ASSETS.md` |
+| Foreground-service video | 30-60 s screen recording, unlisted YouTube link; steps in section 8 | The user (D-16) | Unlisted YouTube link pasted in section 8 |
+
+Check a graphic before upload (the icon must report `hasAlpha: yes`; the feature graphic and every screenshot must report `hasAlpha: no`):
+
+```
+sips -g pixelWidth -g pixelHeight -g hasAlpha <file>
+```
 
 ## 11. Release
 
 Console path: Test and release > Testing > Closed testing, and Test and release > Production
 
-(stub: replaced in task 3)
+**Countries**
+
+- Production: Canada and United States only (D-12). More can be added in Console later.
+- Closed testing track: its own country list, because every track has its own setting and paid tester pools are worldwide (RESEARCH Pitfall 6, A2). Use the countries the tester service states, or all countries. Do not copy the Production list onto the closed track, or the testers cannot see or install the app.
+- minSdk is 26, so testers need Android 8.0 or newer.
+
+**Release name:** `1.0.0 (6)`. Every later upload to any track is the newest ledger versionCode plus 1 (D-10), for example `1.0.0 (7)` for the first closed-track fix build.
+
+**Release notes** (every track; limit 500 characters; this text is 116 characters):
+
+```
+First public release of ClickMe: find experts, book one-on-one voice sessions, chat, pay securely and leave reviews.
+```
+
+**Closed-track tester instructions** (no guided task list, D-03). Paste into the tester message or hand to the tester service:
+
+```
+Thanks for testing ClickMe.
+1. Install the app from the opt-in link and stay opted in for the whole 14 days.
+2. Sign up as a client with your own email address.
+3. Use the app now and then as you like: browse experts, open profiles, use chat and settings.
+4. Book free topics only. Never enter a real card: payments in this build are live.
+5. Report problems with Google Play's testing feedback or by email to support@clickme.app.
+```
