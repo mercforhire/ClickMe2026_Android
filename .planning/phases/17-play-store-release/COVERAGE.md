@@ -1,0 +1,1 @@
+No external API integration: Phase 17 adds no API, SDK or endpoint; it fixes three ViewModels and the call-screen layout, builds and signs the release, writes Play Console and web-page content, and runs human Play Console, closed-test and smoke steps on integrations built in Phases 2-14 (detector run 2026-11-06: detected false).
