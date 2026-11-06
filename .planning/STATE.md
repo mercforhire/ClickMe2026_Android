@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 16
 current_phase_name: Cross-Platform QA
 status: executing
-stopped_at: 16-06 complete; 16-07 (fix batch B) next, waiting on user answers to the 16-06 SUMMARY questions
-last_updated: "2026-11-05T22:40:00.000Z"
+stopped_at: Completed 16-07-PLAN.md (batch B re-tested on vc 5); next 16-08 close-out
+last_updated: "2026-11-06T03:03:01.772Z"
 last_activity: 2026-11-05
-last_activity_desc: Session B recorded and triaged, BUG-24 to BUG-33
-state_head: 9e0010fb893203a8ed88d217408447c5c96e05ef
+last_activity_desc: Fix batch B (16-07) built, uploaded as vc 5 and re-tested; BUG-29/30/31 verified
+state_head: dfcc1e4e6c86236df3b9b0f65119cecf3ca175e9
 progress:
   total_phases: 22
   completed_phases: 11
   total_plans: 297
-  completed_plans: 291
+  completed_plans: 293
 milestone_name: milestone
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 ## Current Position
 
 Phase: 16 (Cross-Platform QA) — EXECUTING
-Plan: 7 of 8
-Status: Executing Phase 16
-Last activity: 2026-11-05 — Session B recorded and triaged (16-06 complete)
+Plan: 8 of 8
+Status: Ready to execute
+Last activity: 2026-11-05 — 16-07 complete: vc 5 on Play, BUG-29/30/31 verified, smoke 5/5, BUG-34 logged
 
 Progress: [███████░░░] 65%
 
@@ -361,12 +361,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-05
-Stopped at: 16-06 complete (session B recorded and triaged, merge fb797beb); next is 16-07, fix batch B
-Resume file: .planning/phases/16-cross-platform-qa/16-06-SUMMARY.md
-Resume: `/gsd-execute-phase 16` runs 16-07. User answers to the 16-06 questions (2026-11-05): BUG-25 does not block Android (report to iOS as critical); BUG-24 stays fix-if-cheap; the D2.14/D2.15 payout-link gap is accepted and goes into the sign-off as untested; BUG-27 gets no live check; BUG-28 and BUG-29 move into fix batch B. BUG-28 needs a backend change first (store is done: decline_reason_text; expose it on the client booking read), then the Android client shows it; the iOS half is reported, not done here.
+Last session: 2026-11-06T03:02:59.951Z
+Stopped at: Completed 16-07-PLAN.md (batch B re-tested on vc 5); next 16-08 close-out
+Resume file: None
+Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and cleanup incl. deleting the D2.17 throwaway with TalkBack optional, Section 8 sign-off). 16-07 skips by user decision: all 23 TalkBack rows (POL-04 / Phase 15 SC-4 unconfirmed on device), FS.FB1, FS.Y12, PD.Y3, 7 IM rows, PL.C9, PL.K12, EM.1. BUG-34 (call controls unreachable at 200% font, no scroll) is fix-if-cheap by user decision.
 
-**Fix batch B input (android):** no blocking rows; fix-if-cheap BUG-30 (Profile Setup Next button behind the navigation bar, SignupOverviewScreen.kt bottomBar has no navigationBarsPadding; sweep other bottomBar buttons) and BUG-31 (photo crop circle opaque black, PhotoCropScreen.kt BlendMode.Clear in the image layer; saved photo is fine), plus BUG-22 and BUG-23 from batch A, plus BUG-29 (booking ID on Payment History and expert bookings list rows) and the Android half of BUG-28 (show the expert's decline note to the client, after the backend exposes it). Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
+**Next fix batch input (android):** BUG-22 + BUG-34 together (MeetingCallScreen.kt), BUG-23, the remember-email feature (pre-fill last email on Login after any sign-out; branch feature/remember-login-email, Android 0c9ecc55 in worktree ../ClickMe_Android-remember-email; iOS b0629d9 in ../ClickMe2026-remember-email for the user to merge), and the Android half of BUG-28 once the backend exposes decline_reason_text. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
 
 **Batch B re-test:** the 70 Samsung setting-pass rows moved there (D-14 deviation, user option A), which adds one account swap; at that swap also check the Android client's response card for an expert reschedule (the half BUG-25 breaks on iOS).
 

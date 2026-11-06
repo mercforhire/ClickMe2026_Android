@@ -822,7 +822,7 @@ Plans:
   2. With an Android client and an iOS expert, the matrix passes: Stripe test cards including 3DS, push from a killed app, a call kept alive in the background and across rejoin, and payout onboarding. (Week 8 checkpoint, user-confirmed)
   3. With an iOS client and an Android expert, the same matrix passes. (Week 8 checkpoint, user-confirmed)
 
-**Plans:** 6/8 plans executed
+**Plans:** 7/8 plans executed
 Plans:
 **Wave 1**
 
@@ -847,7 +847,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 16-07-PLAN.md — Fix batch B: regression-tested fixes, versionCode bump, signed build, upload and re-test (user checkpoint)
+- [x] 16-07-PLAN.md — Fix batch B: regression-tested fixes, versionCode bump, signed build, upload and re-test (user checkpoint)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -1064,7 +1064,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 13. Push, Notifications & Internal Testing | 18/18 | In Progress | - |
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
 | 15. Polish & Hardening | 20/20 | In Progress | - |
-| 16. Cross-Platform QA | 6/8 | In Progress | - |
+| 16. Cross-Platform QA | 7/8 | In Progress | - |
 | 17. Play Store Release | 0/TBD | Not started | - |
 
 ## Backlog
