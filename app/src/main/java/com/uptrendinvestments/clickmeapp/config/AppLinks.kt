@@ -4,6 +4,9 @@ package com.uptrendinvestments.clickmeapp.config
 object AppLinks {
     const val PRIVACY_POLICY = "https://www.uptrendinvestments.net/clickme/privacy.html"
 
-    /** Support contact (iOS HelpView `supportEmail`). */
-    const val SUPPORT_EMAIL = "support@clickme.app"
+    /**
+     * Support contact. iOS HelpView has `support@clickme.app`, which the owner
+     * confirmed is wrong (2026-11-06); this matches the published privacy policy.
+     */
+    const val SUPPORT_EMAIL = "clickmeapp@uptrendinvestments.net"
 }

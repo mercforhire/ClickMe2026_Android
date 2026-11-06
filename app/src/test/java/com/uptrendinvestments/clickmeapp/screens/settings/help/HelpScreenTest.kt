@@ -139,7 +139,7 @@ class HelpScreenTest {
 
         val intent = shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity
         assertEquals(Intent.ACTION_SENDTO, intent.action)
-        assertEquals("mailto:support@clickme.app", intent.dataString)
+        assertEquals("mailto:clickmeapp@uptrendinvestments.net", intent.dataString)
     }
 
     @Test
@@ -149,7 +149,7 @@ class HelpScreenTest {
         rule.onNodeWithText("Email Us").performClick()
 
         rule
-            .onNodeWithText("No email app found. Write to support@clickme.app from any mail app.")
+            .onNodeWithText("No email app found. Write to clickmeapp@uptrendinvestments.net from any mail app.")
             .assertExists()
     }
 

@@ -38,7 +38,7 @@ class RootScreensTest {
         showDialog()
 
         rule.onNodeWithText("Your account has been suspended").assertExists()
-        rule.onNode(hasText("support@clickme.app", substring = true)).assertExists()
+        rule.onNode(hasText("clickmeapp@uptrendinvestments.net", substring = true)).assertExists()
     }
 
     @Test
@@ -65,6 +65,6 @@ class RootScreensTest {
         val intent = supportEmailIntent()
 
         assertEquals(Intent.ACTION_SENDTO, intent.action)
-        assertEquals("mailto:support@clickme.app", intent.dataString)
+        assertEquals("mailto:clickmeapp@uptrendinvestments.net", intent.dataString)
     }
 }
