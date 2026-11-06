@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.clientmode.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.R
@@ -19,12 +20,17 @@ import javax.inject.Inject
 /** iOS `searchDebounce`: how long typing must pause before the text search is sent (D-10). */
 internal const val SEARCH_DEBOUNCE_MS = 300L
 
+// SavedStateHandle keys (Phase 17 D-09, POL-02). Results, chips and refresh flags are never stored.
+private const val KEY_SEARCH_QUERY = "search_query"
+private const val KEY_SEARCH_CATEGORY = "search_category"
+private const val KEY_SEARCH_SORT = "search_sort"
+
 /**
  * Search tab state machine. Port of iOS `SearchExpertViewModel`.
  *
- * Query, chip, sort and results live only in memory: there is no saved-state handle, so the state lasts as long as
- * the Search tab's Nav3 entry and comes back fresh after process death (D-02). This is a deliberate exception to the
- * Phase 15 POL-02 restore rule: a typed query is user input and is never persisted.
+ * The query, the selected chip and the sort are mirrored to [SavedStateHandle] and restored after process death
+ * (Phase 17 D-09, POL-02, superseding Phase 16.1 D-02); the first search then runs at once with the restored values and
+ * no debounce. Results and chips are refetched, never stored, and the query is never logged.
  *
  * One [searchJob] is the only writer of `results`, and every trigger cancels it first, so the newest request always
  * wins (D-10). The chip vocabulary loads in its own [categoriesJob] and never blocks or cancels a search (D-11).
@@ -35,8 +41,18 @@ class SearchExpertViewModel
     constructor(
         private val repository: SearchRepository,
         private val categoryStore: CategoryStore,
+        private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val _uiState = MutableStateFlow(SearchExpertUiState())
+        private val _uiState =
+            MutableStateFlow(
+                SearchExpertUiState(
+                    query = savedStateHandle.get<String>(KEY_SEARCH_QUERY).orEmpty(),
+                    selectedCategorySlug = savedStateHandle.get<String>(KEY_SEARCH_CATEGORY) ?: ALL_CATEGORIES_SLUG,
+                    sort =
+                        SearchSort.entries.firstOrNull { it.apiValue == savedStateHandle.get<String>(KEY_SEARCH_SORT) }
+                            ?: SearchSort.MostPopular,
+                ),
+            )
         val uiState: StateFlow<SearchExpertUiState> = _uiState.asStateFlow()
 
         private var searchJob: Job? = null
@@ -45,7 +61,8 @@ class SearchExpertViewModel
         private enum class SearchMode { Fresh, Refresh }
 
         init {
-            // iOS `load()`: the chips are fire-and-forget, the browse set is searched with the empty query.
+            // iOS `load()`: the chips are fire-and-forget, the browse set is searched with the empty query (or the
+            // query restored after process death, at once and without debounce).
             loadCategories()
             runSearch(SearchMode.Fresh)
         }
@@ -56,6 +73,7 @@ class SearchExpertViewModel
          * against the previous query, so a trailing-space edit re-searches as on iOS (D-10).
          */
         fun onQueryChange(text: String) {
+            savedStateHandle[KEY_SEARCH_QUERY] = text
             _uiState.update { it.copy(query = text) }
             runSearch(SearchMode.Fresh, debounce = true)
         }
@@ -65,12 +83,14 @@ class SearchExpertViewModel
          * Re-selecting the selected chip re-runs and keeps it selected, with no toggle (D-11).
          */
         fun onCategorySelected(slug: String) {
+            savedStateHandle[KEY_SEARCH_CATEGORY] = slug
             _uiState.update { it.copy(selectedCategorySlug = slug) }
             runSearch(SearchMode.Fresh, debounce = false)
         }
 
         /** Sort pick (iOS `onSortChanged`): searches at once, including when the current sort is picked again (D-10). */
         fun onSortSelected(sort: SearchSort) {
+            savedStateHandle[KEY_SEARCH_SORT] = sort.apiValue
             _uiState.update { it.copy(sort = sort) }
             runSearch(SearchMode.Fresh, debounce = false)
         }
