@@ -109,6 +109,8 @@ Check: the Play Store install of ClickMe (not the sideloaded APK) opens, logs in
 
 Needs: nothing (order independent). Use `13-PLAY-CONSOLE-DRAFTS.md` in this folder.
 
+Carried by Phase 17: `17-RELEASE-CHECKLIST.md` sections 8-9 (paste from `17-CONSOLE-PASTE.md`).
+
 1. Grow the app: Main store listing (Grow users, Store presence): paste the app name, short description, full description, category, contact email, privacy policy URL; upload the user-supplied graphics.
 2. Policy and programs, App content, Data safety: enter the table answers, encryption and deletion answers, Save as draft (do not submit if you want to review the Decisions list first).
 3. App content, Foreground service permissions: add `FOREGROUND_SERVICE_MICROPHONE` for `CallService` using the declaration text and video steps. Record the screen following the video steps and link it (a private unlisted video link is fine).
@@ -133,6 +135,8 @@ Check: you can state in one line whether the requirement is shown on this accoun
 ## 9. Payments policy for Stripe-paid live calls (RESEARCH Open Question 3, A9)
 
 Needs: nothing (order independent). This is a human decision for Phase 17, not something Phase 13 resolves.
+
+Carried by Phase 17: decided at the 17-08 checkpoint from `17-PAYMENTS-DECISION.md` section 1 (`17-RELEASE-CHECKLIST.md` section 6).
 
 1. Read the Google Play Payments policy: https://support.google.com/googleplay/android-developer/answer/9858738
 2. Decide whether paid live 1-on-1 expert voice calls through Stripe fit an exception (services consumed outside the app, physical goods or real-time services) or need Play billing or an alternative-billing program. Note the Play Console "earning money" answer already given was payments for services outside Google Play.

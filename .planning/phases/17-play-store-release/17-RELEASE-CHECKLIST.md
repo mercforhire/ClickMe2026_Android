@@ -180,40 +180,123 @@ Check: the Testers tab shows at least 12 opted in on day 14, and every log row i
 
 ## 12. Smoke run 1 (D-13, D-14, D-15)
 
-Needs: the Samsung and the iPhone. Stub: filled in the next task.
+Needs: the Samsung and the iPhone. Who: a brand-new Android client on the Samsung (a new email you control) and your existing iOS expert on the iPhone, with a free topic and availability in the next few hours. The booking is free: no money moves (D-14). Run it on the closed-track Play install, the same binary that goes to production (D-15, part 1). On the gate-not-shown branch, run it on the Internal testing Play install of the same AAB.
 
-Check: every row is marked pass.
+Result notation (from `16-MATRIX-RUNBOOK.md`): `[ ]` not yet run; `[x] pass (vc N, YYYY-MM-DD)`; `[!] fail (BUG-NN, vc N)`; `[-] not run: reason`. A row passes only on the build that H2 proved for that run. Never put a password in this file.
+
+| Row | Who and where | Steps | Expected | Result |
+|---|---|---|---|---|
+| S1.00 | iOS expert on the iPhone | Sign in as your iOS expert on the iPhone. Make sure it has one active free topic and a slot in the next few hours. Check the backend: `curl -s https://clickme-backend-production.up.railway.app/health`. | The iPhone shows expert mode with a bookable free topic; `/health` shows status success. | [ ] |
+| S1.01 | Samsung | The Samsung's Google account is opted in to the closed track. Uninstall ClickMe, install it from Google Play, then run H1 and H2 (`16-MATRIX-RUNBOOK.md`). | versionCode equals the closed release (6 or the newest fix build), installer is `com.android.vending`. | [ ] |
+| S1.02 | Android client on the Samsung | Open ClickMe and sign up as a new client with a new email you control. Finish the required steps. | Signup completes and lands on the client home. | [ ] |
+| S1.03 | Android client on the Samsung | Book the iOS expert's free topic for a slot in the next few hours. | Request Sent shows Awaiting Approval; the iPhone receives the request push. | [ ] |
+| S1.04 | iOS expert on the iPhone | Accept the request. | The Samsung gets the booking push; Upcoming Details shows Confirmed and a Join button when the window opens. | [ ] |
+| S1.05 | Android client on the Samsung | BUG-34 re-test, before the iOS expert joins: set font size to maximum and screen zoom to largest, tap Join. On the Waiting screen swipe up. Then restore your usual font size and zoom. | Minimize, Chat, Mute and Speaker are all reachable above End Call. | [ ] |
+| S1.06 | Both phones | Both join inside the join window. Test two-way audio, mute and speaker. Press Home on the Samsung. | Two-way audio works, mute and speaker work, Home shows the ongoing notification, tapping it returns to the call. | [ ] |
+| S1.07 | Android client on the Samsung | BUG-22 re-test: in the last 5 minutes of the slot (stay in the call, or leave and rejoin within them), with the banner and the time-left chip showing at font scale 1.0. | The four controls (Minimize, Chat, Mute, Speaker) are fully visible above End Call without scrolling. | [ ] |
+| S1.08 | Samsung, with Claude over ADB | While Connected, Claude runs `bash scripts/play-store-screenshot.sh prep`, then `capture 06-in-call`, then `restore`, while you hold the call. Approve the frame in `17-STORE-ASSETS.md`. | One in-call screenshot saved, with no real person's face; the Samsung display restored. | [ ] |
+| S1.09 | Both phones | End the call on both phones. Claude reads the H4 crash count: `ADB -t T logcat -d -b crash` filtered for com.uptrendinvestments.clickmeapp. | The call ends on both sides; the H4 crash count is 0. | [ ] |
+| S1.10 | Android client on the Samsung (optional) | Delete the smoke client in the app: Profile, Security and Password, Delete Account. This also checks the flow the deletion page describes. Then sign the Samsung back in to your expert account. | The farewell screen confirms deletion; signing in with the old email fails. | [ ] |
+
+A failed row gets a row in `16-BUG-LOG.md` and a fix build (section 11 rule). If a later fix build replaces the smoke-tested binary, re-run S1.01 to S1.06 on it before section 14.
+
+Check: every row S1.00 to S1.09 is `[x]`, S1.10 is `[x]` or `[-]`, and the in-call screenshot is approved.
 
 - [ ] (12) Smoke run 1 passed
 
 ## 13. Apply for production (D-01)
 
-Needs: day 14 reached. Stub: filled in the next task.
+Needs: day 14 reached with at least 12 opted in, and this section applies on the gate-shown branch only. Edit the drafts below to match what really happened before you submit; they must stay truthful.
 
-Check: the confirmation email arrives.
+1. Dashboard, Apply for production. Answer the three parts, then submit.
+2. The result comes by email to the account owner, usually within seven days but it can take longer (flagged assumption A10).
+3. If the answer is "more testing required", continue section 11 with better tester engagement and re-apply.
+
+### Part 1
+
+About the closed test: how easy was it to recruit, tester engagement, feedback summary.
+
+```
+We recruited our testers through <vendor name>, a paid testing service, plus <number> testers of our own. Recruiting 12 or more testers was easy through the service. <Number> testers stayed opted in for the full 14 days. Engagement: <summarize the vendor's usage report and what the Console shows; state numbers>.
+Not every feature was used by testers. Testers were told to book free topics only, because the app takes live payments, so paid bookings and live paid voice calls were not exercised by testers. Those flows were covered by our own two-device QA with the iOS app and by our smoke test on the closed-track build.
+Feedback: <summarize the Testing feedback entries and the vendor report; if there was little or none, say so>. We collected it through the Play Console testing feedback and the vendor's per-tester report.
+```
+
+### Part 2
+
+About the app: audience, value, first-year installs.
+
+```
+Audience: adults aged 18 and over in Canada and the United States who want one-on-one advice from experts.
+Value: users find an expert, book a live voice session, chat, pay securely and leave a review.
+First-year installs: <choose the range you expect>.
+```
+
+### Part 3
+
+Production readiness: changes made from testing and how readiness was determined.
+
+```
+Changes since testing: <list only what testers actually reported and what we changed; if testers reported nothing, say so>.
+Separately, three fixes came from our internal QA before the test, not from tester feedback: saved form state after the system closes the app (POL-02), and call-screen controls that were hard to reach in the last five minutes of a session (BUG-22) and at the largest font and display sizes (BUG-34).
+Readiness: internal builds 1 to 5, a two-device cross-platform QA matrix against the iOS app on the production backend, and a smoke test on the closed-track build (sign-up, booking, the call) that passed on <date>.
+```
+
+Check: the confirmation email arrives, and its date is recorded here: `______`.
 
 - [ ] (13) Production access applied for
 
 ## 14. Production release (D-11, D-12)
 
-Needs: production access granted. Stub: filled in the next task.
+Needs: production access granted (on the gate-not-shown branch, smoke run 1 on Internal testing passed). Rolling out to everyone is costly to reverse (D-11).
 
-Check: the public listing returns 200.
+1. Re-run the reviewer seed (section 8, step 1), so the reviewer account is fresh for Google's review.
+2. Test and release, Production, Countries/regions: Canada and United States only (D-12).
+3. Promote the release from the closed track (the exact release smoke run 1 passed on) to Production. Rollout percentage 100%, no staged rollout (D-11).
+4. Publishing overview: managed publishing off. Release notes from `17-CONSOLE-PASTE.md` section 11.
+5. Save, Review release, Start rollout to Production, then wait for Google's review.
+
+Rollback: "Halt rollout" in Console stops new installs. Installs already made are fixed only by a higher versionCode through the ledger procedure.
+
+Check: both commands print 200:
+- `curl -s -o /dev/null -w '%{http_code}' 'https://play.google.com/store/apps/details?id=com.uptrendinvestments.clickmeapp&hl=en&gl=CA'`
+- `curl -s -o /dev/null -w '%{http_code}' 'https://play.google.com/store/apps/details?id=com.uptrendinvestments.clickmeapp&hl=en&gl=US'`
 
 - [ ] (14) Production release live
 
 ## 15. Smoke run 2 (D-15)
 
-Needs: the Samsung and the iPhone. Stub: filled in the next task.
+Needs: the Samsung and the iPhone, same people as smoke run 1 (an Android client on the Samsung, the iOS expert on the iPhone), a free topic again. This is the short repeat from the public listing (D-15, part 2). Same result notation as section 12.
 
-Check: every row is marked pass.
+| Row | Who and where | Steps | Expected | Result |
+|---|---|---|---|---|
+| S2.00 | Mac | Run the two listing curl commands from section 14. | Both print 200. | [ ] |
+| S2.01 | Samsung | Leave the closed and internal testing programs (the opt-out links on the Play opt-in pages), or use a Google account that is not a tester. Uninstall ClickMe, install from the public listing, run H1 and H2. | versionCode equals the production release, installer is `com.android.vending`. | [ ] |
+| S2.02 | Android client on the Samsung | Sign up as a new client with a new email you control. | Signup completes and lands on the client home. | [ ] |
+| S2.03 | Both phones | Book the iOS expert's free topic; the iOS expert accepts on the iPhone. | Request Sent, then Confirmed on the Samsung; pushes arrive. | [ ] |
+| S2.04 | Both phones | Both join inside the window and talk. | Two-way audio works. | [ ] |
+| S2.05 | Both phones | End the call; Claude reads the H4 crash count. | The call ends on both sides; the crash count is 0. | [ ] |
+| S2.06 | Samsung (optional) | Rejoin the internal testing program for future builds, and delete the smoke client (Profile, Security and Password, Delete Account). | Opt-in restored; the smoke client is deleted. | [ ] |
+
+Check: rows S2.00 to S2.05 are `[x]`.
 
 - [ ] (15) Smoke run 2 passed
 
 ## 16. Close-out
 
-Needs: the repo checkout. Stub: filled in the next task.
+Needs: the repo checkout.
 
-Check: the requirement boxes are ticked.
+1. Tick REL-04, REL-06 and REL-07 in `.planning/REQUIREMENTS.md` (POL-02 too, once 17-01 is verified).
+2. Tick steps 7 and 9 in `13-RELEASE-CHECKLIST.md`, which sections 8, 9 and 6 of this checklist carry.
+3. Record the dates (gate answer, day 0, application, production live) in STATE.
+4. Optional cleanup: remove vendor-tester accounts through the admin portal Terminate action, only for accounts confirmed as vendor testers, never a real user.
+
+Known open after release:
+- The forced-logout push-token DELETE (milestone-audit warning 2) needs a backend change, so it is left for after release.
+- The in-app `delete_account_body` wording promises more than the backend deletes ("all your data permanently removed"). If decided at section 6, it ships as a closed-track fix build; otherwise it stays open.
+- Deferred deviations from CONTEXT: FND-13, PAY-05/CR-01, PAYOUT-02, POL-04, REL-05, BUG-04, BUG-18 to BUG-21, BUG-23, BUG-28.
+- The iOS sync todo (Android bug fixes to iOS, including the overtime cutoff) stays a separate track.
+
+Check: the requirement boxes are ticked in REQUIREMENTS.md.
 
 - [ ] (16) Release closed out
