@@ -31,7 +31,7 @@ From the PRD's Week 1 items: project scaffolding, networking core, session/UserM
 - [x] **FND-11**: The app starts with the Android 12+ SplashScreen API (no fixed 3-second delay) and routes through `AppRoute`: splash → login | signupSetup | clientHome | expertHome.
 - [x] **FND-12**: Client mode has a 5-tab scaffold (Explore, Search placeholder, Bookings, Chats, Profile). Expert mode has a 5-tab scaffold (Dashboard, Bookings, Topics, Chats, Profile). Each tab keeps its own saved back stack.
 - [ ] **FND-13**: A throwaway spike app adds a card with Stripe PaymentSheet in SetupIntent mode and completes a `PaymentLauncher` 3DS challenge on a connected account.
-- [ ] **FND-14**: A throwaway spike app joins an Agora audio channel from inside a `microphone`-type foreground service, and audio keeps running while the app is in the background.
+- [x] **FND-14**: A throwaway spike app joins an Agora audio channel from inside a `microphone`-type foreground service, and audio keeps running while the app is in the background.
 
 ### Authentication
 
@@ -91,13 +91,13 @@ From the PRD's Make a Booking (booking flow and free path) and Request Sent (Wee
 
 From the PRD's Payment Methods and Make a Booking paid paths (Week 3).
 
-- [ ] **PAY-01**: Client can view saved cards in Payment Methods, set a default card and delete a card.
-- [ ] **PAY-02**: Client can add a card through a SetupIntent and Stripe PaymentSheet in setup mode.
-- [ ] **PAY-03**: Client can book a short-lead paid slot. The sequence is `payment-intent` (with a `booking_attempt_id` UUID that is reused on retry), then setup-intent, then PaymentSheet `FlowController`, then `confirm`.
-- [ ] **PAY-04**: Amended 2026-10-28 (quick 261028-to1): long-lead paid booking is descoped for launch. For a paid topic only slots starting at most 6 days after now are selectable (the backend long-lead threshold), and the form says paid sessions can be booked up to 6 days ahead. A `422 LONG_LEAD_REQUIRES_SAVED_CARD` from payment-intent is shown as an error and the paid flow resets; nothing is confirmed without a payment intent. The long-lead SCA recovery flow (`payment_action_required`, `recover-payment`) is not built; only the `payment_actions` push is routed to the booking detail. Was: client can book a long-lead paid slot; on `422 LONG_LEAD_REQUIRES_SAVED_CARD` the booking confirms with the saved card, or the client is sent to Payment Methods if they have no card.
+- [x] **PAY-01**: Client can view saved cards in Payment Methods, set a default card and delete a card.
+- [x] **PAY-02**: Client can add a card through a SetupIntent and Stripe PaymentSheet in setup mode.
+- [x] **PAY-03**: Client can book a short-lead paid slot. The sequence is `payment-intent` (with a `booking_attempt_id` UUID that is reused on retry), then setup-intent, then PaymentSheet `FlowController`, then `confirm`.
+- [x] **PAY-04**: Amended 2026-10-28 (quick 261028-to1): long-lead paid booking is descoped for launch. For a paid topic only slots starting at most 6 days after now are selectable (the backend long-lead threshold), and the form says paid sessions can be booked up to 6 days ahead. A `422 LONG_LEAD_REQUIRES_SAVED_CARD` from payment-intent is shown as an error and the paid flow resets; nothing is confirmed without a payment intent. The long-lead SCA recovery flow (`payment_action_required`, `recover-payment`) is not built; only the `payment_actions` push is routed to the booking detail. Was: client can book a long-lead paid slot; on `422 LONG_LEAD_REQUIRES_SAVED_CARD` the booking confirms with the saved card, or the client is sent to Payment Methods if they have no card.
 - [ ] **PAY-05**: Client can complete a 3DS payment. On `402 PAYMENT_REQUIRES_ACTION`, the app runs `PaymentLauncher` with `stripeAccountId`, then retries confirm.
-- [ ] **PAY-06**: Each of the ~15 error codes handled by iOS `handlePaidFlowError` shows the matching message or next action.
-- [ ] **PAY-07**: Prices and charges display correctly. Amounts are in minor units everywhere except `payment-intent` amounts, and JPY has no decimal places.
+- [x] **PAY-06**: Each of the ~15 error codes handled by iOS `handlePaidFlowError` shows the matching message or next action.
+- [x] **PAY-07**: Prices and charges display correctly. Amounts are in minor units everywhere except `payment-intent` amounts, and JPY has no decimal places.
 
 ### Voice Call
 
@@ -149,44 +149,44 @@ From the PRD's Report / block / unblock (Week 6; USER-REPORTING.md, CHAT-UNBLOCK
 
 From the PRD's Push (FCM) and Notifications list (Week 6).
 
-- [ ] **PUSH-01**: On every app start, the device's FCM token is registered through `POST /notifications/tokens` with `platform: "android"`. It is unregistered on logout.
-- [ ] **PUSH-02**: Notifications post to defined notification channels. On Android 13+, users are asked for the `POST_NOTIFICATIONS` permission.
-- [ ] **PUSH-03**: The ported `PushRouter` maps category/sub_category, with the legacy `event_type` fallback, to a `PushDestination`.
-- [ ] **PUSH-04**: Tapping a push opens the right screen inside the right tab's back stack, both from a cold start and while the app is running.
-- [ ] **PUSH-05**: User can view a notifications list grouped by date. Tapping an item routes through the same `PushDestination` map. (Phase 13: first 50 only, no read state; the backend has no mark-read endpoint.)
+- [x] **PUSH-01**: On every app start, the device's FCM token is registered through `POST /notifications/tokens` with `platform: "android"`. It is unregistered on logout.
+- [x] **PUSH-02**: Notifications post to defined notification channels. On Android 13+, users are asked for the `POST_NOTIFICATIONS` permission.
+- [x] **PUSH-03**: The ported `PushRouter` maps category/sub_category, with the legacy `event_type` fallback, to a `PushDestination`.
+- [x] **PUSH-04**: Tapping a push opens the right screen inside the right tab's back stack, both from a cold start and while the app is running.
+- [x] **PUSH-05**: User can view a notifications list grouped by date. Tapping an item routes through the same `PushDestination` map. (Phase 13: first 50 only, no read state; the backend has no mark-read endpoint.)
 
 ### Reviews
 
 From the PRD's Write Review (Week 6).
 
-- [ ] **REV-01**: User can write a review of a completed session, reached from the `session/ended` and `review/nudge` pushes and from Booking Summary.
+- [x] **REV-01**: User can write a review of a completed session, reached from the `session/ended` and `review/nudge` pushes and from Booking Summary.
 
 ### Payouts
 
 From the PRD's Payouts, minimal (Week 7; EXPERT-EARNINGS-BREAKDOWN.md, EXPERT-EARNINGS-TRANSACTIONS.md).
 
-- [ ] **PAYOUT-01**: Expert can see their payout balance and Stripe Connect status.
+- [x] **PAYOUT-01**: Expert can see their payout balance and Stripe Connect status.
 - [ ] **PAYOUT-02**: Expert can complete Stripe Connect onboarding in a Chrome Custom Tab opened on the hosted Account Link. The `clickme://connect/return` deep link re-fetches the status, and `clickme://connect/refresh` calls `refreshConnectLink`. (Phase 14: the Custom Tab return is device-unverified; ON_RESUME reload is the backstop.)
-- [ ] **PAYOUT-03**: Expert sees a short recent-earnings list that headlines `net_amount`. Because `net_amount` can be null, `fee_source` is checked first. Transactions are read as cents and `earnings_breakdown` as dollars.
-- [ ] **PAYOUT-04**: Expert can view and save their Tax & Payout Info (legal name, address, date of birth, optional TIN and financial account) from the expert hub and from Payouts. A `saved: false, tin_required` answer asks for the TIN instead of failing, and the TIN is never stored or shown back. (Added at Phase 14 planning by user decision, CONTEXT D-08.)
+- [x] **PAYOUT-03**: Expert sees a short recent-earnings list that headlines `net_amount`. Because `net_amount` can be null, `fee_source` is checked first. Transactions are read as cents and `earnings_breakdown` as dollars.
+- [x] **PAYOUT-04**: Expert can view and save their Tax & Payout Info (legal name, address, date of birth, optional TIN and financial account) from the expert hub and from Payouts. A `saved: false, tin_required` answer asks for the TIN instead of failing, and the TIN is never stored or shown back. (Added at Phase 14 planning by user decision, CONTEXT D-08.)
 
 ### Profile & Settings
 
 From the PRD's Profile hubs and settings (Week 7).
 
-- [ ] **PROF-01**: User can open the client and expert profile hubs.
-- [ ] **PROF-02**: User can edit their profile and change their avatar with the system photo picker.
-- [ ] **PROF-03**: User can change their password from Account Security.
-- [ ] **PROF-04**: User can delete their account from inside the app. This is a Play Store requirement and is never cut. (Phase 14: in-app two-form flow with a root Farewell; the Play web deletion link is a Phase 17 item.)
-- [ ] **PROF-05**: User can open Help/FAQ, which includes a `mailto:` support contact link.
+- [x] **PROF-01**: User can open the client and expert profile hubs.
+- [x] **PROF-02**: User can edit their profile and change their avatar with the system photo picker.
+- [x] **PROF-03**: User can change their password from Account Security.
+- [x] **PROF-04**: User can delete their account from inside the app. This is a Play Store requirement and is never cut. (Phase 14: in-app two-form flow with a root Farewell; the Play web deletion link is a Phase 17 item.)
+- [x] **PROF-05**: User can open Help/FAQ, which includes a `mailto:` support contact link.
 
 ### Polish
 
 From the PRD's Polish (Week 7).
 
-- [ ] **POL-01**: Every MVP screen has loading, empty and error states.
+- [x] **POL-01**: Every MVP screen has loading, empty and error states.
 - [ ] **POL-02**: Core flows survive configuration changes and process death without losing user input or position.
-- [ ] **POL-03**: The app draws edge-to-edge with correct insets for system bars, display cutouts and the IME.
+- [x] **POL-03**: The app draws edge-to-edge with correct insets for system bars, display cutouts and the IME.
 - [ ] **POL-04**: Core flows pass a TalkBack check.
 
 ### Cross-Platform QA
@@ -203,7 +203,7 @@ From the PRD's Play Store account (Week 1), Start internal testing (Week 6), and
 
 - [x] **REL-01**: The corporation's D-U-N-S number is confirmed, or a new one is requested.
 - [x] **REL-02**: A Play Console organization developer account is created under the corporation and submitted for Google's organization verification.
-- [ ] **REL-03**: The package `com.uptrendinvestments.clickmeapp` is registered in Play Console by uploading a first signed internal build as soon as org verification allows.
+- [x] **REL-03**: The package `com.uptrendinvestments.clickmeapp` is registered in Play Console by uploading a first signed internal build as soon as org verification allows.
 - [ ] **REL-04**: The store listing, data safety form and foreground-service (microphone) declaration are drafted in Play Console ahead of release, so policy review isn't on the critical path.
 - [ ] **REL-05**: A build is on the internal testing track with a few real users on a mix of devices. (Phase 13: one internal tester until Phase 16, D-22; a wider group by then.)
 - [ ] **REL-06**: The Play Console release requirements are complete: data safety form, foreground-service (microphone) declaration and video, account-deletion URL, and content rating.
@@ -268,8 +268,8 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | FND-10 | Phase 1 | Complete |
 | FND-11 | Phase 1 | Complete |
 | FND-12 | Phase 1 | Complete |
-| FND-13 | Phase 2 | Pending |
-| FND-14 | Phase 2 | Pending |
+| FND-13 | Phase 2 | Partial (card save and hold proven on Play build; no live 3DS) |
+| FND-14 | Phase 2 | Complete (milestone audit 2026-11-05) |
 | AUTH-01 | Phase 3 | Complete |
 | AUTH-02 | Phase 3 | Complete |
 | SIGN-01 | Phase 4 | Complete |
@@ -294,13 +294,13 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | BOOK-07 | Phase 8 | Complete |
 | BOOK-08 | Phase 8 | Complete |
 | BOOK-09 | Phase 8 | Complete |
-| PAY-01 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| PAY-02 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| PAY-03 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| PAY-04 | Phase 7 | Pending (amended by 261028-to1: long-lead descoped for launch; device checks via 07-LOCAL-STRIPE-TESTING.md) |
-| PAY-05 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| PAY-06 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
-| PAY-07 | Phase 7 | Pending (code done; device checks blocked: live-mode backend) |
+| PAY-01 | Phase 7 | Complete (milestone audit 2026-11-05) |
+| PAY-02 | Phase 7 | Complete (milestone audit 2026-11-05) |
+| PAY-03 | Phase 7 | Complete (milestone audit 2026-11-05) |
+| PAY-04 | Phase 7 | Complete (milestone audit 2026-11-05) |
+| PAY-05 | Phase 7 | Partial (no live 3DS challenge run; accepted Phase 16 override 1) |
+| PAY-06 | Phase 7 | Complete (milestone audit 2026-11-05) |
+| PAY-07 | Phase 7 | Complete (milestone audit 2026-11-05) |
 | CALL-01 | Phase 9 | Complete |
 | CALL-02 | Phase 9 | Complete |
 | CALL-03 | Phase 9 | Complete |
@@ -327,33 +327,33 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | SAFE-02 | Phase 12 | Complete |
 | SAFE-03 | Phase 12 | Complete |
 | SAFE-04 | Phase 12 | Complete |
-| PUSH-01 | Phase 13 | Pending |
-| PUSH-02 | Phase 13 | Pending |
-| PUSH-03 | Phase 13 | Pending |
-| PUSH-04 | Phase 13 | Pending |
-| PUSH-05 | Phase 13 | Pending |
-| REV-01 | Phase 13 | Pending |
-| PAYOUT-01 | Phase 14 | Pending |
-| PAYOUT-02 | Phase 14 | Pending |
-| PAYOUT-03 | Phase 14 | Pending |
-| PAYOUT-04 | Phase 14 | Pending |
-| PROF-01 | Phase 14 | Pending |
-| PROF-02 | Phase 14 | Pending |
-| PROF-03 | Phase 14 | Pending |
-| PROF-04 | Phase 14 | Pending |
-| PROF-05 | Phase 14 | Pending |
-| POL-01 | Phase 15 | Pending |
-| POL-02 | Phase 15 | Pending |
-| POL-03 | Phase 15 | Pending |
-| POL-04 | Phase 15 | Pending |
+| PUSH-01 | Phase 13 | Complete (milestone audit 2026-11-05) |
+| PUSH-02 | Phase 13 | Complete (milestone audit 2026-11-05) |
+| PUSH-03 | Phase 13 | Complete (milestone audit 2026-11-05) |
+| PUSH-04 | Phase 13 | Complete (milestone audit 2026-11-05) |
+| PUSH-05 | Phase 13 | Complete (milestone audit 2026-11-05) |
+| REV-01 | Phase 13 | Complete (milestone audit 2026-11-05) |
+| PAYOUT-01 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PAYOUT-02 | Phase 14 | Partial (onboarding not run on device; accepted Phase 16 override 2) |
+| PAYOUT-03 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PAYOUT-04 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PROF-01 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PROF-02 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PROF-03 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PROF-04 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| PROF-05 | Phase 14 | Complete (milestone audit 2026-11-05) |
+| POL-01 | Phase 15 | Complete (milestone audit 2026-11-05) |
+| POL-02 | Phase 15 | Partial (16.x input screens lack SavedStateHandle; audit 2026-11-05) |
+| POL-03 | Phase 15 | Complete (milestone audit 2026-11-05) |
+| POL-04 | Phase 15 | Partial (TalkBack not run on device; accepted Phase 16 override 4) |
 | QA-01 | Phase 16 | Complete |
 | QA-02 | Phase 16 | Complete |
 | QA-03 | Phase 16 | Complete |
 | REL-01 | Phase 1 | Complete |
 | REL-02 | Phase 1 | Complete |
-| REL-03 | Phase 2 | Pending |
+| REL-03 | Phase 2 | Complete (milestone audit 2026-11-05) |
 | REL-04 | Phase 13 | Pending |
-| REL-05 | Phase 13 | Pending |
+| REL-05 | Phase 13 | Partial (on internal track vc 1-5; single tester accepted, override 5) |
 | REL-06 | Phase 17 | Pending |
 | REL-07 | Phase 17 | Pending |
 
@@ -365,4 +365,4 @@ Which phase covers each requirement. Filled in during roadmap creation.
 
 ---
 *Requirements defined: 2026-10-19*
-*Last updated: 2026-10-28 after quick 261028-to1 (PAY-04 amended: long-lead paid bookings descoped for launch)*
+*Last updated: 2026-11-05 after v1.0 milestone audit (24 requirements closed on Phase 16 device-matrix evidence)*
