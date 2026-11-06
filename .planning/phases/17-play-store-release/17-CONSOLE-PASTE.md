@@ -52,6 +52,8 @@ Category: "Social" or the closest communication category Console offers (users c
 | Question topic | Answer |
 |---|---|
 | Users can interact or exchange content with each other | Yes (chat and voice between users) |
+| Users can block other users or their content | Yes (chat Report & Block: block and unblock a user) |
+| Users can report or flag other users or their content | Yes (chat Report & Block: report with a reason, reviewed on the backend) |
 | Digital purchases or payments | Yes (paid sessions, charged through Stripe) |
 | Shares the user's location with other users | No |
 | Violence, blood, fear | No |
