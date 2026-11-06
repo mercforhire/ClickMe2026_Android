@@ -47,7 +47,7 @@ Console path: Policy and programs > App content > Ads
 
 Console path: Policy and programs > App content > Content rating
 
-Category: "Social" or the closest communication category Console offers (users chat and talk to each other). Email for the rating certificate: `support@clickme.app`.
+Category: "Social" or the closest communication category Console offers (users chat and talk to each other). Email for the rating certificate: `clickmeapp@uptrendinvestments.net`.
 
 | Question topic | Answer |
 |---|---|
@@ -226,14 +226,14 @@ Notifications tell you when a request is answered, a booking changes, a session 
 
 ClickMe works with the ClickMe app on iOS, so you can book and talk with experts on either platform.
 
-Questions or feedback: support@clickme.app
+Questions or feedback: clickmeapp@uptrendinvestments.net
 ```
 
 **Category:** Business (fallback if Console rejects it: Education). **Tags:** pick the closest from Console's list (for example Education, Business).
 
 **Contact details**
 
-- Email: `support@clickme.app`
+- Email: `clickmeapp@uptrendinvestments.net`
 - Website: `https://www.uptrendinvestments.net/clickme/`
 - Privacy policy URL: `https://www.uptrendinvestments.net/clickme/privacy.html` (as section 1)
 
@@ -278,5 +278,5 @@ Thanks for testing ClickMe.
 2. Sign up as a client with your own email address.
 3. Use the app now and then as you like: browse experts, open profiles, use chat and settings.
 4. Book free topics only. Never enter a real card: payments in this build are live.
-5. Report problems with Google Play's testing feedback or by email to support@clickme.app.
+5. Report problems with Google Play's testing feedback or by email to clickmeapp@uptrendinvestments.net.
 ```

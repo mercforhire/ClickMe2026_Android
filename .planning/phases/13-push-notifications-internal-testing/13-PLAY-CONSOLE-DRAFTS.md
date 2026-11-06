@@ -42,13 +42,13 @@ Notifications tell you when a request is answered, a booking changes, a session 
 
 ClickMe works with the ClickMe app on iOS, so you can book and talk with experts on either platform.
 
-Questions or feedback: support@clickme.app
+Questions or feedback: clickmeapp@uptrendinvestments.net
 ```
 
 **Category:** Business (alternative if Console rejects it: Education). **Tags:** pick the closest from Console's list (for example Education, Business).
 
 **Contact details**
-- Email: `support@clickme.app`
+- Email: `clickmeapp@uptrendinvestments.net`
 - Website (optional): `https://www.uptrendinvestments.net/clickme/`
 - Privacy policy URL: `https://www.uptrendinvestments.net/clickme/privacy.html` (same value as `AppLinks.PRIVACY_POLICY` in the app)
 

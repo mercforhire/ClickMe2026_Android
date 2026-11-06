@@ -71,7 +71,7 @@ Seeded from 17-RESEARCH.md § Validation Architecture; task IDs are filled once 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Each Console declaration saved/complete (data safety, FGS, deletion URL, content rating, app access, target audience, listing) | REL-06 / REL-04 | Play Console has no API for App content | "Check:" line per item in `17-RELEASE-CHECKLIST.md` |
-| Deletion page live | REL-06 | User publishes on uptrendinvestments.net | `curl -sI <url>` returns 200; page names "ClickMe" and `support@clickme.app` |
+| Deletion page live | REL-06 | User publishes on uptrendinvestments.net | `curl -sI <url>` returns 200; page names "ClickMe" and `clickmeapp@uptrendinvestments.net` |
 | Closed test 12+ testers × 14 days, production access granted | REL-07 | Google-side process | Dashboard state logged in checklist |
 | Fresh Play install: client signs up, books free topic, joins call with iOS expert (closed track, then public listing) | REL-07 | Two real devices + production backend | Runbook rows in checklist; result logged |
 
