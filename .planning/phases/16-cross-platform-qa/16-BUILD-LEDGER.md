@@ -66,7 +66,7 @@ Used by 16-05, 16-07 and any gap plan.
 | 3 | 0.1.0 | 5e776574 | 8bdadb7e4bc4bbf4 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-3.aab | yes | 2026-11-02 | available | vc 3, 2026-11-02 20:43:25, com.android.vending | |
 | 4 | 0.1.0 | 469acd78 | f4ea03f0c5add845 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-4.aab | yes | 2026-11-03 | available | vc 4, 2026-11-03 20:25:37, com.android.vending | D1.10, D1.18, D1.19, D1.23, D1.SP1, smoke |
 | 5 | 0.1.0 | d5fd82d9 | 5da687b5bfeeef81 | /Users/LeonChen/ClickMe-release/clickme-0.1.0-5.aab | yes | 2026-11-05 | available | vc 5, 2026-11-05 18:12:45, com.android.vending | D2.17 (BUG-30, BUG-31), D2.RS3 and D1.PH1 (BUG-29), smoke 5/5, 34 of the 70 D-14 settings rows |
-| 6 | 1.0.0 | 271edc58 | 9ec7495080f93805 | /Users/LeonChen/ClickMe-release/clickme-1.0.0-6.aab | yes | | not uploaded | | |
+| 6 | 1.0.0 | 271edc58 | 9ec7495080f93805 | /Users/LeonChen/ClickMe-release/clickme-1.0.0-6.aab | yes | 2026-11-06 | Internal testing (rolled out) | 6, 2026-11-06 11:21:52, com.android.vending (H1/H2 pass) | |
 
 ## Fix batches
 

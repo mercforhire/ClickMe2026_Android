@@ -127,7 +127,9 @@ Check:
 - `curl -s https://www.uptrendinvestments.net/clickme/delete-account.html | grep -c clickmeapp@uptrendinvestments.net` prints at least 1.
 - `curl -s https://www.uptrendinvestments.net/clickme/privacy.html | grep -c "Firebase Cloud Messaging"` prints at least 1.
 
-- [ ] (7) Deletion page and privacy edits live
+Result 2026-11-06: delete-account.html 200 (clickmeapp@uptrendinvestments.net x2, support@clickme.app x0); privacy.html 200, "Firebase Cloud Messaging" x2, link to delete-account.html x1, "Last updated 6 November 2026".
+
+- [x] (7) Deletion page and privacy edits live
 
 ## 8. Console App content (REL-06, D-07, D-08)
 
@@ -168,7 +170,9 @@ Needs: the AAB archived by plan 17-07 (`16-BUILD-LEDGER.md` B1 to B6). Decided 2
 
 Check: the Internal testing release reads Available, and the Play status of ledger row 6 in `16-BUILD-LEDGER.md` is updated.
 
-- [ ] (10) vc 6 on Internal testing
+Result 2026-11-06: user reported vc 6 rolled out on Internal testing. H1/H2 on the Samsung: versionCode=6, versionName=1.0.0, installer=com.android.vending, lastUpdateTime 2026-11-06 11:21:52. (Play's device-specific split reports minSdk=32 on this API 36 phone; the bundle declares minSdkVersion 26.)
+
+- [x] (10) vc 6 on Internal testing
 
 ## 11. Closed test, 14 days (D-01, D-04)
 
