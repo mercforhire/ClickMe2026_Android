@@ -1,5 +1,7 @@
 # Phase 13 Play Console Drafts (paste-ready)
 
+Superseded for Phase 17 by `.planning/phases/17-play-store-release/17-CONSOLE-PASTE.md`; paste from that file.
+
 Source for REL-04. Paste into Play Console (organization account), then confirm in checklist step 7. Derived from what the app actually requests and sends (manifest permissions, the REST contract shared with iOS, Phases 4 to 13). No secrets in this file. Items marked "user-supplied" or listed under "Decisions for the user" need your input.
 
 ## 1. Store listing (Grow users, Main store listing)
@@ -51,7 +53,7 @@ Questions or feedback: support@clickme.app
 - Privacy policy URL: `https://www.uptrendinvestments.net/clickme/privacy.html` (same value as `AppLinks.PRIVACY_POLICY` in the app)
 
 **Graphics (all user-supplied):**
-- [ ] App icon 512 x 512 PNG (32-bit, no alpha needed, max 1 MB)
+- [ ] App icon 512 x 512, 32-bit PNG with alpha, max 1024 KB
 - [ ] Feature graphic 1024 x 500 PNG or JPG
 - [ ] At least 2 phone screenshots (suggested: Explore, an expert profile, Make a Booking, My Bookings, a chat thread, the in-call screen)
 
@@ -68,14 +70,16 @@ Not required for an internal-only app, but drafted now so the first production r
 | Photos and videos: Photos | Profile photo chosen with the system photo picker and uploaded | Yes | No | No | Required for experts; optional for clients | App functionality |
 | Messages: Other in-app messages | Chat messages between clients and experts, report and block reasons | Yes | No | No | Optional | App functionality |
 | Audio: Voice or sound recordings | Live voice during a session, streamed through Agora (a service provider); the app does not record or store audio on the device | Yes | No (Agora is a service provider acting for the app) | Yes (processed in real time, not stored by the app) | Optional (needed to take part in a call) | App functionality |
-| Financial info: Other financial info (payment info) | Card details entered in Stripe's PaymentSheet; Stripe collects them, the app never reads card numbers. Booking amounts and payout status | Yes (conservative default) | No (Stripe is a service provider) | No | Optional (only for paid sessions and expert payouts) | App functionality |
+| Financial info: User payment info | Card details typed into Stripe's PaymentSheet; Stripe's SDK sends them from the device, the app never reads card numbers | Yes | No (Stripe is a service provider) | No | Optional (only for paid sessions) | App functionality |
+| Financial info: Purchase history | Booking amounts and the Payment History screen | Yes | No | No | Optional | App functionality |
+| Financial info: Other financial info | Expert earnings and payout status | Yes | No | No | Optional (experts only) | App functionality |
 | App activity: Other user-generated content | Reviews, booking notes, cancellation and decline reasons | Yes | No | No | Optional | App functionality |
 | App activity: In-app actions / booking details | Booking requests, times, status | Yes | No | No | Required for bookings | App functionality |
 | Device or other IDs | The Firebase Cloud Messaging push token and an app-generated random device id (not the advertising id, not the hardware id) | Yes | No (Google Firebase Cloud Messaging is a service provider that delivers the push) | No | Required for push notifications | App functionality (push notifications) |
 
 Security practices:
 - Data is encrypted in transit: Yes (TLS to the API, the realtime socket and Stripe/Agora).
-- Users can request that data is deleted: Yes. In-app account deletion arrives in Phase 14; the web deletion-request URL Console asks for is a Phase 17 item (REL-06). Until then the support email `support@clickme.app` handles requests.
+- Users can request that data is deleted: Yes. In-app: Profile > Security & Password > Delete Account (Phase 14). Web: https://www.uptrendinvestments.net/clickme/delete-account.html (Phase 17, D-06).
 - On-device storage: Console has no question for it. For your own reference, sign-in tokens are kept in encrypted storage and app data is excluded from cloud backup and device transfer.
 - Committed to the Play Families Policy: No. Independent security review: No.
 
@@ -103,7 +107,7 @@ ClickMe is a marketplace for live one-on-one voice sessions between a client and
 The call is a live, scheduled and often paid session with a fixed time. If Android stops audio capture when the app moves to the background or the screen turns off, the microphone is cut mid-session: the other person can no longer hear the user, the session drops, and both people lose paid time with no way to get it back. Users would have to keep the screen on and the app in the foreground for the whole session. A deferred or interrupted service therefore breaks the core purpose of the app.
 ```
 
-**Use case:** Background audio access (choose the closest category Console offers for an ongoing voice call; if it lists "Phone call" or "Communication", use that).
+**Use case:** Background Audio Access (Microphone); do not choose a Phone call, Telecom or VoIP use case.
 
 **Video link:** [user-supplied] screen recording, 30 to 60 seconds, unlisted link. Steps to record:
 1. Open the app signed in as a client and go to Upcoming Booking Details for a confirmed session inside the join window (a free test booking is enough).
