@@ -29,6 +29,7 @@ import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.CALL_CONT
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.CALL_END_BUTTON_TAG
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.ENDING_SOON_BANNER_TAG
 import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MEETING_CALL_CHIP_TAG
+import com.uptrendinvestments.clickmeapp.screens.call.calling.subviews.MEETING_CALL_HERO_PAIR_TAG
 import com.uptrendinvestments.clickmeapp.testing.dispatchInsets
 import com.uptrendinvestments.clickmeapp.testing.navigationBarInsets
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -249,6 +250,35 @@ class MeetingCallScreenControlsReachableTest {
         show(339.dp, 753.dp, 2f, waiting())
 
         assertControlsAboveEndCall(ALL_CONTROLS, 2f)
+    }
+
+    @Test
+    @Config(qualifiers = BUG_34_WINDOW)
+    fun externalVariantControlsReachableAtTwoHundredPercentWithTheBanner() {
+        navBar = BUG_34_NAV_BAR_PX
+        show(339.dp, 753.dp, 2f, state(connectionType = ConnectionType.SkypeZoom))
+        rule.onNodeWithTag(ENDING_SOON_BANNER_TAG).assertExists()
+
+        // The external variant has no Mute or Speaker.
+        listOf(CALL_CONTROL_MINIMIZE_TAG, CALL_CONTROL_CHAT_TAG).forEach { tag ->
+            rule.onNodeWithTag(tag).performScrollTo()
+            assertControlsAboveEndCall(listOf(tag), 2f)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = BUG_34_WINDOW)
+    fun connectedPairControlsReachableAtTwoHundredPercentWithTheBanner() {
+        navBar = BUG_34_NAV_BAR_PX
+        show(339.dp, 753.dp, 2f, state(status = CallStatus.Active))
+        rule.onNodeWithTag(ENDING_SOON_BANNER_TAG).assertExists()
+        rule.onNodeWithTag(MEETING_CALL_CHIP_TAG).assertExists()
+        rule.onNodeWithTag(MEETING_CALL_HERO_PAIR_TAG).assertExists()
+
+        ALL_CONTROLS.forEach { tag ->
+            rule.onNodeWithTag(tag).performScrollTo()
+            assertControlsAboveEndCall(listOf(tag), 2f)
+        }
     }
 
     private companion object {
