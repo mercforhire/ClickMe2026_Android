@@ -70,7 +70,8 @@ class BookingNoteScreenTest {
         role: NoteRole,
         calls: Calls = Calls(),
     ): BookingNoteViewModel {
-        val viewModel = BookingNoteViewModel(BookingNoteArgs(role, "b1"), SavedStateHandle(), BookingNoteRepository(api))
+        val viewModel =
+            BookingNoteViewModel(BookingNoteArgs(role, "b1"), SavedStateHandle(), BookingNoteRepository(api))
         rule.setContent {
             ClickMeTheme {
                 dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher

@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.bookingnote
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uptrendinvestments.clickmeapp.network.ApiException
@@ -27,14 +28,17 @@ import kotlinx.coroutines.launch
  * text is capped at [NOTE_MAX_LENGTH], iOS has no cap so a long note only fails on save) and D-04 (a whitespace-only
  * note is saved as an empty string, iOS saves it as typed).
  *
- * The typed draft lives in memory only: there is no SavedStateHandle, so it is lost if the process dies (RESEARCH A4),
- * and the note text is never logged (T-16.4-10).
+ * The typed draft is mirrored to [SavedStateHandle] so it survives process death (Phase 17 D-09, POL-02; this
+ * supersedes Phase 16.4 RESEARCH A4). A restored draft is shown over the loaded note and capped at
+ * [NOTE_MAX_LENGTH], so the discard prompt and Save still work. It is cleared after a successful save. The note text
+ * is never logged (T-16.4-10).
  */
 @HiltViewModel(assistedFactory = BookingNoteViewModel.Factory::class)
 class BookingNoteViewModel
     @AssistedInject
     constructor(
         @Assisted private val args: BookingNoteArgs,
+        private val savedStateHandle: SavedStateHandle,
         private val repository: BookingNoteRepository,
     ) : ViewModel() {
         @AssistedFactory
@@ -73,15 +77,20 @@ class BookingNoteViewModel
                         }
                     }
                 val text = note.orEmpty()
+                // A draft restored after process death wins over the server note. lastPersisted stays the server
+                // note, so a differing draft counts as a change and Back still asks first.
+                val shown = savedStateHandle.get<String>(KEY_NOTE_DRAFT)?.let { capText(it, NOTE_MAX_LENGTH) } ?: text
                 _uiState.update {
-                    it.copy(noteText = text, lastPersisted = normalizeNote(text), load = BookingNoteLoad.Loaded)
+                    it.copy(noteText = shown, lastPersisted = normalizeNote(text), load = BookingNoteLoad.Loaded)
                 }
             }
         }
 
         /** Sets the text, cut at [NOTE_MAX_LENGTH] without splitting a surrogate pair. */
         fun onTextChange(raw: String) {
-            _uiState.update { it.copy(noteText = capText(raw, NOTE_MAX_LENGTH)) }
+            val capped = capText(raw, NOTE_MAX_LENGTH)
+            savedStateHandle[KEY_NOTE_DRAFT] = capped
+            _uiState.update { it.copy(noteText = capped) }
         }
 
         /**
@@ -107,6 +116,8 @@ class BookingNoteViewModel
                     return@launch
                 }
                 _uiState.update { it.copy(isSaving = false, lastPersisted = body, didSave = true) }
+                // Text typed while the save was in flight is still a draft: keep it for process death.
+                if (normalizeNote(_uiState.value.noteText) == body) savedStateHandle.remove<String>(KEY_NOTE_DRAFT)
                 savedJob?.cancel()
                 savedJob =
                     viewModelScope.launch {
@@ -139,5 +150,8 @@ class BookingNoteViewModel
         private companion object {
             /** How long the saved mark shows after a successful save (D-03). */
             const val SAVED_STATE_MS = 1_500L
+
+            /** SavedStateHandle key of the typed draft. */
+            const val KEY_NOTE_DRAFT = "note"
         }
     }
