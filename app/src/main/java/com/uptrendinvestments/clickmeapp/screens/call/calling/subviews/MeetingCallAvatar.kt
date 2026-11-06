@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -113,24 +112,25 @@ fun MeetingCallAvatar(
         animationSpec = infiniteRepeatable(tween(Motion.CALL_GLOW_PULSE_MS), RepeatMode.Reverse),
         label = "callGlowAlpha",
     )
+    // The glow is drawn behind the hero and outside its bounds: it must not reserve layout height, or the 360 dp box
+    // pushes the call controls behind the pinned End Call (BUG-22).
     Box(
-        modifier = modifier.widthIn(max = HeroMaxWidth),
+        modifier =
+            modifier
+                .widthIn(max = HeroMaxWidth)
+                .drawBehind {
+                    drawCircle(
+                        Brush.radialGradient(
+                            colors = listOf(primary.copy(alpha = glowAlpha), primary.copy(alpha = 0f)),
+                            center = center,
+                            radius = glowSize.toPx() / 2f,
+                        ),
+                        radius = glowSize.toPx() / 2f,
+                        center = center,
+                    )
+                },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .requiredSize(glowSize)
-                    .drawBehind {
-                        drawCircle(
-                            Brush.radialGradient(
-                                colors = listOf(primary.copy(alpha = glowAlpha), primary.copy(alpha = 0f)),
-                                center = center,
-                                radius = size.minDimension / 2f,
-                            ),
-                        )
-                    },
-        )
         Crossfade(
             targetState = status == CallStatus.Active,
             animationSpec = tween(Motion.PUSH_POP_DURATION_MS),
