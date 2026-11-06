@@ -12,6 +12,8 @@ Closed test day 0 to day 14, then Google's production-access review (usually sev
 
 Section 1 decides it. Gate shown: run sections 10 to 13 (closed track, 14 days, apply). Gate not shown: skip sections 11 and 13, release vc 6 on Internal testing, run smoke run 1 on that Play install (the same AAB), then go to section 14.
 
+**Decided 2026-11-06: gate not shown.** Test and release > Production offers "Create new release" and the Dashboard shows no 12-tester card. This run takes the gate-not-shown branch: vc 6 goes to Internal testing (section 10), smoke run 1 on that install (section 12), then production (section 14). Sections 2, 3, 11 and 13 are marked "not needed (gate not shown 2026-11-06)" and kept in case the gate appears later.
+
 Sections and the plans that run them: 1 to 5 start today; 6 is the 17-08 checkpoint; 7 to 10 are 17-08 and 17-09 work; 11 to 13 are 17-09; 14 to 16 are 17-10.
 
 Readiness (17-08 preflight, 2026-11-06). Checked read-only before the Console session; the AAB check passed, so the session may proceed.
@@ -23,7 +25,7 @@ Readiness (17-08 preflight, 2026-11-06). Checked read-only before the Console se
 - READY: `play-icon-512.png` is 512 x 512 with alpha.
 - OPEN (user): feature graphic `ASSETS/feature-graphic.jpg` (or `.png`) does not exist yet (checklist section 5).
 - OPEN (user): foreground-service video link is not recorded in 17-STORE-ASSETS.md row 9 (checklist section 4).
-- OPEN (Task 2): 17-PAYMENTS-DECISION.md rows 1 to 13 still say "(pending 17-08)", and 17-CONSOLE-PASTE.md still carries five "(confirm at 17-08 #n)" markers plus the explanatory sentence in its intro; both clear when the answers are recorded.
+- RESOLVED (Task 2, 2026-11-06): 17-PAYMENTS-DECISION.md rows 1 to 13 are answered and 17-CONSOLE-PASTE.md carries no unconfirmed markers.
 - PENDING Task 3 (not a preflight failure): `https://www.uptrendinvestments.net/clickme/delete-account.html` returns 404 and the published `privacy.html` has no "Firebase Cloud Messaging" yet, because neither page is published until section 7.
 - NOT RUN (device absent): the Samsung is not on ADB, so the installed versionCode check (H1 and H2) is deferred to Task 3. Ledger row 6 still reads "not uploaded".
 
@@ -39,9 +41,13 @@ Note (flagged assumption A4): vendor pages claim organization accounts are exemp
 
 Check: one line "gate shown: yes or no (date)". It becomes answer #12 at 17-08.
 
-- [ ] (1) Gate answer recorded
+Result: gate shown: no (2026-11-06). Test and release > Production offers "Create new release"; no 12-tester card on the Dashboard.
+
+- [x] (1) Gate answer recorded
 
 ## 2. Play support question (D-01)
+
+**Not needed (gate not shown 2026-11-06).** Kept in case the gate appears later.
 
 Needs: Play Console (Help, Contact support). Send it and do not wait for the reply; the closed test does not depend on it.
 
@@ -53,9 +59,11 @@ Our developer account (Uptrend Investments Inc., a verified organization account
 
 Check: the support case number is recorded here: `case ______`.
 
-- [ ] (2) Support question sent
+- [-] (2) Support question sent: not needed (gate not shown 2026-11-06)
 
 ## 3. Tester service (D-02, D-03)
+
+**Not needed (gate not shown 2026-11-06).** Testers Community Pro (25 testers, CA$33) was chosen; not purchased (gate not shown). Do not buy. Kept in case the gate appears later.
 
 Needs: a payment card. The choice and the payment are yours. Compare the services' current pages first, because prices and guarantees change; the table is vendor-stated and was fetched on 2026-11-05 (flagged assumption A3: vendor claims are unverified).
 
@@ -75,7 +83,7 @@ Recommendation: Testers Community Pro (25 testers, CA$33). Runner-up: TestFi (16
 
 Check: the vendor confirms the order, the tester count (20 or more) and the delivery date.
 
-- [ ] (3) Tester service chosen and paid
+- [-] (3) Tester service chosen and paid: chosen; not purchased, not needed (gate not shown 2026-11-06)
 
 ## 4. Foreground-service video (D-16)
 
@@ -103,7 +111,9 @@ Needs: `17-PAYMENTS-DECISION.md`. Answer the 13 rows of its section 2 (payments 
 
 Check: every row's Answer cell is filled.
 
-- [ ] (6) Decisions answered
+Result (2026-11-06): D-05 option-stripe-faq; rows 2 to 11 all recommended; row 12 gate not shown; row 13 chosen, not purchased. The in-app `delete_account_body` wording is left as is: vc 6 ships unchanged and the fix is a post-release item (see "Known open after release").
+
+- [x] (6) Decisions answered
 
 ## 7. Publish the deletion page and privacy edits (D-06)
 
@@ -138,27 +148,31 @@ Needs: the store assets (`17-STORE-ASSETS.md` from plan 17-05) and the feature g
 1. Paste `17-CONSOLE-PASTE.md` section 10 (name, short and full description, category, contact email, privacy policy URL).
 2. Upload `ASSETS/play-icon-512.png`, the feature graphic, at least four phone screenshots whose row in `17-STORE-ASSETS.md` is approved, and the video link.
 3. The in-call screenshot is captured last, during smoke run 1 (section 12, row S1.08), and added after.
+4. Screenshots 01 to 05 are not approved (retake requested 2026-11-06, see `17-STORE-ASSETS.md`). Upload no phone screenshots until the retakes are approved; the rest of the listing (text, icon, feature graphic, video link) and all of App content do not wait for them. Retakes need the Samsung on ADB (wireless debugging), the torch off, a profile photo with no other people, readable chat text and no other account's real data.
 
 Check: the main store listing saves with no field error.
 
 - [ ] (9) Store listing saved
 
-## 10. Upload vc 6 and open the closed track (D-10)
+## 10. Upload vc 6 (D-10): Internal testing (gate not shown)
 
-Needs: the AAB archived by plan 17-07 (`16-BUILD-LEDGER.md` B1 to B6).
+Needs: the AAB archived by plan 17-07 (`16-BUILD-LEDGER.md` B1 to B6). Decided 2026-11-06: the gate is not shown, so vc 6 goes to **Internal testing**, not a closed track.
 
-1. Test and release, Testing, Closed testing: create the track.
-2. Countries/regions: the countries the vendor stated, or all (production stays Canada and the US; flagged assumption A2). Testers: the vendor list or Google Group, plus the Samsung's Google account.
-3. Create new release, upload `/Users/LeonChen/ClickMe-release/clickme-1.0.0-6.aab`. Release name `1.0.0 (6)`; release notes from `17-CONSOLE-PASTE.md` section 11.
-4. Save, Review release (fix anything it lists), Start rollout. Optionally release the same AAB on Internal testing for an immediate proof on the Samsung.
-5. Send the opt-in link to the vendor.
-6. Ledger B8 on the Samsung: H1 and H2 of `16-MATRIX-RUNBOOK.md`. versionCode must be 6 and the installer `com.android.vending`.
+1. Test and release, Testing, Internal testing: create the track if needed. Testers tab: create an email list that includes the Samsung's Google account.
+2. Create new release, upload `/Users/LeonChen/ClickMe-release/clickme-1.0.0-6.aab`. Release name `1.0.0 (6)`; release notes from `17-CONSOLE-PASTE.md` section 11.
+3. Save, Review release (fix anything it lists), Start rollout to Internal testing.
+4. Open the track's opt-in link on the Samsung with that Google account, accept, then install or update ClickMe from Google Play.
+5. Ledger B8 on the Samsung: H1 and H2 of `16-MATRIX-RUNBOOK.md`. versionCode must be 6 and the installer `com.android.vending`.
 
-Check: the closed release reads Available, and the Play status of ledger row 6 in `16-BUILD-LEDGER.md` is updated.
+(If the gate ever appears: use Closed testing instead, with the tester service's list and countries, per the old steps in git history and `17-CONSOLE-PASTE.md` section 11.)
 
-- [ ] (10) vc 6 on the closed track
+Check: the Internal testing release reads Available, and the Play status of ledger row 6 in `16-BUILD-LEDGER.md` is updated.
+
+- [ ] (10) vc 6 on Internal testing
 
 ## 11. Closed test, 14 days (D-01, D-04)
+
+**Not needed (gate not shown 2026-11-06).** No closed test and no 14-day log on this run. The table is kept in case the gate appears later.
 
 Needs: at least 12 opted-in testers every day (the extra testers are the buffer). Day 0 is the first day the Testers tab shows at least 12 opted-in testers. Fill one row per day.
 
@@ -189,7 +203,7 @@ Rules:
 
 Check: the Testers tab shows at least 12 opted in on day 14, and every log row is filled.
 
-- [ ] (11) 14 days completed
+- [-] (11) 14 days completed: not needed (gate not shown 2026-11-06)
 
 ## 12. Smoke run 1 (D-13, D-14, D-15)
 
@@ -218,6 +232,8 @@ Check: every row S1.00 to S1.09 is `[x]`, S1.10 is `[x]` or `[-]`, and the in-ca
 - [ ] (12) Smoke run 1 passed
 
 ## 13. Apply for production (D-01)
+
+**Not needed (gate not shown 2026-11-06).** The drafts are kept in case the gate appears later.
 
 Needs: day 14 reached with at least 12 opted in, and this section applies on the gate-shown branch only. Edit the drafts below to match what really happened before you submit; they must stay truthful.
 
@@ -257,7 +273,7 @@ Readiness: internal builds 1 to 5, a two-device cross-platform QA matrix against
 
 Check: the confirmation email arrives, and its date is recorded here: `______`.
 
-- [ ] (13) Production access applied for
+- [-] (13) Production access applied for: not needed (gate not shown 2026-11-06)
 
 ## 14. Production release (D-11, D-12)
 
@@ -306,7 +322,7 @@ Needs: the repo checkout.
 
 Known open after release:
 - The forced-logout push-token DELETE (milestone-audit warning 2) needs a backend change, so it is left for after release.
-- The in-app `delete_account_body` wording promises more than the backend deletes ("all your data permanently removed"). If decided at section 6, it ships as a closed-track fix build; otherwise it stays open.
+- The in-app `delete_account_body` wording promises more than the backend deletes ("all your data permanently removed"). Decided 2026-11-06: leave it for now and ship vc 6 unchanged; it is a post-release fix (STATE pending todo).
 - Deferred deviations from CONTEXT: FND-13, PAY-05/CR-01, PAYOUT-02, POL-04, REL-05, BUG-04, BUG-18 to BUG-21, BUG-23, BUG-28.
 - The iOS sync todo (Android bug fixes to iOS, including the overtime cutoff) stays a separate track.
 
