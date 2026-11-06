@@ -116,3 +116,8 @@ None beyond the Stripe deep-link finding above (pre-existing, library-supplied).
 - `app/build.gradle.kts` has `versionCode = 6` and `versionName = "1.0.0"`; the ledger has Uploads row 6.
 - `keystore.properties`, `local.properties` and `app/google-services.json` are gitignored and not tracked.
 - STATE.md and ROADMAP.md not modified.
+
+## Orchestrator follow-up (2026-11-06)
+
+- B5 archive done by the orchestrator. `/Users/LeonChen/ClickMe-release/clickme-1.0.0-6.aab`, `clickme-1.0.0-6.apk` and `mapping-1.0.0-6.txt` were copied from the worktree, and their sha256 values match the ledger: `9ec74950…651e81e`, `ef5d0d08…19d535d97` and `b48c18df…bca5118e`.
+- Exported-component review (deviation 2). An `aapt2 dump xmltree` diff of vc 5 (`clickme-0.1.0-5.apk`, already on Play) against vc 6 shows the **same exported set**. The three unguarded Stripe SDK redirect activities (`LinkRedirectHandlerActivity`, `StripeBrowserProxyReturnActivity`, `FinancialConnectionsSheetLiteRedirectActivity`) ship unchanged from the Stripe SDK in both builds. They are not a release blocker. Hardening them with `tools:node="remove"` on the unused Link and Financial Connections entries is an optional post-release item.
