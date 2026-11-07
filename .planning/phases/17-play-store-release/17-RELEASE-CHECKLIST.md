@@ -145,7 +145,9 @@ Needs: Play Console, `17-CONSOLE-PASTE.md`, the backend reviewer document.
 
 Check: Policy and programs, App content shows no item under "Needs attention". Save a screenshot to `RELEASE/logs/phase17/`. Flagged assumption A1: if "Review release" in section 10 lists more unfinished items, finish them before rollout.
 
-- [ ] (8) App content complete
+Result 2026-11-06: user reports Policy and programs > App content > Needs attention is empty (last item: Advertising ID declaration answered No; vc 6 manifest has no AD_ID permission). Foreground service permissions submitted with https://www.youtube.com/watch?v=So1nFYW5aj0.
+
+- [x] (8) App content complete
 
 ## 9. Store listing and graphics (REL-04, D-16)
 
