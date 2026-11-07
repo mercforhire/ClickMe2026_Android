@@ -225,7 +225,7 @@ Result notation (from `16-MATRIX-RUNBOOK.md`): `[ ]` not yet run; `[x] pass (vc 
 
 | Row | Who and where | Steps | Expected | Result |
 |---|---|---|---|---|
-| S1.00 | iOS expert on the iPhone | Sign in as your iOS expert on the iPhone. Make sure it has one active free topic and a slot in the next few hours. Check the backend: `curl -s https://clickme-backend-production.up.railway.app/health`. | The iPhone shows expert mode with a bookable free topic; `/health` shows status success. | [ ] |
+| S1.00 | iOS expert on the iPhone | Sign in as your iOS expert on the iPhone. Make sure it has one active free topic and a slot in the next few hours. Check the backend: `curl -s https://clickme-backend-production.up.railway.app/health`. | The iPhone shows expert mode with a bookable free topic; `/health` shows status success. | [x] preflight pass (vc 6, 2026-11-06): Samsung versionCode=6 / 1.0.0 / installer com.android.vending, `/health` HTTP 200, capture script syntax ok. The iPhone expert state (free topic and slot) is still the user's to confirm at Task 2. |
 | S1.01 | Samsung | The Samsung's Google account is opted in to the closed track. Uninstall ClickMe, install it from Google Play, then run H1 and H2 (`16-MATRIX-RUNBOOK.md`). | versionCode equals the closed release (6 or the newest fix build), installer is `com.android.vending`. | [ ] |
 | S1.02 | Android client on the Samsung | Open ClickMe and sign up as a new client with a new email you control. Finish the required steps. | Signup completes and lands on the client home. | [ ] |
 | S1.03 | Android client on the Samsung | Book the iOS expert's free topic for a slot in the next few hours. | Request Sent shows Awaiting Approval; the iPhone receives the request push. | [ ] |
