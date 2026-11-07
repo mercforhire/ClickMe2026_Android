@@ -105,7 +105,6 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - [Phase 17] Post-release: reword in-app `delete_account_body` to match what the backend keeps (reviews, chats, reports, booking/payment records). User chose 2026-11-06 to ship vc 6 as is.
-- [Phase 17] Retake store screenshots before upload (user, 2026-11-06): torch off, a profile photo without other people, readable chat text, no other account's real data. Needs the Samsung on ADB; the user approves the retakes before upload.
 - [Phase 16] BUG-13 (backend): Read label; blocks Android release: no
 - [Phase 16] BUG-14 (ios): overtime cutoff; blocks Android release: no
 - [Phase 16] BUG-15 (ios): Join window; blocks Android release: no
