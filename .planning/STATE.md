@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 ## Current Position
 
 Phase: 17 (Play Store Release) — EXECUTING
-Plan: 1 of 10
-Status: Executing Phase 17
-Last activity: 2026-11-06 — Phase 17 execution started
+Plan: 9 of 10 (17-01..17-08 complete)
+Status: Paused at 17-09 smoke run 1 (human checkpoint)
+Last activity: 2026-11-06 — 17-08 first release gate closed; 17-09 preflight passed
 
 Progress: [███████░░░] 71%
 
@@ -368,10 +368,16 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-06T04:12:28.566Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-play-store-release/17-CONTEXT.md
-Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and cleanup incl. deleting the D2.17 throwaway with TalkBack optional, Section 8 sign-off). 16-07 skips by user decision: all 23 TalkBack rows (POL-04 / Phase 15 SC-4 unconfirmed on device), FS.FB1, FS.Y12, PD.Y3, 7 IM rows, PL.C9, PL.K12, EM.1. BUG-34 (call controls unreachable at 200% font, no scroll) is fix-if-cheap by user decision.
+Last session: 2026-11-06 (Phase 17 execution, paused at the 17-09 smoke-run checkpoint)
+Stopped at: 17-09 Task 2 (smoke run 1, human-verify) — preflight done (S1.00 preflight pass), rows S1.01-S1.10 not run
+Resume file: .planning/phases/17-play-store-release/.continue-here.md
+Resume: `/gsd-execute-phase 17` (17-01..17-08 have SUMMARYs; it resumes at 17-09). Present the smoke-run table from `.continue-here.md` and record the user's row replies.
+
+**Phase 17 so far (2026-11-06):** vc 6 / 1.0.0 built (271edc58), archived in ~/ClickMe-release/clickme-1.0.0-6.*, Available on Internal testing, installed on the Samsung from Play. Production-access gate NOT shown (Production offers "Create new release"), so no closed test: smoke run 1 on Internal, then 17-10 promotes vc 6 to Production 100% CA/US. Web pages live, App content clear, store listing saved (7 screenshots; 8th slot = 06-in-call from S1.08).
+
+**Phones now:** Samsung signed in as the demo account Ada Kensington (Play install of vc 6, mic permission granted); iPhone as the expert account. S1.01 has the user reinstall from Play and S1.02 signs up a new client.
+
+**Earlier notes carried from Phase 16 (kept for reference; the BUG-22/BUG-34 fix shipped in vc 6, and the remember-email branch was NOT merged into 1.0.0, row 10):**
 
 **Next fix batch input (android):** BUG-22 + BUG-34 together (MeetingCallScreen.kt), BUG-23, the remember-email feature (pre-fill last email on Login after any sign-out; branch feature/remember-login-email, Android 0c9ecc55; iOS b0629d9 on the same branch in the iOS repo for the user to merge (worktrees removed 2026-11-05)), and the Android half of BUG-28 once the backend exposes decline_reason_text. Also open: BUG-08 not exercised, the expert Dashboard tab label at the largest font not read.
 
@@ -379,4 +385,4 @@ Resume: `/gsd-execute-phase 16` runs 16-08 (close-out: Section 7 money sweep and
 
 **Money for 16-08 Section 7 (settled 2026-11-05):** all 8 holds voided and confirmed canceled in Stripe, 0 in requires_capture; the 2 captures (C3eR3Z, See2oK, CA$5.00 each) are kept, not refunded, by user decision (deviation from D-04; the user owns both accounts), and stay in earnings, payout and revenue records. P16. Original note: no live holds. Refund by hand: D1.25 (5449f1b7, C3eR3Z, CA$5.00) and D2.12 (43d0562b, See2oK, CA$5.00, fee 0.50). Confirm voids in Stripe: BFQEmT, 53ka5k, b2m66n, lTnYmn, KJcrmX, Hlqzg7.
 
-**Phones now:** Samsung signed in as the expert account, iPhone as the client account; the Throwaway account is deleted. Say client account and expert account to the user, not A and B.
+**Phones (Phase 16 end, superseded above):** Samsung signed in as the expert account, iPhone as the client account; the Throwaway account is deleted. Say client account and expert account to the user, not A and B.
