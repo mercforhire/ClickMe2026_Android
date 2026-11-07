@@ -158,7 +158,9 @@ Needs: the store assets (`17-STORE-ASSETS.md` from plan 17-05) and the feature g
 
 Check: the main store listing saves with no field error.
 
-- [ ] (9) Store listing saved
+Result 2026-11-06: user saved the main store listing: text from paste section 10, play-icon-512.png, feature-graphic.jpg, 7 phone screenshots (01-explore, 07-search, 02-expert-profile, 08-reviews, 03-book-a-session, 04-bookings, 05-chat; demo account, all approved), category Business, tags Business/Education/Communication/Self-help, contact clickmeapp@uptrendinvestments.net and https://www.uptrendinvestments.net/clickme/. Slot 8 is reserved for 06-in-call (17-09).
+
+- [x] (9) Store listing saved
 
 ## 10. Upload vc 6 (D-10): Internal testing (gate not shown)
 
