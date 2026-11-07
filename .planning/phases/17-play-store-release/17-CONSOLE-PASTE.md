@@ -160,7 +160,13 @@ The call is a live, scheduled and often paid session with a fixed time. If Andro
 The call is a live, scheduled and often paid session with a fixed time. If the foreground service is interrupted while the app is in the background or the screen is off, audio capture is cut mid-session: the other person can no longer hear the user, the session drops, and both people lose paid time with no way to get it back.
 ```
 
-**Video link:** (user-supplied, unlisted, 30-60 s). Steps to record:
+**Video link:**
+
+```
+https://www.youtube.com/watch?v=So1nFYW5aj0
+```
+
+Recorded 2026-11-06 (59.8 s). Steps it follows:
 
 1. Open the app signed in as a client and go to Upcoming Booking Details for a confirmed session inside the join window (a free test booking is enough).
 2. Tap Join and show the microphone prompt appearing; tap Allow so the user is seen starting the microphone (Google's Background Audio Access rule: show the user initiating the microphone). Show the call screen connected.

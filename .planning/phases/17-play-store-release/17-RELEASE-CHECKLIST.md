@@ -95,7 +95,9 @@ Needs: the Samsung with the current Play install. Record now: the call flow is u
 
 Check: the link opens and plays in a private browser window.
 
-- [ ] (4) Foreground-service video recorded and linked
+Result 2026-11-06: 59.8 s video (`store-assets/fgs-video-trimmed.mp4`), uploaded to YouTube: https://www.youtube.com/watch?v=So1nFYW5aj0 (oEmbed reachable without sign-in).
+
+- [x] (4) Foreground-service video recorded and linked
 
 ## 5. Feature graphic (D-16)
 
