@@ -1040,7 +1040,7 @@ Plans:
   2. The production release is live on Google Play. The target is ~Dec 11–13, or as early as ~Dec 7–8 if Weeks 1–7 hold. (Week 8 checkpoint, user-confirmed)
   3. A fresh install from Google Play can sign up, book a session with the iOS app on the other side, and join the call against the production backend.
 
-**Plans:** 8/10 plans executed (7 executor plans, 3 human release gates)
+**Plans:** 9/10 plans executed (7 executor plans, 3 human release gates)
 
 Plans:
 **Wave 1**
@@ -1062,7 +1062,7 @@ Plans:
 
 **Wave 4** *(human gate)*
 
-- [ ] 17-09-PLAN.md — Smoke run 1 on the Play install with BUG-22/34 device re-tests, 14-day closed test, production access
+- [x] 17-09-PLAN.md — Smoke run 1 on the Play install with BUG-22/34 device re-tests, 14-day closed test, production access
 
 **Wave 5** *(human gate)*
 
@@ -1091,7 +1091,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
 | 15. Polish & Hardening | 20/20 | In Progress | - |
 | 16. Cross-Platform QA | 8/8 | Complete    | 2026-11-05 |
-| 17. Play Store Release | 8/10 | In Progress | - |
+| 17. Play Store Release | 9/10 | In Progress | - |
 
 ## Backlog
 
