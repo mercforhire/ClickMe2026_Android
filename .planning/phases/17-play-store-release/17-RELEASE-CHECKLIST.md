@@ -215,7 +215,7 @@ Rules:
 
 Check: the Testers tab shows at least 12 opted in on day 14, and every log row is filled.
 
-- [-] (11) 14 days completed: not needed (gate not shown 2026-11-06)
+- [x] (11) 14 days completed: not applicable, no closed test required (gate not shown 2026-11-06)
 
 ## 12. Smoke run 1 (D-13, D-14, D-15)
 
@@ -235,13 +235,13 @@ Result notation (from `16-MATRIX-RUNBOOK.md`): `[ ]` not yet run; `[x] pass (vc 
 | S1.07 | Android client on the Samsung | BUG-22 re-test: in the last 5 minutes of the slot (stay in the call, or leave and rejoin within them), with the banner and the time-left chip showing at font scale 1.0. | The four controls (Minimize, Chat, Mute, Speaker) are fully visible above End Call without scrolling. | [x] pass (vc 6, 2026-11-06): 22:56 capture over ADB at font 1.0 / density 300, Ada (client) with Marcus Webb (iOS expert), "Session ending soon" banner and "3:50 left" chip showing; Minimize, Chat, Mute, Speaker and labels fully visible above End Call without scrolling. Evidence logs/smoke-1/S1.07-BUG-22-last5.png. Screen showed "Waiting for other person..." (the iPhone was no longer in the call at that moment). |
 | S1.08 | Samsung, with Claude over ADB | While Connected, Claude runs `bash scripts/play-store-screenshot.sh prep`, then `capture 06-in-call`, then `restore`, while you hold the call. Approve the frame in `17-STORE-ASSETS.md`. | One in-call screenshot saved, with no real person's face; the Samsung display restored. | [x] pass (vc 6, 2026-11-06): prep, capture 06-in-call, restore while Connected (Ada Kensington client / Marcus Webb expert, demo accounts); 1080x1920 check OK; approved by the user; display restored to 720x1600 / 300. First frame with real profile photos rejected. |
 | S1.09 | Both phones | End the call on both phones. Claude reads the H4 crash count: `ADB -t T logcat -d -b crash` filtered for com.uptrendinvestments.clickmeapp. | The call ends on both sides; the H4 crash count is 0. | [x] pass (vc 6, 2026-11-06): call ended on both phones; H4 `logcat -d -b crash` 0 lines for com.uptrendinvestments.clickmeapp, 0 FATAL EXCEPTION / ANR in main+system; CallService stopped and the ongoing-call notification removed (only two booking pushes remain). |
-| S1.10 | Android client on the Samsung (optional) | Delete the smoke client in the app: Profile, Security and Password, Delete Account. This also checks the flow the deletion page describes. Then sign the Samsung back in to your expert account. | The farewell screen confirms deletion; signing in with the old email fails. | [ ] |
+| S1.10 | Android client on the Samsung (optional) | Delete the smoke client in the app: Profile, Security and Password, Delete Account. This also checks the flow the deletion page describes. Then sign the Samsung back in to your expert account. | The farewell screen confirms deletion; signing in with the old email fails. | [x] pass (vc 6, 2026-11-06): the S1.02 smoke client deleted in the app; farewell screen confirmed and sign-in with the old email failed (user report). |
 
 A failed row gets a row in `16-BUG-LOG.md` and a fix build (section 11 rule). If a later fix build replaces the smoke-tested binary, re-run S1.01 to S1.06 on it before section 14.
 
 Check: every row S1.00 to S1.09 is `[x]`, S1.10 is `[x]` or `[-]`, and the in-call screenshot is approved.
 
-- [ ] (12) Smoke run 1 passed
+- [x] (12) Smoke run 1 passed (vc 6, 2026-11-06: S1.01-S1.10 pass, BUG-22 and BUG-34 verified)
 
 ## 13. Apply for production (D-01)
 
@@ -285,7 +285,7 @@ Readiness: internal builds 1 to 5, a two-device cross-platform QA matrix against
 
 Check: the confirmation email arrives, and its date is recorded here: `______`.
 
-- [-] (13) Production access applied for: not needed (gate not shown 2026-11-06)
+- [x] (13) Production access applied for: not applicable, no application needed (gate not shown 2026-11-06)
 
 ## 14. Production release (D-11, D-12)
 

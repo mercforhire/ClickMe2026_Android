@@ -105,6 +105,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - [Phase 17] Post-release: reword in-app `delete_account_body` to match what the backend keeps (reviews, chats, reports, booking/payment records). User chose 2026-11-06 to ship vc 6 as is.
+- [Phase 17] production access: no gate, not required (gate not shown 2026-11-06; no closed test, no application). Smoke run 1 passed on vc 6 2026-11-06 (S1.01-S1.10); BUG-22 and BUG-34 verified on the device.
 - [Phase 16] BUG-13 (backend): Read label; blocks Android release: no
 - [Phase 16] BUG-14 (ios): overtime cutoff; blocks Android release: no
 - [Phase 16] BUG-15 (ios): Join window; blocks Android release: no
