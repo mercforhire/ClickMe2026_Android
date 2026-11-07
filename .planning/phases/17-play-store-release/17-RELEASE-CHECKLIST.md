@@ -299,6 +299,8 @@ Needs: production access granted (on the gate-not-shown branch, smoke run 1 on I
 
 Promotion gate (2026-11-06): promote versionCode 6 (1.0.0, AAB sha256 9ec74950...). PASS production access: no gate, not required (STATE). PASS S1.01 vc 6 equals the newest available 1.0.0 ledger row (6) and S1.01-S1.09 read pass. PASS release notes 116 of 500 characters. PASS no 16-BUG-LOG row with Owner android, Severity blocking and Status open or re-test failed. PASS no ranking words (best, #1, number one, top-rated) in the release notes or listing text (17-CONSOLE-PASTE.md sections 10-11).
 
+Submitted 2026-11-06 (user): versionCode 6 / 1.0.0 (6) submitted to Production at 100%, Canada and United States, from the existing Production draft (created at the gate check; "Promote to Production" was greyed out with "Track already has a draft release"). Play was running "quick checks for commonly found issues" before review.
+
 Rollback: "Halt rollout" in Console stops new installs. Installs already made are fixed only by a higher versionCode through the ledger procedure.
 
 Check: both commands print 200:
