@@ -3,17 +3,18 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 17
 current_phase_name: Play Store Release
-status: executing
-stopped_at: Phase 17 context gathered
-last_updated: "2026-11-07T04:03:11.640Z"
-last_activity: 2026-11-06
-last_activity_desc: Phase 17 execution started
-state_head: 6690d77e81774afefe6ad031ff2207ff7b809490
+status: milestone-complete
+stopped_at: Phase 17 complete (production live 2026-11-10); milestone v1.0 ready for audit
+last_updated: "2026-11-10T23:03:59.276Z"
+last_activity: 2026-11-10
+last_activity_desc: Phase 17 complete; ClickMe 1.0.0 (vc 6) live on Google Play
+state_head: 5fef5803f6b83ee3372438030386a0973f0ee7a9
 progress:
   total_phases: 22
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 307
-  completed_plans: 303
+  completed_plans: 304
+  percent: 76
 milestone_name: milestone
 ---
 
@@ -24,22 +25,22 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-11-01)
 
 **Core value:** The ClickMe MVP is live on Google Play (org account) by ~2026-12-13, and Android users interoperate fully with the iOS app on the same backend.
-**Current focus:** Phase 17 — Play Store Release
+**Current focus:** Milestone v1.0 close-out (Phase 17 complete; app live on Google Play 2026-11-10)
 
 ## Current Position
 
-Phase: 17 (Play Store Release) — EXECUTING
-Plan: 10 of 10 (17-01..17-08 complete)
-Status: Paused at 17-09 smoke run 1 (human checkpoint)
-Last activity: 2026-11-06 — 17-08 first release gate closed; 17-09 preflight passed
+Phase: 17 (Play Store Release) — COMPLETE (last roadmap phase)
+Plan: 10 of 10
+Status: Milestone v1.0 ready for audit (phase.complete pointed at Phase 2 again; re-pointed by hand)
+Last activity: 2026-11-10 — Phase 17 complete; production live on versionCode 6
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 199
+- Total plans completed: 209
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -61,6 +62,7 @@ Progress: [███████░░░] 71%
 | 16.2 | 16 | - | - |
 | 16.3 | 8 | - | - |
 | 16 | 8 | - | - |
+| 17 | 10 | - | - |
 
 **Recent Trend:**
 
@@ -371,10 +373,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-06 (Phase 17 execution, paused at the 17-09 smoke-run checkpoint)
-Stopped at: 17-09 Task 2 (smoke run 1, human-verify) — preflight done (S1.00 preflight pass), rows S1.01-S1.10 not run
-Resume file: .planning/phases/17-play-store-release/.continue-here.md
-Resume: `/gsd-execute-phase 17` (17-01..17-08 have SUMMARYs; it resumes at 17-09). Present the smoke-run table from `.continue-here.md` and record the user's row replies.
+Last session: 2026-11-10 (Phase 17 complete: smoke run 2 passed, verification passed)
+Stopped at: Phase 17 complete; milestone v1.0 ready for audit
+Resume file: none
+Resume: `/gsd-audit-milestone`, then `/gsd-complete-milestone`. Phase 2 still shows 3 plans without SUMMARYs (old spikes); the audit decides whether they are superseded.
 
 **Phase 17 so far (2026-11-06):** vc 6 / 1.0.0 built (271edc58), archived in ~/ClickMe-release/clickme-1.0.0-6.*, Available on Internal testing, installed on the Samsung from Play. Production-access gate NOT shown (Production offers "Create new release"), so no closed test: smoke run 1 on Internal, then 17-10 promotes vc 6 to Production 100% CA/US. Web pages live, App content clear, store listing saved (7 screenshots; 8th slot = 06-in-call from S1.08).
 

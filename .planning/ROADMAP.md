@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 16.3: iOS parity: Saved Experts, favorite heart and full Reviews list** (INSERTED) - iOS feature parity before release (completed 2026-11-01)
 - [ ] **Phase 16.4: iOS parity: private booking notes and expert-side Client Profile** (INSERTED) - iOS feature parity before release
 - [ ] **Phase 16.5: iOS parity: Payment History, notification preferences, Feedback, View Past History, animated splash, Before-you-go card** (INSERTED) - iOS feature parity before release
-- [ ] **Phase 17: Play Store Release** - Play Console policy items and production release (Week 8)
+- [x] **Phase 17: Play Store Release** - Play Console policy items and production release (Week 8) (completed 2026-11-10)
 
 ## Phase Details
 
@@ -1040,7 +1040,7 @@ Plans:
   2. The production release is live on Google Play. The target is ~Dec 11–13, or as early as ~Dec 7–8 if Weeks 1–7 hold. (Week 8 checkpoint, user-confirmed)
   3. A fresh install from Google Play can sign up, book a session with the iOS app on the other side, and join the call against the production backend.
 
-**Plans:** 10/10 plans executed (7 executor plans, 3 human release gates)
+**Plans:** 10/10 plans complete (7 executor plans, 3 human release gates)
 
 Plans:
 **Wave 1**
@@ -1091,7 +1091,7 @@ Phases run in numeric order: 1 → 2 → 3 → … → 17. The Play Console orga
 | 14. Payouts & Account Settings | 16/16 | In Progress | - |
 | 15. Polish & Hardening | 20/20 | In Progress | - |
 | 16. Cross-Platform QA | 8/8 | Complete    | 2026-11-05 |
-| 17. Play Store Release | 10/10 | In Progress | - |
+| 17. Play Store Release | 10/10 | Complete    | 2026-11-10 |
 
 ## Backlog
 
