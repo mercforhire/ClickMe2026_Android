@@ -321,11 +321,11 @@ Needs: the Samsung and the iPhone, same people as smoke run 1 (an Android client
 | S2.03 | Both phones | Book the iOS expert's free topic; the iOS expert accepts on the iPhone. | Request Sent, then Confirmed on the Samsung; pushes arrive. | [x] pass (vc 6, 2026-11-10): free topic booked on the Samsung, accepted on the iPhone; Request Sent then Confirmed, pushes arrived on both phones (user report). |
 | S2.04 | Both phones | Both join inside the window and talk. | Two-way audio works. | [x] pass (vc 6, 2026-11-10): both joined inside the window, two-way audio works (user report). |
 | S2.05 | Both phones | End the call; Claude reads the H4 crash count. | The call ends on both sides; the crash count is 0. | [x] pass (vc 6, 2026-11-10): call ended on both phones; H4 crash buffer 0 lines for com.uptrendinvestments.clickmeapp, 0 FATAL EXCEPTION / ANR; CallService stopped, no ClickMe notification left. |
-| S2.06 | Samsung (optional) | Rejoin the internal testing program for future builds, and delete the smoke client (Profile, Security and Password, Delete Account). | Opt-in restored; the smoke client is deleted. | [ ] |
+| S2.06 | Samsung (optional) | Rejoin the internal testing program for future builds, and delete the smoke client (Profile, Security and Password, Delete Account). | Opt-in restored; the smoke client is deleted. | [-] skipped (user, 2026-11-10): Samsung not re-opted into Internal testing; smoke client not deleted |
 
 Check: rows S2.00 to S2.05 are `[x]`.
 
-- [ ] (15) Smoke run 2 passed
+- [x] (15) Smoke run 2 passed (vc 6, 2026-11-10: S2.00-S2.05 pass from the public listing; S2.06 skipped)
 
 ## 16. Close-out
 
@@ -344,4 +344,4 @@ Known open after release:
 
 Check: the requirement boxes are ticked in REQUIREMENTS.md.
 
-- [ ] (16) Release closed out
+- [x] (16) Release closed out (2026-11-10): REL-04, REL-06, REL-07 and POL-02 ticked; Phase 13 steps 7 and 9 ticked; dates in STATE. Optional vendor-tester cleanup not applicable (no closed test, no vendor testers).

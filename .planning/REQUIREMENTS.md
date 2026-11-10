@@ -185,7 +185,7 @@ From the PRD's Profile hubs and settings (Week 7).
 From the PRD's Polish (Week 7).
 
 - [x] **POL-01**: Every MVP screen has loading, empty and error states.
-- [ ] **POL-02**: Core flows survive configuration changes and process death without losing user input or position.
+- [x] **POL-02**: Core flows survive configuration changes and process death without losing user input or position.
 - [x] **POL-03**: The app draws edge-to-edge with correct insets for system bars, display cutouts and the IME.
 - [ ] **POL-04**: Core flows pass a TalkBack check.
 
@@ -204,10 +204,10 @@ From the PRD's Play Store account (Week 1), Start internal testing (Week 6), and
 - [x] **REL-01**: The corporation's D-U-N-S number is confirmed, or a new one is requested.
 - [x] **REL-02**: A Play Console organization developer account is created under the corporation and submitted for Google's organization verification.
 - [x] **REL-03**: The package `com.uptrendinvestments.clickmeapp` is registered in Play Console by uploading a first signed internal build as soon as org verification allows.
-- [ ] **REL-04**: The store listing, data safety form and foreground-service (microphone) declaration are drafted in Play Console ahead of release, so policy review isn't on the critical path.
+- [x] **REL-04**: The store listing, data safety form and foreground-service (microphone) declaration are drafted in Play Console ahead of release, so policy review isn't on the critical path.
 - [ ] **REL-05**: A build is on the internal testing track with a few real users on a mix of devices. (Phase 13: one internal tester until Phase 16, D-22; a wider group by then.)
-- [ ] **REL-06**: The Play Console release requirements are complete: data safety form, foreground-service (microphone) declaration and video, account-deletion URL, and content rating.
-- [ ] **REL-07**: The production release is live on Google Play.
+- [x] **REL-06**: The Play Console release requirements are complete: data safety form, foreground-service (microphone) declaration and video, account-deletion URL, and content rating.
+- [x] **REL-07**: The production release is live on Google Play.
 
 ## MVP Cut Order
 
@@ -343,7 +343,7 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | PROF-04 | Phase 14 | Complete (milestone audit 2026-11-05) |
 | PROF-05 | Phase 14 | Complete (milestone audit 2026-11-05) |
 | POL-01 | Phase 15 | Complete (milestone audit 2026-11-05) |
-| POL-02 | Phase 15 | Partial (16.x input screens lack SavedStateHandle; audit 2026-11-05) |
+| POL-02 | Phase 15 | Complete (17-01 fixed the three 16.x input screens, JVM-tested; ships in production vc 6, 2026-11-10; real-kill device check deferred) |
 | POL-03 | Phase 15 | Complete (milestone audit 2026-11-05) |
 | POL-04 | Phase 15 | Partial (TalkBack not run on device; accepted Phase 16 override 4) |
 | QA-01 | Phase 16 | Complete |
@@ -352,10 +352,10 @@ Which phase covers each requirement. Filled in during roadmap creation.
 | REL-01 | Phase 1 | Complete |
 | REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 2 | Complete (milestone audit 2026-11-05) |
-| REL-04 | Phase 13 | Pending |
+| REL-04 | Phase 13 | Complete (Phase 17, 2026-11-10) |
 | REL-05 | Phase 13 | Partial (on internal track vc 1-5; single tester accepted, override 5) |
-| REL-06 | Phase 17 | Pending |
-| REL-07 | Phase 17 | Pending |
+| REL-06 | Phase 17 | Complete (2026-11-10) |
+| REL-07 | Phase 17 | Complete (production live 2026-11-10, vc 6) |
 
 **Coverage:**
 

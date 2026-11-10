@@ -107,6 +107,7 @@ Recent decisions affecting current work:
 - [Phase 17] Post-release: reword in-app `delete_account_body` to match what the backend keeps (reviews, chats, reports, booking/payment records). User chose 2026-11-06 to ship vc 6 as is.
 - [Phase 17] production access: no gate, not required (gate not shown 2026-11-06; no closed test, no application). Smoke run 1 passed on vc 6 2026-11-06 (S1.01-S1.10); BUG-22 and BUG-34 verified on the device.
 - [Phase 17] production live 2026-11-10, versionCode 6 (1.0.0, 100%, Canada + United States; submitted 2026-11-06; listing checked 200 for CA and US on 2026-11-10).
+- [Phase 17] release dates: gate answer "not shown" 2026-11-06 (no closed test, no day 0, no application); production submitted 2026-11-06; production live 2026-11-10 on versionCode 6 (1.0.0); smoke run 2 passed 2026-11-10 from the public listing (S2.00-S2.05). The Samsung was left off the Internal testing program (S2.06 skipped): rejoin it before the next fix build.
 - [Phase 16] BUG-13 (backend): Read label; blocks Android release: no
 - [Phase 16] BUG-14 (ios): overtime cutoff; blocks Android release: no
 - [Phase 16] BUG-15 (ios): Join window; blocks Android release: no

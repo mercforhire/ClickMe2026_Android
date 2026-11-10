@@ -118,7 +118,7 @@ Carried by Phase 17: `17-RELEASE-CHECKLIST.md` sections 8-9 (paste from `17-CONS
 
 Check: App content shows the data safety form and the foreground-service declaration as saved (draft or complete); the store listing page shows no empty required fields.
 
-- [ ] (7) Store listing, data safety and foreground-service declaration saved as drafts
+- [x] (7) Store listing, data safety and foreground-service declaration saved as drafts: done in Phase 17 (2026-11-06)
 
 ## 8. Re-check the closed-testing requirement
 
@@ -144,7 +144,7 @@ Carried by Phase 17: decided at the 17-08 checkpoint from `17-PAYMENTS-DECISION.
 
 Check: one line in STATE says "fits exception: <which>" or "needs Play billing / alternative billing".
 
-- [ ] (9) Payments policy decision made and recorded for Phase 17
+- [x] (9) Payments policy decision made and recorded for Phase 17: done in Phase 17 (2026-11-06, D-05 keep Stripe)
 
 ## 10. Device smoke for push (D-21; links to the deferred device list in 13-17)
 
