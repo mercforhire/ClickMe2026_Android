@@ -307,7 +307,7 @@ Check: both commands print 200:
 - `curl -s -o /dev/null -w '%{http_code}' 'https://play.google.com/store/apps/details?id=com.uptrendinvestments.clickmeapp&hl=en&gl=CA'`
 - `curl -s -o /dev/null -w '%{http_code}' 'https://play.google.com/store/apps/details?id=com.uptrendinvestments.clickmeapp&hl=en&gl=US'`
 
-- [ ] (14) Production release live
+- [x] (14) Production release live: vc 6 / 1.0.0, 100%, Canada and United States. User reported "production live"; Claude checked 2026-11-10 17:23: gl=CA 200, gl=US 200 (both 404 on 2026-11-07 01:16 while in review). Submitted 2026-11-06.
 
 ## 15. Smoke run 2 (D-15)
 
