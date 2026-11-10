@@ -315,12 +315,12 @@ Needs: the Samsung and the iPhone, same people as smoke run 1 (an Android client
 
 | Row | Who and where | Steps | Expected | Result |
 |---|---|---|---|---|
-| S2.00 | Mac | Run the two listing curl commands from section 14. | Both print 200. | [ ] |
-| S2.01 | Samsung | Leave the closed and internal testing programs (the opt-out links on the Play opt-in pages), or use a Google account that is not a tester. Uninstall ClickMe, install from the public listing, run H1 and H2. | versionCode equals the production release, installer is `com.android.vending`. | [ ] |
-| S2.02 | Android client on the Samsung | Sign up as a new client with a new email you control. | Signup completes and lands on the client home. | [ ] |
-| S2.03 | Both phones | Book the iOS expert's free topic; the iOS expert accepts on the iPhone. | Request Sent, then Confirmed on the Samsung; pushes arrive. | [ ] |
-| S2.04 | Both phones | Both join inside the window and talk. | Two-way audio works. | [ ] |
-| S2.05 | Both phones | End the call; Claude reads the H4 crash count. | The call ends on both sides; the crash count is 0. | [ ] |
+| S2.00 | Mac | Run the two listing curl commands from section 14. | Both print 200. | [x] pass (2026-11-10 17:23): gl=CA 200, gl=US 200. |
+| S2.01 | Samsung | Leave the closed and internal testing programs (the opt-out links on the Play opt-in pages), or use a Google account that is not a tester. Uninstall ClickMe, install from the public listing, run H1 and H2. | versionCode equals the production release, installer is `com.android.vending`. | [x] pass (vc 6, 2026-11-10): fresh install from the public listing (user report), H2 versionCode=6 / 1.0.0, installer com.android.vending, firstInstallTime 2026-11-10 17:29:47; equals the promoted ledger row 6. |
+| S2.02 | Android client on the Samsung | Sign up as a new client with a new email you control. | Signup completes and lands on the client home. | [x] pass (vc 6, 2026-11-10): new client signed up from the public install, landed on client home (user report). |
+| S2.03 | Both phones | Book the iOS expert's free topic; the iOS expert accepts on the iPhone. | Request Sent, then Confirmed on the Samsung; pushes arrive. | [x] pass (vc 6, 2026-11-10): free topic booked on the Samsung, accepted on the iPhone; Request Sent then Confirmed, pushes arrived on both phones (user report). |
+| S2.04 | Both phones | Both join inside the window and talk. | Two-way audio works. | [x] pass (vc 6, 2026-11-10): both joined inside the window, two-way audio works (user report). |
+| S2.05 | Both phones | End the call; Claude reads the H4 crash count. | The call ends on both sides; the crash count is 0. | [x] pass (vc 6, 2026-11-10): call ended on both phones; H4 crash buffer 0 lines for com.uptrendinvestments.clickmeapp, 0 FATAL EXCEPTION / ANR; CallService stopped, no ClickMe notification left. |
 | S2.06 | Samsung (optional) | Rejoin the internal testing program for future builds, and delete the smoke client (Profile, Security and Password, Delete Account). | Opt-in restored; the smoke client is deleted. | [ ] |
 
 Check: rows S2.00 to S2.05 are `[x]`.
