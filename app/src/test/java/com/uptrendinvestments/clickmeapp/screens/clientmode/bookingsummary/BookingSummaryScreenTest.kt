@@ -91,8 +91,9 @@ class BookingSummaryScreenTest {
         reschedule: RescheduleProposalUi? = null,
         expertId: String? = "e1",
         privateNote: String? = null,
+        bookingId: String = "b1",
     ) = BookingSummaryDetails(
-        bookingId = "b1",
+        bookingId = bookingId,
         status = summaryStatusDisplay(status),
         expertName = "Ada Lovelace",
         expertTitle = "Engineer",
@@ -167,6 +168,18 @@ class BookingSummaryScreenTest {
         rule.onNodeWithText("Oct 24, 2026, 2:00 PM – 3:00 PM").assertExists()
         rule.onNodeWithText("Price paid").assertExists()
         rule.onNodeWithText("$50.00").assertExists()
+    }
+
+    @Test
+    fun bookingIdShowsInTheShortFormat() {
+        setScreen(BookingSummaryUiState.Loaded(details()))
+        rule.onNodeWithText("ID: #B1").assertExists()
+    }
+
+    @Test
+    fun fullUuidBookingIdMatchesIos() {
+        setScreen(BookingSummaryUiState.Loaded(details(bookingId = "7f3c9a2b-1d4e-4c8a-9b0f-123456789abc")))
+        rule.onNodeWithText("ID: #7F3C9A2B").assertExists()
     }
 
     @Test

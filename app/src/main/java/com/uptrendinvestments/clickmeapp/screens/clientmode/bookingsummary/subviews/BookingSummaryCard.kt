@@ -30,6 +30,7 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.formatS
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.formatSessionTimeRange
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.summaryStatusDisplay
+import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.shortBookingId
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import com.uptrendinvestments.clickmeapp.ui.theme.Spacing
 import com.uptrendinvestments.clickmeapp.ui.theme.extras
@@ -45,8 +46,9 @@ private val AvatarSize = 64.dp
 
 /**
  * The summary card of Booking Summary (D-13): expert, status badge, topic, "{date}, {time range}" and the price
- * under the label that matches the payment (Price paid, Refunded or Session fee). Times use [zone] and [timeFormat]
- * so the viewer's zone and 12/24 hour setting win. There is no note, review or feedback here (D-16).
+ * under the label that matches the payment (Price paid, Refunded or Session fee), then the short booking ID (BOOK-20,
+ * the same "ID: #…" line as Upcoming details and the iOS summary). Times use [zone] and [timeFormat] so the viewer's
+ * zone and 12/24 hour setting win. There is no note, review or feedback here (D-16).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -141,6 +143,11 @@ fun BookingSummaryCard(
                     )
                     PriceText(details.price)
                 }
+                Text(
+                    text = stringResource(R.string.upcoming_booking_id, shortBookingId(details.bookingId)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.extras.onSurfaceMuted,
+                )
             }
         }
     }
