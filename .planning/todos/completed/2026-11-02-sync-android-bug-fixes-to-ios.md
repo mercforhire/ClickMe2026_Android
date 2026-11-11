@@ -3,6 +3,8 @@ created: 2026-11-03T04:49:43.118Z
 title: Sync Android bug fixes to iOS
 area: planning
 severity: major
+status: closed-out-of-scope
+closed: 2026-11-10
 files:
   - .planning/STATE.md
   - .planning/phases/16-cross-platform-qa/16-BUG-LOG.md
@@ -33,3 +35,5 @@ These affect live iOS users and should not wait for Android to be final, if the 
 Phase 16 and the Android release come first, except for any urgent item above that the user chooses to fix sooner.
 
 **Added 2026-11-06 (Phase 17):** iOS `Views/Screens/Settings/Help/HelpView.swift` line 20 has `supportEmail = "support@clickme.app"`, which the user says is wrong. The correct address is `clickmeapp@uptrendinvestments.net`, as in the published privacy policy. Android fixed this in b80f99e9 (`AppLinks.SUPPORT_EMAIL`).
+
+**Closed 2026-11-10:** out of scope. The user said this project is only concerned with the Android build. The iOS list above is kept for reference only; no Android work follows from it.

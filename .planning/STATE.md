@@ -122,7 +122,7 @@ Recent decisions affecting current work:
 - [Phase 16] BUG-26 (ios): expert Upcoming card Reschedule does nothing; blocks Android release: no
 - [Phase 16] BUG-27 (backend): a deleted card may still be charged after a move (code reading, not proven live); blocks Android release: no
 - [Phase 16] BUG-28 (backend, ios, android): the expert's decline note never reaches the client; blocks Android release: no; Android half in fix batch B (user decision 2026-11-05)
-- [2026-11-03] [planning] Sync Android bug fixes to iOS — [todo file](.planning/todos/pending/2026-11-02-sync-android-bug-fixes-to-ios.md)
+- [2026-11-03] [planning] Sync Android bug fixes to iOS — closed 2026-11-10, out of scope (Android only) — [todo file](.planning/todos/completed/2026-11-02-sync-android-bug-fixes-to-ios.md)
 - Report to iOS/backend (Phase 16 BUG-03, post-release): Stripe tax ID prompt seen on client account B; clients have no payouts.
 
 - Report the iOS issues back to the iOS side: Join is a no-op from My Bookings, the 5-minute overtime test value, report reasons sent as labels, no blocked state in chat, the cancellation comment is dropped.
