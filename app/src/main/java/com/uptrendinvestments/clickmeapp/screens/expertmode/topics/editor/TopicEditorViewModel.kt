@@ -39,7 +39,10 @@ import java.util.Locale
  *   [TopicEditorRules.MAX_TAGS] are kept, and tags saved in the Edit Expertise sheet arrive through
  *   [onExpertiseSaved].
  * - D-10: an existing topic keeps its own currency; a new topic follows the `pricing_limits` default currency, else
- *   CAD.
+ *   CAD. iOS Phase 6 D-01/D-02 amend this: a new topic and a free topic can pick CAD or USD from
+ *   `pricing_limits.allowed_currencies`, and a paid topic's currency is locked (the server answers
+ *   `TOPIC_CURRENCY_LOCKED`). D-03: switching currency keeps the typed price text. D-04: the picker starts on the
+ *   default currency.
  * - D-12: the floor is read from the in-memory `/me` each time it is needed, never cached across launches. When the
  *   limits are missing at open, `/me` is refreshed once in the background and the form stays usable meanwhile.
  * - D-16: every edit is mirrored to [SavedStateHandle] so it survives rotation and process death. Restored values pass
@@ -66,6 +69,9 @@ class TopicEditorViewModel
         private val seed: TopicEditorSeed? = key.topic
         private val isEdit = seed != null
 
+        /** An existing paid topic with a stored currency: its currency cannot change (mirrors iOS `isCurrencyLocked`). */
+        private val isLocked: Boolean = seed != null && !seed.isFree && cleanCode(seed.currency) != null
+
         private val _uiState = MutableStateFlow(initialState())
         val uiState: StateFlow<TopicEditorUiState> = _uiState.asStateFlow()
 
@@ -89,9 +95,44 @@ class TopicEditorViewModel
 
         private fun defaultCurrencyOf(me: MeData?): String? = me?.pricingLimits?.minSessionAmount?.defaultCurrency
 
+        /** Upper-cased [code] when it looks like an ISO-4217 code, else null. */
+        private fun cleanCode(code: String?): String? =
+            code
+                ?.trim()
+                ?.takeIf { it.length == CODE_LENGTH && it.all { c -> c in 'a'..'z' || c in 'A'..'Z' } }
+                ?.uppercase(Locale.ROOT)
+
+        /** The pickable currencies from [me], else just the default; [current] is always included. */
+        private fun allowedOf(
+            me: MeData?,
+            current: String,
+        ): List<String> {
+            val listed =
+                me
+                    ?.pricingLimits
+                    ?.allowedCurrencies
+                    .orEmpty()
+                    .mapNotNull(::cleanCode)
+                    .distinct()
+            val base = listed.ifEmpty { listOf(TopicPrice.resolveCurrency(null, defaultCurrencyOf(me))) }
+            return if (current in base) base else base + current
+        }
+
+        /**
+         * The topic's own currency (or the default) unless the expert picked one that `/me` still allows. A paid
+         * topic's stored currency always wins.
+         */
+        private fun resolveCurrency(me: MeData?): String {
+            val stored = TopicPrice.resolveCurrency(seed?.currency, defaultCurrencyOf(me))
+            if (isLocked) return stored
+            val picked = cleanCode(savedStateHandle.get<String>(KEY_CURRENCY))
+            return picked?.takeIf { it in allowedOf(me, stored) } ?: stored
+        }
+
         private fun initialState(): TopicEditorUiState {
             val me = userManager.me.value
-            val currency = TopicPrice.resolveCurrency(seed?.currency, defaultCurrencyOf(me))
+            val storedCurrency = TopicPrice.resolveCurrency(seed?.currency, defaultCurrencyOf(me))
+            val currency = resolveCurrency(me)
             val title = savedStateHandle.get<String>(KEY_TITLE) ?: seed?.title.orEmpty()
             val description = savedStateHandle.get<String>(KEY_DESCRIPTION) ?: seed?.description.orEmpty()
             val duration =
@@ -100,7 +141,7 @@ class TopicEditorViewModel
             val priceText =
                 TopicPrice.filterInput(
                     savedStateHandle.get<String>(KEY_PRICE)
-                        ?: seed?.let { TopicPrice.fieldText(it.amountMinor, it.isFree, currency) }.orEmpty(),
+                        ?: seed?.let { TopicPrice.fieldText(it.amountMinor, it.isFree, storedCurrency) }.orEmpty(),
                     currency,
                 )
             val icon =
@@ -116,6 +157,8 @@ class TopicEditorViewModel
                 durationMins = duration,
                 priceText = priceText,
                 currency = currency,
+                allowedCurrencies = allowedOf(me, currency),
+                isCurrencyLocked = isLocked,
                 floorMinor = TopicPrice.floorFor(me?.pricingLimits, currency),
                 iconSlug = icon,
                 iconOptions = TopicEditorRules.iconOptions(seed?.iconSlug),
@@ -143,13 +186,16 @@ class TopicEditorViewModel
 
         private fun onMeChanged(me: MeData?) {
             _uiState.update { s ->
-                val currency =
-                    if (isEdit) s.currency else TopicPrice.resolveCurrency(null, defaultCurrencyOf(me))
+                // An edit keeps the currency it opened with unless the expert picked another on a free topic; a new
+                // topic follows the default until the expert picks one (the pick survives this refresh).
+                val picked = !isLocked && savedStateHandle.contains(KEY_CURRENCY)
+                val currency = if (isEdit && !picked) s.currency else resolveCurrency(me)
                 val floor = TopicPrice.floorFor(me?.pricingLimits, currency)
                 val text = TopicPrice.filterInput(s.priceText, currency)
                 if (text != s.priceText) savedStateHandle[KEY_PRICE] = text
                 s.copy(
                     currency = currency,
+                    allowedCurrencies = allowedOf(me, currency),
                     floorMinor = floor,
                     priceText = text,
                     priceError =
@@ -217,6 +263,23 @@ class TopicEditorViewModel
                 val floor = floorNow(s.currency)
                 savedStateHandle[KEY_PRICE] = text
                 s.copy(priceText = text, floorMinor = floor, priceError = liveError(text, s.currency, floor))
+            }
+
+        /**
+         * Picks the topic currency. Ignored on a paid topic (locked) and for a code `/me` does not allow. The typed
+         * price text is kept as is (D-03); only the floor and the live error follow the new currency.
+         */
+        fun onCurrencyChange(code: String) =
+            edit { s ->
+                val next = cleanCode(code)
+                if (s.isCurrencyLocked || next == null || next == s.currency || next !in s.allowedCurrencies) {
+                    return@edit s
+                }
+                val text = TopicPrice.filterInput(s.priceText, next)
+                val floor = floorNow(next)
+                savedStateHandle[KEY_CURRENCY] = next
+                savedStateHandle[KEY_PRICE] = text
+                s.copy(currency = next, priceText = text, floorMinor = floor, priceError = liveError(text, next, floor))
             }
 
         fun toggleIcon(slug: String) =
@@ -397,10 +460,12 @@ class TopicEditorViewModel
             const val KEY_DESCRIPTION = "topic_description"
             const val KEY_DURATION = "topic_duration"
             const val KEY_PRICE = "topic_price"
+            const val KEY_CURRENCY = "topic_currency"
             const val KEY_ICON_SET = "topic_icon_set"
             const val KEY_ICON = "topic_icon"
             const val KEY_TAG_IDS = "topic_tag_ids"
             const val KEY_TAG_LABELS = "topic_tag_labels"
             const val KEY_TAG_FILTER = "topic_tag_filter"
+            private const val CODE_LENGTH = 3
         }
     }

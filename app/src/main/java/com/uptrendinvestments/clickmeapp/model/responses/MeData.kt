@@ -26,10 +26,17 @@ data class MeData(
         get() = roles.mapNotNull(UserRole::fromWire).toSet()
 }
 
-/** Platform-wide limits carried by `GET /me`. Currently only `min_session_amount`. */
+/**
+ * Platform-wide limits carried by `GET /me`: `min_session_amount` and the pickable topic currencies.
+ */
 @JsonClass(generateAdapter = true)
 data class PricingLimits(
     @Json(name = "min_session_amount") val minSessionAmount: MinSessionAmount,
+    /**
+     * Currencies an expert may price a topic in (`CAD`, `USD`); `null` on a server that predates
+     * `docs/ios/USD-TOPIC-PRICING.md`, in which case the editor offers only the default currency.
+     */
+    @Json(name = "allowed_currencies") val allowedCurrencies: List<String>? = null,
 )
 
 /**

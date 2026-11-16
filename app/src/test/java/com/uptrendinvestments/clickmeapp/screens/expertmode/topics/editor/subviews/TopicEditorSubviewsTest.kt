@@ -349,8 +349,74 @@ class TopicEditorSubviewsTest {
         assertEquals(1, adds)
     }
 
+    // TopicCurrencyPicker
+
+    private fun setCurrency(
+        currencies: List<String> = listOf("CAD", "USD"),
+        selected: String = "CAD",
+        enabled: Boolean = true,
+        onSelect: (String) -> Unit = {},
+    ) {
+        rule.setContent {
+            ClickMeTheme {
+                TopicCurrencyPicker(
+                    currencies = currencies,
+                    selected = selected,
+                    enabled = enabled,
+                    showsLockCaption = !enabled,
+                    showsUsdNotice = selected == "USD",
+                    onSelect = onSelect,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun currency_rendersBothSegmentsAndClickingUsdSelectsIt() {
+        val picked = mutableListOf<String>()
+        setCurrency(onSelect = { picked += it })
+        rule.onNodeWithText("Currency").assertIsDisplayed()
+        rule.onNodeWithTag("topic_editor_currency_CAD").assertIsDisplayed()
+        rule.onNodeWithTag("topic_editor_currency_USD").performClick()
+        assertEquals(listOf("USD"), picked)
+    }
+
+    @Test
+    fun currency_disabledLocksTheSegmentsAndShowsTheCaption() {
+        setCurrency(selected = "USD", enabled = false)
+        rule.onNodeWithTag("topic_editor_currency_USD").assertIsNotEnabled()
+        rule.onNodeWithTag("topic_editor_currency_CAD").assertIsNotEnabled()
+        rule.onNodeWithText(LOCK_CAPTION).assertIsDisplayed()
+    }
+
+    @Test
+    fun currency_usdNoticeShowsOnlyWhileUsdIsSelected() {
+        setCurrency(selected = "USD")
+        rule.onNodeWithText(USD_NOTICE).assertIsDisplayed()
+    }
+
+    @Test
+    fun currency_cadHidesTheUsdNoticeAndTheCaption() {
+        setCurrency(selected = "CAD")
+        rule.onNodeWithText(USD_NOTICE).assertDoesNotExist()
+        rule.onNodeWithText(LOCK_CAPTION).assertDoesNotExist()
+    }
+
+    @Test
+    fun currency_aSingleCurrencyShowsNoPicker() {
+        setCurrency(currencies = listOf("CAD"))
+        rule.onNodeWithTag("topic_editor_currency").assertDoesNotExist()
+        rule.onNodeWithTag("topic_editor_currency_CAD").assertDoesNotExist()
+    }
+
     private companion object {
         const val HELPER = "Leave blank or enter 0 for a free session — otherwise min $5.00"
+        const val LOCK_CAPTION =
+            "A paid topic's currency can't be changed. Create a new topic to charge in a different currency."
+        const val USD_NOTICE =
+            "Clients will pay in US dollars. If your payout bank account is in Canadian dollars, Stripe converts " +
+                "each payment and keeps a currency conversion fee of about 2%. You may be able to avoid this by " +
+                "adding a USD bank account in your Stripe Express dashboard."
         val Law = ExpertiseTagItem(id = "law", label = "Law")
         val Audit = ExpertiseTagItem(id = "audit", label = "Audit")
     }

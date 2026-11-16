@@ -55,6 +55,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ValidatedField
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertiseTagItem
 import com.uptrendinvestments.clickmeapp.screens.expertmode.settings.subviews.ExpertiseEditorSheet
+import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.subviews.TopicCurrencyPicker
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.subviews.TopicDescriptionField
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.subviews.TopicDurationStepper
 import com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor.subviews.TopicIconPicker
@@ -86,6 +87,7 @@ data class TopicEditorActions(
     val decreaseDuration: () -> Unit = {},
     val increaseDuration: () -> Unit = {},
     val onPriceChange: (String) -> Unit = {},
+    val onCurrencyChange: (String) -> Unit = {},
     val toggleIcon: (String) -> Unit = {},
     val onTagFilterChange: (String) -> Unit = {},
     val toggleTag: (ExpertiseTagItem) -> Unit = {},
@@ -119,6 +121,7 @@ fun TopicEditorScreen(
                 decreaseDuration = viewModel::decreaseDuration,
                 increaseDuration = viewModel::increaseDuration,
                 onPriceChange = viewModel::onPriceChange,
+                onCurrencyChange = viewModel::onCurrencyChange,
                 toggleIcon = viewModel::toggleIcon,
                 onTagFilterChange = viewModel::onTagFilterChange,
                 toggleTag = viewModel::toggleTag,
@@ -253,6 +256,16 @@ private fun EditorBody(
             onIncrease = actions.increaseDuration,
             enabled = enabled,
         )
+        if (state.showsCurrencyPicker) {
+            TopicCurrencyPicker(
+                currencies = state.allowedCurrencies,
+                selected = state.currency,
+                enabled = enabled && !state.isCurrencyLocked,
+                showsLockCaption = state.isCurrencyLocked,
+                showsUsdNotice = state.showsUsdNotice,
+                onSelect = actions.onCurrencyChange,
+            )
+        }
         PriceSection(state = state, onChange = actions.onPriceChange, focus = priceFocus, enabled = enabled)
         TopicTagPicker(
             isLoading = state.tags is TopicTagsLoad.Loading,

@@ -44,6 +44,10 @@ data class TopicEditorUiState(
     val priceText: String = "",
     val priceError: PriceFieldError? = null,
     val currency: String = TopicPrice.FALLBACK_CURRENCY,
+    /** Currencies the picker offers, always containing [currency]; a single entry when `/me` lists no others. */
+    val allowedCurrencies: List<String> = listOf(TopicPrice.FALLBACK_CURRENCY),
+    /** True when [currency] must not change: an existing paid topic (the server answers `TOPIC_CURRENCY_LOCKED`). */
+    val isCurrencyLocked: Boolean = false,
     /** Floor for [currency] in minor units, or null when `/me` has no limits (the client check is skipped). */
     val floorMinor: Int? = null,
     val iconSlug: String? = null,
@@ -57,6 +61,14 @@ data class TopicEditorUiState(
     val focusTarget: EditorField? = null,
     val finished: Boolean = false,
 ) {
+    /** The currency picker shows only when there is a real choice or a locked one to explain. */
+    val showsCurrencyPicker: Boolean
+        get() = allowedCurrencies.size > 1
+
+    /** The Stripe conversion-fee notice (USD-TOPIC-PRICING.md section 4) shows only while USD is selected. */
+    val showsUsdNotice: Boolean
+        get() = currency == "USD"
+
     /** Selected tags first, then the rest of the profile tags, narrowed by [tagFilter]. */
     val visibleTags: List<ExpertiseTagItem>
         get() = TopicEditorRules.visibleTags(profileTags, selectedTags, tagFilter)

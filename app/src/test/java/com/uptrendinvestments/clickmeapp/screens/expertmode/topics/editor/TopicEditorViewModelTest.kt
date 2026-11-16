@@ -3,6 +3,7 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.topics.editor
 
 import androidx.lifecycle.SavedStateHandle
+import com.squareup.moshi.Moshi
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
@@ -52,20 +53,26 @@ class TopicEditorViewModelTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private fun meWith(default: String = "CAD") =
-        MeData(
-            id = "u1",
-            email = "a@b.co",
-            roles = listOf("expert"),
-            pricingLimits =
-                PricingLimits(
-                    MinSessionAmount(
-                        byCurrency = mapOf("CAD" to 500, "USD" to 500),
-                        defaultMinorUnits = 500,
-                        defaultCurrency = default,
-                    ),
+    private fun meWith(
+        default: String = "CAD",
+        allowed: List<String>? = null,
+        usdFloor: Int = 500,
+    ) = MeData(
+        id = "u1",
+        email = "a@b.co",
+        roles = listOf("expert"),
+        pricingLimits =
+            PricingLimits(
+                MinSessionAmount(
+                    byCurrency = mapOf("CAD" to 500, "USD" to usdFloor),
+                    defaultMinorUnits = 500,
+                    defaultCurrency = default,
                 ),
-        )
+                allowedCurrencies = allowed,
+            ),
+    )
+
+    private val bothCurrencies = listOf("CAD", "USD")
 
     private fun tag(
         id: String,
@@ -494,6 +501,171 @@ class TopicEditorViewModelTest {
             val vm = env.vm(handle = handle)
             advanceUntilIdle()
             assertEquals("12.99", vm.uiState.value.priceText)
+        }
+
+    // ---- currency picker (EXP-17, D-01 to D-04) ----
+
+    @Test
+    fun aNewTopicStartsOnTheDefaultCurrencyUnlockedWithTheAllowedList() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            val s = readyVm(env).uiState.value
+            assertEquals("CAD", s.currency)
+            assertFalse(s.isCurrencyLocked)
+            assertEquals(bothCurrencies, s.allowedCurrencies)
+            assertTrue(s.showsCurrencyPicker)
+            assertFalse(s.showsUsdNotice)
+        }
+
+    @Test
+    fun pickingUsdOnANewTopicReachesTheCreateRequest() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            env.api.createTopicHandler = { saved() }
+            val vm = readyVm(env)
+            vm.onCurrencyChange("USD")
+            assertTrue(vm.uiState.value.showsUsdNotice)
+            vm.onTitleChange("Tax")
+            vm.onPriceChange("25")
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(
+                TopicHourlyRateBody(2500, "USD"),
+                env.api.createTopicRequests
+                    .single()
+                    .hourlyRate,
+            )
+        }
+
+    @Test
+    fun switchingCurrencyKeepsTheTypedTextAndReReadsTheFloor() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies, usdFloor = 300))
+            val vm = readyVm(env)
+            vm.onPriceChange("12.50")
+            assertEquals(500, vm.uiState.value.floorMinor)
+            vm.onCurrencyChange("USD")
+            assertEquals("12.50", vm.uiState.value.priceText)
+            assertEquals(300, vm.uiState.value.floorMinor)
+            vm.onCurrencyChange("CAD")
+            assertEquals("12.50", vm.uiState.value.priceText)
+            assertEquals(500, vm.uiState.value.floorMinor)
+        }
+
+    @Test
+    fun theBelowFloorErrorFollowsTheChosenCurrencyAtTheBoundary() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies, usdFloor = 300))
+            val vm = readyVm(env)
+            vm.onPriceChange("3")
+            assertEquals(PriceFieldError.BelowFloor(500, "CAD"), vm.uiState.value.priceError)
+            vm.onCurrencyChange("USD")
+            assertNull(vm.uiState.value.priceError)
+            vm.onPriceChange("2.99")
+            assertEquals(PriceFieldError.BelowFloor(300, "USD"), vm.uiState.value.priceError)
+            vm.onPriceChange("0")
+            assertNull(vm.uiState.value.priceError)
+        }
+
+    @Test
+    fun aPaidEditIsLockedAndSendsItsStoredCurrency() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            env.api.updateTopicHandler = { _, _ -> saved() }
+            val vm = readyVm(env, editKey(currency = "USD"))
+            assertTrue(vm.uiState.value.isCurrencyLocked)
+            assertEquals("USD", vm.uiState.value.currency)
+            vm.onCurrencyChange("CAD")
+            assertEquals("USD", vm.uiState.value.currency)
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(
+                "USD",
+                env.api.updateTopicRequests
+                    .single()
+                    .second.hourlyRate.currency,
+            )
+        }
+
+    @Test
+    fun aFreeEditCanSwitchCurrency() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            val vm = readyVm(env, editKey(isFree = true))
+            assertFalse(vm.uiState.value.isCurrencyLocked)
+            assertEquals("CAD", vm.uiState.value.currency)
+            vm.onCurrencyChange("USD")
+            assertEquals("USD", vm.uiState.value.currency)
+        }
+
+    @Test
+    fun aMeRefreshKeepsAPickedCurrencyOnANewTopic() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            val vm = readyVm(env)
+            vm.onCurrencyChange("USD")
+            env.loadMe(meWith(allowed = bothCurrencies))
+            advanceUntilIdle()
+            assertEquals("USD", vm.uiState.value.currency)
+        }
+
+    @Test
+    fun aPickedCurrencySurvivesRebuildingFromTheSameSavedState() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            val handle = SavedStateHandle()
+            val first = env.vm(handle = handle)
+            advanceUntilIdle()
+            first.onCurrencyChange("USD")
+            assertEquals("USD", handle.get<String>(TopicEditorViewModel.KEY_CURRENCY))
+            val rebuilt = env.vm(handle = handle)
+            advanceUntilIdle()
+            assertEquals("USD", rebuilt.uiState.value.currency)
+        }
+
+    @Test
+    fun aMeWithoutAllowedCurrenciesOffersOnlyTheDefaultAndStillDecodes() =
+        runTest(main.testDispatcher) {
+            val adapter = Moshi.Builder().build().adapter(MeData::class.java)
+            val legacy =
+                adapter.fromJson(
+                    """{"id":"u","email":"e","roles":["expert"],"pricing_limits":{"min_session_amount":""" +
+                        """{"by_currency":{"USD":50},"default_minor_units":50,"default_currency":"USD"}}}""",
+                )!!
+            assertNull(legacy.pricingLimits!!.allowedCurrencies)
+            val modern =
+                adapter.fromJson(
+                    """{"id":"u","email":"e","roles":["expert"],"pricing_limits":{"min_session_amount":""" +
+                        """{"by_currency":{},"default_minor_units":50,"default_currency":"CAD"},""" +
+                        """"allowed_currencies":["CAD","USD"]}}""",
+                )!!
+            assertEquals(bothCurrencies, modern.pricingLimits!!.allowedCurrencies)
+
+            val env = Env(this)
+            env.loadMe(legacy)
+            val s = readyVm(env).uiState.value
+            assertEquals(listOf("USD"), s.allowedCurrencies)
+            assertFalse(s.showsCurrencyPicker)
+        }
+
+    @Test
+    fun aCurrencyOutsideTheAllowedListIsIgnored() =
+        runTest(main.testDispatcher) {
+            val env = Env(this)
+            env.loadMe(meWith(allowed = bothCurrencies))
+            val vm = readyVm(env)
+            vm.onCurrencyChange("EUR")
+            vm.onCurrencyChange("")
+            assertEquals("CAD", vm.uiState.value.currency)
+            assertEquals(500, vm.uiState.value.floorMinor)
         }
 
     // ---- save ----

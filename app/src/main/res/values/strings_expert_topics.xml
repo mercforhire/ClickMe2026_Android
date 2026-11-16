@@ -55,6 +55,9 @@
     <string name="topic_editor_duration_label">Session Duration</string>
     <string name="topic_editor_duration_decrease">Decrease duration</string>
     <string name="topic_editor_duration_increase">Increase duration</string>
+    <string name="topic_editor_currency_label">Currency</string>
+    <string name="topic_editor_currency_locked">A paid topic\'s currency can\'t be changed. Create a new topic to charge in a different currency.</string>
+    <string name="topic_editor_usd_notice" formatted="false">Clients will pay in US dollars. If your payout bank account is in Canadian dollars, Stripe converts each payment and keeps a currency conversion fee of about 2%. You may be able to avoid this by adding a USD bank account in your Stripe Express dashboard.</string>
     <string name="topic_editor_price_label">Price per Session</string>
     <string name="topic_editor_price_placeholder">e.g. 150</string>
     <string name="topic_editor_price_helper">Leave blank or enter 0 for a free session — otherwise min %1$s</string>
