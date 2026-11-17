@@ -20,11 +20,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -76,6 +78,12 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.Reschedul
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingnote.ExpertBookingNoteKey
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.subviews.ExpertMessageCard
 import com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary.subviews.ExpertSummaryCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.clientDisplayName
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.CalendarEventSpec
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.calendarEventSpec
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.isCalendarEventOffered
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.rememberCalendarInsertLauncher
+import com.uptrendinvestments.clickmeapp.screens.expertmode.meetingTypeLabel
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -94,6 +102,9 @@ const val MESSAGE_CLIENT_TAG = "message_client"
 
 /** Test tag on the View Profile link under the client's name (Phase 16.4). */
 const val EXPERT_SUMMARY_VIEW_PROFILE_TAG = "expert_summary_view_profile"
+
+/** Test tag on the Add to Calendar button (shown for a booked session that has not ended). */
+const val EXPERT_SUMMARY_ADD_TO_CALENDAR_TAG = "expert_summary_add_to_calendar"
 
 /** Test tag on the Cancel Booking button. */
 const val EXPERT_SUMMARY_CANCEL_TAG = "expert_summary_cancel"
@@ -217,6 +228,11 @@ fun ExpertBookingSummaryContent(
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
     val sentMessage = stringResource(R.string.reschedule_start_sent)
+    val noCalendarMessage = stringResource(R.string.booking_confirmed_no_calendar)
+    val launchCalendar =
+        rememberCalendarInsertLauncher {
+            scope.launch { snackbarHostState.showSnackbar(noCalendarMessage) }
+        }
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -291,6 +307,7 @@ fun ExpertBookingSummaryContent(
                         locale = locale,
                         messageBusy = messageBusy,
                         onMessage = { onMessage(load.details) },
+                        onAddToCalendar = launchCalendar,
                     )
             }
             if (state.isRefreshing && state.load is ExpertSummaryLoad.Loaded) {
@@ -352,7 +369,15 @@ private fun LoadedBody(
     locale: Locale,
     messageBusy: Boolean,
     onMessage: () -> Unit,
+    onAddToCalendar: (CalendarEventSpec) -> Unit,
 ) {
+    // Resolved in composition, not in the click lambda: the same event as Booking Confirmed.
+    val topicFallback = stringResource(R.string.booking_confirmed_topic_fallback)
+    val calendarTopic = details.topic?.trim()?.takeIf { it.isNotEmpty() } ?: topicFallback
+    val calendarTitle =
+        stringResource(R.string.booking_confirmed_calendar_title, calendarTopic, clientDisplayName(details.clientName))
+    val calendarMeetingType = meetingTypeLabel(details.meetingType)
+
     // Keep the last proposal so the card can fade out after the reload cleared it (UI-SPEC Motion, 200 ms).
     var lastProposal by remember { mutableStateOf<RescheduleProposalUi?>(null) }
     if (details.proposal != null && details.proposal != lastProposal) lastProposal = details.proposal
@@ -412,6 +437,34 @@ private fun LoadedBody(
                 modifier = Modifier.fillMaxWidth().testTag(MESSAGE_CLIENT_TAG),
                 busy = messageBusy,
             )
+            if (isCalendarEventOffered(details.statusCode, details.end, joinNow)) {
+                OutlinedButton(
+                    onClick = {
+                        onAddToCalendar(
+                            calendarEventSpec(
+                                title = calendarTitle,
+                                beginMillis = details.start.toEpochMilli(),
+                                endMillis = details.end.toEpochMilli(),
+                                meetingTypeLabel = calendarMeetingType,
+                                message = details.preparationNotes,
+                            ),
+                        )
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = CancelMinHeight)
+                            .testTag(EXPERT_SUMMARY_ADD_TO_CALENDAR_TAG),
+                ) {
+                    Icon(
+                        Icons.Outlined.CalendarMonth,
+                        contentDescription = null,
+                        modifier = Modifier.size(CancelIconSize),
+                    )
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text(stringResource(R.string.booking_confirmed_add_to_calendar))
+                }
+            }
             // The server flag is the only gate for Reschedule (locked). Reschedule at the start, Cancel at the end; one
             // alone fills the width and neither leaves no row.
             ActionButtonPair(

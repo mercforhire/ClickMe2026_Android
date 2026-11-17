@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Upcoming Booking Details (Phase 8, BOOK-07). -->
+    <string name="upcoming_booking_calendar_title">ClickMe · %1$s with %2$s</string>
+    <string name="upcoming_booking_calendar_expert_fallback">Expert</string>
     <string name="upcoming_booking_title">Upcoming Booking</string>
     <string name="upcoming_booking_load_error_title">Couldn\'t load booking</string>
     <string name="upcoming_booking_id">ID: %1$s</string>

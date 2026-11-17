@@ -30,12 +30,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
 import com.uptrendinvestments.clickmeapp.screens.clientmode.requestsent.subviews.BookingRequestSentCheckIcon
@@ -87,7 +85,6 @@ fun BookingConfirmedScreen(
     modifier: Modifier = Modifier,
     viewModel: BookingConfirmedViewModel = hiltViewModel(),
 ) {
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val topicFallback = stringResource(R.string.booking_confirmed_topic_fallback)
@@ -96,25 +93,25 @@ fun BookingConfirmedScreen(
     val label = meetingTypeLabel(key.meetingType)
     val noCalendar = stringResource(R.string.booking_confirmed_no_calendar)
 
-    // Taps are ignored while the calendar app is in front; the flag clears when this screen resumes.
-    var launching by remember { mutableStateOf(false) }
-    LifecycleResumeEffect(Unit) {
-        launching = false
-        onPauseOrDispose {}
-    }
+    // Shared with the Booking Summary screens: ignores taps while the calendar app is in front.
+    val launchCalendar =
+        rememberCalendarInsertLauncher {
+            scope.launch { snackbarHostState.showSnackbar(noCalendar) }
+        }
 
     BookingConfirmedContent(
         key = key,
         onBack = onBack,
         onAddToCalendar = {
-            if (!launching) {
-                launching = true
-                val intent = buildCalendarInsertIntent(calendarEventSpec(key, title, label))
-                context.launchCalendarInsert(intent) {
-                    launching = false
-                    scope.launch { snackbarHostState.showSnackbar(noCalendar) }
-                }
-            }
+            launchCalendar(
+                calendarEventSpec(
+                    title = title,
+                    beginMillis = key.startMillis,
+                    endMillis = key.endMillis,
+                    meetingTypeLabel = label,
+                    message = key.clientMessage,
+                ),
+            )
         },
         onBackToHome = {
             // Post the Dashboard reload first, then reset the stacks and select the Dashboard (D-05).

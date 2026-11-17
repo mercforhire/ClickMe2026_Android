@@ -229,6 +229,7 @@ class ExpertBookingSummaryScreenTest {
         state: ExpertBookingSummaryUiState,
         events: MutableList<String> = mutableListOf(),
         fontScale: Float = 1f,
+        joinNow: Instant = now,
     ): MutableList<String> {
         rule.setContent {
             val density = LocalDensity.current
@@ -237,7 +238,7 @@ class ExpertBookingSummaryScreenTest {
                     ExpertBookingSummaryContent(
                         state = state,
                         rescheduleState = RescheduleUiState(),
-                        joinNow = now,
+                        joinNow = joinNow,
                         onJoin = {},
                         onBack = {},
                         onRetry = { events += "retry" },
@@ -279,6 +280,33 @@ class ExpertBookingSummaryScreenTest {
     fun noNoteWhenNotFlagged() {
         showContent(loadedState())
         rule.onAllNodesWithText("You were on a call. Tap Join Call to rejoin.").assertCountEquals(0)
+    }
+
+    private fun stateFor(statusCode: String) =
+        ExpertBookingSummaryUiState(
+            load =
+                ExpertSummaryLoad.Loaded(
+                    expertBookingDetail(statusCode = statusCode, start = start).toSummaryDetails(now, Locale.US),
+                ),
+        )
+
+    @Test
+    fun addToCalendarShowsForBookedSessionNotYetEnded() {
+        showContent(stateFor("confirmed"))
+        rule.onNodeWithTag(EXPERT_SUMMARY_ADD_TO_CALENDAR_TAG).assertExists()
+        rule.onNodeWithText("Add to Calendar").assertExists()
+    }
+
+    @Test
+    fun addToCalendarIsHiddenForACompletedBooking() {
+        showContent(stateFor("completed"))
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_ADD_TO_CALENDAR_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun addToCalendarIsHiddenOnceTheSessionHasEnded() {
+        showContent(stateFor("confirmed"), joinNow = start.plusSeconds(3600))
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_ADD_TO_CALENDAR_TAG).assertCountEquals(0)
     }
 
     @Test

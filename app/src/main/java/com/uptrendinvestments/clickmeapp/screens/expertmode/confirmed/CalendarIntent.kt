@@ -4,7 +4,17 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.provider.CalendarContract
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.uptrendinvestments.clickmeapp.components.web.findActivity
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.JOINABLE_BOOKING_STATUSES
+import java.time.Instant
 
 /**
  * The fields handed to the calendar app for one confirmed session (D-06): title, UTC epoch start and end, and a
@@ -18,23 +28,63 @@ data class CalendarEventSpec(
 )
 
 /**
- * Builds the event for [key]. [title] is the localized "ClickMe · {topic} with {client}" and [meetingTypeLabel] the
- * localized "In-App Voice" / "Skype/Zoom". The description is the meeting type, plus a new line and the client's
- * message when that message is not blank. Times are UTC epoch millis and no time zone extra is sent: the calendar app
- * shows them in the device zone (Pitfall 9).
+ * Builds the event handed to the calendar app. It serves Booking Confirmed, the expert Booking Summary and the client
+ * Upcoming Booking, so it takes plain values rather than a screen's nav key. [title] is the localized
+ * "ClickMe · {topic} with {name}" and [meetingTypeLabel] the localized "In-App Voice" / "Skype/Zoom". The description is
+ * the meeting type, plus a new line and the trimmed [message] when that message is not blank. Times are UTC epoch
+ * millis and no time zone extra is sent: the calendar app shows them in the device zone (Pitfall 9).
  */
 fun calendarEventSpec(
-    key: BookingConfirmedKey,
     title: String,
+    beginMillis: Long,
+    endMillis: Long,
     meetingTypeLabel: String,
+    message: String?,
 ): CalendarEventSpec {
-    val message = key.clientMessage?.trim()?.takeIf { it.isNotEmpty() }
+    val note = message?.trim()?.takeIf { it.isNotEmpty() }
     return CalendarEventSpec(
         title = title,
-        beginMillis = key.startMillis,
-        endMillis = key.endMillis,
-        description = if (message == null) meetingTypeLabel else "$meetingTypeLabel\n$message",
+        beginMillis = beginMillis,
+        endMillis = endMillis,
+        description = if (note == null) meetingTypeLabel else "$meetingTypeLabel\n$note",
     )
+}
+
+/**
+ * Whether a booking offers "Add to Calendar": it is booked ([JOINABLE_BOOKING_STATUSES]) and the session is not over.
+ * Parity with iOS `BookingCalendarEventContent.isOffered`. Callers pass the ticking join clock as [now] so the button
+ * disappears once the scheduled [end] passes.
+ */
+fun isCalendarEventOffered(
+    statusCode: String,
+    end: Instant,
+    now: Instant,
+): Boolean = statusCode in JOINABLE_BOOKING_STATUSES && now.isBefore(end)
+
+/**
+ * Returns the tap handler for "Add to Calendar". It ignores taps while the calendar app is in front (the flag clears
+ * when the screen resumes) and calls [onNoHandler] when nothing can handle the intent, after re-enabling the button.
+ */
+@Composable
+fun rememberCalendarInsertLauncher(onNoHandler: () -> Unit): (CalendarEventSpec) -> Unit {
+    val context = LocalContext.current
+    val currentOnNoHandler by rememberUpdatedState(onNoHandler)
+    var launching by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        launching = false
+        onPauseOrDispose {}
+    }
+    return remember(context) {
+        { spec ->
+            if (!launching) {
+                launching = true
+                context.launchCalendarInsert(buildCalendarInsertIntent(spec)) {
+                    launching = false
+                    currentOnNoHandler()
+                }
+            }
+        }
+    }
 }
 
 /**

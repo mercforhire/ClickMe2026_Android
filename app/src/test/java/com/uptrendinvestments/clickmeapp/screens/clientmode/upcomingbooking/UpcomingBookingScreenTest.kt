@@ -369,6 +369,25 @@ class UpcomingBookingScreenTest {
     private fun loaded(d: UpcomingBookingDetails = details()) = UpcomingBookingUiState.Loaded(d)
 
     @Test
+    fun addToCalendarShowsForABookedSessionNotYetEnded() {
+        setScreen(loaded(details(status = "confirmed")))
+        rule.onNodeWithTag(UPCOMING_ADD_TO_CALENDAR_TAG).assertExists()
+        rule.onNodeWithText("Add to Calendar").assertExists()
+    }
+
+    @Test
+    fun addToCalendarIsHiddenForAPendingRequest() {
+        setScreen(loaded(details(status = "pending_approval")))
+        rule.onAllNodesWithTag(UPCOMING_ADD_TO_CALENDAR_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun addToCalendarIsHiddenOnceTheSessionHasEnded() {
+        setScreen(loaded(details(status = "confirmed")), joinNow = detailsStart.plusSeconds(3600))
+        rule.onAllNodesWithTag(UPCOMING_ADD_TO_CALENDAR_TAG).assertCountEquals(0)
+    }
+
+    @Test
     fun titleIsUpcomingBooking() {
         setScreen(loaded())
         rule.onNodeWithText("Upcoming Booking").assertExists()

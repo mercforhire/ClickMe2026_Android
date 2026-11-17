@@ -21,11 +21,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -82,6 +84,11 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subv
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingStatusRow
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingTimezoneNote
 import com.uptrendinvestments.clickmeapp.screens.clientmode.upcomingbooking.subviews.UpcomingBookingTopicCard
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.CalendarEventSpec
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.calendarEventSpec
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.isCalendarEventOffered
+import com.uptrendinvestments.clickmeapp.screens.expertmode.confirmed.rememberCalendarInsertLauncher
+import com.uptrendinvestments.clickmeapp.screens.expertmode.meetingTypeLabel
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
 import com.uptrendinvestments.clickmeapp.ui.theme.Motion
@@ -91,6 +98,9 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
+
+/** Test tag on the Add to Calendar button (shown for a booked session that has not ended). */
+const val UPCOMING_ADD_TO_CALENDAR_TAG = "upcoming_booking_add_to_calendar"
 
 /** Test tag on the Cancel Booking button. */
 const val UPCOMING_BOOKING_CANCEL_TAG = "upcoming_booking_cancel"
@@ -215,6 +225,11 @@ fun UpcomingBookingContent(
     val acceptedMessage = stringResource(R.string.reschedule_accepted)
     val declinedMessage = stringResource(R.string.reschedule_declined)
     val sentMessage = stringResource(R.string.reschedule_start_sent)
+    val noCalendarMessage = stringResource(R.string.booking_confirmed_no_calendar)
+    val launchCalendar =
+        rememberCalendarInsertLauncher {
+            scope.launch { snackbarHostState.showSnackbar(noCalendarMessage) }
+        }
 
     LaunchedEffect(rescheduleState.notice) {
         val notice = rescheduleState.notice ?: return@LaunchedEffect
@@ -289,6 +304,7 @@ fun UpcomingBookingContent(
                         onDecline = onDecline,
                         messageBusy = messageBusy,
                         onMessage = onMessage,
+                        onAddToCalendar = launchCalendar,
                         modifier = bodyModifier,
                         zone = zone,
                         timeFormat = timeFormat,
@@ -368,11 +384,22 @@ private fun LoadedBody(
     onDecline: (reason: String) -> Unit,
     messageBusy: Boolean,
     onMessage: () -> Unit,
+    onAddToCalendar: (CalendarEventSpec) -> Unit,
     modifier: Modifier,
     zone: ZoneId,
     timeFormat: java.text.DateFormat,
     locale: Locale,
 ) {
+    // Resolved in composition, not in the click lambda: "ClickMe · {topic} with {expert}".
+    val calendarTopic =
+        details.topicTitle?.trim()?.takeIf { it.isNotEmpty() }
+            ?: stringResource(R.string.booking_confirmed_topic_fallback)
+    val calendarExpert =
+        details.expertName?.trim()?.takeIf { it.isNotEmpty() }
+            ?: stringResource(R.string.upcoming_booking_calendar_expert_fallback)
+    val calendarTitle = stringResource(R.string.upcoming_booking_calendar_title, calendarTopic, calendarExpert)
+    val calendarMeetingType = meetingTypeLabel(details.meetingType)
+
     // The Scaffold insets already cover the navigation bar.
     // Keep the last proposal so the card can fade out after the reload cleared it (UI-SPEC Motion, 200 ms).
     var lastProposal by remember { mutableStateOf<RescheduleProposalUi?>(null) }
@@ -443,6 +470,35 @@ private fun LoadedBody(
         details.clientNotes?.let {
             Spacer(Modifier.height(Spacing.md))
             UpcomingBookingMessageCard(it)
+        }
+        if (isCalendarEventOffered(details.status.raw, details.end, joinNow)) {
+            Spacer(Modifier.height(Spacing.md))
+            OutlinedButton(
+                onClick = {
+                    onAddToCalendar(
+                        calendarEventSpec(
+                            title = calendarTitle,
+                            beginMillis = details.start.toEpochMilli(),
+                            endMillis = details.end.toEpochMilli(),
+                            meetingTypeLabel = calendarMeetingType,
+                            message = details.clientNotes,
+                        ),
+                    )
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = CancelMinHeight)
+                        .testTag(UPCOMING_ADD_TO_CALENDAR_TAG),
+            ) {
+                Icon(
+                    Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    modifier = Modifier.size(CancelIconSize),
+                )
+                Spacer(Modifier.width(Spacing.sm))
+                Text(stringResource(R.string.booking_confirmed_add_to_calendar))
+            }
         }
         Spacer(Modifier.height(Spacing.md))
         MessageButton(
