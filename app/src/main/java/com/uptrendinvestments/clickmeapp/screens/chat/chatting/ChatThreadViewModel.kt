@@ -237,10 +237,10 @@ class ChatThreadViewModel
                         it.copy(items = ThreadReducer.ack(it.items, clientMsgId, ack.messageId, ack.timestamp))
                     }
                 } catch (e: ApiException) {
-                    if (e is ApiException.Http && e.status < SERVER_ERROR_FROM) {
+                    if (e is ApiException.Http && isRefusal(e.status)) {
                         handleSendFailure(clientMsgId, text, e)
                     } else {
-                        // A network error, a 5xx or an unreadable response keeps the bubble as Failed (D-01).
+                        // A network error, a 5xx, a 408/429 or an unreadable response keeps the bubble Failed (D-01).
                         _uiState.update { it.copy(items = ThreadReducer.fail(it.items, clientMsgId)) }
                     }
                 } catch (e: CancellationException) {
@@ -598,6 +598,15 @@ class ChatThreadViewModel
             /** Safety net that clears the peer typing indicator when no `typing.stop` or message arrives. */
             const val PEER_TYPING_TIMEOUT_MS = 6_000L
             private const val ROLE_EXPERT = "expert"
-            private const val SERVER_ERROR_FROM = 500
+
+            /** Statuses that mean "try again later", not "this message is refused" (iOS `retryableStatusCodes`). */
+            private val RETRYABLE_STATUSES = setOf(408, 429)
+
+            /**
+             * Whether a failed send is a refusal: any HTTP 4xx except 408 and 429, which keep the bubble as Failed
+             * because Retry can still succeed (the send is idempotent on `client_msg_id`). Mirrors iOS
+             * `ChatThreadReducer.sendFailure(for:)`.
+             */
+            private fun isRefusal(status: Int): Boolean = status in 400..499 && status !in RETRYABLE_STATUSES
         }
     }

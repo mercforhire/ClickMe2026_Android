@@ -156,6 +156,27 @@ class ChatThreadViewModelSendTest {
         }
 
     @Test
+    fun timeoutAndRateLimitKeepTheFailedBubble() =
+        runTest(main.testDispatcher) {
+            // 408 and 429 say "try again later", so Retry stays available (iOS parity, IN-09).
+            listOf(408, 429).forEach { status ->
+                h.api.sendChatMessageHandler = { _, _ -> throw h.api.httpError(status, "{}") }
+                val vm = loadedViewModel()
+                vm.onComposerChanged("hi")
+                vm.send()
+                runCurrent()
+                val failed =
+                    vm.state.items
+                        .single()
+                        .message()
+                assertEquals(Delivery.Failed, failed.delivery)
+                assertEquals("hi", failed.text)
+                assertEquals("", vm.state.composerText)
+                assertNull(vm.state.sendError)
+            }
+        }
+
+    @Test
     fun decodingFailureMarksFailed() =
         runTest(main.testDispatcher) {
             h.api.sendChatMessageHandler = { _, _ -> throw IllegalStateException("bad json") }
