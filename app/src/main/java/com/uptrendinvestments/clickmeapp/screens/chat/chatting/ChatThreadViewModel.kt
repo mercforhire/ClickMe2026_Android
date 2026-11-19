@@ -540,7 +540,9 @@ class ChatThreadViewModel
             _uiState.update {
                 when (mode) {
                     LoadMode.Loud -> it.copy(load = ThreadLoad.Loading, isLoadingEarlier = false)
-                    LoadMode.Pull -> it.copy(isRefreshing = true)
+                    // Pull to refresh lifts the "unavailable" banner, so a reinstated user can be messaged
+                    // again without leaving the chat (iOS `ChattingViewModel.reload()`, phase 07 WR-02).
+                    LoadMode.Pull -> it.copy(isRefreshing = true, recipientUnavailable = false)
                     LoadMode.Quiet, LoadMode.Realtime -> it
                 }
             }

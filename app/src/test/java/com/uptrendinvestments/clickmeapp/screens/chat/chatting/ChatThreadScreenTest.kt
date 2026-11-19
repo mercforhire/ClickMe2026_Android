@@ -665,7 +665,7 @@ class ChatThreadScreenTest {
     fun bannerForUnavailableRecipient() {
         show(loaded(listOf(incoming("m1", "Earlier words"))).copy(recipientUnavailable = true))
 
-        rule.onNodeWithText("This user is unavailable.").assertIsDisplayed()
+        rule.onNodeWithText("This user is unavailable. Pull down to try again.").assertIsDisplayed()
         rule.onNodeWithTag(CHAT_INPUT_TAG).assertDoesNotExist()
         rule.onNodeWithText("Earlier words").assertIsDisplayed()
     }

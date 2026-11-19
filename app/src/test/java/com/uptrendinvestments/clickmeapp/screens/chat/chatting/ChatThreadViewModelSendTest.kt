@@ -534,6 +534,17 @@ class ChatThreadViewModelSendTest {
         }
 
     @Test
+    fun pullToRefreshLiftsTheUnavailableBanner() =
+        runTest(main.testDispatcher) {
+            val vm = refusedViewModel(403, "RECIPIENT_UNAVAILABLE")
+            assertEquals(ComposerMode.Unavailable, vm.state.composerMode)
+            vm.refresh()
+            runCurrent()
+            assertFalse(vm.state.recipientUnavailable)
+            assertEquals(ComposerMode.Normal, vm.state.composerMode)
+        }
+
+    @Test
     fun otherClientErrorShowsDialogAndRestores() =
         runTest(main.testDispatcher) {
             val vm = refusedViewModel(422, "VALIDATION_ERROR", "Validation failed")

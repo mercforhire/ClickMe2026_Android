@@ -44,7 +44,7 @@
     <string name="chat_banner_blocked_by_me">You blocked this conversation</string>
     <string name="chat_banner_blocked_by_me_hint">Open the menu to unblock.</string>
     <string name="chat_banner_blocked_by_peer">You can\'t reply to this conversation</string>
-    <string name="chat_banner_unavailable">This user is unavailable.</string>
+    <string name="chat_banner_unavailable">This user is unavailable. Pull down to try again.</string>
     <string name="chat_send_error_title">Couldn\'t send message</string>
     <string name="chat_composer_counter">%1$d/10000</string>
     <string name="chat_composer_limit_reached">Message length limit reached</string>
