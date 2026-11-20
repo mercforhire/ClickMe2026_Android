@@ -104,6 +104,7 @@ fun ClientProfileHomeContent(
             email = card.email,
             avatarUrl = card.avatarUrl,
             onClick = actions.onEditProfile,
+            showOnlineDot = true,
         )
         ProfileHubModeSwitchCard(
             title = stringResource(R.string.profile_hub_switch_to_expert),

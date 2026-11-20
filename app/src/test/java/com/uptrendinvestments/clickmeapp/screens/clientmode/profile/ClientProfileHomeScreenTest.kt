@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.uptrendinvestments.clickmeapp.config.AppLinks
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.PROFILE_HUB_ONLINE_DOT_TAG
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -207,6 +209,20 @@ class ClientProfileHomeScreenTest {
         rule.onNodeWithText("Ana Lee").assertExists()
         rule.onNodeWithText("ana@example.com").assertExists()
         rule.onNodeWithContentDescription("Ana Lee, ana@example.com, Edit profile").assertExists()
+    }
+
+    @Test
+    fun userCardShowsTheOnlineDot() {
+        setContent()
+
+        rule.onAllNodesWithTag(PROFILE_HUB_ONLINE_DOT_TAG, useUnmergedTree = true).assertCountEquals(1)
+    }
+
+    @Test
+    fun userCardFallbackStillShowsTheOnlineDot() {
+        setContent(card = ProfileHubCard(null, null, null))
+
+        rule.onAllNodesWithTag(PROFILE_HUB_ONLINE_DOT_TAG, useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test

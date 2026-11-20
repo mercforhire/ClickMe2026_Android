@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,8 +64,11 @@ import kotlinx.coroutines.launch
 const val PROFILE_HUB_USER_CARD_TAG = "profile_hub_user_card"
 const val PROFILE_HUB_MODE_SWITCH_TAG = "profile_hub_mode_switch"
 const val PROFILE_HUB_LOGOUT_TAG = "profile_hub_logout"
+const val PROFILE_HUB_ONLINE_DOT_TAG = "profile_hub_online_dot"
 
 private val AvatarSize = 56.dp
+private val OnlineDotSize = 14.dp
+private val OnlineDotRingWidth = 2.dp
 private val TargetSize = 48.dp
 private val IconSize = 24.dp
 private val ModeCardMinHeight = 72.dp
@@ -137,6 +141,10 @@ fun rememberPrivacyLinkOpener(snackbarHostState: SnackbarHostState): () -> Unit 
 /**
  * The signed-in user's card: avatar, name and email, and a decorative edit glyph. The whole card is one button that
  * opens settings; its merged spoken label is "{name}, {email}, Edit profile". Name and email wrap with no line cap.
+ *
+ * [showOnlineDot] draws the green dot at the avatar's bottom-right, as the iOS client hub does (iOS 06-06, U2). It is
+ * decorative and static: iOS sets it on at init and never reads presence, so there is no state behind it here either.
+ * The expert hub leaves it off.
  */
 @Composable
 fun ProfileHubUserCard(
@@ -145,6 +153,7 @@ fun ProfileHubUserCard(
     avatarUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showOnlineDot: Boolean = false,
 ) {
     val shownName = name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.profile_hub_your_profile)
     val shownEmail = email?.takeIf { it.isNotBlank() }
@@ -155,10 +164,11 @@ fun ProfileHubUserCard(
         } else {
             stringResource(R.string.profile_hub_user_card_a11y_no_email, shownName, editLabel)
         }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerLow
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = cardColor,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
@@ -172,7 +182,19 @@ fun ProfileHubUserCard(
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Avatar(url = avatarUrl, contentDescription = null, size = AvatarSize)
+            Box {
+                Avatar(url = avatarUrl, contentDescription = null, size = AvatarSize)
+                if (showOnlineDot) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(OnlineDotSize)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .border(OnlineDotRingWidth, cardColor, CircleShape)
+                            .testTag(PROFILE_HUB_ONLINE_DOT_TAG),
+                    )
+                }
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     text = shownName,
@@ -361,7 +383,7 @@ private fun ProfileHubUserCardPreview() {
     ClickMeTheme {
         Surface(color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                ProfileHubUserCard("Ana Lee", "ana@example.com", null, onClick = {})
+                ProfileHubUserCard("Ana Lee", "ana@example.com", null, onClick = {}, showOnlineDot = true)
                 ProfileHubModeSwitchCard("Switch to Expert Mode", "Start offering consultations", onClick = {})
             }
         }

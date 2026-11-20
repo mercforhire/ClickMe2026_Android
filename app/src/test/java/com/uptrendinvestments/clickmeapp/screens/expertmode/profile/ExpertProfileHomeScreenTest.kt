@@ -4,6 +4,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.profile
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +15,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.LoginData
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
 import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.ProfileHubCard
+import com.uptrendinvestments.clickmeapp.screens.clientmode.profile.subviews.PROFILE_HUB_ONLINE_DOT_TAG
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.testing.SignupTestHarness
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
@@ -76,6 +78,13 @@ class ExpertProfileHomeScreenTest {
     private fun yOf(text: String): Float {
         val node = rule.onNodeWithText(text).fetchSemanticsNode()
         return node.positionInRoot.y
+    }
+
+    @Test
+    fun expertHubShowsNoOnlineDot() {
+        setContent()
+
+        rule.onAllNodesWithTag(PROFILE_HUB_ONLINE_DOT_TAG, useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test
