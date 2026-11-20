@@ -25,12 +25,14 @@ import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -50,6 +52,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -77,11 +80,15 @@ const val CANCEL_CONFIRM_TAG = "cancel_confirm"
 /** Test tag on the "Keep Booking" button. */
 const val CANCEL_KEEP_TAG = "cancel_keep"
 
+/** Test tag on the "Cancellation policy" link. */
+const val CANCEL_POLICY_LINK_TAG = "cancel_policy_link"
+
 private val WarningCircle = 64.dp
 private val WarningIcon = 32.dp
 private val SummaryAvatar = 48.dp
 private val RowIcon = 20.dp
 private val ButtonMinHeight = 56.dp
+private val LinkMinHeight = 48.dp
 private val SpinnerSize = 24.dp
 private const val WARNING_FILL_ALPHA = 0.12f
 private const val WARNING_BORDER_ALPHA = 0.3f
@@ -101,6 +108,7 @@ fun CancellationConfirmStep(
     isSubmitting: Boolean,
     onKeepBooking: () -> Unit,
     onConfirm: () -> Unit,
+    onOpenPolicy: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
     timeFormat: java.text.DateFormat = rememberDeviceTimeFormat(),
@@ -118,6 +126,7 @@ fun CancellationConfirmStep(
             verticalArrangement = Arrangement.spacedBy(Spacing.lg, Alignment.CenterVertically),
         ) {
             ConfirmCard(summary = summary, refund = refund, zone = zone, timeFormat = timeFormat, locale = locale)
+            PolicyLink(onClick = onOpenPolicy)
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 PressScaleButton(
                     onClick = onKeepBooking,
@@ -128,6 +137,24 @@ fun CancellationConfirmStep(
                 }
                 ConfirmButton(isSubmitting = isSubmitting, onConfirm = onConfirm)
             }
+        }
+    }
+}
+
+/** Centred, underlined "Cancellation policy" link in the accent colour, as iOS (SET-07), with a 48 dp target. */
+@Composable
+private fun PolicyLink(onClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        TextButton(
+            onClick = onClick,
+            modifier = Modifier.heightIn(min = LinkMinHeight).testTag(CANCEL_POLICY_LINK_TAG),
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+        ) {
+            Text(
+                text = stringResource(R.string.cancel_booking_policy_link),
+                style = MaterialTheme.typography.labelLarge,
+                textDecoration = TextDecoration.Underline,
+            )
         }
     }
 }
@@ -376,6 +403,7 @@ private fun CancellationConfirmStepPreview() {
                 isSubmitting = false,
                 onKeepBooking = {},
                 onConfirm = {},
+                onOpenPolicy = {},
             )
         }
     }

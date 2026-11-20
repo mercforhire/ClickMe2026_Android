@@ -26,6 +26,7 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_COMMENT_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_CONFIRM_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_KEEP_TAG
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_POLICY_LINK_TAG
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CANCEL_REASON_ROW_TAG_PREFIX
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CancellationConfirmStep
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.subviews.CancellationReasonStep
@@ -66,6 +67,7 @@ class ClientCancellationScreenTest {
     private var continueCount = 0
     private var keepCount = 0
     private var confirmCount = 0
+    private var policyCount = 0
 
     // region Task 1: reason step
 
@@ -171,6 +173,7 @@ class ClientCancellationScreenTest {
                     isSubmitting = isSubmitting,
                     onKeepBooking = { keepCount++ },
                     onConfirm = { confirmCount++ },
+                    onOpenPolicy = { policyCount++ },
                     zone = zone,
                     timeFormat = time12,
                     locale = Locale.US,
@@ -205,9 +208,49 @@ class ClientCancellationScreenTest {
         showConfirmStep(RefundPreview.Full(5000, "CAD"))
 
         rule.onNodeWithText("Full refund: CA$50.00", substring = true).assertExists()
-        rule
-            .onNodeWithText("Refunds typically appear in your account within 3–5 business days.")
-            .assertExists()
+        rule.onNodeWithText("Your bank decides how long a refund takes to appear.").assertExists()
+        rule.onAllNodesWithText("business days", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun confirmStepShowsThePolicyLinkAndOpensIt() {
+        showConfirmStep()
+
+        rule.onNodeWithText("Cancellation policy").assertExists()
+        rule.onNodeWithTag(CANCEL_POLICY_LINK_TAG).assertIsEnabled()
+        rule.onNodeWithTag(CANCEL_POLICY_LINK_TAG).performScrollTo().performClick()
+
+        assertEquals(1, policyCount)
+    }
+
+    @Test
+    fun noRefundNoteIsShownOutsideRefundCases() {
+        showConfirmStep(RefundPreview.NoRefundWithin24h)
+
+        rule.onAllNodesWithText("Your bank decides", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun policyScreenShowsTheThreeCardsWithTheIosCopy() {
+        rule.setContent { ClickMeTheme { CancellationPolicyScreen(onBack = { backCount++ }) } }
+
+        listOf("Cancellation Deadlines", "Refund Eligibility", "How to Initiate a Cancellation")
+            .forEach { rule.onNodeWithText(it).assertExists() }
+        rule.onNodeWithText("More than 24 hours before the start").assertExists()
+        rule.onNodeWithText("Not charged, but no refund if already charged").assertExists()
+        val fullRefund =
+            "If your card was already charged (for example, after a reschedule) and you cancel more than " +
+                "24 hours before the start, you get a full refund to the same card."
+        rule.onNodeWithText(fullRefund).assertExists()
+        val intro =
+            "To cancel a booking, follow the steps below. You can start a cancellation from the Bookings tab " +
+                "until the session ends."
+        rule.onNodeWithText(intro).assertExists()
+        rule.onNodeWithText("Tap 'Cancel'.").assertExists()
+        rule.onAllNodesWithText("business days", substring = true).assertCountEquals(0)
+
+        rule.onNode(hasContentDescriptionExactly("Back")).performClick()
+        assertEquals(1, backCount)
     }
 
     @Test
@@ -297,6 +340,7 @@ class ClientCancellationScreenTest {
                     onBackToReason = { backToReasonCount++ },
                     onConfirm = { confirmCount++ },
                     onDismissError = { dismissErrorCount++ },
+                    onOpenPolicy = { policyCount++ },
                     onFinished = { finishedCount++ },
                     zone = zone,
                     timeFormat = time12,
@@ -364,6 +408,7 @@ class ClientCancellationScreenTest {
                     onBackToReason = { backToReasonCount++ },
                     onConfirm = { confirmCount++ },
                     onDismissError = { dismissErrorCount++ },
+                    onOpenPolicy = { policyCount++ },
                     onFinished = { finishedCount++ },
                     zone = zone,
                     timeFormat = time12,

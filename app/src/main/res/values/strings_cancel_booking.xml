@@ -23,11 +23,35 @@
     <string name="cancel_booking_refund_none_24h">No refund — cancelling within 24 hours of the session</string>
     <string name="cancel_booking_refund_hold">The hold on your card will be released</string>
     <string name="cancel_booking_refund_policy">Any refund follows our cancellation policy.</string>
-    <string name="cancel_booking_refund_note">Refunds typically appear in your account within 3–5 business days.</string>
+    <string name="cancel_booking_refund_note">Your bank decides how long a refund takes to appear.</string>
+    <string name="cancel_booking_policy_link">Cancellation policy</string>
     <string name="cancel_booking_date_time">%1$s, %2$s</string>
     <string name="cancel_booking_result_cancelled">Booking cancelled</string>
     <string name="cancel_booking_result_refunded">Booking cancelled. %1$s will be refunded</string>
     <string name="cancel_booking_error_title">Couldn\'t cancel booking</string>
     <string name="cancel_booking_error_not_found">This booking could not be found.</string>
     <string name="cancel_booking_error_not_cancellable">This booking can no longer be cancelled.</string>
+
+    <!-- Cancellation Policy screen (iOS CancellationPoliciesView, SET-07 parity). Copy is word for word from iOS. -->
+    <string name="cancel_policy_title">Cancellation Policy</string>
+    <string name="cancel_policy_deadlines_title">Cancellation Deadlines</string>
+    <string name="cancel_policy_deadline_early_title">More than 24 hours before the start</string>
+    <string name="cancel_policy_deadline_early_body">Not charged, or a full refund if already charged</string>
+    <string name="cancel_policy_deadline_late_title">Within 24 hours of the start</string>
+    <string name="cancel_policy_deadline_late_body">Not charged, but no refund if already charged</string>
+    <string name="cancel_policy_deadline_after_title">After the session ends</string>
+    <string name="cancel_policy_deadline_after_body">Can\'t be cancelled; charged if the session went ahead</string>
+    <string name="cancel_policy_refund_title">Refund Eligibility</string>
+    <string name="cancel_policy_refund_not_charged_title">Not Charged</string>
+    <string name="cancel_policy_refund_not_charged_body">Your card is only held until the session ends. Cancel before then and the hold is released, so you pay nothing. The same applies if the expert cancels or doesn\'t show up.</string>
+    <string name="cancel_policy_refund_full_title">Full Refund</string>
+    <string name="cancel_policy_refund_full_body">If your card was already charged (for example, after a reschedule) and you cancel more than 24 hours before the start, you get a full refund to the same card.</string>
+    <string name="cancel_policy_refund_none_title">No Refund</string>
+    <string name="cancel_policy_refund_none_body">No refund if your card was already charged and you cancel within 24 hours of the start, or if the expert joins and you don\'t.</string>
+    <string name="cancel_policy_how_title">How to Initiate a Cancellation</string>
+    <string name="cancel_policy_how_intro">To cancel a booking, follow the steps below. You can start a cancellation from the Bookings tab until the session ends.</string>
+    <string name="cancel_policy_how_step_1">Go to the \'Bookings\' section of the app.</string>
+    <string name="cancel_policy_how_step_2">Find the booking you wish to cancel.</string>
+    <string name="cancel_policy_how_step_3">Tap \'Cancel\'.</string>
+    <string name="cancel_policy_how_step_4">Follow the on-screen instructions.</string>
 </resources>

@@ -39,6 +39,8 @@ import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.ClientBo
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingnote.clientBookingNoteEntry
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.bookingsummary.BookingSummaryViewModel
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancellationPolicyKey
+import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.CancellationPolicyScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationScreen
 import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.ClientCancellationViewModel
 import com.uptrendinvestments.clickmeapp.screens.clientmode.expertprofile.ExpertProfileKey
@@ -232,6 +234,7 @@ fun HomeClientScreen(
                                 viewModel = cancelViewModel,
                                 onBack = onBack,
                                 onCancelled = onCancelled,
+                                onOpenPolicy = { navigator.navigate(CancellationPolicyKey) },
                             )
                         },
                         summary = { key, onBack, onBookAgain, onOpenPaymentMethods, onLeaveReview, onOpenNote ->
@@ -260,6 +263,9 @@ fun HomeClientScreen(
                             )
                         },
                     )
+                    entry<CancellationPolicyKey>(metadata = BottomBar.hidden()) {
+                        CancellationPolicyScreen(onBack = navigator::goBack)
+                    }
                     clientFavoritesEntry(navigator) { actions ->
                         FavoritesScreen(
                             viewModel = hiltViewModel(),

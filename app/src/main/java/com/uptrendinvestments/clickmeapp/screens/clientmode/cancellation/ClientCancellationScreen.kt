@@ -65,13 +65,15 @@ private const val SLIDE_FRACTION_DIVISOR = 3
  * one screen (UI-SPEC A9).
  *
  * When the cancel succeeds the ViewModel has already posted the My Bookings launch request (D-07), so [onCancelled]
- * only has to `resetAndSelect` My Bookings. It runs once per success.
+ * only has to `resetAndSelect` My Bookings. It runs once per success. [onOpenPolicy] pushes the Cancellation Policy
+ * screen from the confirm step; Back from it returns here with the reason kept (the ViewModel is entry-scoped).
  */
 @Composable
 fun ClientCancellationScreen(
     viewModel: ClientCancellationViewModel,
     onBack: () -> Unit,
     onCancelled: () -> Unit,
+    onOpenPolicy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,6 +87,7 @@ fun ClientCancellationScreen(
         onBackToReason = viewModel::backToReason,
         onConfirm = viewModel::confirm,
         onDismissError = viewModel::dismissError,
+        onOpenPolicy = onOpenPolicy,
         onFinished = {
             viewModel.consumeFinished()
             onCancelled()
@@ -109,6 +112,7 @@ fun ClientCancellationContent(
     onBackToReason: () -> Unit,
     onConfirm: () -> Unit,
     onDismissError: () -> Unit,
+    onOpenPolicy: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
     zone: ZoneId = ZoneId.systemDefault(),
@@ -160,6 +164,7 @@ fun ClientCancellationContent(
                                     isSubmitting = state.isSubmitting,
                                     onKeepBooking = onBack,
                                     onConfirm = onConfirm,
+                                    onOpenPolicy = onOpenPolicy,
                                     zone = zone,
                                     timeFormat = timeFormat,
                                     locale = locale,
