@@ -11,6 +11,7 @@ import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -32,10 +33,11 @@ class DeleteAccountViewModelTest {
     private val api = FakeClickMeApi()
     private val guard = FakeCallGuard()
     private val deletionState = AccountDeletionState()
+    private val tokens = FakeSecureTokenStore().apply { saveLastLoginEmail("ada@b.co") }
 
     private fun viewModel(handle: SavedStateHandle = SavedStateHandle()) =
         DeleteAccountViewModel(
-            DeleteAccountRepository(api),
+            DeleteAccountRepository(api, tokens, main.testDispatcher),
             guard,
             deletionState,
             CoroutineScope(main.testDispatcher),
@@ -379,5 +381,49 @@ class DeleteAccountViewModelTest {
             assertEquals("", state.password)
             assertNull(state.passwordError)
             assertNull(state.dialog)
+        }
+
+    @Test
+    fun successfulDeletionForgetsTheRememberedLoginEmail() =
+        runTest(main.testDispatcher) {
+            stubSuccess()
+            val vm = viewModel()
+            vm.fillReasonForm()
+
+            vm.confirmDeletion()
+            runCurrent()
+
+            assertTrue(deletionState.farewellVisible.value)
+            assertNull(tokens.lastLoginEmail)
+        }
+
+    @Test
+    fun failedDeletionKeepsTheRememberedLoginEmail() =
+        runTest(main.testDispatcher) {
+            api.requestAccountDeletionHandler = { DeletionRequestData("token-1") }
+            api.deleteAccountHandler = { throw api.httpError(409, """{"status":"error","message":"busy"}""") }
+            val vm = viewModel()
+            vm.fillReasonForm()
+
+            vm.confirmDeletion()
+            runCurrent()
+
+            assertFalse(deletionState.farewellVisible.value)
+            assertEquals("ada@b.co", tokens.lastLoginEmail)
+        }
+
+    @Test
+    fun networkFailureDuringDeletionKeepsTheRememberedLoginEmail() =
+        runTest(main.testDispatcher) {
+            api.requestAccountDeletionHandler = { DeletionRequestData("token-1") }
+            api.deleteAccountHandler = { throw IOException("offline") }
+            val vm = viewModel()
+            vm.fillReasonForm()
+
+            vm.confirmDeletion()
+            runCurrent()
+
+            assertFalse(deletionState.farewellVisible.value)
+            assertEquals("ada@b.co", tokens.lastLoginEmail)
         }
 }

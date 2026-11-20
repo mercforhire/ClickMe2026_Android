@@ -28,6 +28,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_KEEP_TAG
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
+import com.uptrendinvestments.clickmeapp.testing.FakeSecureTokenStore
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.CoroutineScope
@@ -55,7 +56,7 @@ class DeleteAccountScreenTest {
 
     private fun viewModel() =
         DeleteAccountViewModel(
-            DeleteAccountRepository(FakeClickMeApi()),
+            DeleteAccountRepository(FakeClickMeApi(), FakeSecureTokenStore(), main.testDispatcher),
             guard,
             AccountDeletionState(),
             CoroutineScope(main.testDispatcher),
