@@ -57,6 +57,7 @@ private val RemoveIconSize = 24.dp
 private val AddIconSize = 16.dp
 private const val OVERLAP_BORDER_ALPHA = 0.5f
 private const val REMOVE_ICON_ALPHA = 0.85f
+private const val ADD_HOURS_DISABLED_ALPHA = 0.45f
 
 /** Test tag of the day card header (toggle) row, e.g. `availability_day_MONDAY`. */
 fun availabilityDayTag(day: DayOfWeek): String = "availability_day_${day.name}"
@@ -146,8 +147,13 @@ fun AvailabilityDayCard(
                         }
                     }
                     Spacer(modifier = Modifier.size(Spacing.md))
+                    // No room left in the day (iOS 06-03): disabled and dimmed like iOS's 0.45 opacity.
+                    val canAddHours = AvailabilityScheduleLogic.canAddHours(day.slots)
+                    val addAlpha = if (canAddHours) 1f else ADD_HOURS_DISABLED_ALPHA
+                    val addColor = MaterialTheme.colorScheme.primary.copy(alpha = addAlpha)
                     TextButton(
                         onClick = onAddHours,
+                        enabled = canAddHours,
                         modifier =
                             Modifier
                                 .align(Alignment.CenterHorizontally)
@@ -158,13 +164,13 @@ fun AvailabilityDayCard(
                             imageVector = Icons.Filled.Add,
                             contentDescription = null,
                             modifier = Modifier.size(AddIconSize),
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = addColor,
                         )
                         Spacer(modifier = Modifier.width(Spacing.xs))
                         Text(
                             text = stringResource(R.string.availability_add_hours),
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = addColor,
                         )
                     }
                 }

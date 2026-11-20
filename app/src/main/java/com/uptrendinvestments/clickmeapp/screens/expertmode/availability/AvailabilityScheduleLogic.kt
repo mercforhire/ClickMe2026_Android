@@ -139,21 +139,35 @@ object AvailabilityScheduleLogic {
             it.copy(enabled = enabled, slots = slots)
         }
 
-    /** Appends a one-hour slot after the latest end, never later than 23:30; overlaps are flagged by the banner. */
+    /**
+     * Whether Add hours has room (iOS plan 06-03, user decision U3): true for a day with no slots, otherwise the new
+     * slot's start, the latest end across all slots plus [ADD_HOURS_GAP], must be before 23:00 ([LATEST_START]). The
+     * latest end is the largest end, not the last slot's, since an earlier slot may have been edited to run later.
+     */
+    fun canAddHours(slots: List<TimeSlot>): Boolean {
+        val maxEnd = slots.maxOfOrNull { it.end } ?: return true
+        return maxEnd + ADD_HOURS_GAP < LATEST_START
+    }
+
+    /**
+     * Appends a one-hour slot [ADD_HOURS_GAP] minutes after the latest end, its end clamped to 23:30 ([LATEST_END]),
+     * as iOS `AvailabilitySlotRules.addHours`. A day with no room ([canAddHours] false) is returned unchanged, so a
+     * new slot never starts before an existing end and the overlap banner is not needed for it.
+     */
     fun addHours(
         days: List<DaySchedule>,
         day: DayOfWeek,
     ): List<DaySchedule> =
         update(days, day) { d ->
             val maxEnd = d.slots.maxOfOrNull { it.end }
-            val added =
-                if (maxEnd == null) {
-                    SEED_SLOT
-                } else {
-                    val start = minOf(maxEnd + ADD_HOURS_GAP, LATEST_START)
-                    TimeSlot(start, minOf(start + ADD_HOURS_LENGTH, LATEST_END))
+            when {
+                maxEnd == null -> d.copy(slots = d.slots + SEED_SLOT)
+                !canAddHours(d.slots) -> d
+                else -> {
+                    val start = maxEnd + ADD_HOURS_GAP
+                    d.copy(slots = d.slots + TimeSlot(start, minOf(start + ADD_HOURS_LENGTH, LATEST_END)))
                 }
-            d.copy(slots = d.slots + added)
+            }
         }
 
     fun removeSlot(

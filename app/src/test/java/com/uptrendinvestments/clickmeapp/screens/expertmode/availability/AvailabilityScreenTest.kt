@@ -304,6 +304,18 @@ class AvailabilityScreenTest {
     }
 
     @Test
+    fun addHoursIsDisabledWhenTheLatestEndLeavesNoRoom() {
+        val days =
+            AvailabilityScheduleLogic.defaultSchedule().map {
+                if (it.day == DayOfWeek.MONDAY) it.copy(slots = listOf(TimeSlot(540, 1350))) else it
+            }
+        show(loaded(days = days))
+
+        rule.onNodeWithTag(availabilityAddHoursTag(DayOfWeek.MONDAY)).performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag(availabilityAddHoursTag(DayOfWeek.TUESDAY)).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
     fun saveErrorDialogShowsTitleAndMessage() {
         show(loaded(dialog = FieldError.Text("Boom")))
 

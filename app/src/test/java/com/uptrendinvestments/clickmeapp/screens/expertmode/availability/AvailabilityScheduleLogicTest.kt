@@ -237,13 +237,43 @@ class AvailabilityScheduleLogicTest {
     }
 
     @Test
-    fun addHours_clampsNearMidnight() {
-        val a = week(day(DayOfWeek.MONDAY, TimeSlot(540, 1350)))
-        assertEquals(TimeSlot(1380, 1410), logic.addHours(a, DayOfWeek.MONDAY)[0].slots.last())
-        val b = week(day(DayOfWeek.MONDAY, TimeSlot(540, 1410)))
-        assertEquals(TimeSlot(1380, 1410), logic.addHours(b, DayOfWeek.MONDAY)[0].slots.last())
-        val c = week(day(DayOfWeek.MONDAY, TimeSlot(1320, 1440)))
-        assertEquals(TimeSlot(1380, 1410), logic.addHours(c, DayOfWeek.MONDAY)[0].slots.last())
+    fun addHours_emptyDayCanAdd() {
+        assertTrue(logic.canAddHours(emptyList()))
+    }
+
+    @Test
+    fun addHours_latestEnd2200_addsHalfPastTenToHalfPastEleven() {
+        val s = week(day(DayOfWeek.MONDAY, TimeSlot(540, 1320)))
+        assertTrue(logic.canAddHours(s[0].slots))
+        assertEquals(TimeSlot(1350, 1410), logic.addHours(s, DayOfWeek.MONDAY)[0].slots.last())
+    }
+
+    @Test
+    fun addHours_latestEnd2230_hasNoRoomAndLeavesTheDayUnchanged() {
+        val s = week(day(DayOfWeek.MONDAY, TimeSlot(540, 1350)))
+        assertFalse(logic.canAddHours(s[0].slots))
+        assertEquals(s, logic.addHours(s, DayOfWeek.MONDAY))
+    }
+
+    @Test
+    fun addHours_offGridLatestEnd2215_clampsTheEndTo2330() {
+        val s = week(day(DayOfWeek.MONDAY, TimeSlot(540, 1335)))
+        assertTrue(logic.canAddHours(s[0].slots))
+        assertEquals(TimeSlot(1365, 1410), logic.addHours(s, DayOfWeek.MONDAY)[0].slots.last())
+    }
+
+    @Test
+    fun addHours_latestEndLaterThanTheLastSlotIsUsed() {
+        val s = week(day(DayOfWeek.MONDAY, TimeSlot(540, 1410), TimeSlot(600, 660)))
+        assertFalse(logic.canAddHours(s[0].slots))
+        assertEquals(s, logic.addHours(s, DayOfWeek.MONDAY))
+    }
+
+    @Test
+    fun addHours_midnightEndHasNoRoom() {
+        val s = week(day(DayOfWeek.MONDAY, TimeSlot(1320, 1440)))
+        assertFalse(logic.canAddHours(s[0].slots))
+        assertEquals(s, logic.addHours(s, DayOfWeek.MONDAY))
     }
 
     @Test
