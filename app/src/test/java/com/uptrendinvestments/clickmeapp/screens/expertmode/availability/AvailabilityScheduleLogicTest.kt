@@ -328,10 +328,32 @@ class AvailabilityScheduleLogicTest {
     }
 
     @Test
-    fun pickerRows_startGridStopsAtTheLatestStartBelowAMidnightEnd() {
+    fun pickerRows_aMidnightEndLeavesHalfPastElevenAsAStart() {
         val o = logic.pickerRows(isStart = true, draftStart = 1380, draftEnd = 1440, storedValue = 1380)
-        assertEquals((0..1380 step 30).toList(), o)
-        assertEquals(1380, o.last())
+        assertEquals((0..1410 step 30).toList(), o)
+        val last = logic.pickerRows(isStart = true, draftStart = 1410, draftEnd = 1440, storedValue = 1410)
+        assertEquals(1410, last.last())
+    }
+
+    @Test
+    fun pickerRows_storedValueTheOtherDraftValueForbidsIsDropped() {
+        val o = logic.pickerRows(isStart = true, draftStart = 555, draftEnd = 540, storedValue = 555)
+        assertFalse(555 in o)
+    }
+
+    @Test
+    fun pickerRows_storedGridValueIsNotDuplicated() {
+        val o = logic.pickerRows(isStart = true, draftStart = 540, draftEnd = 600, storedValue = 540)
+        assertEquals(1, o.count { it == 540 })
+        assertEquals(o.sorted(), o)
+        assertEquals(o.distinct(), o)
+    }
+
+    @Test
+    fun pickerRows_midnightIsNeverANewEndChoice() {
+        val o = logic.pickerRows(isStart = false, draftStart = 540, draftEnd = 600, storedValue = 600)
+        assertFalse(1440 in o)
+        assertEquals(1410, o.last())
     }
 
     @Test

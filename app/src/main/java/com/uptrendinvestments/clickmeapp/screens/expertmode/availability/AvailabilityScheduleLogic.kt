@@ -199,11 +199,15 @@ object AvailabilityScheduleLogic {
 
     /**
      * The rows for the Start or End list of the time-range sheet (port of iOS `AvailabilitySlotRules.pickerRows`,
-     * EXP-07, D-08): the 30-minute grid, kept when earlier than [draftEnd] (Start list) or later than [draftStart]
-     * (End list), plus [storedValue] when it passes the same test. Strictly ascending, no duplicate.
+     * EXP-07, D-08): the 30-minute grid from 00:00 to 23:30 ([LATEST_END], iOS `lastGridTime`) for both lists, kept
+     * when earlier than [draftEnd] (Start list) or later than [draftStart] (End list), plus [storedValue] when it
+     * passes the same test. Strictly ascending, no duplicate. 24:00 is never a new End choice; it is a row only when
+     * it is the stored end.
      *
      * [storedValue] is the slot's start (Start list) or end (End list) as the sheet opened, so an off-grid time
      * (09:15) or a stored 24:00 end stays a row for as long as the sheet is open, even after another row is tapped.
+     *
+     * A Start row of 23:30 can only appear with a 24:00 end, because every other end is at most 23:30.
      */
     fun pickerRows(
         isStart: Boolean,
@@ -211,9 +215,8 @@ object AvailabilityScheduleLogic {
         draftEnd: Int,
         storedValue: Int,
     ): List<Int> {
-        val lastGridTime = if (isStart) LATEST_START else LATEST_END
         val allowed: (Int) -> Boolean = if (isStart) { it -> it < draftEnd } else { it -> it > draftStart }
-        val grid = (0..lastGridTime step STEP_MINUTES).filter(allowed)
+        val grid = (0..LATEST_END step STEP_MINUTES).filter(allowed)
         return (if (allowed(storedValue)) grid + storedValue else grid).distinct().sorted()
     }
 
