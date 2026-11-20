@@ -309,18 +309,18 @@ class AvailabilityScheduleLogicTest {
         assertEquals(listOf(TimeSlot(540, 600), TimeSlot(780, 840), TimeSlot(1320, 1440)), back[0].slots)
     }
 
-    // --- picker options ---
+    // --- picker rows (port of iOS AvailabilitySlotRulesTests) ---
 
     @Test
-    fun startOptions_gridStrictlyBeforeDraftEnd() {
-        val o = logic.startOptions(540, 1020)
+    fun pickerRows_startGridStrictlyBeforeDraftEnd() {
+        val o = logic.pickerRows(isStart = true, draftStart = 540, draftEnd = 1020, storedValue = 540)
         assertEquals((0 until 1020 step 30).toList(), o)
         assertEquals(990, o.last())
     }
 
     @Test
-    fun startOptions_includesOffGridDraftValueInOrder() {
-        val o = logic.startOptions(555, 1020)
+    fun pickerRows_storedOffGridStartIsARowInTimeOrder() {
+        val o = logic.pickerRows(isStart = true, draftStart = 555, draftEnd = 1020, storedValue = 555)
         assertTrue(555 in o)
         assertEquals(o.sorted(), o)
         assertEquals(o.distinct(), o)
@@ -328,29 +328,46 @@ class AvailabilityScheduleLogicTest {
     }
 
     @Test
-    fun startOptions_neverExceedsLatestStartExceptInjectedDraft() {
-        val o = logic.startOptions(1380, 1440)
+    fun pickerRows_startGridStopsAtTheLatestStartBelowAMidnightEnd() {
+        val o = logic.pickerRows(isStart = true, draftStart = 1380, draftEnd = 1440, storedValue = 1380)
         assertEquals((0..1380 step 30).toList(), o)
         assertEquals(1380, o.last())
     }
 
     @Test
-    fun endOptions_gridStrictlyAfterDraftStart() {
-        val o = logic.endOptions(540, 1020)
+    fun pickerRows_endGridStrictlyAfterDraftStart() {
+        val o = logic.pickerRows(isStart = false, draftStart = 540, draftEnd = 1020, storedValue = 1020)
         assertEquals((570..1410 step 30).toList(), o)
         assertFalse(1440 in o)
     }
 
     @Test
-    fun endOptions_midnightEndStaysSelectable() {
-        val o = logic.endOptions(1320, 1440)
+    fun pickerRows_storedMidnightEndIsTheLastEndRow() {
+        val o = logic.pickerRows(isStart = false, draftStart = 1320, draftEnd = 1440, storedValue = 1440)
         assertEquals(1440, o.last())
         assertEquals(listOf(1350, 1380, 1410, 1440), o)
     }
 
     @Test
-    fun endOptions_startsAfterDraftStart() {
-        assertEquals(1410, logic.endOptions(1395, 1410).first())
+    fun pickerRows_endRowsStartAfterDraftStart() {
+        assertEquals(
+            1410,
+            logic.pickerRows(isStart = false, draftStart = 1395, draftEnd = 1410, storedValue = 1410).first(),
+        )
+    }
+
+    @Test
+    fun pickerRows_storedOffGridStartSurvivesAnotherDraftStart() {
+        val o = logic.pickerRows(isStart = true, draftStart = 600, draftEnd = 1020, storedValue = 555)
+        assertTrue(555 in o)
+        assertEquals(o.sorted(), o)
+        assertEquals(o.distinct(), o)
+    }
+
+    @Test
+    fun pickerRows_storedMidnightEndSurvivesAnotherDraftEnd() {
+        val o = logic.pickerRows(isStart = false, draftStart = 540, draftEnd = 1410, storedValue = 1440)
+        assertEquals(1440, o.last())
     }
 
     // --- display format ---

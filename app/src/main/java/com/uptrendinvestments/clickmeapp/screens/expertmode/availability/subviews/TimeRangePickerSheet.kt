@@ -110,6 +110,8 @@ fun TimeRangePickerSheet(
         TimeRangePickerContent(
             draftStart = start,
             draftEnd = end,
+            storedStart = initial.start,
+            storedEnd = initial.end,
             timeFormat = timeFormat,
             onStartSelected = { start = it },
             onEndSelected = { end = it },
@@ -121,12 +123,15 @@ fun TimeRangePickerSheet(
 
 /**
  * Stateless sheet body: title, Start and End columns in 30-minute steps (start strictly before end, end strictly
- * after start; the current values are always present) and the Cancel / Done row.
+ * after start) and the Cancel / Done row. [storedStart] and [storedEnd] are the slot's values as the sheet opened;
+ * an off-grid or 24:00 stored time stays a row while the sheet is open (iOS 06-03, D-08).
  */
 @Composable
 fun TimeRangePickerContent(
     draftStart: Int,
     draftEnd: Int,
+    storedStart: Int,
+    storedEnd: Int,
     timeFormat: DateFormat,
     onStartSelected: (Int) -> Unit,
     onEndSelected: (Int) -> Unit,
@@ -158,7 +163,7 @@ fun TimeRangePickerContent(
         ) {
             TimeColumn(
                 label = stringResource(R.string.availability_start_time),
-                options = AvailabilityScheduleLogic.startOptions(draftStart, draftEnd),
+                options = AvailabilityScheduleLogic.pickerRows(isStart = true, draftStart, draftEnd, storedStart),
                 selected = draftStart,
                 timeFormat = timeFormat,
                 listTag = TIME_RANGE_START_LIST_TAG,
@@ -175,7 +180,7 @@ fun TimeRangePickerContent(
             }
             TimeColumn(
                 label = stringResource(R.string.availability_end_time),
-                options = AvailabilityScheduleLogic.endOptions(draftStart, draftEnd),
+                options = AvailabilityScheduleLogic.pickerRows(isStart = false, draftStart, draftEnd, storedEnd),
                 selected = draftEnd,
                 timeFormat = timeFormat,
                 listTag = TIME_RANGE_END_LIST_TAG,
@@ -305,6 +310,8 @@ private fun TimeRangePickerContentPreview() {
             TimeRangePickerContent(
                 draftStart = 540,
                 draftEnd = 1020,
+                storedStart = 540,
+                storedEnd = 1020,
                 timeFormat = SimpleDateFormat("h:mm a", Locale.US),
                 onStartSelected = {},
                 onEndSelected = {},

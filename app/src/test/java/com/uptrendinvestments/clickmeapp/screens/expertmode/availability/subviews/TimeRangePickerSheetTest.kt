@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
@@ -48,6 +49,8 @@ class TimeRangePickerSheetTest {
                 TimeRangePickerContent(
                     draftStart = start,
                     draftEnd = end,
+                    storedStart = start,
+                    storedEnd = end,
                     timeFormat = format24,
                     onStartSelected = { starts += it },
                     onEndSelected = { ends += it },
@@ -150,6 +153,8 @@ class TimeRangePickerSheetTest {
                 TimeRangePickerContent(
                     draftStart = start,
                     draftEnd = end,
+                    storedStart = 540,
+                    storedEnd = 1020,
                     timeFormat = format24,
                     onStartSelected = { start = it },
                     onEndSelected = { end = it },
@@ -170,5 +175,57 @@ class TimeRangePickerSheetTest {
         rule.onNodeWithTag("time_range_start_570").assertExists()
         rule.onAllNodesWithTag("time_range_start_600").assertCountEquals(0)
         rule.onNodeWithTag("time_range_start_540").assertIsSelected()
+    }
+
+    /** Stateful sheet body seeded with a stored off-grid start and a stored 24:00 end (09:15 to 24:00). */
+    private fun showStoredOffGridAndMidnight() {
+        rule.setContent {
+            ClickMeTheme {
+                var start by remember { mutableIntStateOf(555) }
+                var end by remember { mutableIntStateOf(1440) }
+                TimeRangePickerContent(
+                    draftStart = start,
+                    draftEnd = end,
+                    storedStart = 555,
+                    storedEnd = 1440,
+                    timeFormat = format24,
+                    onStartSelected = { start = it },
+                    onEndSelected = { end = it },
+                    onCancel = {},
+                    onDone = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun storedOffGridStartStaysARowAfterAnotherStartIsTapped() {
+        showStoredOffGridAndMidnight()
+
+        scrollStartTo(600)
+        rule.onNodeWithTag("time_range_start_600").performClick()
+        rule.onNodeWithTag("time_range_start_600").assertIsSelected()
+
+        scrollStartTo(555)
+        rule.onNodeWithTag("time_range_start_555").assertExists().assertIsNotSelected()
+
+        rule.onNodeWithTag("time_range_start_555").performClick()
+        rule.onNodeWithTag("time_range_start_555").assertIsSelected()
+    }
+
+    @Test
+    fun storedMidnightEndStaysARowAfterAnotherEndIsTapped() {
+        showStoredOffGridAndMidnight()
+
+        scrollEndTo(1410)
+        rule.onNodeWithTag("time_range_end_1410").performClick()
+        rule.onNodeWithTag("time_range_end_1410").assertIsSelected()
+
+        scrollEndTo(1440)
+        rule
+            .onNodeWithTag("time_range_end_1440")
+            .assertExists()
+            .assertIsNotSelected()
+            .assertTextEquals("00:00")
     }
 }
