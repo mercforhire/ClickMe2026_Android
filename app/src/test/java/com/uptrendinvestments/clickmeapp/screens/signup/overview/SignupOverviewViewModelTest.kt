@@ -207,6 +207,22 @@ class SignupOverviewViewModelTest {
         }
 
     @Test
+    fun pullToRefreshAfterALocalVerifyKeepsVerifyEmailTicked() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val vm = viewModel(h)
+            h.repository.hydrate()
+            h.api.verifyEmailHandler = { SuccessMessageResponse() }
+            h.repository.verifyCode("123456")
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+
+            vm.refresh()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.completed(SetupStep.VerifyEmail))
+        }
+
+    @Test
     fun publishBlockedStepShowsIncomplete() =
         runTest(main.testDispatcher) {
             val h = harness(this)

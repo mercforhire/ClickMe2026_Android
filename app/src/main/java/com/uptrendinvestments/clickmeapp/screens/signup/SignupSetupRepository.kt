@@ -396,8 +396,12 @@ class SignupSetupRepository
         private fun SignupDraft.unblock(step: SetupStep): SignupDraft =
             if (step in publishBlockedSteps) copy(publishBlockedSteps = publishBlockedSteps - step) else this
 
+        /**
+         * The status endpoint only seeds the flag (iOS 05-11, SIGN-02): a `verified: true` answer ticks the row, a
+         * `false` one never unticks a local success such as a just-verified code.
+         */
         private fun SignupDraft.mergeStatus(status: EmailStatusData): SignupDraft =
-            copy(emailVerified = status.verified)
+            copy(emailVerified = emailVerified || status.verified)
 
         private fun SignupDraft.mergeProfile(profile: ExpertProfileData): SignupDraft {
             val info = profile.personalInfo

@@ -106,6 +106,37 @@ class SignupSetupRepositoryTest {
         }
 
     @Test
+    fun hydrateAfterALocalVerifyKeepsTheEmailVerified() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            h.api.verifyEmailHandler = { SuccessMessageResponse() }
+            h.repository.verifyCode("123456")
+            val callsBefore = h.api.emailStatusCalls
+
+            val ok = h.repository.hydrate()
+
+            assertTrue(ok)
+            assertEquals(HydrationState.Loaded, h.repository.hydration.value)
+            assertEquals(callsBefore + 1, h.api.emailStatusCalls)
+            assertTrue(h.repository.draft.value.emailVerified)
+        }
+
+    @Test
+    fun hydrateTicksAnUnverifiedEmailWhenTheServerSaysVerified() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.expertProfileHandler = { h.fullProfile() }
+            h.api.emailStatusHandler = { EmailStatusData(verified = true) }
+            assertFalse(h.repository.draft.value.emailVerified)
+
+            h.repository.hydrate()
+
+            assertTrue(h.repository.draft.value.emailVerified)
+        }
+
+    @Test
     fun hydrateKeepsDeviceTimezoneAndEmptyLanguagesWhenServerHasNone() =
         runTest(main.testDispatcher) {
             val h = harness(this)
