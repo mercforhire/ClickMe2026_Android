@@ -785,4 +785,32 @@ class ExpertProfileSettingsViewModelTest {
 
             assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
         }
+
+    // ---- G-05-6: the 422 alert names fields ----
+
+    @Test
+    fun aProfileValidationErrorNamesTheFieldsAndNeverShowsServerText() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.updateUserProfileHandler = {
+                throw h.api.httpError(
+                    422,
+                    """{"status":"error","message":"Please check the information you entered and try again.",""" +
+                        """"errors":[{"field":"basic.last_name","message":"Too small: expected >=1"},""" +
+                        """{"field":"basic.first_name","message":"Too small: expected >=1"}],""" +
+                        """"code":"VALIDATION_ERROR"}""",
+                )
+            }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.Bio, "Tax lawyer")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertEquals(FieldError.Text("Check First Name and Last Name, then try again."), state.dialog)
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), state.fieldErrors)
+            assertEquals(AutoSaveStatus.Error, state.status)
+        }
 }

@@ -25,8 +25,8 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileSnapshot
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileTextFieldId
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.buildProfilePatch
-import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.fieldMessages
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.requiredNameErrors
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.toProfileSaveDialogError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.toSaveDialogError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.with
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageCatalog
@@ -565,21 +565,19 @@ class ExpertProfileSettingsViewModel
             new: ExpertSettingsSnapshot,
         ): Boolean = buildProfilePatch(old.profile, new.profile) == null && !linkWillSend(new)
 
-        /** A 422 that names a field shows its message under that field; anything else opens the dialog. */
+        /**
+         * A 422 that names `meeting_url` shows its message under the link field. Any other `422 VALIDATION_ERROR` opens
+         * the dialog with the field names to check ([ProfileSaveErrorMapper]), never the server's validator text. Other
+         * failures keep the server's own message or the connection text.
+         */
         private fun onSaveFailed(error: ApiException) {
             val http = (error as? ApiException.Http)?.takeIf { it.status == HTTP_UNPROCESSABLE }
-            val perField = http?.fieldMessages().orEmpty()
             val link = http?.fieldErrors?.firstOrNull { it.field.substringAfterLast('.') == MEETING_URL_FIELD }
-            if (perField.isNotEmpty() || link != null) {
-                _uiState.update {
-                    it.copy(
-                        fieldErrors = it.fieldErrors + perField,
-                        meetingUrlError = link?.let { dto -> FieldError.Text(dto.message) } ?: it.meetingUrlError,
-                    )
-                }
-            } else {
-                _uiState.update { it.copy(dialog = error.toSaveDialogError()) }
+            if (link != null) {
+                _uiState.update { it.copy(meetingUrlError = FieldError.Text(link.message)) }
+                return
             }
+            _uiState.update { it.copy(dialog = error.toProfileSaveDialogError()) }
         }
     }
 

@@ -257,15 +257,24 @@ class ClientProfileSettingsViewModelTest {
             assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
         }
 
+    private val rawText = "Too small: expected string to have >=1 characters"
+
+    private fun validationBody(
+        vararg fields: String,
+        code: String? = "VALIDATION_ERROR",
+    ): String {
+        val errors = fields.joinToString(",") { """{"field":"$it","message":"$rawText"}""" }
+        val codePart = code?.let { ""","code":"$it"""" }.orEmpty()
+        return """{"status":"error","message":"Please check the information you entered and try again.",""" +
+            """"errors":[$errors]$codePart}"""
+    }
+
     @Test
-    fun validationErrorMapsToField() =
+    fun validationErrorNamesTheFieldsAndNeverShowsServerText() =
         runTest(main.testDispatcher) {
             val h = signedIn()
             h.api.updateUserProfileHandler = {
-                throw h.api.httpError(
-                    422,
-                    """{"status":"error","errors":[{"field":"basic.first_name","message":"Too long"}]}""",
-                )
+                throw h.api.httpError(422, validationBody("basic.first_name", "basic.last_name"))
             }
             val vm = viewModel(h)
             runCurrent()
@@ -275,23 +284,17 @@ class ClientProfileSettingsViewModelTest {
             runCurrent()
 
             val state = vm.uiState.value
-            assertEquals(mapOf(ProfileTextFieldId.FirstName to FieldError.Text("Too long")), state.fieldErrors)
-            assertNull(state.dialog)
+            assertEquals(FieldError.Text("Check First Name and Last Name, then try again."), state.dialog)
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), state.fieldErrors)
             assertEquals(AutoSaveStatus.Error, state.status)
-
-            vm.onFieldChange(ProfileTextFieldId.FirstName, "Ann")
-            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
         }
 
     @Test
-    fun bareFieldNameAlsoMapsToField() =
+    fun validationErrorFieldsComeInScreenOrder() =
         runTest(main.testDispatcher) {
             val h = signedIn()
             h.api.updateUserProfileHandler = {
-                throw h.api.httpError(
-                    422,
-                    """{"status":"error","errors":[{"field":"city","message":"Unknown city"}]}""",
-                )
+                throw h.api.httpError(422, validationBody("location.city", "basic.bio"))
             }
             val vm = viewModel(h)
             runCurrent()
@@ -300,19 +303,15 @@ class ClientProfileSettingsViewModelTest {
             advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
             runCurrent()
 
-            assertEquals(FieldError.Text("Unknown city"), vm.uiState.value.fieldErrors[ProfileTextFieldId.City])
-            assertNull(vm.uiState.value.dialog)
+            assertEquals(FieldError.Text("Check Bio and City, then try again."), vm.uiState.value.dialog)
         }
 
     @Test
-    fun unknownValidationFieldFallsBackToTheDialog() =
+    fun validationErrorWithOnlyUnknownFieldsGivesTheGenericSentence() =
         runTest(main.testDispatcher) {
             val h = signedIn()
             h.api.updateUserProfileHandler = {
-                throw h.api.httpError(
-                    422,
-                    """{"status":"error","message":"Bad language","errors":[{"field":"languages","message":"x"}]}""",
-                )
+                throw h.api.httpError(422, validationBody("location.timezone_id"))
             }
             val vm = viewModel(h)
             runCurrent()
@@ -321,8 +320,27 @@ class ClientProfileSettingsViewModelTest {
             advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
             runCurrent()
 
-            assertEquals(FieldError.Text("Bad language"), vm.uiState.value.dialog)
+            val expected = FieldError.Text("Please check the information you entered and try again.")
+            assertEquals(expected, vm.uiState.value.dialog)
             assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+        }
+
+    @Test
+    fun aValidationErrorWithoutTheCodeKeepsTheServerMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.updateUserProfileHandler = {
+                throw h.api.httpError(422, validationBody("basic.first_name", code = null))
+            }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "Anna")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            val expected = FieldError.Text("Please check the information you entered and try again.")
+            assertEquals(expected, vm.uiState.value.dialog)
         }
 
     @Test
