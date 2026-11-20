@@ -17,7 +17,7 @@
     <string name="feedback_thanks_body">We really appreciate you taking the time to help us make ClickMe better.</string>
     <string name="feedback_thanks_ok">OK</string>
     <string name="feedback_error_title">Couldn\'t send feedback</string>
-    <string name="feedback_details_too_short">Please describe your experience in at least 10 characters.</string>
+    <string name="feedback_details_too_short">Please enter at least 10 characters.</string>
     <string name="feedback_no_category">Please choose a feedback category before submitting.</string>
     <string name="feedback_too_many_attempts">Too many attempts. Please try again in a moment.</string>
     <string name="feedback_send_failed">Couldn\'t send your feedback. Please try again.</string>

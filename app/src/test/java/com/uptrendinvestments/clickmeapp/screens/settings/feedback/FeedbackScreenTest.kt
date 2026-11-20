@@ -248,7 +248,7 @@ class FeedbackScreenTest {
 
     // ---- Task 3: the Details error, the failure dialog and the keyboard ---------------------------------------
 
-    private val tooShort = "Please describe your experience in at least 10 characters."
+    private val tooShort = "Please enter at least 10 characters."
     private val hint = "Describe your experience..."
 
     @Test
