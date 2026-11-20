@@ -788,4 +788,123 @@ class ClientProfileSettingsViewModelTest {
                 assertTrue("$key holds ${value?.javaClass}", value is String || value is Boolean || isStringList)
             }
         }
+
+    // ---- G-05-6: never send an empty name ----
+
+    private val firstNameRequired = FieldError.Res(R.string.profile_settings_first_name_required)
+    private val lastNameRequired = FieldError.Res(R.string.profile_settings_last_name_required)
+
+    @Test
+    fun bioEditOnAnEmptyLastNameAccountSendsNoLastNameKey() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(firstName = "Ana", lastName = "", bio = ""))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.Bio, "Hello")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(basic = ProfileBasicBody("Ana", null, "Hello"))),
+                h.api.updateUserProfileRequests,
+            )
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+            assertNull(vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun firstNameEditOnAnEmptyLastNameAccountSendsFirstNameOnly() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(firstName = "Ana", lastName = "", bio = ""))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "Ada")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(basic = ProfileBasicBody("Ada", null, ""))),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun clearingASetFirstNameHoldsTheServerValueAndShowsTheRequiredMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(mapOf(ProfileTextFieldId.FirstName to firstNameRequired), vm.uiState.value.fieldErrors)
+            assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
+
+            // Another edit while the name is cleared goes out without the name key; the message stays.
+            vm.onFieldChange(ProfileTextFieldId.Bio, "New bio")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+            assertEquals(
+                listOf(UpdateUserProfileRequest(basic = ProfileBasicBody(null, "Lee", "New bio"))),
+                h.api.updateUserProfileRequests,
+            )
+            assertEquals(mapOf(ProfileTextFieldId.FirstName to firstNameRequired), vm.uiState.value.fieldErrors)
+
+            // Typing a name again clears the message and sends the name.
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "Anna")
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+            val lastRequest = h.api.updateUserProfileRequests.last()
+            assertEquals(ProfileBasicBody("Anna", "Lee", "New bio"), lastRequest.basic)
+        }
+
+    @Test
+    fun clearingASetLastNameHoldsTheServerValueAndShowsTheRequiredMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.LastName, "  ")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(mapOf(ProfileTextFieldId.LastName to lastNameRequired), vm.uiState.value.fieldErrors)
+        }
+
+    @Test
+    fun anEmptyNameOnAnEmptyAccountShowsNoMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(firstName = "Ana", lastName = "", bio = ""))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.LastName, "")
+            vm.onFieldChange(ProfileTextFieldId.LastName, "Lee")
+            vm.onFieldChange(ProfileTextFieldId.LastName, "")
+
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+        }
+
+    @Test
+    fun aClearedNameRestoredAfterRecreationShowsTheMessageAndSendsNothing() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val handle = SavedStateHandle(mapOf("client_settings_first_name" to "", "client_settings_touched" to true))
+
+            val vm = viewModel(h, handle)
+            runCurrent()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(mapOf(ProfileTextFieldId.FirstName to firstNameRequired), vm.uiState.value.fieldErrors)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
 }

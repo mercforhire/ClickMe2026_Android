@@ -139,6 +139,13 @@ class ClientProfileSettingsViewModel
 
         private var seeded = false
 
+        /** The names the server holds, trimmed: an emptied name is held (never sent) while the server has one. */
+        @Volatile
+        private var serverFirstName = ""
+
+        @Volatile
+        private var serverLastName = ""
+
         /** The language catalogue, fetched once per ViewModel. */
         private var catalog: LanguageCatalog = LanguageCatalog.Loading
         private var catalogJob: Job? = null
@@ -201,9 +208,16 @@ class ClientProfileSettingsViewModel
                 }
             // Restored edits win over the fetched profile; they differ from the baseline, so the saver sends them.
             val snapshot = restoredOver(server)
+            serverFirstName = server.firstName.trim()
+            serverLastName = server.lastName.trim()
             saver.rebase(server)
             _uiState.update {
-                it.copy(snapshot = snapshot, loadFailed = false, email = profile.personalDetails.email.orEmpty())
+                it.copy(
+                    snapshot = snapshot,
+                    loadFailed = false,
+                    email = profile.personalDetails.email.orEmpty(),
+                    fieldErrors = snapshot.requiredNameErrors(serverFirstName, serverLastName),
+                )
             }
             if (snapshot != server) saver.onEdited(snapshot)
         }
@@ -250,7 +264,8 @@ class ClientProfileSettingsViewModel
             val clamped = value.clampLength(field.maxLength)
             val next = current.with(field, clamped)
             mirrorField(field, clamped)
-            _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field) }
+            val required = next.requiredNameErrors(serverFirstName, serverLastName).filterKeys { it == field }
+            _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field + required) }
             saver.onEdited(next)
         }
 
@@ -402,6 +417,8 @@ class ClientProfileSettingsViewModel
         ) {
             val patch = buildProfilePatch(old, new) ?: return
             repository.updateProfile(patch)
+            patch.basic?.firstName?.let { serverFirstName = it }
+            patch.basic?.lastName?.let { serverLastName = it }
             try {
                 userManager.refreshProfile()
             } catch (_: ApiException) {

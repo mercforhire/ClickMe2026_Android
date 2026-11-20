@@ -1,11 +1,13 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings
 
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileBasicBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileLanguagesBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileLocationBody
 import com.uptrendinvestments.clickmeapp.model.requests.ProfileProfessionalBody
 import com.uptrendinvestments.clickmeapp.model.requests.UpdateUserProfileRequest
 import com.uptrendinvestments.clickmeapp.model.responses.UserProfileData
+import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 
 const val NAME_MAX = 100
 const val BIO_MAX = 500
@@ -55,15 +57,27 @@ data class ProfileSnapshot(
  * The PATCH body for the groups that changed between [old] and [new], or null when nothing changed. A changed group is
  * sent whole with trimmed strings (an empty string clears a field, never null) so the server's per-key merge cannot
  * leave a stale half; groups are compared on their trimmed values, so trailing spaces alone never cause a request.
+ *
+ * Names are the exception (iOS G-05-6): the server answers 422 for an empty `first_name` / `last_name`, so an empty name
+ * key is never sent. The `basic` group goes out when a non-empty name changed or the bio changed (an empty bio is
+ * valid), carrying only the non-empty names. Clearing a set name sends nothing: the server keeps its value, and the
+ * view model shows "Please enter your first name." / "Please enter your last name." instead.
+ *
  * There is deliberately no email: the server answers 403.
  */
 fun buildProfilePatch(
     old: ProfileSnapshot,
     new: ProfileSnapshot,
 ): UpdateUserProfileRequest? {
+    val firstName = new.firstName.trim()
+    val lastName = new.lastName.trim()
     val basic =
-        ProfileBasicBody(new.firstName.trim(), new.lastName.trim(), new.bio.trim())
-            .takeIf { it != ProfileBasicBody(old.firstName.trim(), old.lastName.trim(), old.bio.trim()) }
+        ProfileBasicBody(firstName.ifEmpty { null }, lastName.ifEmpty { null }, new.bio.trim())
+            .takeIf {
+                (firstName.isNotEmpty() && firstName != old.firstName.trim()) ||
+                    (lastName.isNotEmpty() && lastName != old.lastName.trim()) ||
+                    new.bio.trim() != old.bio.trim()
+            }
     val professional =
         ProfileProfessionalBody(new.jobTitle.trim(), new.company.trim())
             .takeIf { it != ProfileProfessionalBody(old.jobTitle.trim(), old.company.trim()) }
@@ -95,3 +109,21 @@ private fun ProfileSnapshot.locationBody() =
         stateProvince = stateProvince.trim(),
         countryCode = countryCode.trim().ifBlank { null },
     )
+
+/**
+ * The messages under the name fields (iOS G-05-6): a name the user emptied while the saved profile still has one is held
+ * (never sent, see [buildProfilePatch]) and says so. A name that is empty on the server too has nothing to protect, so it
+ * shows no message. [serverFirstName] / [serverLastName] are what the server holds, trimmed.
+ */
+internal fun ProfileSnapshot.requiredNameErrors(
+    serverFirstName: String,
+    serverLastName: String,
+): Map<ProfileTextFieldId, FieldError> =
+    buildMap {
+        if (firstName.isBlank() && serverFirstName.isNotEmpty()) {
+            put(ProfileTextFieldId.FirstName, FieldError.Res(R.string.profile_settings_first_name_required))
+        }
+        if (lastName.isBlank() && serverLastName.isNotEmpty()) {
+            put(ProfileTextFieldId.LastName, FieldError.Res(R.string.profile_settings_last_name_required))
+        }
+    }

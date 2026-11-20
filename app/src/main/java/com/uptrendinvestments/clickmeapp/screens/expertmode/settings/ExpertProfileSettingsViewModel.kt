@@ -26,6 +26,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileTextFieldId
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.buildProfilePatch
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.fieldMessages
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.requiredNameErrors
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.toSaveDialogError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.with
 import com.uptrendinvestments.clickmeapp.screens.signup.basicinfo.LanguageCatalog
@@ -166,11 +167,19 @@ class ExpertProfileSettingsViewModel
                 baseline = EmptySnapshot,
                 persist = { old, new -> persist(old, new) },
                 onFailure = ::onSaveFailed,
+                sendsNothing = ::sendsNothing,
             )
 
         /** The link the server has; an invalid or blank typed value falls back to it so it never triggers a save. */
         @Volatile
         private var savedMeetingUrl = ""
+
+        /** The names the server holds, trimmed: an emptied name is held (never sent) while the server has one. */
+        @Volatile
+        private var serverFirstName = ""
+
+        @Volatile
+        private var serverLastName = ""
 
         /** A link the server answered 422 for; it is not sent again until the user changes the link text. */
         @Volatile
@@ -240,6 +249,8 @@ class ExpertProfileSettingsViewModel
                     meetingUrl = meetingUrl,
                 )
             savedMeetingUrl = meetingUrl
+            serverFirstName = snapshot.profile.firstName.trim()
+            serverLastName = snapshot.profile.lastName.trim()
             saver.rebase(snapshot)
             val restored = restoredOver(snapshot)
             val restoredText = restoredMeetingUrlText() ?: meetingUrl
@@ -247,6 +258,7 @@ class ExpertProfileSettingsViewModel
                 it.copy(
                     load = ExpertSettingsLoad.Ready,
                     snapshot = restored,
+                    fieldErrors = restored.profile.requiredNameErrors(serverFirstName, serverLastName),
                     meetingUrlText = restoredText,
                     meetingUrlError = meetingUrlErrorFor(restoredText),
                     email = personal?.email.orEmpty(),
@@ -322,7 +334,8 @@ class ExpertProfileSettingsViewModel
             val clamped = value.clampLength(field.maxLength)
             val next = current.copy(profile = current.profile.with(field, clamped))
             mirrorField(field, clamped)
-            _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field) }
+            val required = next.profile.requiredNameErrors(serverFirstName, serverLastName).filterKeys { it == field }
+            _uiState.update { it.copy(snapshot = next, fieldErrors = it.fieldErrors - field + required) }
             saver.onEdited(next)
         }
 
@@ -510,6 +523,8 @@ class ExpertProfileSettingsViewModel
             val patch = buildProfilePatch(old.profile, new.profile)
             if (patch != null) {
                 profileRepository.updateProfile(patch)
+                patch.basic?.firstName?.let { serverFirstName = it }
+                patch.basic?.lastName?.let { serverLastName = it }
                 try {
                     userManager.refreshProfile()
                 } catch (_: ApiException) {
@@ -521,8 +536,7 @@ class ExpertProfileSettingsViewModel
             // never re-sent (it would fail every later auto-save), and a link that matches the server needs no call.
             // A blank link differing from the server's means the expert cleared it, so "" is sent (the backend stores
             // NULL, BACK-04); an expert who never had a link never sends the key. Non-blank links keep the guard.
-            val shouldSend = link != savedMeetingUrl && link != rejectedMeetingUrl
-            if (shouldSend && (link.isEmpty() || isAllowedMeetingUrl(link))) {
+            if (linkWillSend(new)) {
                 try {
                     repository.updateMeetingUrl(link)
                     savedMeetingUrl = link
@@ -534,6 +548,22 @@ class ExpertProfileSettingsViewModel
                 }
             }
         }
+
+        /**
+         * Whether saving [snapshot] sends the meeting link: it differs from what the server has and was not rejected, and
+         * is either blank (a clear) or a valid link.
+         */
+        private fun linkWillSend(snapshot: ExpertSettingsSnapshot): Boolean {
+            val link = snapshot.meetingUrl
+            if (link == savedMeetingUrl || link == rejectedMeetingUrl) return false
+            return link.isEmpty() || isAllowedMeetingUrl(link)
+        }
+
+        /** True when saving [new] over [old] would make no request, so the saver adopts it without a Saving flash. */
+        private fun sendsNothing(
+            old: ExpertSettingsSnapshot,
+            new: ExpertSettingsSnapshot,
+        ): Boolean = buildProfilePatch(old.profile, new.profile) == null && !linkWillSend(new)
 
         /** A 422 that names a field shows its message under that field; anything else opens the dialog. */
         private fun onSaveFailed(error: ApiException) {

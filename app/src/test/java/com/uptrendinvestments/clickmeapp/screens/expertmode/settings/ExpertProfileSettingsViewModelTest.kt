@@ -702,4 +702,87 @@ class ExpertProfileSettingsViewModelTest {
             assertEquals(0, h.api.updateExpertMeetingUrlCalls)
             assertEquals(1, h.api.updateUserProfileCalls)
         }
+
+    // ---- G-05-6: never send an empty name ----
+
+    private val firstNameRequired = FieldError.Res(R.string.profile_settings_first_name_required)
+    private val lastNameRequired = FieldError.Res(R.string.profile_settings_last_name_required)
+
+    private fun expertWithLastName(lastName: String) =
+        expert.copy(personalInfo = expert.personalInfo?.copy(lastName = lastName))
+
+    @Test
+    fun bioEditOnAnEmptyLastNameAccountSendsNoLastNameKey() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(expertWithLastName(""))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.Bio, "Tax lawyer")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateUserProfileRequest(basic = ProfileBasicBody("Ana", null, "Tax lawyer"))),
+                h.api.updateUserProfileRequests,
+            )
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+            assertNull(vm.uiState.value.dialog)
+        }
+
+    @Test
+    fun clearingASetFirstNameHoldsTheServerValueAndShowsTheRequiredMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(0, h.api.updateExpertMeetingUrlCalls)
+            assertEquals(mapOf(ProfileTextFieldId.FirstName to firstNameRequired), vm.uiState.value.fieldErrors)
+            assertEquals(AutoSaveStatus.Idle, vm.uiState.value.status)
+
+            vm.onFieldChange(ProfileTextFieldId.Bio, "Tax lawyer")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+            assertEquals(
+                listOf(UpdateUserProfileRequest(basic = ProfileBasicBody(null, "Lee", "Tax lawyer"))),
+                h.api.updateUserProfileRequests,
+            )
+            assertEquals(mapOf(ProfileTextFieldId.FirstName to firstNameRequired), vm.uiState.value.fieldErrors)
+
+            vm.onFieldChange(ProfileTextFieldId.FirstName, "Anna")
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+        }
+
+    @Test
+    fun clearingASetLastNameHoldsTheServerValueAndShowsTheRequiredMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.LastName, "")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(mapOf(ProfileTextFieldId.LastName to lastNameRequired), vm.uiState.value.fieldErrors)
+        }
+
+    @Test
+    fun anEmptyNameOnAnEmptyAccountShowsNoMessage() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(expertWithLastName(""))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onFieldChange(ProfileTextFieldId.LastName, "")
+
+            assertEquals(emptyMap<ProfileTextFieldId, FieldError>(), vm.uiState.value.fieldErrors)
+        }
 }
