@@ -432,12 +432,23 @@ class ExpertProfileSettingsViewModel
         /**
          * "Done": the selection (in tap order) followed by the custom languages the catalogue cannot express, which
          * are kept as they are. Closes the sheet and schedules the save.
+         *
+         * A result with no language at all is refused, as on iOS (05-09 UI-SPEC A9): the server takes an empty
+         * languages group as a full replace and deletes every row, so this and `buildProfilePatch` are the only
+         * guards. The sheet closes, the previous list stays, nothing is saved, and the "Keep at least one language."
+         * dialog opens, unless the profile already had no language, which is a silent no-op.
          */
         fun applyLanguages() {
             val sheet = _uiState.value.languageSheet ?: return
             val current = _uiState.value.snapshot ?: return
             val customs = current.profile.languages.filter { it.id.isNullOrBlank() }
             val languages = sheet.selection.map { ProfileLanguage(it.id, it.label) } + customs
+            if (languages.isEmpty()) {
+                val explain = current.profile.languages.isNotEmpty()
+                val message = FieldError.Res(R.string.profile_settings_languages_keep_one)
+                _uiState.update { it.copy(languageSheet = null, dialog = if (explain) message else it.dialog) }
+                return
+            }
             val next = current.copy(profile = current.profile.copy(languages = languages))
             savedStateHandle[KEY_LANGUAGE_IDS] = ArrayList(languages.map { it.id.orEmpty() })
             savedStateHandle[KEY_LANGUAGE_LABELS] = ArrayList(languages.map { it.label })

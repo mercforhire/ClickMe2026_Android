@@ -23,6 +23,7 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AUTO_SAVE_DEBOUNCE_MS
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.AutoSaveStatus
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileAvatarController
+import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileLanguage
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileSettingsRepository
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfileTextFieldId
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
@@ -499,6 +500,81 @@ class ExpertProfileSettingsViewModelTest {
             assertEquals(
                 listOf(
                     UpdateUserProfileRequest(languages = ProfileLanguagesBody(listOf("en", "fr"), listOf("Klingon"))),
+                ),
+                h.api.updateUserProfileRequests,
+            )
+        }
+
+    @Test
+    fun expertDoneWithNothingSelectedKeepsTheListAndExplains() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            h.api.languagesHandler = { LanguagesPayload(listOf(LanguageItem("en", "English"))) }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("en", "English"))
+            vm.applyLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertNull(state.languageSheet)
+            assertEquals(
+                listOf(ProfileLanguage("en", "English")),
+                state.snapshot
+                    ?.profile
+                    ?.languages,
+            )
+            assertEquals(FieldError.Res(R.string.profile_settings_languages_keep_one), state.dialog)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun expertDoneWithNothingSelectedOnAProfileWithNoLanguagesIsSilent() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(expert.copy(languages = emptyList()))
+            h.api.languagesHandler = { LanguagesPayload(listOf(LanguageItem("en", "English"))) }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.applyLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertNull(state.languageSheet)
+            assertNull(state.dialog)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun expertDeselectingEveryCatalogueLanguageKeepsTheCustomsAndSaves() =
+        runTest(main.testDispatcher) {
+            val withCustom =
+                expert.copy(
+                    languages = listOf(ExpertLanguage("en", "English"), ExpertLanguage(null, "Klingon")),
+                )
+            val h = signedIn(withCustom)
+            h.api.languagesHandler = { LanguagesPayload(listOf(LanguageItem("en", "English"))) }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("en", "English"))
+            vm.applyLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertNull(vm.uiState.value.dialog)
+            assertEquals(
+                listOf(
+                    UpdateUserProfileRequest(languages = ProfileLanguagesBody(emptyList(), listOf("Klingon"))),
                 ),
                 h.api.updateUserProfileRequests,
             )
