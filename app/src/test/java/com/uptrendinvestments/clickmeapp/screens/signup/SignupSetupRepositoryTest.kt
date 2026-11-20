@@ -574,6 +574,33 @@ class SignupSetupRepositoryTest {
             assertTrue(h.repository.draft.value.emailVerified)
         }
 
+    @Test
+    fun refreshEmailStatusAfterALocalVerifyMakesNoRequest() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.verifyEmailHandler = { SuccessMessageResponse() }
+            h.repository.verifyCode("123456")
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+            val callsBefore = h.api.emailStatusCalls
+
+            h.repository.refreshEmailStatus()
+
+            assertTrue(h.repository.draft.value.emailVerified)
+            assertEquals(callsBefore, h.api.emailStatusCalls)
+        }
+
+    @Test
+    fun refreshEmailStatusUnverifiedAnswerLeavesTheFlagFalse() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+
+            h.repository.refreshEmailStatus()
+
+            assertFalse(h.repository.draft.value.emailVerified)
+            assertEquals(1, h.api.emailStatusCalls)
+        }
+
     // ---- publish ----
 
     @Test

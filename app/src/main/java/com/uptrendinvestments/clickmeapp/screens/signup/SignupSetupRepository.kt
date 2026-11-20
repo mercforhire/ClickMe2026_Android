@@ -202,9 +202,15 @@ class SignupSetupRepository
                 null
             }
 
-        /** Re-reads the verified flag. Errors propagate to the caller. */
+        /**
+         * Re-reads the verified flag on a hub reappearance. The endpoint only seeds the flag (iOS 05-11, SIGN-02,
+         * `SignupAccumulator.refreshEmailVerified`): a draft that is already verified is never downgraded and costs
+         * no request, and an unverified draft becomes verified only on a `verified: true` answer. Errors from the
+         * request propagate to the caller.
+         */
         suspend fun refreshEmailStatus() {
             val startGeneration = generation
+            if (_draft.value.emailVerified) return
             val status = apiCall { api.getEmailStatus() }.data
             if (startGeneration == generation) _draft.update { it.mergeStatus(status) }
         }

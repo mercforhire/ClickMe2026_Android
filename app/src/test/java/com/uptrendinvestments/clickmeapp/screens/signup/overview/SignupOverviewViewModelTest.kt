@@ -4,6 +4,7 @@ package com.uptrendinvestments.clickmeapp.screens.signup.overview
 
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
 import com.uptrendinvestments.clickmeapp.model.responses.EmailStatusData
+import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.signup.SetupStep
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
@@ -124,6 +125,27 @@ class SignupOverviewViewModelTest {
             assertEquals(statusCallsAfterHydrate + 1, h.api.emailStatusCalls)
             assertTrue(vm.uiState.value.completed(SetupStep.VerifyEmail))
             assertEquals(5, vm.uiState.value.completedCount)
+        }
+
+    @Test
+    fun onShownAfterALocalVerifyKeepsVerifyEmailTickedAndSkipsTheStatusCall() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val vm = viewModel(h)
+            h.repository.hydrate()
+            h.api.verifyEmailHandler = { SuccessMessageResponse() }
+            h.repository.verifyCode("123456")
+            runCurrent()
+            assertTrue(vm.uiState.value.completed(SetupStep.VerifyEmail))
+            val statusCallsAfterVerify = h.api.emailStatusCalls
+            // A stale server answer must not untick a local success (iOS 05-11, SIGN-02).
+            h.api.emailStatusHandler = { EmailStatusData(verified = false) }
+
+            vm.onShown()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.completed(SetupStep.VerifyEmail))
+            assertEquals(statusCallsAfterVerify, h.api.emailStatusCalls)
         }
 
     @Test
