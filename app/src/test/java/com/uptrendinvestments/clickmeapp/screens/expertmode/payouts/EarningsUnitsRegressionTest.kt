@@ -20,7 +20,7 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 /**
- * PAYOUT-03 guard: the two money conventions side by side. Ledger transactions are MINOR units (6375 is $63.75);
+ * PAYOUT-03 guard: the two money conventions side by side. Ledger transactions are MINOR units (6375 is US$63.75);
  * the request `earnings_breakdown` is MAJOR units and a null net never turns into a figure (RESEARCH Pitfall 6).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -32,7 +32,7 @@ class EarningsUnitsRegressionTest {
 
     @Test
     fun transactionsAreMinorUnits() {
-        assertEquals("$63.75", Money.format(6375L, "USD", us))
+        assertEquals("US$63.75", Money.format(6375L, "USD", us))
 
         rule.setContent {
             ClickMeTheme {
@@ -44,7 +44,7 @@ class EarningsUnitsRegressionTest {
             }
         }
 
-        rule.onNodeWithText("$63.75").assertExists()
+        rule.onNodeWithText("US$63.75").assertExists()
     }
 
     @Test
@@ -57,7 +57,7 @@ class EarningsUnitsRegressionTest {
                 currency = "USD",
             )
 
-        assertEquals(RequestEarningsUi.PricePending("$75.00"), requestEarnings(unavailable, null, null, us))
+        assertEquals(RequestEarningsUi.PricePending("US$75.00"), requestEarnings(unavailable, null, null, us))
     }
 
     @Test
@@ -75,6 +75,6 @@ class EarningsUnitsRegressionTest {
         val result = requestEarnings(booked, null, null, us)
 
         assertTrue(result is RequestEarningsUi.Receipt)
-        assertEquals("$63.75", (result as RequestEarningsUi.Receipt).net)
+        assertEquals("US$63.75", (result as RequestEarningsUi.Receipt).net)
     }
 }

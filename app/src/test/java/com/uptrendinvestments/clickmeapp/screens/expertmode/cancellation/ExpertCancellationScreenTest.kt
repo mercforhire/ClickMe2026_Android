@@ -208,7 +208,7 @@ class ExpertCancellationScreenTest {
         confirm()
 
         assertEquals(
-            BookingsLaunch(BookingsTab.Past, BookingsNotice.CancelledWithRefund("$75.00")),
+            BookingsLaunch(BookingsTab.Past, BookingsNotice.CancelledWithRefund("US$75.00")),
             launchRequest.bookings.consume(),
         )
     }
@@ -243,7 +243,7 @@ class ExpertCancellationScreenTest {
     fun dormantFullRefundRowShowsAmountAndNote() {
         showConfirmStep(ExpertRefundPreview.ClientFullRefund(75.0, "USD"))
 
-        rule.onNodeWithText("Your client will receive a full refund of $75.00", substring = true).assertExists()
+        rule.onNodeWithText("Your client will receive a full refund of US$75.00", substring = true).assertExists()
         rule
             .onNodeWithText("Refunds typically appear in the client's account within 3–5 business days.")
             .assertExists()

@@ -43,8 +43,8 @@ class PriceTextTest {
 
     @Test
     fun of_paidWhenAmountAndCurrencyPresent() {
-        assertEquals(PriceDisplay.Paid("$50.00"), PriceDisplay.of(false, 5000, "USD", Locale.US))
-        assertEquals(PriceDisplay.Paid("$50.00"), PriceDisplay.of(null, 5000, "USD", Locale.US))
+        assertEquals(PriceDisplay.Paid("US$50.00"), PriceDisplay.of(false, 5000, "USD", Locale.US))
+        assertEquals(PriceDisplay.Paid("US$50.00"), PriceDisplay.of(null, 5000, "USD", Locale.US))
     }
 
     @Test

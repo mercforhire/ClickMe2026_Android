@@ -169,7 +169,7 @@ class ExpertBookingSummaryScreenTest {
             "Meeting Type",
             "In-App Voice",
             "Consultation Fee",
-            "\$75.00",
+            "US\$75.00",
         ).forEach { rule.onNodeWithText(it).assertExists() }
         // The screen reloads quietly on resume, so the id may be requested more than once; it is always this booking.
         assertTrue(ids.isNotEmpty() && ids.all { it == "b1" })

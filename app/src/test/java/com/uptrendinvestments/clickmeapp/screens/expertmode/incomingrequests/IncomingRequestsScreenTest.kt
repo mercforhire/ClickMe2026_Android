@@ -87,7 +87,7 @@ class IncomingRequestsScreenTest {
         rule.onNodeWithText("Ada Lovelace").assertExists()
         rule.onNodeWithText("Algorithms").assertExists()
         rule.onNodeWithText("Earnings").assertExists()
-        rule.onNodeWithText("\$63.75").assertExists()
+        rule.onNodeWithText("US\$63.75").assertExists()
         rule.onNodeWithText("Expires in 5h").assertExists()
     }
 

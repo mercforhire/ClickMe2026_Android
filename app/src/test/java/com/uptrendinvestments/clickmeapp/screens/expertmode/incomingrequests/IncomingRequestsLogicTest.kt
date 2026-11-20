@@ -78,7 +78,7 @@ class IncomingRequestsLogicTest {
     @Test
     fun netAmountIsFormattedInMajorUnits() {
         val item = bookingRequestItem(earnings = 75.0, breakdown = breakdown(net = 63.75, currency = "USD"))
-        assertEquals(RequestCardEarnings.Net("\$63.75"), requestCardEarnings(item, Locale.US))
+        assertEquals(RequestCardEarnings.Net("US\$63.75"), requestCardEarnings(item, Locale.US))
     }
 
     @Test

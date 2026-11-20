@@ -2,6 +2,7 @@ package com.uptrendinvestments.clickmeapp.util
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
@@ -12,7 +13,7 @@ import java.util.Locale
  * Backend amounts are integer minor units plus an ISO-4217 code (D-18). The number of decimals comes from
  * [Currency.getDefaultFractionDigits] so JPY has none and KWD has three, and decimals are always shown in full
  * (D-20). Symbol placement and separators follow the device locale (D-19); the currency itself always comes from
- * the caller.
+ * the caller. The one exception is the symbol of USD (`US$`) and CAD (`CA$`), which is fixed (see [pinnedSymbol]).
  *
  * `payment-intent` amounts are the one non-minor-unit exception (ROADMAP Phase 7 note) and must not be passed here.
  * The cancel response `refund_amount` (major units) is the second exception and must go through [formatMajor] only.
@@ -58,6 +59,22 @@ object Money {
                 minimumFractionDigits = digits
                 maximumFractionDigits = digits
             }
+        pinnedSymbol(code)?.let { symbol ->
+            if (formatter is DecimalFormat) {
+                formatter.decimalFormatSymbols = formatter.decimalFormatSymbols.apply { currencySymbol = symbol }
+            }
+        }
         return formatter.format(major)
     }
+
+    /**
+     * USD is always `US$` and CAD always `CA$`, whatever the device locale (D-24, D-32), so a CAD and a USD price read
+     * apart in any region. Only the symbol is replaced: placement, grouping and separators still follow the locale.
+     */
+    private fun pinnedSymbol(code: String): String? =
+        when (code) {
+            "USD" -> "US$"
+            "CAD" -> "CA$"
+            else -> null
+        }
 }

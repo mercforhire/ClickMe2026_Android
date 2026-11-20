@@ -146,7 +146,7 @@ class ExpertBookingsScreenTest {
         rule.onNodeWithText("Ada Lovelace").assertExists()
         rule.onNodeWithText("Algorithms").assertExists()
         rule.onNodeWithText("Earnings").assertExists()
-        rule.onNodeWithText("\$63.75").assertExists()
+        rule.onNodeWithText("US\$63.75").assertExists()
         rule.onNodeWithTag(EXPERT_BOOKINGS_JOIN_TAG).assertIsEnabled()
     }
 

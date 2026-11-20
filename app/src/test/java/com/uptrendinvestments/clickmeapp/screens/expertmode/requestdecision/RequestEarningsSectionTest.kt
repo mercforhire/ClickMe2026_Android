@@ -32,10 +32,10 @@ class RequestEarningsSectionTest {
 
         assertEquals(
             RequestEarningsUi.Receipt(
-                clientPays = "$75.00",
-                platformFee = "$11.25",
+                clientPays = "US$75.00",
+                platformFee = "US$11.25",
                 commissionPctText = "15",
-                net = "$63.75",
+                net = "US$63.75",
                 estimated = false,
             ),
             result,
@@ -47,7 +47,7 @@ class RequestEarningsSectionTest {
         val result = requestEarnings(breakdown(feeSource = FEE_SOURCE_EXPERT_DEFAULT), null, null, us)
 
         assertEquals(true, (result as RequestEarningsUi.Receipt).estimated)
-        assertEquals("$63.75", result.net)
+        assertEquals("US$63.75", result.net)
     }
 
     @Test
@@ -63,8 +63,8 @@ class RequestEarningsSectionTest {
             requestEarnings(breakdown(fee = 0.0, net = 75.0, pct = 0.0), null, null, us) as RequestEarningsUi.Receipt
 
         assertNull(result.commissionPctText)
-        assertEquals("$0.00", result.platformFee)
-        assertEquals("$75.00", result.net)
+        assertEquals("US$0.00", result.platformFee)
+        assertEquals("US$75.00", result.net)
     }
 
     @Test
@@ -77,14 +77,14 @@ class RequestEarningsSectionTest {
                 us,
             )
 
-        assertEquals(RequestEarningsUi.PricePending("$75.00"), result)
+        assertEquals(RequestEarningsUi.PricePending("US$75.00"), result)
     }
 
     @Test
     fun nullNetWithABookingFeeSourceIsStillPending() {
         val result = requestEarnings(breakdown(net = null), null, null, us)
 
-        assertEquals(RequestEarningsUi.PricePending("$75.00"), result)
+        assertEquals(RequestEarningsUi.PricePending("US$75.00"), result)
     }
 
     @Test

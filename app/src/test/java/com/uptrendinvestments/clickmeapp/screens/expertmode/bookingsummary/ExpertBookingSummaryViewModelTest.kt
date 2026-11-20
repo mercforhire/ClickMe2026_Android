@@ -97,7 +97,7 @@ class ExpertBookingSummaryViewModelTest {
         assertEquals(BookingStatusLabel.Confirmed, details.status.label)
         assertEquals("c1", details.clientId)
         assertEquals(60, details.durationMinutes)
-        assertEquals(SummaryFee.Amount("\$75.00"), details.fee)
+        assertEquals(SummaryFee.Amount("US\$75.00"), details.fee)
         assertEquals("Please review my CV", details.preparationNotes)
         assertTrue(details.canCancel)
         assertTrue(details.showsJoin)

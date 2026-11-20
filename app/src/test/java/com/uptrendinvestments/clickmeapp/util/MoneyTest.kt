@@ -12,12 +12,12 @@ class MoneyTest {
 
     @Test
     fun usd_showsTwoDecimals() {
-        assertEquals("$50.00", Money.format(5000, "USD", Locale.US))
+        assertEquals("US$50.00", Money.format(5000, "USD", Locale.US))
     }
 
     @Test
     fun zero_showsFullDecimals() {
-        assertEquals("$0.00", Money.format(0, "USD", Locale.US))
+        assertEquals("US$0.00", Money.format(0, "USD", Locale.US))
     }
 
     @Test
@@ -31,13 +31,23 @@ class MoneyTest {
     }
 
     @Test
+    fun cad_inCanadianLocale_stillShowsCadMarker() {
+        assertEquals("CA$50.00", Money.format(5000, "CAD", Locale.CANADA))
+    }
+
+    @Test
+    fun usd_inCanadianLocale_showsUsMarker() {
+        assertEquals("US$50.00", Money.format(5000, "USD", Locale.CANADA))
+    }
+
+    @Test
     fun eur_inGermanLocale_usesDeviceSeparatorsAndPlacement() {
         assertEquals("1.234,56 €", Money.format(123456, "EUR", Locale.GERMANY).normalized())
     }
 
     @Test
     fun lowercaseCode_isUpperCased() {
-        assertEquals("$50.00", Money.format(5000, "usd", Locale.US))
+        assertEquals("US$50.00", Money.format(5000, "usd", Locale.US))
     }
 
     @Test
@@ -57,14 +67,14 @@ class MoneyTest {
 
     @Test
     fun largeAmount_usesGroupingWithoutOverflow() {
-        assertEquals("$1,234,567,890.12", Money.format(123456789012, "USD", Locale.US))
+        assertEquals("US$1,234,567,890.12", Money.format(123456789012, "USD", Locale.US))
     }
 
     @Test
     fun formatMajor_decimalCurrencies() {
         assertEquals("CA$0.00", Money.formatMajor(0.0, "CAD", Locale.US))
         assertEquals("CA$12.50", Money.formatMajor(12.5, "CAD", Locale.US))
-        assertEquals("$75.00", Money.formatMajor(75.0, "USD", Locale.US))
+        assertEquals("US$75.00", Money.formatMajor(75.0, "USD", Locale.US))
     }
 
     @Test
@@ -79,7 +89,7 @@ class MoneyTest {
 
     @Test
     fun formatMajor_roundsHalfUp() {
-        assertEquals("$0.13", Money.formatMajor(0.125, "USD", Locale.US))
+        assertEquals("US$0.13", Money.formatMajor(0.125, "USD", Locale.US))
     }
 
     @Test
