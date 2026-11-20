@@ -1309,4 +1309,99 @@ class UserManagerTest {
 
             assertTrue(h.manager.hasSeenOnboarding.value)
         }
+
+    // ---- Remembered login email (pre-filled on Login after any sign-out) ----
+
+    @Test
+    fun loginRemembersTrimmedEmailOfTheSuccessfulLogin() =
+        runTest {
+            val h = Harness(this)
+            h.api.loginHandler = { sampleLogin }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.login("  ada@b.co ", "pw")
+            runCurrent()
+
+            assertEquals("ada@b.co", h.tokens.lastLoginEmail)
+            assertEquals("ada@b.co", h.manager.rememberedLoginEmail())
+        }
+
+    @Test
+    fun whitespaceOnlyEmailIsNotStoredAndKeepsThePreviousOne() =
+        runTest {
+            val h = Harness(this)
+            h.tokens.saveLastLoginEmail("old@b.co")
+            h.api.loginHandler = { sampleLogin }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.login("   ", "pw")
+            runCurrent()
+
+            assertEquals("old@b.co", h.manager.rememberedLoginEmail())
+        }
+
+    @Test
+    fun failedLoginKeepsThePreviouslyRememberedEmail() =
+        runTest {
+            val h = Harness(this)
+            h.tokens.saveLastLoginEmail("old@b.co")
+            h.api.loginHandler = { throw h.api.httpError(401, """{"message":"Invalid email or password"}""") }
+
+            runCatching { h.manager.login("typo@b.co", "bad") }
+
+            assertEquals("old@b.co", h.manager.rememberedLoginEmail())
+        }
+
+    @Test
+    fun signupRemembersEmail() =
+        runTest {
+            val h = Harness(this)
+            h.api.signupHandler = { sampleSignup }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.signup("bo@b.co", "abcdefg1")
+            runCurrent()
+
+            assertEquals("bo@b.co", h.manager.rememberedLoginEmail())
+        }
+
+    @Test
+    fun rememberedEmailSurvivesLogoutRejectionAndSuspension() =
+        runTest {
+            val h = Harness(this)
+            h.api.loginHandler = { sampleLogin }
+            h.api.userProfileHandler = { sampleProfile }
+
+            h.manager.login("ada@b.co", "pw")
+            runCurrent()
+            h.manager.logout()
+            assertEquals("after Log Out", "ada@b.co", h.manager.rememberedLoginEmail())
+
+            h.manager.login("ada@b.co", "pw")
+            runCurrent()
+            h.tokens.clear()
+            h.events.emit(SessionEvent.Rejected)
+            runCurrent()
+            assertFalse(h.manager.isLoggedIn.value)
+            assertEquals("after a forced logout", "ada@b.co", h.manager.rememberedLoginEmail())
+
+            h.manager.login("ada@b.co", "pw")
+            runCurrent()
+            h.tokens.clear()
+            h.events.emit(SessionEvent.Suspended)
+            runCurrent()
+            assertTrue(h.manager.wasSuspended.value)
+            assertEquals("after a suspension", "ada@b.co", h.manager.rememberedLoginEmail())
+        }
+
+    @Test
+    fun forgetLastLoginEmailRemovesIt() =
+        runTest {
+            val h = Harness(this)
+            h.tokens.saveLastLoginEmail("ada@b.co")
+
+            h.manager.forgetLastLoginEmail()
+
+            assertNull(h.manager.rememberedLoginEmail())
+        }
 }

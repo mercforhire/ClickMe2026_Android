@@ -149,7 +149,7 @@ class UserManager
         ): AuthUser {
             clearSessionData()
             val data = apiCall { api.login(LoginRequest(email, password)) }.data
-            startSession(TokenPair(data.token, data.refreshToken, data.expiresAt), data.user)
+            startSession(TokenPair(data.token, data.refreshToken, data.expiresAt), data.user, email)
             return data.user
         }
 
@@ -163,7 +163,7 @@ class UserManager
         ): SignupData {
             clearSessionData()
             val data = apiCall { api.signup(SignupRequest(email, password)) }.data
-            startSession(TokenPair(data.token, data.refreshToken, data.expiresAt), data.user)
+            startSession(TokenPair(data.token, data.refreshToken, data.expiresAt), data.user, email)
             return data
         }
 
@@ -171,13 +171,18 @@ class UserManager
          * Stores the tokens and marks the user logged in after a successful login or signup. Non-cancellable
          * (WR-05): once the server has answered, a caller leaving (for example system Back during the submit) must
          * not leave the tokens saved without [isLoggedIn], or the account created without its tokens.
+         * [email] is remembered (trimmed, blank ignored) so Login can pre-fill it after a later sign-out.
          */
         private suspend fun startSession(
             pair: TokenPair,
             user: AuthUser,
+            email: String,
         ) {
             withContext(NonCancellable) {
-                withContext(io) { tokens.save(pair) }
+                withContext(io) {
+                    tokens.save(pair)
+                    email.trim().takeIf { it.isNotEmpty() }?.let(tokens::saveLastLoginEmail)
+                }
                 _authUser.value = user
                 _isLoggedIn.value = true
                 _wasSuspended.value = false
@@ -216,6 +221,17 @@ class UserManager
                 _currentMode.value = AppMode.Client
                 _hasSeenOnboarding.value = false
             }
+        }
+
+        /**
+         * The email of the last successful login or signup, pre-filled on Login after any sign-out (logout,
+         * rejection, suspension). [logout] keeps it; only account deletion forgets it ([forgetLastLoginEmail]).
+         */
+        suspend fun rememberedLoginEmail(): String? = withContext(io) { tokens.lastLoginEmail }
+
+        /** The account is gone: Login must no longer offer its email. */
+        suspend fun forgetLastLoginEmail() {
+            withContext(NonCancellable + io) { tokens.saveLastLoginEmail(null) }
         }
 
         /**

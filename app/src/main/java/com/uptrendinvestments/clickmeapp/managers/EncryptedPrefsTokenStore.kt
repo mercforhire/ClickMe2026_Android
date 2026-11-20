@@ -17,7 +17,8 @@ import java.security.KeyStore
  *   key (restore, OS update) the file and the Keystore alias are deleted and creation is retried once.
  *   If it still fails the tokens live in memory only, so the next cold start is a logged-out launch.
  * - Values are cached in @Volatile fields after the first read.
- * - [save] and [clear] write with commit() (durable before return), then update the cache.
+ * - [save], [saveLastLoginEmail] and [clear] write with commit() (durable before return), then update the cache.
+ * - [clear] removes the token keys only; the last login email survives a sign-out.
  *
  * This class cannot run under Robolectric (KeyStoreException); it is verified on the device in plan 02-15.
  */
@@ -45,6 +46,9 @@ class EncryptedPrefsTokenStore(
     @Volatile
     private var cachedExpiresAt: Long? = null
 
+    @Volatile
+    private var cachedLastEmail: String? = null
+
     override val accessToken: String?
         get() {
             ensureLoaded()
@@ -62,6 +66,26 @@ class EncryptedPrefsTokenStore(
             ensureLoaded()
             return cachedExpiresAt
         }
+
+    override val lastLoginEmail: String?
+        get() {
+            ensureLoaded()
+            return cachedLastEmail
+        }
+
+    @Synchronized
+    override fun saveLastLoginEmail(email: String?) {
+        ensureLoaded()
+        val editor = prefs?.edit()
+        val ok =
+            if (email == null) {
+                editor?.remove(KEY_LAST_EMAIL)?.commit()
+            } else {
+                editor?.putString(KEY_LAST_EMAIL, email)?.commit()
+            }
+        if (ok == false) Log.w(TAG, "Last email write did not commit; keeping it in memory only")
+        cachedLastEmail = email
+    }
 
     @Synchronized
     override fun save(tokens: TokenPair) {
@@ -82,7 +106,13 @@ class EncryptedPrefsTokenStore(
     @Synchronized
     override fun clear() {
         ensureLoaded()
-        val ok = prefs?.edit()?.clear()?.commit()
+        val ok =
+            prefs
+                ?.edit()
+                ?.remove(KEY_ACCESS)
+                ?.remove(KEY_REFRESH)
+                ?.remove(KEY_EXPIRES_AT)
+                ?.commit()
         if (ok == false) Log.w(TAG, "Token clear did not commit")
         cachedAccess = null
         cachedRefresh = null
@@ -98,6 +128,7 @@ class EncryptedPrefsTokenStore(
                 cachedAccess = p.getString(KEY_ACCESS, null)
                 cachedRefresh = p.getString(KEY_REFRESH, null)
                 cachedExpiresAt = if (p.contains(KEY_EXPIRES_AT)) p.getLong(KEY_EXPIRES_AT, 0L) else null
+                cachedLastEmail = p.getString(KEY_LAST_EMAIL, null)
             }
             loaded = true
         }
@@ -147,6 +178,7 @@ class EncryptedPrefsTokenStore(
         private const val KEY_ACCESS = "access_token"
         private const val KEY_REFRESH = "refresh_token"
         private const val KEY_EXPIRES_AT = "expires_at"
+        private const val KEY_LAST_EMAIL = "last_login_email"
         private const val TAG = "TokenStore"
     }
 }

@@ -23,6 +23,10 @@ class FakeSecureTokenStore(
         private set
 
     @Volatile
+    override var lastLoginEmail: String? = null
+        private set
+
+    @Volatile
     var saveCount: Int = 0
         private set
 
@@ -36,6 +40,12 @@ class FakeSecureTokenStore(
         refreshToken = tokens.refreshToken
         expiresAt = tokens.expiresAt
         saveCount++
+    }
+
+    /** Like the real store, the last email survives [clear]. */
+    @Synchronized
+    override fun saveLastLoginEmail(email: String?) {
+        lastLoginEmail = email
     }
 
     @Synchronized

@@ -25,7 +25,17 @@ interface SecureTokenStore {
     /** Persists the pair durably before returning. */
     fun save(tokens: TokenPair)
 
-    /** Removes every token before returning. */
+    /**
+     * The trimmed email of the last successful login or signup, or null. Not a secret, but PII, so it lives in the
+     * same secure store as the tokens. It survives [clear], so Login can pre-fill it after any sign-out; only
+     * account deletion forgets it ([saveLastLoginEmail] with null).
+     */
+    val lastLoginEmail: String?
+
+    /** Persists [email] (null removes it) durably before returning. */
+    fun saveLastLoginEmail(email: String?)
+
+    /** Removes every token before returning. [lastLoginEmail] is kept. */
     fun clear()
 
     fun hasSession(): Boolean = accessToken != null || refreshToken != null
