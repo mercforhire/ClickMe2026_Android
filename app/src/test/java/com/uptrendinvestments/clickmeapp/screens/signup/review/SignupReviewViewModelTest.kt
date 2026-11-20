@@ -141,6 +141,67 @@ class SignupReviewViewModelTest {
             assertFalse(vm.published.value)
         }
 
+    /** iOS 05-04 (SIGN-01): Publish stays tappable; a missing step refuses locally and sends nothing. */
+    @Test
+    fun publishWithAMissingPhotoRefusesLocallyAndSendsNothing() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            h.hydrateFull(avatarUrl = null)
+            val vm = SignupReviewViewModel(h.repository)
+            runCurrent()
+            assertFalse(vm.uiState.value.canPublish)
+
+            vm.publish()
+            advanceUntilIdle()
+
+            val s = vm.uiState.value
+            assertEquals(listOf(SetupStep.ProfilePhoto), s.publishRefusal)
+            assertEquals(SaveState.Idle, s.saveState)
+            assertEquals(0, h.api.setupProfileCalls)
+            assertTrue(h.api.setupProfileRequests.isEmpty())
+            assertFalse(vm.published.value)
+            assertFalse(vm.returnToHub.value)
+
+            vm.dismissDialog()
+            assertNull(vm.uiState.value.publishRefusal)
+            assertFalse(vm.returnToHub.value)
+        }
+
+    @Test
+    fun publishWithSeveralMissingStepsListsThemInHubOrder() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val vm = SignupReviewViewModel(h.repository)
+
+            vm.publish()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(SetupStep.PersonalDetails, SetupStep.ProfilePhoto, SetupStep.Expertise),
+                vm.uiState.value.publishRefusal,
+            )
+            assertEquals(0, h.api.setupProfileCalls)
+        }
+
+    @Test
+    fun publishRefusalSurvivesDraftUpdates() =
+        runTest(main.testDispatcher) {
+            val h = harness(this)
+            val vm = SignupReviewViewModel(h.repository)
+            runCurrent()
+            vm.publish()
+            runCurrent()
+            assertNotNull(vm.uiState.value.publishRefusal)
+
+            h.hydrateFull()
+            runCurrent()
+
+            assertTrue(vm.uiState.value.canPublish)
+            assertNotNull(vm.uiState.value.publishRefusal)
+            vm.dismissDialog()
+            assertNull(vm.uiState.value.publishRefusal)
+        }
+
     @Test
     fun publishSendsOnceHoldsThenResetsTheRepositoryAndSignalsPublished() =
         runTest(main.testDispatcher) {
@@ -218,7 +279,7 @@ class SignupReviewViewModelTest {
             assertEquals(SaveState.Idle, s.saveState)
             assertNull(s.dialogError)
             assertFalse(vm.published.value)
-            // The repository marked the steps blocked, so Publish is disabled again.
+            // The repository marked the steps blocked, so canPublish is false again and a second tap is refused locally.
             assertFalse(s.canPublish)
             assertFalse(vm.returnToHub.value)
 

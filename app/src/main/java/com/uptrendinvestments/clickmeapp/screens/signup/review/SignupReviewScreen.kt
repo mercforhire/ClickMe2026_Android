@@ -31,9 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -164,6 +161,14 @@ fun SignupReviewContent(
             title = stringResource(R.string.signup_review_error_title),
         )
     }
+    state.publishRefusal?.let { steps ->
+        val names = steps.map { stringResource(it.titleRes) }.joinToString(", ")
+        AuthErrorDialog(
+            message = stringResource(R.string.signup_review_finish_first, names),
+            onDismiss = onDismissDialog,
+            title = stringResource(R.string.signup_review_error_title),
+        )
+    }
     state.dialogError?.let { error ->
         AuthErrorDialog(
             message = error.asString(),
@@ -186,21 +191,11 @@ private fun PublishBar(
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        if (state.missing.isNotEmpty()) {
-            val needed = state.missing.map { stringResource(it.neededRes) }.joinToString(", ")
-            Text(
-                text = stringResource(R.string.signup_review_still_needed, needed),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.extras.onSurfaceMuted,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
-        }
         AsyncSaveButton(
             title = stringResource(R.string.signup_review_publish),
             savedTitle = stringResource(R.string.signup_review_published),
             state = state.saveState,
             onClick = onPublish,
-            enabled = state.canPublish,
         )
     }
 }

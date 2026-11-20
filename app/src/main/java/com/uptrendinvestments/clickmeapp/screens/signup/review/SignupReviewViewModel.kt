@@ -37,6 +37,8 @@ data class SignupReviewUiState(
     val saveState: SaveState = SaveState.Idle,
     val missingFieldsDialog: List<SetupStep>? = null,
     val dialogError: FieldError? = null,
+    /** Steps the local publish refusal names (iOS `missingMessage`); null while no refusal dialog is open. */
+    val publishRefusal: List<SetupStep>? = null,
 )
 
 /**
@@ -72,15 +74,24 @@ class SignupReviewViewModel
                             saveState = previous.saveState,
                             missingFieldsDialog = previous.missingFieldsDialog,
                             dialogError = previous.dialogError,
+                            publishRefusal = previous.publishRefusal,
                         )
                     }
                 }
             }
         }
 
+        /**
+         * iOS keeps the Publish button usable and refuses here, naming the missing steps, without a request
+         * (`SignupReviewViewModel.publish`, iOS 05-04). The server stays the enforcer through its 422.
+         */
         fun publish() {
             val current = _uiState.value
-            if (current.saveState != SaveState.Idle || !current.canPublish) return
+            if (current.saveState != SaveState.Idle) return
+            if (!current.canPublish) {
+                _uiState.update { it.copy(publishRefusal = current.missing) }
+                return
+            }
             _uiState.update { it.copy(saveState = SaveState.Saving, dialogError = null) }
             viewModelScope.launch {
                 try {
@@ -104,7 +115,7 @@ class SignupReviewViewModel
         }
 
         fun dismissDialog() {
-            _uiState.update { it.copy(dialogError = null) }
+            _uiState.update { it.copy(dialogError = null, publishRefusal = null) }
         }
 
         fun onPublishedConsumed() {

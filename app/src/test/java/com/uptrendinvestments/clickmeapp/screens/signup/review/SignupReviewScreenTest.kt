@@ -3,13 +3,11 @@ package com.uptrendinvestments.clickmeapp.screens.signup.review
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -122,25 +120,35 @@ class SignupReviewScreenTest {
         )
     }
 
+    /** iOS 05-04 (SIGN-01): Publish stays usable with a step missing; the view model owns the refusal. */
     @Test
-    fun missingItemsShowStillNeededLineAndDisablePublish() {
+    fun missingItemsKeepPublishUsableWithNoStillNeededLine() {
         var published = 0
         show(empty.copy(missing = listOf(SetupStep.ProfilePhoto, SetupStep.Expertise)), onPublish = { published++ })
 
-        val line = rule.onNodeWithText("Still needed: profile picture, expertise.")
-        line.assertIsDisplayed()
-        val live = line.fetchSemanticsNode().config[SemanticsProperties.LiveRegion]
-        assertEquals(LiveRegionMode.Polite, live)
-        rule.onNode(hasText("Publish Profile") and hasClickAction()).assertIsNotEnabled()
-        assertEquals(0, published)
+        rule.onAllNodesWithText("Still needed", substring = true).assertCountEquals(0)
+        rule.onNode(hasText("Publish Profile") and hasClickAction()).assertIsEnabled().performClick()
+        assertEquals(1, published)
     }
 
     @Test
-    fun canPublishHidesStillNeededAndPublishCallsBack() {
+    fun publishRefusalDialogNamesTheStepsAndOkDismisses() {
+        var dismissed = 0
+        show(
+            empty.copy(publishRefusal = listOf(SetupStep.ProfilePhoto)),
+            onDismissDialog = { dismissed++ },
+        )
+        rule.onNodeWithText("Couldn't publish profile").assertIsDisplayed()
+        rule.onNodeWithText("Finish these first: Add profile picture.").assertIsDisplayed()
+        rule.onNodeWithText("OK").performClick()
+        assertEquals(1, dismissed)
+    }
+
+    @Test
+    fun canPublishAndPublishCallsBack() {
         var published = 0
         show(full, onPublish = { published++ })
 
-        rule.onAllNodesWithText("Still needed", substring = true).assertCountEquals(0)
         rule.onNode(hasText("Publish Profile") and hasClickAction()).assertIsEnabled().performClick()
         assertEquals(1, published)
     }
