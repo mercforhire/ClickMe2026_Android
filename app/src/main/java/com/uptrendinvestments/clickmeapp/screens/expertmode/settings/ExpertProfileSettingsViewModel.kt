@@ -134,8 +134,9 @@ private fun ProfileTextFieldId.savedStateKey(): String =
 /**
  * State holder for Expert Settings (iOS `ExpertProfileSettingsViewModel`). It loads `GET expert/profile`, then
  * auto-saves like the client screen: the shared fields go through `PATCH user/profile` and the Skype / Zoom link through
- * `PATCH expert/profile`, both from one [AutoSaver]. A blank or non-http(s) link is never sent, so a typo cannot wipe or
- * break the link booked clients join through.
+ * `PATCH expert/profile`, both from one [AutoSaver]. A non-blank link is sent only when it passes
+ * [isAllowedMeetingUrl], so a typo cannot break the link booked clients join through. A blank field over a saved link
+ * is a deliberate clear and sends `""`; an expert with no saved link never sends the key (iOS CR-01).
  *
  * Process death (CONTEXT D-12): edited fields, the country, the languages (two parallel `ArrayList<String>`: ids with
  * "" for a custom language, and labels) and the typed meeting link are mirrored to [SavedStateHandle] with a touched
@@ -284,9 +285,16 @@ class ExpertProfileSettingsViewModel
                             },
                     )
             }
-            // A blank or invalid link keeps the server's, so it can neither wipe the link nor store a bad URL.
-            val link = restoredMeetingUrlText()?.trim().orEmpty()
-            val meetingUrl = if (link.isNotEmpty() && isAllowedMeetingUrl(link)) link else server.meetingUrl
+            // Blank text restored over a saved link is a clear (iOS CR-01); an invalid link keeps the server's, so a
+            // bad URL is never stored. With no restored text there is nothing to put back.
+            val link = restoredMeetingUrlText()?.trim()
+            val meetingUrl =
+                when {
+                    link == null -> server.meetingUrl
+                    link.isEmpty() -> ""
+                    isAllowedMeetingUrl(link) -> link
+                    else -> server.meetingUrl
+                }
             return ExpertSettingsSnapshot(profile = profile, meetingUrl = meetingUrl)
         }
 
@@ -319,16 +327,23 @@ class ExpertProfileSettingsViewModel
         }
 
         /**
-         * Stores the typed [value]. Only a non-blank value that passes [isAllowedMeetingUrl] enters the saver snapshot;
-         * anything else keeps the last saved link there (and shows the inline error when non-blank), so it can neither
-         * wipe the link nor store a `javascript:` URL that clients would open.
+         * Stores the typed [value]. Blank text enters the saver snapshot as "" (clearing a saved link, like iOS); a
+         * non-blank value enters it only when it passes [isAllowedMeetingUrl]. Any other value keeps the last saved
+         * link there (and shows the inline error), so a `javascript:` URL that clients would open is never stored.
          */
         fun onMeetingUrlChange(value: String) {
             val current = _uiState.value.snapshot ?: return
             val trimmed = value.trim()
             if (trimmed != rejectedMeetingUrl) rejectedMeetingUrl = null
-            val valid = trimmed.isNotEmpty() && isAllowedMeetingUrl(trimmed)
-            val next = current.copy(meetingUrl = if (valid) trimmed else savedMeetingUrl)
+            val next =
+                current.copy(
+                    meetingUrl =
+                        when {
+                            trimmed.isEmpty() -> ""
+                            isAllowedMeetingUrl(trimmed) -> trimmed
+                            else -> savedMeetingUrl
+                        },
+                )
             val error = meetingUrlErrorFor(value)
             savedStateHandle[KEY_MEETING_URL] = value
             savedStateHandle[KEY_TOUCHED] = true
@@ -504,8 +519,10 @@ class ExpertProfileSettingsViewModel
             val link = new.meetingUrl
             // Compared with what the server has, not with the baseline: a rejected link stays in the snapshot but is
             // never re-sent (it would fail every later auto-save), and a link that matches the server needs no call.
+            // A blank link differing from the server's means the expert cleared it, so "" is sent (the backend stores
+            // NULL, BACK-04); an expert who never had a link never sends the key. Non-blank links keep the guard.
             val shouldSend = link != savedMeetingUrl && link != rejectedMeetingUrl
-            if (shouldSend && link.isNotBlank() && isAllowedMeetingUrl(link)) {
+            if (shouldSend && (link.isEmpty() || isAllowedMeetingUrl(link))) {
                 try {
                     repository.updateMeetingUrl(link)
                     savedMeetingUrl = link

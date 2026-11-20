@@ -20,7 +20,10 @@ class ExpertProfileSettingsRepository
     ) {
         suspend fun load(): ExpertProfileData = apiCall { api.getExpertProfile() }.data
 
-        /** Sends [url] as `professional_details.meeting_url`. The caller has already checked it is a valid link. */
+        /**
+         * Sends [url] as `professional_details.meeting_url`. The caller has already checked a non-blank [url] is a valid
+         * link. An empty [url] is sent as `""` (not dropped) and clears the saved link: the backend stores NULL.
+         */
         suspend fun updateMeetingUrl(url: String) {
             apiCall { api.updateExpertMeetingUrl(UpdateExpertMeetingUrlRequest(MeetingUrlBody(url))) }
         }

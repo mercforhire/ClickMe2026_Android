@@ -228,7 +228,7 @@ class ExpertProfileSettingsViewModelTest {
         }
 
     @Test
-    fun invalidOrBlankLinkNotSent() =
+    fun invalidLinkNotSent() =
         runTest(main.testDispatcher) {
             val h = signedIn()
             val vm = viewModel(h)
@@ -242,15 +242,117 @@ class ExpertProfileSettingsViewModelTest {
                 advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
                 runCurrent()
             }
-            vm.onMeetingUrlChange("")
-            assertNull(vm.uiState.value.meetingUrlError)
-            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
-            runCurrent()
 
             assertEquals(0, h.api.updateExpertMeetingUrlCalls)
             assertEquals(0, h.api.updateUserProfileCalls)
             val kept = vm.uiState.value.snapshot
             assertEquals("https://zoom.us/j/1", kept?.meetingUrl)
+        }
+
+    @Test
+    fun clearingTheSavedLinkSendsAnEmptyMeetingUrl() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onMeetingUrlChange("")
+            assertNull(vm.uiState.value.meetingUrlError)
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateExpertMeetingUrlRequest(MeetingUrlBody(""))),
+                h.api.updateExpertMeetingUrlRequests,
+            )
+            assertEquals(0, h.api.updateUserProfileCalls)
+            assertEquals(
+                "",
+                vm.uiState.value.snapshot
+                    ?.meetingUrl,
+            )
+            assertEquals(AutoSaveStatus.Saved, vm.uiState.value.status)
+
+            // The clear is now what the server has: a later edit elsewhere does not send the link again.
+            vm.onFieldChange(ProfileTextFieldId.Bio, "Tax lawyer")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+            assertEquals(1, h.api.updateExpertMeetingUrlCalls)
+        }
+
+    @Test
+    fun aWhitespaceOnlyFieldClearsTheSavedLink() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onMeetingUrlChange("   ")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateExpertMeetingUrlRequest(MeetingUrlBody(""))),
+                h.api.updateExpertMeetingUrlRequests,
+            )
+        }
+
+    @Test
+    fun anExpertWithNoSavedLinkNeverSendsTheKey() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(expert.copy(professionalDetails = null))
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onMeetingUrlChange("")
+            vm.onFieldChange(ProfileTextFieldId.Bio, "Tax lawyer")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(0, h.api.updateExpertMeetingUrlCalls)
+            assertEquals(1, h.api.updateUserProfileCalls)
+            assertEquals(
+                "",
+                vm.uiState.value.snapshot
+                    ?.meetingUrl,
+            )
+        }
+
+    @Test
+    fun aNewLinkIsSentTrimmed() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onMeetingUrlChange("  https://zoom.us/j/2  ")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateExpertMeetingUrlRequest(MeetingUrlBody("https://zoom.us/j/2"))),
+                h.api.updateExpertMeetingUrlRequests,
+            )
+        }
+
+    @Test
+    fun aJavascriptLinkIsNeverSentEvenAfterAClear() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.onMeetingUrlChange("")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+            vm.onMeetingUrlChange("javascript:alert(1)")
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                listOf(UpdateExpertMeetingUrlRequest(MeetingUrlBody(""))),
+                h.api.updateExpertMeetingUrlRequests,
+            )
         }
 
     @Test
@@ -545,13 +647,43 @@ class ExpertProfileSettingsViewModelTest {
         }
 
     @Test
-    fun blankMeetingLinkNeverSent() =
+    fun blankRestoredMeetingLinkOverASavedLinkIsAClear() =
         runTest(main.testDispatcher) {
             val h = signedIn()
             val handle =
                 SavedStateHandle(
                     mapOf(
                         "expert_settings_meeting_url" to "   ",
+                        "expert_settings_first_name" to "Mia",
+                        "expert_settings_touched" to true,
+                    ),
+                )
+
+            val vm = viewModel(h, handle)
+            runCurrent()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
+            runCurrent()
+
+            assertEquals(
+                "",
+                vm.uiState.value.snapshot
+                    ?.meetingUrl,
+            )
+            assertEquals(
+                listOf(UpdateExpertMeetingUrlRequest(MeetingUrlBody(""))),
+                h.api.updateExpertMeetingUrlRequests,
+            )
+            assertEquals(1, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun anInvalidRestoredMeetingLinkKeepsTheServersLink() =
+        runTest(main.testDispatcher) {
+            val h = signedIn()
+            val handle =
+                SavedStateHandle(
+                    mapOf(
+                        "expert_settings_meeting_url" to "javascript:alert(1)",
                         "expert_settings_first_name" to "Mia",
                         "expert_settings_touched" to true,
                     ),
