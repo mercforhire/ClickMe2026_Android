@@ -37,6 +37,9 @@ data class LoginUiState(
  * Login (AUTH-01), ported from iOS `LoginViewModel`: no validation until the first submit, then live
  * re-validation on every edit. Routing after login is [UserManager.resolvePostAuthDestination].
  * Only the email is mirrored to [SavedStateHandle]; the password stays in memory (T-03-13).
+ *
+ * A fresh Login pre-fills the last signed-in email ([UserManager.rememberedLoginEmail]) unless the field already has
+ * a value of its own: a saved-state email, a D-10 reset [prefill] or anything the user typed always wins.
  */
 @HiltViewModel
 class LoginViewModel
@@ -55,7 +58,22 @@ class LoginViewModel
         private val _focusRequest = MutableStateFlow<LoginField?>(null)
         val focusRequest: StateFlow<LoginField?> = _focusRequest.asStateFlow()
 
+        /** True once the email has a source that outranks the remembered one (saved state, prefill, typing). */
+        private var emailOwned = savedStateHandle.contains(EMAIL_KEY)
+
+        init {
+            if (!emailOwned) {
+                viewModelScope.launch {
+                    val remembered = userManager.rememberedLoginEmail()
+                    if (!emailOwned && !remembered.isNullOrBlank()) {
+                        _uiState.update { it.copy(email = remembered) }
+                    }
+                }
+            }
+        }
+
         fun onEmailChange(value: String) {
+            emailOwned = true
             savedStateHandle[EMAIL_KEY] = value
             _uiState.update { state ->
                 state.copy(
@@ -78,6 +96,7 @@ class LoginViewModel
 
         /** D-10 hook: the Password Changed return pre-fills the email and starts from a clean form. */
         fun prefill(email: String) {
+            emailOwned = true
             savedStateHandle[EMAIL_KEY] = email
             _uiState.update {
                 it.copy(

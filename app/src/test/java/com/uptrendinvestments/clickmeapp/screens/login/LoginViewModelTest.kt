@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.LaunchDestination
 import com.uptrendinvestments.clickmeapp.managers.PushTokenRegistrar
+import com.uptrendinvestments.clickmeapp.managers.SessionEvent
 import com.uptrendinvestments.clickmeapp.managers.SessionEvents
 import com.uptrendinvestments.clickmeapp.managers.SessionStore
 import com.uptrendinvestments.clickmeapp.managers.UserManager
@@ -67,6 +68,9 @@ class LoginViewModelTest {
                 dispatcherRule.testDispatcher,
             )
         val viewModel = LoginViewModel(manager, handle)
+
+        /** The Login screen a sign-out lands on: a fresh ViewModel over the same session brain. */
+        fun freshLogin(handle: SavedStateHandle = SavedStateHandle()) = LoginViewModel(manager, handle)
 
         init {
             // Background profile refresh after login is best-effort; fail it quietly.
@@ -401,5 +405,159 @@ class LoginViewModelTest {
             h.viewModel.onDestinationConsumed()
 
             assertNull(h.viewModel.destination.value)
+        }
+
+    // ---- Remembered email: pre-filled on Login after any sign-out ----
+
+    private suspend fun TestScope.loginThenSignOut(
+        h: Harness,
+        email: String,
+        signOut: suspend () -> Unit,
+    ) {
+        h.loginOk()
+        h.fill(email = email)
+        h.viewModel.submit()
+        runCurrent()
+        assertTrue(h.manager.isLoggedIn.value)
+        signOut()
+        runCurrent()
+        assertFalse(h.manager.isLoggedIn.value)
+    }
+
+    @Test
+    fun firstLaunchLoginHasEmptyEmail() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            runCurrent()
+
+            assertEquals("", h.viewModel.uiState.value.email)
+        }
+
+    @Test
+    fun loginAfterLogOutPrefillsTheLastEmailWithEmptyPassword() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, " ada@b.co ") { h.manager.logout() }
+
+            val login = h.freshLogin()
+            runCurrent()
+
+            assertEquals("ada@b.co", login.uiState.value.email)
+            assertEquals("", login.uiState.value.password)
+            assertNull(login.uiState.value.emailError)
+            assertFalse(login.uiState.value.didAttemptSubmit)
+        }
+
+    @Test
+    fun prefilledEmailStaysEditable() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") { h.manager.logout() }
+            val login = h.freshLogin()
+            runCurrent()
+
+            login.onEmailChange("other@b.co")
+
+            assertEquals("other@b.co", login.uiState.value.email)
+        }
+
+    @Test
+    fun loginAfterForcedLogoutPrefillsTheLastEmail() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            // The transport clears the tokens, then reports the rejection (expired session / 401).
+            loginThenSignOut(h, "ada@b.co") {
+                h.tokens.clear()
+                h.events.emit(SessionEvent.Rejected)
+            }
+
+            val login = h.freshLogin()
+            runCurrent()
+
+            assertEquals("ada@b.co", login.uiState.value.email)
+            assertEquals("", login.uiState.value.password)
+        }
+
+    @Test
+    fun loginAfterServerSideSuspensionPrefillsTheLastEmail() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") {
+                h.tokens.clear()
+                h.events.emit(SessionEvent.Suspended)
+            }
+
+            val login = h.freshLogin()
+            runCurrent()
+
+            assertEquals("ada@b.co", login.uiState.value.email)
+        }
+
+    @Test
+    fun loginAfterForgettingTheEmailHasEmptyEmail() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") {
+                // What account deletion does once it succeeds (plan 08-25 wires it), then Back to Login.
+                h.manager.forgetLastLoginEmail()
+                h.manager.logout()
+            }
+
+            val login = h.freshLogin()
+            runCurrent()
+
+            assertEquals("", login.uiState.value.email)
+        }
+
+    @Test
+    fun resetEmailWinsOverTheRememberedEmail() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") { h.manager.logout() }
+            val login = h.freshLogin()
+            runCurrent()
+
+            login.prefill("reset@b.co")
+
+            assertEquals("reset@b.co", login.uiState.value.email)
+            assertEquals("", login.uiState.value.password)
+        }
+
+    @Test
+    fun resetEmailWinsEvenWhenTheRememberedEmailLoadsLater() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") { h.manager.logout() }
+            val login = h.freshLogin()
+
+            login.prefill("reset@b.co")
+            runCurrent()
+
+            assertEquals("reset@b.co", login.uiState.value.email)
+        }
+
+    @Test
+    fun typingBeforeTheRememberedEmailLoadsIsNotOverwritten() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") { h.manager.logout() }
+            val login = h.freshLogin()
+
+            login.onEmailChange("typed@b.co")
+            runCurrent()
+
+            assertEquals("typed@b.co", login.uiState.value.email)
+        }
+
+    @Test
+    fun savedStateEmailWinsOverTheRememberedEmail() =
+        runTest(dispatcherRule.testDispatcher) {
+            val h = Harness(this)
+            loginThenSignOut(h, "ada@b.co") { h.manager.logout() }
+
+            val login = h.freshLogin(SavedStateHandle(mapOf("login_email" to "")))
+            runCurrent()
+
+            assertEquals("a cleared field restored after process death stays cleared", "", login.uiState.value.email)
         }
 }
