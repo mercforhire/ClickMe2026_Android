@@ -65,6 +65,11 @@ fun SystemEventKind.titleRes(): Int =
         SystemEventKind.Unknown -> R.string.chat_event_unknown
     }
 
+/** The row title of [this] event: the kind's title, except a reschedule decline reads "Reschedule Declined". */
+@StringRes
+fun ThreadItem.SystemEvent.titleRes(): Int =
+    if (isRescheduleDecline) R.string.chat_event_reschedule_declined else kind.titleRes()
+
 /** The outlined glyph of [this] kind. */
 fun SystemEventKind.icon(): ImageVector =
     when (this) {
@@ -98,7 +103,7 @@ fun SystemEventRow(
     val clickModifier =
         if (bookingId != null) {
             Modifier.clickable(onClickLabel = viewBooking, role = Role.Button) {
-                onOpenBooking(bookingId, event.kind.isTerminal)
+                onOpenBooking(bookingId, event.isTerminal)
             }
         } else {
             Modifier.semantics(mergeDescendants = true) {}
@@ -117,7 +122,7 @@ fun SystemEventRow(
             EventTile(event.kind)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(event.kind.titleRes()),
+                    text = stringResource(event.titleRes()),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -131,6 +136,9 @@ fun SystemEventRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                // Another user's free text: a plain String in a plain Text (no links, no markup), wrapping fully.
+                event.reasonCodeLabel?.let { ReasonLine(it) }
+                event.reasonCaption?.let { ReasonLine(it) }
             }
             if (bookingId != null) {
                 Icon(
@@ -142,6 +150,16 @@ fun SystemEventRow(
             }
         }
     }
+}
+
+@Composable
+private fun ReasonLine(text: String) {
+    Spacer(Modifier.height(Spacing.xs))
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.extras.onSurfaceMuted,
+    )
 }
 
 @Composable

@@ -84,7 +84,13 @@ sealed interface ThreadItem {
                 "mine=$mine, delivery=$delivery)"
     }
 
-    /** A booking-related system event row. */
+    /**
+     * A booking-related system event row.
+     *
+     * [reasonCaption] and [reasonCodeLabel] carry another user's free text (the cancel, decline or reschedule reason),
+     * so they are plain strings for a plain `Text` and are left out of [toString] to keep them out of logs.
+     * [isRescheduleDecline] is the backend's `reschedule_decline` marker on a `BOOKING_DECLINED` row.
+     */
     data class SystemEvent(
         override val serverId: String,
         val kind: SystemEventKind,
@@ -93,12 +99,19 @@ sealed interface ThreadItem {
         val startTime: Instant?,
         val content: String?,
         override val createdAt: Instant,
+        val reasonCaption: String? = null,
+        val reasonCodeLabel: String? = null,
+        val isRescheduleDecline: Boolean = false,
     ) : ThreadItem {
         override val key: String
             get() = "s:" + serverId.lowercase()
 
+        /** Whether the booking behind this row is over. A reschedule decline leaves the booking active. */
+        val isTerminal: Boolean
+            get() = kind.isTerminal && !isRescheduleDecline
+
         override fun toString(): String =
             "SystemEvent(serverId=$serverId, kind=$kind, bookingId=$bookingId, startTime=$startTime, " +
-                "createdAt=$createdAt)"
+                "createdAt=$createdAt, isRescheduleDecline=$isRescheduleDecline)"
     }
 }

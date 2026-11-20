@@ -67,7 +67,10 @@ fun chatMessage(
     createdAt = createdAt,
 )
 
-/** A system `event` row with a null sender. Null [bookingId], [topic] and [startTime] are left out of `event_data`. */
+/**
+ * A system `event` row with a null sender. Null [bookingId], [topic], [startTime] and the reason parameters are left
+ * out of `event_data`; [rescheduleDecline] is written as the boolean the backend sends, only when non-null.
+ */
 fun chatEvent(
     id: String = "e1",
     threadId: String = "t1",
@@ -77,11 +80,21 @@ fun chatEvent(
     startTime: String? = "2026-11-21T15:00:00Z",
     content: String? = null,
     createdAt: Instant = FIXTURE_TIME,
+    reasonText: String? = null,
+    reasonBy: String? = null,
+    declineReasonText: String? = null,
+    declineReasonCode: String? = null,
+    rescheduleDecline: Boolean? = null,
 ): ChatMessageItem {
     val data = mutableMapOf<String, Any?>()
     bookingId?.let { data["booking_id"] = it }
     topic?.let { data["topic_title"] = it }
     startTime?.let { data["start_time"] = it }
+    reasonText?.let { data["reason_text"] = it }
+    reasonBy?.let { data["reason_by"] = it }
+    declineReasonText?.let { data["decline_reason_text"] = it }
+    declineReasonCode?.let { data["decline_reason_code"] = it }
+    rescheduleDecline?.let { data["reschedule_decline"] = it }
     return ChatMessageItem(
         id = id,
         threadId = threadId,

@@ -16,6 +16,7 @@
     <string name="chat_event_booking_request">Booking Request</string>
     <string name="chat_event_booking_confirmed">Booking Confirmed</string>
     <string name="chat_event_booking_declined">Booking Declined</string>
+    <string name="chat_event_reschedule_declined">Reschedule Declined</string>
     <string name="chat_event_booking_cancelled">Booking Cancelled</string>
     <string name="chat_event_booking_rescheduled">Booking Rescheduled</string>
     <string name="chat_event_booking_completed">Session Completed</string>
