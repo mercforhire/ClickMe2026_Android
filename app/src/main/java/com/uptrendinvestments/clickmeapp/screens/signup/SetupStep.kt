@@ -4,18 +4,17 @@ import androidx.annotation.StringRes
 import com.uptrendinvestments.clickmeapp.R
 
 /**
- * One row of the signup setup hub, in hub order. [titleRes] is the row title; [neededRes] is the lowercase label
- * used in the Review "Still needed: ..." line.
+ * One row of the signup setup hub, in hub order. [titleRes] is the row title; the Review publish refusal
+ * ("Finish these first: ...") names missing steps by these same titles, as iOS does.
  */
 enum class SetupStep(
     @StringRes val titleRes: Int,
-    @StringRes val neededRes: Int,
 ) {
-    PersonalDetails(R.string.signup_step_personal_details, R.string.signup_needed_personal_details),
-    Timezone(R.string.signup_step_timezone, R.string.signup_needed_timezone),
-    ProfilePhoto(R.string.signup_step_profile_photo, R.string.signup_needed_profile_photo),
-    VerifyEmail(R.string.signup_step_verify_email, R.string.signup_needed_verify_email),
-    Expertise(R.string.signup_step_expertise, R.string.signup_needed_expertise),
+    PersonalDetails(R.string.signup_step_personal_details),
+    Timezone(R.string.signup_step_timezone),
+    ProfilePhoto(R.string.signup_step_profile_photo),
+    VerifyEmail(R.string.signup_step_verify_email),
+    Expertise(R.string.signup_step_expertise),
     ;
 
     companion object {
