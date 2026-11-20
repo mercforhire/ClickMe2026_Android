@@ -313,11 +313,16 @@ class ProfileAutoSaveTest {
     }
 
     @Test
-    fun removingEveryLanguageSendsBothListsEmpty() {
-        assertEquals(
-            UpdateUserProfileRequest(languages = ProfileLanguagesBody(emptyList(), emptyList())),
-            buildProfilePatch(base, base.copy(languages = emptyList())),
-        )
+    fun removingEveryLanguageSendsNothing() {
+        assertNull(buildProfilePatch(base, base.copy(languages = emptyList())))
+    }
+
+    @Test
+    fun emptiedLanguagesWithABioChangeSendOnlyTheBio() {
+        val patch = buildProfilePatch(base, base.copy(languages = emptyList(), bio = "New bio"))
+
+        assertEquals(UpdateUserProfileRequest(basic = ProfileBasicBody("Ana", "Lee", "New bio")), patch)
+        assertNull(patch?.languages)
     }
 
     @Test

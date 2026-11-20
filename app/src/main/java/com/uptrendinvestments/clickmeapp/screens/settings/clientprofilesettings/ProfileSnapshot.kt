@@ -63,6 +63,10 @@ data class ProfileSnapshot(
  * valid), carrying only the non-empty names. Clearing a set name sends nothing: the server keeps its value, and the
  * view model shows "Please enter your first name." / "Please enter your last name." instead.
  *
+ * The languages group is a full replace on the server, so it is never sent when it would leave zero languages, even for
+ * a restored snapshot with an empty list (iOS 05-09 UI-SPEC A9). The language sheet refuses such a Done before it gets
+ * here; this is the second guard.
+ *
  * There is deliberately no email: the server answers 403.
  */
 fun buildProfilePatch(
@@ -87,7 +91,7 @@ fun buildProfilePatch(
             .takeIf { it != old.locationBody() }
     val languages =
         new.languages
-            .takeIf { it != old.languages }
+            .takeIf { it != old.languages && it.isNotEmpty() }
             ?.let { list ->
                 ProfileLanguagesBody(
                     languageIds = list.mapNotNull { language -> language.id?.takeIf { it.isNotBlank() } },

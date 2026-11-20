@@ -46,6 +46,8 @@
     <string name="profile_settings_languages_title">Spoken Languages</string>
     <string name="profile_settings_languages_edit">Edit languages</string>
     <string name="profile_settings_languages_empty">Add the languages you speak</string>
+    <!-- Shown when Done would leave the profile with no language (iOS 05-09 UI-SPEC A9). The server treats an empty languages group as a full replace, so the client is the only guard. -->
+    <string name="profile_settings_languages_keep_one">Keep at least one language.</string>
     <string name="profile_settings_country_label">Country</string>
     <string name="profile_settings_country_select">Select</string>
 </resources>

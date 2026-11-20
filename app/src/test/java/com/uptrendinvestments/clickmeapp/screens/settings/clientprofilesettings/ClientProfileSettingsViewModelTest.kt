@@ -560,9 +560,51 @@ class ClientProfileSettingsViewModelTest {
         }
 
     @Test
-    fun removingAllSendsEmptyLists() =
+    fun doneWithNothingSelectedKeepsTheListAndExplains() =
         runTest(main.testDispatcher) {
             val h = signedIn(userProfileData())
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.toggleLanguage(LanguageItem("en", "English"))
+            vm.applyLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertNull(state.languageSheet)
+            assertEquals(listOf(ProfileLanguage("en", "English")), state.snapshot?.languages)
+            assertEquals(FieldError.Res(R.string.profile_settings_languages_keep_one), state.dialog)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun doneWithNothingSelectedOnAProfileWithNoLanguagesIsSilent() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(userProfileData(languages = emptyList()))
+            h.api.languagesHandler = { catalogue }
+            val vm = viewModel(h)
+            runCurrent()
+
+            vm.openLanguages()
+            runCurrent()
+            vm.applyLanguages()
+            advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS * 2)
+            runCurrent()
+
+            val state = vm.uiState.value
+            assertNull(state.languageSheet)
+            assertNull(state.dialog)
+            assertEquals(0, h.api.updateUserProfileCalls)
+        }
+
+    @Test
+    fun deselectingEveryCatalogueLanguageKeepsTheCustomsAndSaves() =
+        runTest(main.testDispatcher) {
+            val h = signedIn(mixedLanguages)
             h.api.languagesHandler = { catalogue }
             val vm = viewModel(h)
             runCurrent()
@@ -574,8 +616,11 @@ class ClientProfileSettingsViewModelTest {
             advanceTimeBy(AUTO_SAVE_DEBOUNCE_MS)
             runCurrent()
 
+            assertNull(vm.uiState.value.dialog)
             assertEquals(
-                listOf(UpdateUserProfileRequest(languages = ProfileLanguagesBody(emptyList(), emptyList()))),
+                listOf(
+                    UpdateUserProfileRequest(languages = ProfileLanguagesBody(emptyList(), listOf("Klingon"))),
+                ),
                 h.api.updateUserProfileRequests,
             )
         }
