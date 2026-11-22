@@ -3,6 +3,7 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -23,7 +24,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_BLOCKER_BOOKINGS_TAG
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_BLOCKER_DISMISS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_COMMENTS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_CONFIRM_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_KEEP_TAG
@@ -64,17 +68,31 @@ class DeleteAccountScreenTest {
             CoroutineScope(main.testDispatcher),
         )
 
+    private val bookings = mutableListOf<Unit>()
+    private val dismissedBlockers = mutableListOf<Unit>()
+
     private fun setScreen(viewModel: DeleteAccountViewModel) {
         rule.setContent {
-            ClickMeTheme { DeleteAccountScreen(onBack = { backs += Unit }, viewModel = viewModel) }
+            ClickMeTheme {
+                DeleteAccountScreen(
+                    onBack = { backs += Unit },
+                    mode = AppMode.Client,
+                    onShowBookings = { bookings += Unit },
+                    viewModel = viewModel,
+                )
+            }
         }
     }
 
-    private fun setContent(state: DeleteAccountUiState) {
+    private fun setContent(
+        state: DeleteAccountUiState,
+        mode: AppMode = AppMode.Client,
+    ) {
         rule.setContent {
             ClickMeTheme {
                 DeleteAccountContent(
                     state = state,
+                    mode = mode,
                     onBack = { backs += Unit },
                     onContinue = {},
                     onBackToWarning = { toWarning += Unit },
@@ -83,6 +101,8 @@ class DeleteAccountScreenTest {
                     onPasswordChange = {},
                     onConfirm = {},
                     onDismissDialog = {},
+                    onDismissBlocker = { dismissedBlockers += Unit },
+                    onShowBookings = { bookings += Unit },
                 )
             }
         }
@@ -363,6 +383,99 @@ class DeleteAccountScreenTest {
         listOf("visible to the other person", "Deleted user", "upcoming").forEach {
             assertTrue("missing \"$it\"", joined.contains(it))
         }
+    }
+
+    @Test
+    fun blockerDialogShowsTheTodoTextAndButtonsForEveryCodeAndMode() {
+        data class Case(
+            val blocker: AccountDeletionBlocker,
+            val mode: AppMode,
+            val message: String,
+            val bookingsButton: Boolean,
+        )
+        val cases =
+            listOf(
+                Case(
+                    AccountDeletionBlocker.ExpertUpcoming,
+                    AppMode.Expert,
+                    "You have upcoming bookings as an expert. Cancel or finish them, then try again.",
+                    true,
+                ),
+                Case(
+                    AccountDeletionBlocker.ExpertUpcoming,
+                    AppMode.Client,
+                    "You have upcoming bookings as an expert. Switch to Expert mode to cancel or finish them, " +
+                        "then try again.",
+                    false,
+                ),
+                Case(
+                    AccountDeletionBlocker.ClientUpcoming,
+                    AppMode.Client,
+                    "You have upcoming sessions booked. Cancel them, then try again.",
+                    true,
+                ),
+                Case(
+                    AccountDeletionBlocker.ClientUpcoming,
+                    AppMode.Expert,
+                    "You have upcoming sessions booked as a client. Switch to Client mode to cancel them, " +
+                        "then try again.",
+                    false,
+                ),
+                Case(
+                    AccountDeletionBlocker.SessionInProgress,
+                    AppMode.Client,
+                    "A session is in progress or starts within 15 minutes. Wait until it ends, then try again.",
+                    true,
+                ),
+                Case(
+                    AccountDeletionBlocker.SessionInProgress,
+                    AppMode.Expert,
+                    "A session is in progress or starts within 15 minutes. Wait until it ends, then try again.",
+                    true,
+                ),
+            )
+        val current = mutableStateOf(cases.first())
+        rule.setContent {
+            ClickMeTheme {
+                DeleteAccountContent(
+                    state = DeleteAccountUiState(step = DeleteStep.Reason, blocker = current.value.blocker),
+                    mode = current.value.mode,
+                    onBack = {},
+                    onContinue = {},
+                    onBackToWarning = {},
+                    onSelectReason = {},
+                    onFeedbackChange = {},
+                    onPasswordChange = {},
+                    onConfirm = {},
+                    onDismissDialog = {},
+                    onDismissBlocker = {},
+                    onShowBookings = {},
+                )
+            }
+        }
+        for (case in cases) {
+            val label = "${case.blocker} in ${case.mode}"
+            rule.runOnUiThread { current.value = case }
+            rule.waitForIdle()
+            rule.onNodeWithText("You can't delete your account yet").assertExists(label)
+            rule.onNodeWithText(case.message).assertExists(label)
+            rule.onNodeWithTag(DELETE_BLOCKER_DISMISS_TAG).assertExists(label)
+            rule
+                .onAllNodes(hasTestTag(DELETE_BLOCKER_BOOKINGS_TAG))
+                .assertCountEquals(if (case.bookingsButton) 1 else 0)
+            rule.onAllNodesWithText("Couldn't delete account").assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun blockerButtonsCallTheirCallbacks() {
+        setContent(DeleteAccountUiState(step = DeleteStep.Reason, blocker = AccountDeletionBlocker.ClientUpcoming))
+
+        rule.onNodeWithText("View My Bookings").performClick()
+        assertEquals(1, bookings.size)
+
+        rule.onNodeWithText("Got it").performClick()
+        assertEquals(1, dismissedBlockers.size)
     }
 
     @Test

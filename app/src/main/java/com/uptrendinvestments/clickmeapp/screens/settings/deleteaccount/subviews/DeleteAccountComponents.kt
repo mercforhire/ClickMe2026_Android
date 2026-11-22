@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,8 +48,10 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.components.ValidatedField
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.DestructiveOutlinedButton
 import com.uptrendinvestments.clickmeapp.components.buttonstyles.PressScaleButton
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.login.asString
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.AccountDeletionBlocker
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountReason
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteStep
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.FEEDBACK_COUNTER_FROM
@@ -67,6 +71,12 @@ const val DELETE_CONFIRM_TAG = "delete_confirm"
 
 /** Test tag on the comments field. */
 const val DELETE_COMMENTS_TAG = "delete_comments"
+
+/** Test tag on the blocker dialog's "View My Bookings". */
+const val DELETE_BLOCKER_BOOKINGS_TAG = "delete_blocker_bookings"
+
+/** Test tag on the blocker dialog's dismiss button. */
+const val DELETE_BLOCKER_DISMISS_TAG = "delete_blocker_dismiss"
 
 /** Test tag prefix of a reason row; the wire value follows. */
 const val DELETE_REASON_TAG_PREFIX = "delete_reason_"
@@ -395,4 +405,53 @@ fun DeleteAccountBottomBar(
             }
         }
     }
+}
+
+/**
+ * "You can't delete your account yet" (iOS `AccountDeletionBlocker` alert). The text is client-owned and depends on the
+ * active [mode]; "View My Bookings" shows only when the blocking bookings are in that mode's list. The dismiss button
+ * keeps the "Got it" label the Delete Account dialogs already use.
+ */
+@Composable
+fun AccountDeletionBlockerDialog(
+    blocker: AccountDeletionBlocker,
+    mode: AppMode,
+    onShowBookings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.extraLarge,
+        title = {
+            Text(text = stringResource(AccountDeletionBlocker.titleRes), style = MaterialTheme.typography.titleLarge)
+        },
+        text = {
+            Text(
+                text = stringResource(blocker.messageRes(mode)),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        confirmButton = {
+            if (blocker.offersBookingsAction(mode)) {
+                TextButton(onClick = onShowBookings, modifier = Modifier.testTag(DELETE_BLOCKER_BOOKINGS_TAG)) {
+                    Text(
+                        text = stringResource(AccountDeletionBlocker.bookingsActionRes),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag(DELETE_BLOCKER_DISMISS_TAG)) {
+                Text(
+                    text = stringResource(R.string.delete_account_got_it),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        },
+    )
 }

@@ -24,9 +24,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uptrendinvestments.clickmeapp.R
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.screens.login.AuthErrorDialog
 import com.uptrendinvestments.clickmeapp.screens.login.AuthTopAppBar
 import com.uptrendinvestments.clickmeapp.screens.login.asString
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.AccountDeletionBlockerDialog
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DeleteAccountBottomBar
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DeleteAccountCommentsField
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DeleteAccountPasswordField
@@ -41,18 +43,24 @@ import com.uptrendinvestments.clickmeapp.ui.theme.contentMaxWidth
  * part of this screen: it is hosted at the app root ([AccountDeletionFarewellHost]) so the session teardown that
  * follows the deletion cannot remove it.
  *
+ * A 409 with one of the three blocker codes shows [AccountDeletionBlockerDialog] for the active [mode]; its "View My
+ * Bookings" runs [onShowBookings].
+ *
  * Back is ignored while the request pair is in flight; otherwise it pops, except on the Reason form where it returns
  * to Warning.
  */
 @Composable
 fun DeleteAccountScreen(
     onBack: () -> Unit,
+    mode: AppMode,
+    onShowBookings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DeleteAccountViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     DeleteAccountContent(
         state = state,
+        mode = mode,
         onBack = onBack,
         onContinue = viewModel::continueFromWarning,
         onBackToWarning = viewModel::backToWarning,
@@ -61,6 +69,11 @@ fun DeleteAccountScreen(
         onPasswordChange = viewModel::onPasswordChange,
         onConfirm = viewModel::confirmDeletion,
         onDismissDialog = viewModel::dismissDialog,
+        onDismissBlocker = viewModel::dismissBlocker,
+        onShowBookings = {
+            viewModel.dismissBlocker()
+            onShowBookings()
+        },
         modifier = modifier,
     )
 }
@@ -69,6 +82,7 @@ fun DeleteAccountScreen(
 @Composable
 fun DeleteAccountContent(
     state: DeleteAccountUiState,
+    mode: AppMode,
     onBack: () -> Unit,
     onContinue: () -> Unit,
     onBackToWarning: () -> Unit,
@@ -77,6 +91,8 @@ fun DeleteAccountContent(
     onPasswordChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismissDialog: () -> Unit,
+    onDismissBlocker: () -> Unit,
+    onShowBookings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Registered first so the in-flight swallow wins over the step handler below (the later handler runs first).
@@ -161,6 +177,15 @@ fun DeleteAccountContent(
             onDismiss = onDismissDialog,
             title = stringResource(R.string.delete_account_error_title),
             confirmLabel = stringResource(R.string.delete_account_got_it),
+        )
+    }
+
+    state.blocker?.let { blocker ->
+        AccountDeletionBlockerDialog(
+            blocker = blocker,
+            mode = mode,
+            onShowBookings = onShowBookings,
+            onDismiss = onDismissBlocker,
         )
     }
 }

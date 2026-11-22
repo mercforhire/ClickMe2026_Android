@@ -3,6 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.settings
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.navigation.BottomBar
 import com.uptrendinvestments.clickmeapp.navigation.Navigator
 import com.uptrendinvestments.clickmeapp.navigation.SettingsOrigin
@@ -24,6 +25,7 @@ import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.
 import com.uptrendinvestments.clickmeapp.screens.settings.clientprofilesettings.ProfilePhotoCropKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountKey
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.DeleteAccountScreen
+import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.showBookingsFromDeleteAccount
 import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackKey
 import com.uptrendinvestments.clickmeapp.screens.settings.feedback.FeedbackScreen
 import com.uptrendinvestments.clickmeapp.screens.settings.help.HelpKey
@@ -54,7 +56,7 @@ fun EntryProviderScope<NavKey>.clientSettingsEntries(navigator: Navigator) {
             onOpenCrop = { navigator.navigate(ProfilePhotoCropKey(SettingsOrigin.Profile)) },
         )
     }
-    accountAndHelpEntries(navigator)
+    accountAndHelpEntries(navigator, AppMode.Client)
 }
 
 /**
@@ -85,14 +87,18 @@ fun EntryProviderScope<NavKey>.expertSettingsEntries(navigator: Navigator) {
     entry<TaxProfileKey>(metadata = BottomBar.hidden()) {
         ExpertTaxProfileScreen(onBack = navigator::goBack)
     }
-    accountAndHelpEntries(navigator)
+    accountAndHelpEntries(navigator, AppMode.Expert)
 }
 
 /**
  * Entries both modes share: the photo crop, Account Security, Delete Account, Help, Notifications and Send Feedback.
- * Each is pushed from the Profile hub of one shell at a time, so the keys are plain objects.
+ * Each is pushed from the Profile hub of one shell at a time, so the keys are plain objects. [mode] is the mode of
+ * the shell that registers them, which is the active mode while they are on screen (Delete Account's blocker text).
  */
-private fun EntryProviderScope<NavKey>.accountAndHelpEntries(navigator: Navigator) {
+private fun EntryProviderScope<NavKey>.accountAndHelpEntries(
+    navigator: Navigator,
+    mode: AppMode,
+) {
     entry<NotificationSettingsKey>(metadata = BottomBar.hidden()) {
         NotificationSettingsScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)
     }
@@ -109,7 +115,11 @@ private fun EntryProviderScope<NavKey>.accountAndHelpEntries(navigator: Navigato
         )
     }
     entry<DeleteAccountKey>(metadata = BottomBar.hidden()) {
-        DeleteAccountScreen(onBack = navigator::goBack)
+        DeleteAccountScreen(
+            onBack = navigator::goBack,
+            mode = mode,
+            onShowBookings = { navigator.showBookingsFromDeleteAccount(mode) },
+        )
     }
     entry<HelpKey>(metadata = BottomBar.hidden()) {
         HelpScreen(viewModel = hiltViewModel(), onBack = navigator::goBack)

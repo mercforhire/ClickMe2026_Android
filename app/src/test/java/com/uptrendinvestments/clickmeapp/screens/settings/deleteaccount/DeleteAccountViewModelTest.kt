@@ -5,6 +5,7 @@ package com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount
 import androidx.lifecycle.SavedStateHandle
 import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.managers.RestrictedAction
+import com.uptrendinvestments.clickmeapp.model.enums.AppMode
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.model.responses.DeletionRequestData
 import com.uptrendinvestments.clickmeapp.model.responses.SuccessMessageResponse
@@ -181,7 +182,7 @@ class DeleteAccountViewModelTest {
         }
 
     @Test
-    fun conflictShowsServerMessageAndRetryMintsNewToken() =
+    fun blockerConflictKeepsTheFormAndRetryMintsNewToken() =
         runTest(main.testDispatcher) {
             val vm = viewModel()
             vm.fillReasonForm(reason = DeleteAccountReason.Other, feedback = "bye")
@@ -198,20 +199,146 @@ class DeleteAccountViewModelTest {
             vm.confirmDeletion()
             runCurrent()
 
-            assertEquals(FieldError.Text("Finish your 2 upcoming sessions first."), vm.uiState.value.dialog)
+            assertEquals(AccountDeletionBlocker.ExpertUpcoming, vm.uiState.value.blocker)
+            assertNull("the server message is never shown for a blocker code", vm.uiState.value.dialog)
             val kept = vm.uiState.value
+            assertFalse(kept.isDeleting)
             assertEquals(DeleteAccountReason.Other, kept.reason)
             assertEquals("bye", kept.feedback)
             assertEquals("pw1", kept.password)
             assertEquals(DeleteStep.Reason, kept.step)
 
-            vm.dismissDialog()
+            vm.dismissBlocker()
+            assertNull(vm.uiState.value.blocker)
             vm.confirmDeletion()
             runCurrent()
 
             assertEquals(2, api.requestAccountDeletionCalls)
             assertEquals(listOf("token-1", "token-2"), api.deleteAccountRequests.map { it.deletionToken })
         }
+
+    @Test
+    fun everyBlockerCodeFromEitherCallSetsTheBlocker() =
+        runTest(main.testDispatcher) {
+            val codes =
+                mapOf(
+                    "EXPERT_HAS_UPCOMING_BOOKINGS" to AccountDeletionBlocker.ExpertUpcoming,
+                    "CLIENT_HAS_UPCOMING_BOOKINGS" to AccountDeletionBlocker.ClientUpcoming,
+                    "SESSION_IN_PROGRESS" to AccountDeletionBlocker.SessionInProgress,
+                )
+            for ((code, expected) in codes) {
+                for (failOnRequest in listOf(true, false)) {
+                    val vm = viewModel()
+                    vm.fillReasonForm()
+                    val body = """{"status":"error","code":"$code","message":"x"}"""
+                    api.requestAccountDeletionHandler = {
+                        if (failOnRequest) throw api.httpError(409, body)
+                        DeletionRequestData("t")
+                    }
+                    api.deleteAccountHandler = { throw api.httpError(409, body) }
+
+                    vm.confirmDeletion()
+                    runCurrent()
+
+                    assertEquals("$code request=$failOnRequest", expected, vm.uiState.value.blocker)
+                    assertNull(vm.uiState.value.dialog)
+                    assertEquals(DeleteStep.Reason, vm.uiState.value.step)
+                    assertNull(vm.uiState.value.passwordError)
+                }
+            }
+        }
+
+    @Test
+    fun unknownConflictCodeKeepsTheGenericDialogWithTheServerMessage() =
+        runTest(main.testDispatcher) {
+            val vm = viewModel()
+            vm.fillReasonForm()
+            api.requestAccountDeletionHandler = { DeletionRequestData("token-1") }
+            api.deleteAccountHandler = {
+                throw api.httpError(409, """{"status":"error","code":"SOMETHING_NEW","message":"Try later."}""")
+            }
+
+            vm.confirmDeletion()
+            runCurrent()
+
+            assertEquals(FieldError.Text("Try later."), vm.uiState.value.dialog)
+            assertNull(vm.uiState.value.blocker)
+        }
+
+    @Test
+    fun blockerCopyFollowsTheTodoTableForEveryCodeAndMode() {
+        data class Row(
+            val blocker: AccountDeletionBlocker,
+            val mode: AppMode,
+            val message: Int,
+            val bookingsButton: Boolean,
+        )
+        val rows =
+            listOf(
+                Row(
+                    AccountDeletionBlocker.ExpertUpcoming,
+                    AppMode.Expert,
+                    R.string.delete_account_blocker_expert_in_expert_mode,
+                    true,
+                ),
+                Row(
+                    AccountDeletionBlocker.ExpertUpcoming,
+                    AppMode.Client,
+                    R.string.delete_account_blocker_expert_in_client_mode,
+                    false,
+                ),
+                Row(
+                    AccountDeletionBlocker.ClientUpcoming,
+                    AppMode.Client,
+                    R.string.delete_account_blocker_client_in_client_mode,
+                    true,
+                ),
+                Row(
+                    AccountDeletionBlocker.ClientUpcoming,
+                    AppMode.Expert,
+                    R.string.delete_account_blocker_client_in_expert_mode,
+                    false,
+                ),
+                Row(
+                    AccountDeletionBlocker.SessionInProgress,
+                    AppMode.Client,
+                    R.string.delete_account_blocker_session_in_progress,
+                    true,
+                ),
+                Row(
+                    AccountDeletionBlocker.SessionInProgress,
+                    AppMode.Expert,
+                    R.string.delete_account_blocker_session_in_progress,
+                    true,
+                ),
+            )
+        for (row in rows) {
+            assertEquals("${row.blocker} in ${row.mode}", row.message, row.blocker.messageRes(row.mode))
+            assertEquals(
+                "${row.blocker} in ${row.mode}",
+                row.bookingsButton,
+                row.blocker.offersBookingsAction(row.mode),
+            )
+        }
+    }
+
+    @Test
+    fun onlyTheThreeBlockerCodesAreBlockers() {
+        assertEquals(
+            AccountDeletionBlocker.ExpertUpcoming,
+            AccountDeletionBlocker.fromCode(ErrorCode.ExpertHasUpcomingBookings),
+        )
+        assertEquals(
+            AccountDeletionBlocker.ClientUpcoming,
+            AccountDeletionBlocker.fromCode(ErrorCode.ClientHasUpcomingBookings),
+        )
+        assertEquals(
+            AccountDeletionBlocker.SessionInProgress,
+            AccountDeletionBlocker.fromCode(ErrorCode.SessionInProgress),
+        )
+        assertNull(AccountDeletionBlocker.fromCode(ErrorCode.AccountSuspended))
+        assertNull(AccountDeletionBlocker.fromCode(null))
+    }
 
     @Test
     fun clientUpcomingBookingsCodeDecodes() {

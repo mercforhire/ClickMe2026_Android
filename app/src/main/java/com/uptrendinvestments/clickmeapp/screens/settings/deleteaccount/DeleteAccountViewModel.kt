@@ -52,6 +52,7 @@ data class DeleteAccountUiState(
     val passwordError: FieldError? = null,
     val isDeleting: Boolean = false,
     val dialog: FieldError? = null,
+    val blocker: AccountDeletionBlocker? = null,
 ) {
     /** The final "Delete Account" is available once a reason and a password are given and nothing is in flight. */
     val canConfirm: Boolean get() = reason != null && password.isNotBlank() && !isDeleting
@@ -137,7 +138,7 @@ class DeleteAccountViewModel
             if (!callGuard.attempt(RestrictedAction.DeleteAccount)) return
             val password = state.password
             val feedback = state.feedback.trim().ifEmpty { null }
-            _uiState.update { it.copy(isDeleting = true, passwordError = null, dialog = null) }
+            _uiState.update { it.copy(isDeleting = true, passwordError = null, dialog = null, blocker = null) }
             // The application scope on purpose: once the server revokes the sessions, a 401 elsewhere can log the user
             // out and dispose this screen. That must not cancel the request pair or skip markDeleted() (the Farewell).
             // onFailure only touches _uiState, which is safe on a cleared ViewModel.
@@ -165,6 +166,10 @@ class DeleteAccountViewModel
             e: ApiException,
             failedCall: FailedCall,
         ) {
+            val blocker =
+                (e as? ApiException.Http)
+                    ?.takeIf { it.status == HTTP_CONFLICT }
+                    ?.let { AccountDeletionBlocker.fromCode(it.code) }
             val failure: Failure =
                 when {
                     e is ApiException.Http && e.code == ErrorCode.AccountSuspended -> Failure.Silent
@@ -180,7 +185,9 @@ class DeleteAccountViewModel
                         e.status == HTTP_BAD_REQUEST &&
                         e.code == ErrorCode.InvalidToken ->
                         Failure.Password(FieldError.Res(R.string.delete_account_expired))
-                    // The server message is user-ready (upcoming bookings, session in progress).
+                    // The three blocker codes get client-owned text; branch on the code, never the server message.
+                    blocker != null -> Failure.Blocked(blocker)
+                    // Any other 409 keeps the generic dialog with the server message.
                     e.status == HTTP_CONFLICT ->
                         Failure.Dialog(e.userMessage?.let { FieldError.Text(it) } ?: GENERIC)
                     else -> Failure.Dialog(GENERIC)
@@ -189,6 +196,7 @@ class DeleteAccountViewModel
                 when (failure) {
                     is Failure.Password -> it.copy(isDeleting = false, passwordError = failure.error)
                     is Failure.Dialog -> it.copy(isDeleting = false, dialog = failure.error)
+                    is Failure.Blocked -> it.copy(isDeleting = false, blocker = failure.blocker)
                     Failure.Silent -> it.copy(isDeleting = false)
                 }
             }
@@ -203,12 +211,20 @@ class DeleteAccountViewModel
                 val error: FieldError,
             ) : Failure
 
+            data class Blocked(
+                val blocker: AccountDeletionBlocker,
+            ) : Failure
+
             /** ACCOUNT_SUSPENDED is owned by the global suspended-account dialog (Phase 2 D-08). */
             data object Silent : Failure
         }
 
         fun dismissDialog() {
             _uiState.update { it.copy(dialog = null) }
+        }
+
+        fun dismissBlocker() {
+            _uiState.update { it.copy(blocker = null) }
         }
     }
 

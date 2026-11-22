@@ -42,6 +42,15 @@
     <string name="delete_account_generic">Something went wrong. Please try again.</string>
     <string name="delete_account_got_it">Got it</string>
 
+    <!-- Blocker dialog for the three 409 codes: word for word iOS AccountDeletionBlocker (SET-06, D-10). -->
+    <string name="delete_account_blocker_title">You can\'t delete your account yet</string>
+    <string name="delete_account_blocker_expert_in_expert_mode">You have upcoming bookings as an expert. Cancel or finish them, then try again.</string>
+    <string name="delete_account_blocker_expert_in_client_mode">You have upcoming bookings as an expert. Switch to Expert mode to cancel or finish them, then try again.</string>
+    <string name="delete_account_blocker_client_in_client_mode">You have upcoming sessions booked. Cancel them, then try again.</string>
+    <string name="delete_account_blocker_client_in_expert_mode">You have upcoming sessions booked as a client. Switch to Client mode to cancel them, then try again.</string>
+    <string name="delete_account_blocker_session_in_progress">A session is in progress or starts within 15 minutes. Wait until it ends, then try again.</string>
+    <string name="delete_account_blocker_bookings">View My Bookings</string>
+
     <!-- Farewell, shown at the app root after the account is gone. -->
     <string name="delete_account_farewell_headline">We\'re sorry to see you go!</string>
     <string name="delete_account_farewell_body">Your account has been successfully deleted. We hope to see you again soon.</string>
