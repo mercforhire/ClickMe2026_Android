@@ -1,5 +1,6 @@
 package com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,9 +81,17 @@ private const val DISABLED_ALPHA = 0.38f
 private const val COMMENTS_MIN_LINES = 4
 private const val COMMENTS_MAX_LINES = 8
 
-/** Left-aligned warning shared by both forms: icon, headline that wraps, and the permanence notice. */
+/**
+ * Left-aligned warning shared by both forms: icon, headline that wraps, and the permanence line. Port of iOS
+ * `DeleteAccountWarningHeader`: when [showsDetails] is set (the confirmation step) the upfront line, the three
+ * disclosure groups and the saved-cards line follow, so the long copy is read once, before the user commits. The
+ * reason and password step passes false and keeps the headline and the permanence line only.
+ */
 @Composable
-fun DeleteAccountWarningHeader(modifier: Modifier = Modifier) {
+fun DeleteAccountWarningHeader(
+    modifier: Modifier = Modifier,
+    showsDetails: Boolean = true,
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         Icon(
             imageVector = Icons.Outlined.WarningAmber,
@@ -98,11 +107,44 @@ fun DeleteAccountWarningHeader(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(Spacing.sm))
+        DisclosureLine(stringResource(R.string.delete_account_permanence))
+        if (showsDetails) {
+            Spacer(Modifier.height(Spacing.md))
+            DisclosureLine(stringResource(R.string.delete_account_bookings_first))
+            DisclosureGroup(R.string.delete_account_deleted_title, R.string.delete_account_deleted_body)
+            DisclosureGroup(
+                R.string.delete_account_kept_anonymized_title,
+                R.string.delete_account_kept_anonymized_body,
+            )
+            DisclosureGroup(R.string.delete_account_kept_title, R.string.delete_account_kept_body)
+            Spacer(Modifier.height(Spacing.md))
+            DisclosureLine(stringResource(R.string.delete_account_saved_cards_note))
+        }
+    }
+}
+
+@Composable
+private fun DisclosureLine(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** A bold title over its body, as iOS draws each of the three groups. */
+@Composable
+private fun DisclosureGroup(
+    @StringRes title: Int,
+    @StringRes body: Int,
+) {
+    Column(modifier = Modifier.padding(top = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         Text(
-            text = stringResource(R.string.delete_account_body),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = stringResource(title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
+        DisclosureLine(stringResource(body))
     }
 }
 

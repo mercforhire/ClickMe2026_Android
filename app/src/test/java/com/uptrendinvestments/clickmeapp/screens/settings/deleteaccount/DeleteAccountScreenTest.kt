@@ -22,6 +22,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_COMMENTS_TAG
 import com.uptrendinvestments.clickmeapp.screens.settings.deleteaccount.subviews.DELETE_CONFIRM_TAG
@@ -35,6 +36,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -285,6 +287,82 @@ class DeleteAccountScreenTest {
         rule.onNodeWithText("Couldn't delete account").assertExists()
         rule.onNodeWithText("Finish your sessions first.").assertExists()
         rule.onNodeWithText("Got it").assertExists()
+    }
+
+    private fun text(id: Int) = rule.activity.getString(id)
+
+    @Test
+    fun confirmationStepShowsTheTrueDisclosureAndTheSavedCardsLine() {
+        setContent(DeleteAccountUiState(step = DeleteStep.Warning))
+
+        listOf(
+            R.string.delete_account_permanence,
+            R.string.delete_account_bookings_first,
+            R.string.delete_account_deleted_title,
+            R.string.delete_account_deleted_body,
+            R.string.delete_account_kept_anonymized_title,
+            R.string.delete_account_kept_anonymized_body,
+            R.string.delete_account_kept_title,
+            R.string.delete_account_kept_body,
+            R.string.delete_account_saved_cards_note,
+        ).forEach { rule.onNodeWithText(text(it)).assertExists() }
+    }
+
+    @Test
+    fun reasonStepKeepsOnlyThePermanenceLine() {
+        setContent(DeleteAccountUiState(step = DeleteStep.Reason))
+
+        rule.onNodeWithText(text(R.string.delete_account_permanence)).assertExists()
+        listOf(
+            R.string.delete_account_bookings_first,
+            R.string.delete_account_deleted_title,
+            R.string.delete_account_kept_anonymized_title,
+            R.string.delete_account_kept_title,
+            R.string.delete_account_saved_cards_note,
+        ).forEach { rule.onAllNodesWithText(text(it)).assertCountEquals(0) }
+    }
+
+    @Test
+    fun disclosureStringsAreTheIosWordsExactly() {
+        // iOS AccountDeletionCopy, final after plan 08-13 (D-23, option-a).
+        assertEquals(
+            "Deleting your account is permanent and can't be undone.",
+            text(R.string.delete_account_permanence),
+        )
+        assertEquals(
+            "Cards you added to pay for sessions are not deleted with your account.",
+            text(R.string.delete_account_saved_cards_note),
+        )
+        assertEquals(
+            "Your past bookings stay on record, shown as from \"Deleted user\". " +
+                "Your private notes on them are erased.",
+            text(R.string.delete_account_kept_anonymized_body),
+        )
+        assertEquals(
+            "Messages and reviews you've written stay visible to the other person, shown as from " +
+                "\"Deleted user\". Payment records are kept.",
+            text(R.string.delete_account_kept_body),
+        )
+    }
+
+    @Test
+    fun noDeleteAccountStringMakesAFalseRemovalClaim() {
+        val all =
+            R.string::class.java.fields
+                .filter { it.name.startsWith("delete_account_") }
+                .map { text(it.getInt(null)) }
+        assertTrue("found ${all.size} delete-account strings", all.size > 20)
+
+        val forbidden = listOf("payment details", "removed", "saved card")
+        for (value in all) {
+            for (phrase in forbidden) {
+                assertFalse("\"$value\" contains \"$phrase\"", value.contains(phrase, ignoreCase = true))
+            }
+        }
+        val joined = all.joinToString(" ")
+        listOf("visible to the other person", "Deleted user", "upcoming").forEach {
+            assertTrue("missing \"$it\"", joined.contains(it))
+        }
     }
 
     @Test

@@ -131,7 +131,7 @@ fun DeleteAccountContent(
                         .padding(horizontal = Spacing.md, vertical = Spacing.md),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
-                DeleteAccountWarningHeader()
+                DeleteAccountWarningHeader(showsDetails = step == DeleteStep.Warning)
                 if (step == DeleteStep.Reason) {
                     DeleteAccountReasonSection(
                         selected = state.reason,

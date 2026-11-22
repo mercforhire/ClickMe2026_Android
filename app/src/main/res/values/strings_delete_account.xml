@@ -4,7 +4,17 @@
 
     <string name="delete_account_title">Delete Account</string>
     <string name="delete_account_headline">Are you sure you want to delete your account?</string>
-    <string name="delete_account_body">Deleting your account is permanent and cannot be undone. All your data, including bookings, profile information, and payment details, will be permanently removed.</string>
+    <!-- Disclosure copy: word for word iOS AccountDeletionCopy (Phase 5 SET-06, D-23). Change both together. -->
+    <string name="delete_account_permanence">Deleting your account is permanent and can\'t be undone.</string>
+    <string name="delete_account_bookings_first">Before you delete, cancel or finish any upcoming sessions. Requests you\'ve sent that haven\'t been answered yet are cancelled for you, and any hold on your card is released.</string>
+    <string name="delete_account_deleted_title">Deleted</string>
+    <string name="delete_account_deleted_body">Your name, photo, bio and location, your devices, your notifications and preferences, and your uploaded profile photos.</string>
+    <string name="delete_account_kept_anonymized_title">Kept without your personal details</string>
+    <string name="delete_account_kept_anonymized_body">Your past bookings stay on record, shown as from \"Deleted user\". Your private notes on them are erased.</string>
+    <string name="delete_account_kept_title">Kept</string>
+    <string name="delete_account_kept_body">Messages and reviews you\'ve written stay visible to the other person, shown as from \"Deleted user\". Payment records are kept.</string>
+    <!-- Confirmation step only, after the three groups (D-23). -->
+    <string name="delete_account_saved_cards_note">Cards you added to pay for sessions are not deleted with your account.</string>
     <string name="delete_account_keep">Keep my account</string>
     <string name="delete_account_delete">Delete Account</string>
     <!-- Spoken label for the spinner that replaces the button text while the request pair is in flight. -->
