@@ -5,10 +5,10 @@ current_phase: 17
 current_phase_name: Play Store Release
 status: milestone-complete
 stopped_at: Phase 17 complete (production live 2026-11-10); milestone v1.0 ready for audit
-last_updated: "2026-11-24T01:12:37.970Z"
+last_updated: "2026-11-24T01:40:36.189Z"
 last_activity: 2026-11-23
 last_activity_desc: Phase 17 complete; ClickMe 1.0.0 (vc 6) live on Google Play
-state_head: 7de35062943ad1a9cdd8e5fb8928bd810476b1e4
+state_head: 075a36d0b753617768eb10ed14124c68356acd43
 progress:
   total_phases: 22
   completed_phases: 13
@@ -357,6 +357,7 @@ Recent decisions affecting current work:
 | 261123-qgu | Port the iOS join rule to Android JoinWindow (pending_reschedule disabled, can_join reconnect tier) | 2026-11-23 | d22f4b83 | [261123-qgu-port-the-ios-join-rule-to-android-joinwi](./quick/261123-qgu-port-the-ios-join-rule-to-android-joinwi/) |
 | 261123-rdc | Show Join for completed bookings until the reconnect window closes (iOS parity) | 2026-11-23 | ec7a2cf6 | [261123-rdc-show-join-for-completed-bookings-until-t](./quick/261123-rdc-show-join-for-completed-bookings-until-t/) |
 | 261123-rde | Port the Phase 1 booking and card error codes and fix the expert cancel refund line (iOS parity) | 2026-11-23 | 7de35062 | [261123-rde-port-the-phase-1-booking-and-card-error-](./quick/261123-rde-port-the-phase-1-booking-and-card-error-/) |
+| 9 | Bump versionCode 6 -> 7 (chore(release): versionCode 7) | 2026-11-23 | 075a36d0 | — |
 
 ### Roadmap Evolution
 
