@@ -68,6 +68,7 @@ import com.uptrendinvestments.clickmeapp.components.call.JoinCallButton
 import com.uptrendinvestments.clickmeapp.components.chat.ChatEntryErrorDialog
 import com.uptrendinvestments.clickmeapp.components.chat.MessageButton
 import com.uptrendinvestments.clickmeapp.managers.isWithinJoinWindow
+import com.uptrendinvestments.clickmeapp.managers.showsJoinCard
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatEntryViewModel
 import com.uptrendinvestments.clickmeapp.screens.chat.ChatPeer
 import com.uptrendinvestments.clickmeapp.screens.clientmode.makeabooking.rememberDeviceTimeFormat
@@ -423,7 +424,15 @@ private fun LoadedBody(
             )
             details.preparationNotes?.let { ExpertMessageCard(it) }
             MyNoteCard(note = details.privateNote, onClick = onOpenNote)
-            if (details.showsJoin) {
+            val showsJoin =
+                showsJoinCard(
+                    status = details.statusCode,
+                    start = details.start,
+                    end = details.end,
+                    now = joinNow,
+                    serverCanJoin = details.canJoin,
+                )
+            if (showsJoin) {
                 if (showCallResumeNote) CallResumeNote()
                 JoinCallButton(
                     enabled =

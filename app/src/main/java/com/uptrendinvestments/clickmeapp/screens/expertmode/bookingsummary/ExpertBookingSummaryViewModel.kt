@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Clock
 import java.time.Instant
 import java.util.Locale
 
@@ -69,7 +68,6 @@ class ExpertBookingSummaryViewModel
         private val repository: ExpertBookingsRepository,
         responder: ExpertRescheduleResponder,
         private val realtime: RealtimeConnection,
-        private val clock: Clock,
         private val callStarter: CallStarter,
         val callGuard: CallGuard,
         joinClock: JoinClock,
@@ -271,7 +269,7 @@ class ExpertBookingSummaryViewModel
                         loadedDetail = detail
                         _uiState.value =
                             ExpertBookingSummaryUiState(
-                                ExpertSummaryLoad.Loaded(detail.toSummaryDetails(clock.instant(), Locale.getDefault())),
+                                ExpertSummaryLoad.Loaded(detail.toSummaryDetails(Locale.getDefault())),
                                 showCallResumeNote,
                             )
                     } catch (e: ApiException) {

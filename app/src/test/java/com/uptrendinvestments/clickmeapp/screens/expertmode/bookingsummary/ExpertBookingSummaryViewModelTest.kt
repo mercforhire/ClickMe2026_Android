@@ -69,7 +69,6 @@ class ExpertBookingSummaryViewModelTest {
         repository,
         ExpertRescheduleResponder(repository),
         realtime,
-        clock,
         callStarter,
         callGuard,
         JoinClock(clock, joinScope),
@@ -90,7 +89,7 @@ class ExpertBookingSummaryViewModelTest {
 
     @Test
     fun mapsTheDetailForDisplay() {
-        val details = detail(notes = "  Please review my CV  ").toSummaryDetails(now, Locale.US)
+        val details = detail(notes = "  Please review my CV  ").toSummaryDetails(Locale.US)
 
         assertEquals("B1", details.shortId)
         assertEquals("confirmed", details.statusCode)
@@ -100,27 +99,26 @@ class ExpertBookingSummaryViewModelTest {
         assertEquals(SummaryFee.Amount("US\$75.00"), details.fee)
         assertEquals("Please review my CV", details.preparationNotes)
         assertTrue(details.canCancel)
-        assertTrue(details.showsJoin)
     }
 
     @Test
     fun canRescheduleFollowsTheServerFlagOnly() {
-        assertFalse(detail().toSummaryDetails(now, Locale.US).canReschedule)
+        assertFalse(detail().toSummaryDetails(Locale.US).canReschedule)
         val withFlag = expertBookingDetail(start = start, statusCode = "pending_approval", canReschedule = true)
-        assertTrue(withFlag.toSummaryDetails(now, Locale.US).canReschedule)
+        assertTrue(withFlag.toSummaryDetails(Locale.US).canReschedule)
     }
 
     @Test
     fun blankNotesMapToNull() {
-        assertNull(detail(notes = "   ").toSummaryDetails(now, Locale.US).preparationNotes)
-        assertNull(detail(notes = null).toSummaryDetails(now, Locale.US).preparationNotes)
+        assertNull(detail(notes = "   ").toSummaryDetails(Locale.US).preparationNotes)
+        assertNull(detail(notes = null).toSummaryDetails(Locale.US).preparationNotes)
     }
 
     // ---- private note (Phase 16.4, D-05, D-06, D-08) ----
 
     @Test
     fun detailsCarryTheNote() {
-        val details = detail(privateNote = "Call back").toSummaryDetails(now, Locale.US)
+        val details = detail(privateNote = "Call back").toSummaryDetails(Locale.US)
 
         assertEquals("Call back", details.privateNote)
         assertFalse(details.toString().contains("Call back"))
@@ -129,9 +127,9 @@ class ExpertBookingSummaryViewModelTest {
 
     @Test
     fun aBlankNoteCountsAsNoNote() {
-        assertNull(detail(privateNote = "   ").toSummaryDetails(now, Locale.US).privateNote)
-        assertNull(detail(privateNote = "").toSummaryDetails(now, Locale.US).privateNote)
-        assertNull(detail(privateNote = null).toSummaryDetails(now, Locale.US).privateNote)
+        assertNull(detail(privateNote = "   ").toSummaryDetails(Locale.US).privateNote)
+        assertNull(detail(privateNote = "").toSummaryDetails(Locale.US).privateNote)
+        assertNull(detail(privateNote = null).toSummaryDetails(Locale.US).privateNote)
     }
 
     @Test
@@ -196,18 +194,6 @@ class ExpertBookingSummaryViewModelTest {
             assertTrue(seen.all { it is ExpertSummaryLoad.Loaded })
             assertEquals("Call back", loaded(vm).privateNote)
         }
-
-    @Test
-    fun showsJoinFollowsTheStatusAndTheEndTime() {
-        listOf("confirmed", "in_progress", "pending_reschedule").forEach {
-            assertTrue(it, detail(it).toSummaryDetails(now, Locale.US).showsJoin)
-        }
-        listOf("cancelled", "declined", "missed", "expired", "pending_approval").forEach {
-            assertFalse(it, detail(it).toSummaryDetails(now, Locale.US).showsJoin)
-        }
-        assertTrue(detail("completed").toSummaryDetails(now, Locale.US).showsJoin)
-        assertFalse(detail("completed").toSummaryDetails(start.plusSeconds(7200), Locale.US).showsJoin)
-    }
 
     // ---- loading ----
 
@@ -596,7 +582,7 @@ class ExpertBookingSummaryViewModelTest {
 
     @Test
     fun clientProposalMapsToAnActionableProposalWithoutPaymentText() {
-        val ui = pending("client").toSummaryDetails(now, Locale.US).proposal!!
+        val ui = pending("client").toSummaryDetails(Locale.US).proposal!!
 
         assertFalse(ui.initiatedByExpert)
         assertEquals(start, ui.currentStart)
@@ -608,14 +594,14 @@ class ExpertBookingSummaryViewModelTest {
 
     @Test
     fun expertProposalMapsToAReadOnlyProposal() {
-        assertTrue(pending("expert").toSummaryDetails(now, Locale.US).proposal!!.initiatedByExpert)
+        assertTrue(pending("expert").toSummaryDetails(Locale.US).proposal!!.initiatedByExpert)
     }
 
     @Test
     fun noProposalOutsidePendingRescheduleOrWithoutATime() {
-        assertNull(detail("confirmed").toSummaryDetails(now, Locale.US).proposal)
+        assertNull(detail("confirmed").toSummaryDetails(Locale.US).proposal)
         val noTime = pending().copy(reschedule = RescheduleDto(initiatedBy = "client"))
-        assertNull(noTime.toSummaryDetails(now, Locale.US).proposal)
+        assertNull(noTime.toSummaryDetails(Locale.US).proposal)
     }
 
     @Test

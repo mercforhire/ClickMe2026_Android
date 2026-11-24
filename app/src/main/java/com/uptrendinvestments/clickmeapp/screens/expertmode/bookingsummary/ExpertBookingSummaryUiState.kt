@@ -3,9 +3,7 @@ package com.uptrendinvestments.clickmeapp.screens.expertmode.bookingsummary
 import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
 import com.uptrendinvestments.clickmeapp.model.responses.RESCHEDULE_INITIATED_BY_CLIENT
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.BookingStatusDisplay
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.JOINABLE_BOOKING_STATUSES
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.RescheduleProposalUi
-import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_PENDING_RESCHEDULE
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.summaryStatusDisplay
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
@@ -45,10 +43,10 @@ sealed interface SummaryFee {
  * @property canCancel the server's `actions.can_cancel`, the only gate for Cancel Booking (RESEARCH C8).
  * @property canReschedule the server's `actions.can_reschedule`, the only gate for the expert's Reschedule (Phase 16.2,
  *   locked: none of the client's 24 hour or awaiting-approval rules apply).
- * @property canJoin the server's `actions.can_join`. It only opens the reconnect tier of `isWithinJoinWindow`.
+ * @property canJoin the server's `actions.can_join`. It opens the reconnect tier of `isWithinJoinWindow` and keeps a
+ *   completed booking's Join visible through it (`showsJoinCard`, evaluated on screen against the live join clock).
  * @property privateNote the expert's own full note, or null when there is none or it is blank (Phase 16.4, D-08).
  *   User-written: show it, never log it; toString omits it.
- * @property showsJoin Join is offered for joinable and rejoinable states (D-14); the join window only enables it.
  * @property proposal the pending reschedule shown as the first block (EXP-09), or null. Only a proposal made by the
  *   client is actionable for the expert; the card shows the expert's own as read-only (D-18).
  */
@@ -70,7 +68,6 @@ data class ExpertSummaryDetails(
     val preparationNotes: String?,
     val canCancel: Boolean,
     val canReschedule: Boolean,
-    val showsJoin: Boolean,
     val canJoin: Boolean,
     val proposal: RescheduleProposalUi? = null,
     val privateNote: String? = null,
@@ -114,13 +111,10 @@ data class ExpertBookingSummaryUiState(
 fun expertShortBookingId(id: String): String = id.replace("-", "").take(SHORT_ID_LENGTH).uppercase(Locale.ROOT)
 
 /**
- * Pure mapping of the expert booking detail to the display model. [now] comes from the injected `Clock`; it only
- * decides whether a `completed` booking is still rejoinable.
+ * Pure mapping of the expert booking detail to the display model. It does not depend on the clock: Join visibility
+ * is evaluated on screen by `showsJoinCard` against the live join clock.
  */
-fun ExpertBookingDetail.toSummaryDetails(
-    now: Instant,
-    locale: Locale,
-): ExpertSummaryDetails {
+fun ExpertBookingDetail.toSummaryDetails(locale: Locale): ExpertSummaryDetails {
     val code = status.code
     return ExpertSummaryDetails(
         bookingId = bookingId,
@@ -140,7 +134,6 @@ fun ExpertBookingDetail.toSummaryDetails(
         canCancel = actions.canCancel,
         canReschedule = actions.canReschedule,
         canJoin = actions.canJoin,
-        showsJoin = code in JOINABLE_BOOKING_STATUSES || (code == STATUS_COMPLETED && endTime.isAfter(now)),
         proposal = rescheduleProposal(),
         privateNote = expertPrivateNote?.takeIf { it.isNotBlank() },
     )

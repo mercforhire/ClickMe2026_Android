@@ -123,7 +123,6 @@ class ExpertBookingSummaryScreenTest {
                 repository,
                 ExpertRescheduleResponder(repository),
                 FakeRealtimeConnection(),
-                clock,
                 callStarter,
                 callGuard,
                 JoinClock(clock, CoroutineScope(Job())),
@@ -212,7 +211,7 @@ class ExpertBookingSummaryScreenTest {
 
     // ---- call resume note, refresh standard, unavailable and width cap (Phase 15) ----
 
-    private fun summaryDetails() = expertBookingDetail(start = start).toSummaryDetails(now, Locale.US)
+    private fun summaryDetails() = expertBookingDetail(start = start).toSummaryDetails(Locale.US)
 
     private fun loadedState(
         showCallResumeNote: Boolean = false,
@@ -286,7 +285,7 @@ class ExpertBookingSummaryScreenTest {
         ExpertBookingSummaryUiState(
             load =
                 ExpertSummaryLoad.Loaded(
-                    expertBookingDetail(statusCode = statusCode, start = start).toSummaryDetails(now, Locale.US),
+                    expertBookingDetail(statusCode = statusCode, start = start).toSummaryDetails(Locale.US),
                 ),
         )
 
@@ -676,7 +675,7 @@ class ExpertBookingSummaryScreenTest {
             state =
                 ExpertBookingSummaryUiState(
                     ExpertSummaryLoad.Loaded(
-                        expertBookingDetail(start = start, statusCode = status).toSummaryDetails(now, Locale.US),
+                        expertBookingDetail(start = start, statusCode = status).toSummaryDetails(Locale.US),
                     ),
                 )
             rule.waitForIdle()
@@ -689,7 +688,7 @@ class ExpertBookingSummaryScreenTest {
     @Suppress("MagicNumber")
     fun largeFontKeepsMyNote() {
         val long = "A long private note about the session. ".repeat(12).trim()
-        val details = expertBookingDetail(start = start, privateNote = long).toSummaryDetails(now, Locale.US)
+        val details = expertBookingDetail(start = start, privateNote = long).toSummaryDetails(Locale.US)
         showContent(ExpertBookingSummaryUiState(ExpertSummaryLoad.Loaded(details)), fontScale = 2f)
         rule.onNodeWithTag(MY_NOTE_CARD_TAG).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("My Note").assertIsDisplayed()
@@ -1051,7 +1050,7 @@ class ExpertBookingSummaryScreenTest {
     @Test
     fun sentNoticeShowsSnackbarOnce() {
         var consumed = 0
-        val details = expertBookingDetail(start = start, canReschedule = true).toSummaryDetails(now, Locale.US)
+        val details = expertBookingDetail(start = start, canReschedule = true).toSummaryDetails(Locale.US)
         rule.setContent {
             ClickMeTheme {
                 ExpertBookingSummaryContent(
