@@ -462,7 +462,14 @@ private fun LoadedBody(
                 UpcomingBookingJoinCard(
                     meetingType = details.meetingType,
                     joinLink = details.joinLink,
-                    joinEnabled = isWithinJoinWindow(details.status.raw, details.start, details.end, joinNow),
+                    joinEnabled =
+                        isWithinJoinWindow(
+                            status = details.status.raw,
+                            start = details.start,
+                            end = details.end,
+                            now = joinNow,
+                            serverCanJoin = details.canJoin,
+                        ),
                     onJoin = onJoin,
                 )
             }

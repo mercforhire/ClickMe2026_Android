@@ -3,6 +3,8 @@ package com.uptrendinvestments.clickmeapp.managers
 import com.uptrendinvestments.clickmeapp.di.ApplicationScope
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.JOINABLE_BOOKING_STATUSES
 import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_COMPLETED
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_CONFIRMED
+import com.uptrendinvestments.clickmeapp.screens.clientmode.mybookings.STATUS_IN_PROGRESS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,10 +18,29 @@ import javax.inject.Singleton
 import kotlin.math.abs
 
 /**
- * How far before a booking's start the client join window opens, and its minimum length after the start, in
- * seconds (D-02).
+ * Half-width of the "Starting now" badge, in seconds: [isStartingNow] is true within +-this of the start. It no
+ * longer drives the Join button, which uses [JOIN_LEAD_SECONDS], [JOIN_MIN_FIRST_SPAN_SECONDS] and
+ * [JOIN_RECONNECT_GRACE_SECONDS].
  */
 const val JOIN_WINDOW_SECONDS = 3600L
+
+/**
+ * How long before a booking's start Join opens, in seconds. Backend `JOIN_LEAD_MS` (`src/services/agora.js`); iOS
+ * `JoinWindow.lead`.
+ */
+const val JOIN_LEAD_SECONDS = 3600L
+
+/**
+ * Minimum length of the first-join window after the start, in seconds, whatever the scheduled end. Backend
+ * `FIRST_JOIN_MIN_SPAN_MS`; iOS `JoinWindow.minFirstJoinSpan`.
+ */
+const val JOIN_MIN_FIRST_SPAN_SECONDS = 3600L
+
+/**
+ * How long after the scheduled end a party who already joined may reconnect, in seconds. Backend `JOIN_GRACE_MS`;
+ * iOS `JoinWindow.reconnectGrace`.
+ */
+const val JOIN_RECONNECT_GRACE_SECONDS = 3600L
 
 /** Cadence of [JoinClock]; chosen under D-03 discretion. */
 const val JOIN_CLOCK_TICK_MS = 30_000L
@@ -27,38 +48,51 @@ const val JOIN_CLOCK_TICK_MS = 30_000L
 private const val MILLIS_PER_SECOND = 1000L
 
 /**
- * Whether the Join button is enabled for a booking. Based on iOS `UpcomingBooking.isWithinJoinWindow`:
- * never for `pending_approval`; for `completed` while [end] is still in the future (someone may have hung up
- * early and want to resume); otherwise from [JOIN_WINDOW_SECONDS] before [start] until the later of
- * [start] + [JOIN_WINDOW_SECONDS] and [end], inclusive.
+ * The statuses whose Join can be enabled: `confirmed`, `in_progress` and `completed`. It equals the backend
+ * `JOINABLE_BOOKING_STATUSES` at 1d18aac (`src/utils/bookingStatusSets.js`) and iOS `JoinWindow.joinableStatuses`.
  *
- * Deliberate deviation from iOS (user decision on review finding WR-09, overriding the iOS-parity part of
- * D-02): iOS closes at [start] + 3600 s, which greys out Rejoin for the second half of any session longer
- * than an hour although CALL-END-SEMANTICS lets both parties rejoin for the whole window. iOS follow-up
- * logged.
+ * It is deliberately separate from the Android membership set [JOINABLE_BOOKING_STATUSES] in `TodaysSessions.kt`.
+ * That set has the same name as the backend one but different members: it keeps `pending_reschedule`, so its strips
+ * and cards still render a disabled Join (iOS 02-14, user decision 2026-11-10). This set decides enabling only.
+ */
+val JOIN_ENABLED_BOOKING_STATUSES: Set<String> = setOf(STATUS_CONFIRMED, STATUS_IN_PROGRESS, STATUS_COMPLETED)
+
+/**
+ * Whether the Join button is enabled for a booking. Three tiers, every edge inclusive:
+ * 1. Only [JOIN_ENABLED_BOOKING_STATUSES] can be enabled. Terminal, unknown, empty and `pending_approval`
+ *    statuses fail closed, and so does `pending_reschedule`, which shows a disabled Join.
+ * 2. Join opens [JOIN_LEAD_SECONDS] before [start] and, for a first join, stays enabled through the later of
+ *    [end] and [start] + [JOIN_MIN_FIRST_SPAN_SECONDS], whatever [serverCanJoin] says.
+ * 3. After that edge, a reconnect stays enabled through [end] + [JOIN_RECONNECT_GRACE_SECONDS] only when
+ *    [serverCanJoin] is true.
  *
- * The server's join flag (the booking detail DTO field) is deliberately ignored because its window is too
- * tight (D-02). The backend join window (120 min before / after in code, 10 / 0 in docs, "tighten before
- * launch") still has the final say on `POST /join`, so this rule is a UX gate and never an authorization
- * decision (RESEARCH Pitfall 5, ASVS V4).
+ * [serverCanJoin] is the payload's `can_join` when it carries one (client booking detail, expert `actions`) and
+ * null otherwise (client home feed, client bookings list). Null and false both close the reconnect tier. The flag
+ * is never consulted before the start lead or inside the first-join tier.
  *
- * The rule fails closed (Phase 16.5 D-03): only [JOINABLE_BOOKING_STATUSES] use the live window and
- * `completed` stays joinable until [end]; every other status, including `pending_approval`, `cancelled`,
- * `declined`, `missed`, `expired`, unknown and empty ones, is never joinable. `POST /bookings/:id/join` never
- * checks status (`call.controller.js`), and Payment History can open a terminal booking on Upcoming Booking
- * Details, so this client rule is the only status guard.
+ * Sources: iOS `ClickMe2026/Utils/JoinWindow.swift` (iOS plans 02-04 and 02-14), and backend `evaluateJoinWindow`
+ * (`src/services/agora.js`) and `JOINABLE_BOOKING_STATUSES` (`src/utils/bookingStatusSets.js`) at 1d18aac. This
+ * replaces the Phase 9 D-02 rule, which ignored the flag, enabled `pending_reschedule` and enabled `completed`
+ * only until [end]. The old WR-09 deviation from iOS is gone because iOS and the backend now close the first
+ * join at the later of [end] and [start] + 60 min as well.
+ *
+ * The result is a display gate and never an authorization. The server keeps the final say on
+ * `POST /bookings/:id/join`, which since 1d18aac also rejects non-joinable statuses with 403 SESSION_NOT_ACTIVE
+ * (`call.controller.js`).
  */
 fun isWithinJoinWindow(
     status: String,
     start: Instant,
     end: Instant,
     now: Instant,
-): Boolean =
-    when {
-        status in JOINABLE_BOOKING_STATUSES -> isInLiveWindow(start, end, now)
-        status == STATUS_COMPLETED -> end.isAfter(now)
-        else -> false
-    }
+    serverCanJoin: Boolean? = null,
+): Boolean {
+    if (status !in JOIN_ENABLED_BOOKING_STATUSES) return false
+    if (now.isBefore(start.minusSeconds(JOIN_LEAD_SECONDS))) return false
+    val firstJoinCloses = maxOf(end, start.plusSeconds(JOIN_MIN_FIRST_SPAN_SECONDS))
+    if (!now.isAfter(firstJoinCloses)) return true
+    return serverCanJoin == true && !now.isAfter(end.plusSeconds(JOIN_RECONNECT_GRACE_SECONDS))
+}
 
 /**
  * Whether Upcoming Booking Details renders the Join card at all. A live booking outside its window keeps the
@@ -70,17 +104,6 @@ fun showsJoinCard(
     end: Instant,
     now: Instant,
 ): Boolean = status in JOINABLE_BOOKING_STATUSES || (status == STATUS_COMPLETED && end.isAfter(now))
-
-/** [now] in [start - JOIN_WINDOW_SECONDS, max(start + JOIN_WINDOW_SECONDS, end)], both edges inclusive. */
-private fun isInLiveWindow(
-    start: Instant,
-    end: Instant,
-    now: Instant,
-): Boolean {
-    val opens = start.minusSeconds(JOIN_WINDOW_SECONDS)
-    val closes = maxOf(start.plusSeconds(JOIN_WINDOW_SECONDS), end)
-    return !now.isBefore(opens) && !now.isAfter(closes)
-}
 
 /**
  * True exactly when [start] is within +-[JOIN_WINDOW_SECONDS] of [now] (iOS `isStartingNow`). Drives the

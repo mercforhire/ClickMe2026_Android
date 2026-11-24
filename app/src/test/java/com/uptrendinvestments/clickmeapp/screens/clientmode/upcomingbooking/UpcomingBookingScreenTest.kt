@@ -301,6 +301,7 @@ class UpcomingBookingScreenTest {
         start: Instant = detailsStart,
         end: Instant = detailsStart.plusSeconds(3600),
         expertId: String? = "e1",
+        canJoin: Boolean = false,
     ) = UpcomingBookingDetails(
         bookingId = "b1",
         shortId = "#B1",
@@ -321,6 +322,7 @@ class UpcomingBookingScreenTest {
         showsPendingBanner = status == "pending_approval",
         canCancel = status in setOf("confirmed", "pending_approval", "pending_reschedule"),
         reschedule = reschedule,
+        canJoin = canJoin,
     )
 
     private class Calls {
@@ -379,6 +381,38 @@ class UpcomingBookingScreenTest {
     fun addToCalendarIsHiddenForAPendingRequest() {
         setScreen(loaded(details(status = "pending_approval")))
         rule.onAllNodesWithTag(UPCOMING_ADD_TO_CALENDAR_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun pendingRescheduleShowsADisabledJoinInsideTheWindow() {
+        setScreen(loaded(details(status = "pending_reschedule")), joinNow = detailsStart)
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG)
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .assert(hasJoinHint())
+    }
+
+    @Test
+    fun pastTheEndJoinStaysEnabledWhenTheServerAllowsAReconnect() {
+        setScreen(
+            loaded(details(status = "in_progress", canJoin = true)),
+            joinNow = detailsStart.plusSeconds(5400),
+        )
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun pastTheEndJoinIsDisabledWithoutTheServerFlag() {
+        setScreen(
+            loaded(details(status = "in_progress", canJoin = false)),
+            joinNow = detailsStart.plusSeconds(5400),
+        )
+        rule
+            .onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG)
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .assert(hasJoinHint())
     }
 
     @Test

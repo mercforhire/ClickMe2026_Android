@@ -32,6 +32,8 @@ fun shortBookingId(id: String): String = "#" + id.take(SHORT_ID_LENGTH).uppercas
  *   also applies the time rule in [canClientCancelNow].
  * @property reschedule the shared reschedule card model, present only for `pending_reschedule` (D-01, D-03).
  * @property expertId the expert's user id, sent as the peer id when Join Call starts the call (CALL-01).
+ * @property canJoin the GET /client/bookings/{id} `can_join`. It only opens the reconnect tier of
+ *   [isWithinJoinWindow], and it is always fresh because the ViewModel reloads on `booking.update`.
  */
 @Suppress("LongParameterList")
 data class UpcomingBookingDetails(
@@ -54,6 +56,7 @@ data class UpcomingBookingDetails(
     val canCancel: Boolean,
     val reschedule: RescheduleProposalUi?,
     val expertId: String? = null,
+    val canJoin: Boolean = false,
 )
 
 /**
@@ -120,4 +123,5 @@ fun ClientBookingDetail.toUpcomingDetails(now: Instant): UpcomingBookingDetails 
         canCancel = status in CANCELLABLE_BOOKING_STATUSES,
         reschedule = toRescheduleProposalUi(now),
         expertId = expert.id?.takeIf { it.isNotBlank() },
+        canJoin = canJoin,
     )

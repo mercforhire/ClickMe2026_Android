@@ -112,6 +112,12 @@ class UpcomingBookingViewModelTest {
     }
 
     @Test
+    fun toUpcomingDetailsCarriesTheServerJoinFlag() {
+        assertTrue(bookingDetail(canJoin = true).toUpcomingDetails(now).canJoin)
+        assertFalse(bookingDetail().toUpcomingDetails(now).canJoin)
+    }
+
+    @Test
     fun confirmed_allows_cancel_and_has_no_proposal() {
         val details = bookingDetail(status = "confirmed").toUpcomingDetails(now)
 

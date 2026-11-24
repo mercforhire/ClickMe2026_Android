@@ -69,6 +69,7 @@ fun bookingDetail(
     authorizationExpiresAt: Instant? = null,
     reschedule: RescheduleDto? = null,
     privateNote: String? = null,
+    canJoin: Boolean = false,
 ): ClientBookingDetail =
     ClientBookingDetail(
         bookingId = id,
@@ -92,4 +93,5 @@ fun bookingDetail(
         joinLink = joinLink,
         reschedule = reschedule,
         privateNote = privateNote,
+        canJoin = canJoin,
     )
