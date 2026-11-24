@@ -448,7 +448,15 @@ private fun LoadedBody(
             UpcomingBookingPaymentPill(it)
         }
         // Phase 16.5 D-03: a booking that will never happen shows no Join card, and no doubled gap either.
-        val showsJoin = showsJoinCard(details.status.raw, details.end, joinNow)
+        // A completed booking keeps the card while its join window (reconnect tier included) is open.
+        val showsJoin =
+            showsJoinCard(
+                status = details.status.raw,
+                start = details.start,
+                end = details.end,
+                now = joinNow,
+                serverCanJoin = details.canJoin,
+            )
         if (details.showsPendingBanner || showCallResumeNote || showsJoin) {
             Spacer(Modifier.height(Spacing.md))
         }

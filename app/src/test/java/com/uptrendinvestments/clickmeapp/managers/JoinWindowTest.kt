@@ -261,10 +261,12 @@ class JoinWindowTest {
     @Test
     fun showsJoinCard_shortCompletedSessionShowsUntilStartPlusOneHour() {
         val end = cardStart.plusSeconds(1800)
+
         fun short(
             at: Instant,
             flag: Boolean?,
         ) = card("completed", at, flag, end = end)
+
         assertTrue(short(end.plusSeconds(1), null))
         assertTrue(short(cardStart.plusSeconds(3600), null))
         assertFalse(short(cardStart.plusSeconds(3601), null))

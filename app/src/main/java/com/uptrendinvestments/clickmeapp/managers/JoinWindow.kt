@@ -95,15 +95,37 @@ fun isWithinJoinWindow(
 }
 
 /**
- * Whether Upcoming Booking Details renders the Join card at all. A live booking outside its window keeps the
- * disabled card and its hint; a booking that will never happen (terminal, unknown, pending approval, or a
- * completed one whose [end] has passed) shows no card (Phase 16.5 D-03).
+ * Whether a booking detail screen renders the Join button at all. It is the shared visibility rule for client
+ * Upcoming Booking Details and the expert Booking Summary, and it equals iOS `ExpertJoinVisibility.shows`
+ * (`ClickMe2026/Utils/ExpertJoinVisibility.swift`): [JOINABLE_BOOKING_STATUSES] (iOS `alwaysShownStatuses`) show
+ * at every instant, with the button disabled outside the window, and every other status shows only while
+ * [isWithinJoinWindow] is true.
+ *
+ * A completed booking therefore shows Join exactly while it can be enabled, including the server-approved
+ * reconnect tier through [end] + [JOIN_RECONNECT_GRACE_SECONDS] (quick 261123-rdc, the follow-up to 261123-qgu).
+ * A visible completed Join is never disabled, and it leaves at the window edge once the caller re-evaluates it
+ * against the live [JoinClock].
+ *
+ * Client deviation: iOS client details shows the card for every status but `pending_approval`
+ * (`JoinWindow.showsJoinButton`), disabled where it cannot be used. Android keeps Phase 16.5 D-03 instead, so a
+ * booking that can no longer be joined (terminal, unknown, pending approval, or completed past its window)
+ * shows no card.
  */
 fun showsJoinCard(
     status: String,
+    start: Instant,
     end: Instant,
     now: Instant,
-): Boolean = status in JOINABLE_BOOKING_STATUSES || (status == STATUS_COMPLETED && end.isAfter(now))
+    serverCanJoin: Boolean?,
+): Boolean =
+    status in JOINABLE_BOOKING_STATUSES ||
+        isWithinJoinWindow(
+            status = status,
+            start = start,
+            end = end,
+            now = now,
+            serverCanJoin = serverCanJoin,
+        )
 
 /**
  * True exactly when [start] is within +-[JOIN_WINDOW_SECONDS] of [now] (iOS `isStartingNow`). Drives the

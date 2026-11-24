@@ -32,8 +32,9 @@ fun shortBookingId(id: String): String = "#" + id.take(SHORT_ID_LENGTH).uppercas
  *   also applies the time rule in [canClientCancelNow].
  * @property reschedule the shared reschedule card model, present only for `pending_reschedule` (D-01, D-03).
  * @property expertId the expert's user id, sent as the peer id when Join Call starts the call (CALL-01).
- * @property canJoin the GET /client/bookings/{id} `can_join`. It only opens the reconnect tier of
- *   [isWithinJoinWindow], and it is always fresh because the ViewModel reloads on `booking.update`.
+ * @property canJoin the GET /client/bookings/{id} `can_join`. It opens the reconnect tier of
+ *   [isWithinJoinWindow] and, for a completed booking, keeps the Join card visible through that tier
+ *   ([showsJoinCard]). It is always fresh because the ViewModel reloads on `booking.update`.
  */
 @Suppress("LongParameterList")
 data class UpcomingBookingDetails(
