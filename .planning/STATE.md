@@ -5,10 +5,10 @@ current_phase: 17
 current_phase_name: Play Store Release
 status: milestone-complete
 stopped_at: Phase 17 complete (production live 2026-11-10); milestone v1.0 ready for audit
-last_updated: "2026-11-24T05:07:25.043Z"
+last_updated: "2026-11-24T14:30:27.432Z"
 last_activity: 2026-11-23
 last_activity_desc: Phase 17 complete; ClickMe 1.0.0 (vc 6) live on Google Play
-state_head: 4850da0389e0554dc5523a2dccf0546c3c0a8661
+state_head: "0b7f0efba85d6457220b1d18cc248240d25a81f3"
 progress:
   total_phases: 22
   completed_phases: 13
@@ -359,6 +359,7 @@ Recent decisions affecting current work:
 | 261123-rde | Port the Phase 1 booking and card error codes and fix the expert cancel refund line (iOS parity) | 2026-11-23 | 7de35062 | [261123-rde-port-the-phase-1-booking-and-card-error-](./quick/261123-rde-port-the-phase-1-booking-and-card-error-/) |
 | 9 | Bump versionCode 6 -> 7 (chore(release): versionCode 7) | 2026-11-23 | 075a36d0 | — |
 | 261123-x7v | Add a public README for portfolio reference (no keys, URLs or signing details) | 2026-11-24 | 4850da03 | [261123-x7v-add-a-public-readme](./quick/261123-x7v-add-a-public-readme/) |
+| 11 | README: add App Store and Google Play download links | 2026-11-24 | 0b7f0efb | — |
 
 ### Roadmap Evolution
 
