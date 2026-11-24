@@ -203,22 +203,102 @@ class JoinWindowTest {
         }
     }
 
+    private val cardStart = now.plusSeconds(600)
+    private val cardEnd = cardStart.plusSeconds(3600)
+
+    private fun card(
+        status: String,
+        at: Instant,
+        serverCanJoin: Boolean?,
+        start: Instant = cardStart,
+        end: Instant = cardEnd,
+    ) = showsJoinCard(
+        status = status,
+        start = start,
+        end = end,
+        now = at,
+        serverCanJoin = serverCanJoin,
+    )
+
     @Test
-    fun showsJoinCardTruthTable() {
-        val start = now.plusSeconds(600)
-        val end = now.plusSeconds(4200)
+    fun showsJoinCard_liveStatusesShowAtEveryInstant() {
         listOf("confirmed", "in_progress", "pending_reschedule").forEach { status ->
-            assertTrue(status, showsJoinCard(status, end, now))
-            assertTrue(status, showsJoinCard(status, end, now.minusSeconds(2 * 86_400)))
-            assertTrue(status, showsJoinCard(status, end, end.plusSeconds(86_400)))
+            listOf(true, false, null).forEach { flag ->
+                listOf(
+                    cardStart.minusSeconds(2 * 86_400),
+                    cardStart,
+                    cardEnd,
+                    cardEnd.plusSeconds(86_400),
+                ).forEach { at -> assertTrue("$status $at $flag", card(status, at, flag)) }
+            }
         }
-        assertTrue(showsJoinCard("completed", end, now))
-        assertTrue(showsJoinCard("completed", end, end.minusSeconds(1)))
-        assertFalse(showsJoinCard("completed", end, end))
-        assertFalse(showsJoinCard("completed", end, end.plusSeconds(1)))
+    }
+
+    @Test
+    fun showsJoinCard_completedShowsThroughTheFirstJoinEdgeWhateverTheFlag() {
+        listOf(true, false, null).forEach { flag ->
+            assertTrue("start - 3600, $flag", card("completed", cardStart.minusSeconds(3600), flag))
+            assertTrue("end - 1, $flag", card("completed", cardEnd.minusSeconds(1), flag))
+            assertTrue("end, $flag", card("completed", cardEnd, flag))
+            assertFalse("start - 3601, $flag", card("completed", cardStart.minusSeconds(3601), flag))
+        }
+    }
+
+    @Test
+    fun showsJoinCard_completedPastTheEndShowsOnlyWithTheServerFlag() {
+        listOf(1L, 3600L).forEach { offset ->
+            val at = cardEnd.plusSeconds(offset)
+            assertTrue("end + $offset, true", card("completed", at, true))
+            assertFalse("end + $offset, false", card("completed", at, false))
+            assertFalse("end + $offset, null", card("completed", at, null))
+        }
+        val closed = cardEnd.plusSeconds(3601)
+        listOf(true, false, null).forEach { flag ->
+            assertFalse("end + 3601, $flag", card("completed", closed, flag))
+        }
+    }
+
+    @Test
+    fun showsJoinCard_shortCompletedSessionShowsUntilStartPlusOneHour() {
+        val end = cardStart.plusSeconds(1800)
+        fun short(
+            at: Instant,
+            flag: Boolean?,
+        ) = card("completed", at, flag, end = end)
+        assertTrue(short(end.plusSeconds(1), null))
+        assertTrue(short(cardStart.plusSeconds(3600), null))
+        assertFalse(short(cardStart.plusSeconds(3601), null))
+        assertFalse(short(cardStart.plusSeconds(3601), false))
+        assertTrue(short(cardStart.plusSeconds(3601), true))
+        assertTrue(short(end.plusSeconds(3600), true))
+        assertFalse(short(end.plusSeconds(3601), true))
+    }
+
+    @Test
+    fun showsJoinCard_completedVisibilityEqualsTheJoinWindow() {
+        listOf(1800L, 3600L, 5400L).forEach { length ->
+            val end = cardStart.plusSeconds(length)
+            listOf(true, false, null).forEach { flag ->
+                var offset = -3601L
+                while (offset <= length + 3601L) {
+                    val at = cardStart.plusSeconds(offset)
+                    assertEquals(
+                        "length $length offset $offset flag $flag",
+                        isWithinJoinWindow("completed", cardStart, end, at, flag),
+                        card("completed", at, flag, end = end),
+                    )
+                    offset++
+                }
+            }
+        }
+    }
+
+    @Test
+    fun showsJoinCard_terminalUnknownAndPendingApprovalNeverShow() {
         (neverJoinable + "pending_approval").forEach { status ->
-            assertFalse(status, showsJoinCard(status, end, now))
-            assertFalse(status, showsJoinCard(status, end, start))
+            listOf(cardStart, cardEnd, cardEnd.plusSeconds(1800)).forEach { at ->
+                assertFalse("$status $at", card(status, at, true))
+            }
         }
     }
 }

@@ -812,8 +812,54 @@ class UpcomingBookingScreenTest {
     }
 
     @Test
-    fun completedAfterEndShowsNoJoinCard() {
+    fun completedAtExactlyTheEndKeepsAnEnabledJoin() {
         setScreen(loaded(details(status = "completed")), joinNow = detailsStart.plusSeconds(3600))
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun completedPastTheEndWithoutTheServerFlagShowsNoJoinCard() {
+        setScreen(loaded(details(status = "completed")), joinNow = detailsStart.plusSeconds(3601))
+        rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun completedPastTheEndWithTheServerFlagKeepsAnEnabledJoin() {
+        setScreen(
+            loaded(details(status = "completed", canJoin = true)),
+            joinNow = detailsStart.plusSeconds(7200),
+        )
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun completedJoinCardLeavesWhenTheJoinClockPassesTheReconnectWindow() {
+        var now by mutableStateOf(detailsStart.plusSeconds(7200))
+        val d = details(status = "completed", canJoin = true)
+        rule.setContent {
+            ClickMeTheme {
+                UpcomingBookingContent(
+                    state = loaded(d),
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = now,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAccept = {},
+                    onDecline = {},
+                    onDismissRescheduleDialog = {},
+                    onOpenPaymentMethods = {},
+                    onRescheduleNoticeConsumed = {},
+                    zone = zone,
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.onNodeWithTag(UPCOMING_BOOKING_JOIN_TAG).performScrollTo().assertIsEnabled()
+        now = detailsStart.plusSeconds(7201)
+        rule.waitForIdle()
         rule.onAllNodesWithTag(UPCOMING_BOOKING_JOIN_TAG).assertCountEquals(0)
     }
 
