@@ -3,6 +3,9 @@ package com.uptrendinvestments.clickmeapp.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.math.BigDecimal
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.util.Currency
 import java.util.Locale
 
@@ -38,6 +41,43 @@ class MoneyTest {
     @Test
     fun usd_inCanadianLocale_showsUsMarker() {
         assertEquals("US$50.00", Money.format(5000, "USD", Locale.CANADA))
+    }
+
+    /**
+     * The symbol must not depend on `DecimalFormatSymbols.currencySymbol`. On Android, `java.text.DecimalFormat` hands
+     * formatting to ICU, which resolves the currency symbol itself, and these JVM tests cannot see how a given ICU
+     * treats that override (CAD in en_CA is the case where the locale's own symbol is a bare `$`). Replacing the
+     * formatter's symbols with the locale defaults stands in for a platform that ignores or resets the override: the
+     * old `currencySymbol` override came back as `$50.00` here, a literal in the pattern does not.
+     */
+    @Test
+    fun pinnedSymbol_survivesTheFormatterSymbolsBeingReset() {
+        listOf(
+            Triple("CAD", Locale.CANADA, "CA$50.00"),
+            Triple("USD", Locale.US, "US$50.00"),
+            Triple("CAD", Locale.US, "CA$50.00"),
+            Triple("USD", Locale.CANADA, "US$50.00"),
+        ).forEach { (code, locale, expected) ->
+            val formatter = Money.currencyFormat(Currency.getInstance(code), 2, locale) as DecimalFormat
+            formatter.decimalFormatSymbols = DecimalFormatSymbols(locale)
+            assertEquals("$code in $locale", expected, formatter.format(BigDecimal("50.00")))
+        }
+    }
+
+    @Test
+    fun cad_inFrenchCanada_keepsLocalePlacementAndSeparators() {
+        assertEquals("1 234,56 CA$", Money.format(123456, "CAD", Locale.CANADA_FRENCH).normalized())
+    }
+
+    @Test
+    fun usd_inGermanLocale_keepsLocalePlacementAndSeparators() {
+        assertEquals("1.234,56 US$", Money.format(123456, "USD", Locale.GERMANY).normalized())
+    }
+
+    @Test
+    fun negativeAmount_keepsTheSignBeforeThePinnedSymbol() {
+        assertEquals("-CA$5.00", Money.format(-500, "CAD", Locale.CANADA))
+        assertEquals("-US$5.00", Money.format(-500, "USD", Locale.US))
     }
 
     @Test

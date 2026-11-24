@@ -53,19 +53,43 @@ object Money {
         val digits = fractionDigits(currency)
         val major = BigDecimal.valueOf(minorUnits).movePointLeft(digits)
         if (currency == null) return "$code ${major.setScale(digits).toPlainString()}"
-        val formatter =
-            NumberFormat.getCurrencyInstance(locale).apply {
-                this.currency = currency
-                minimumFractionDigits = digits
-                maximumFractionDigits = digits
-            }
-        pinnedSymbol(code)?.let { symbol ->
-            if (formatter is DecimalFormat) {
-                formatter.decimalFormatSymbols = formatter.decimalFormatSymbols.apply { currencySymbol = symbol }
-            }
-        }
-        return formatter.format(major)
+        return currencyFormat(currency, digits, locale).format(major)
     }
+
+    /**
+     * The formatter behind [format]. Internal so a test can tamper with its symbols the way a platform might.
+     *
+     * A pinned symbol is written into the pattern as quoted literal text, taken from the locale's own currency pattern,
+     * so placement, grouping and separators still follow the locale (D-19, D-32). It is deliberately not set through
+     * `DecimalFormatSymbols.currencySymbol`: on Android `java.text.DecimalFormat` delegates to ICU's `DecimalFormat`,
+     * which resolves the currency symbol itself, and the JVM and Robolectric unit tests cannot see how a given ICU
+     * treats that override. A literal in the pattern involves no symbol resolution at all.
+     */
+    internal fun currencyFormat(
+        currency: Currency,
+        digits: Int,
+        locale: Locale,
+    ): NumberFormat {
+        val localized = NumberFormat.getCurrencyInstance(locale)
+        val symbol = pinnedSymbol(currency.currencyCode)
+        val formatter =
+            if (symbol != null && localized is DecimalFormat) {
+                val pattern = localized.toPattern().replace(CURRENCY_SIGN, quoted(symbol))
+                DecimalFormat(pattern, localized.decimalFormatSymbols)
+            } else {
+                localized.apply { this.currency = currency }
+            }
+        return formatter.apply {
+            minimumFractionDigits = digits
+            maximumFractionDigits = digits
+        }
+    }
+
+    /** The pattern character that stands for the currency symbol (U+00A4). */
+    private const val CURRENCY_SIGN = "¤"
+
+    /** [text] as a quoted literal in a `DecimalFormat` pattern; a quote inside is doubled. */
+    private fun quoted(text: String): String = "'${text.replace("'", "''")}'"
 
     /**
      * USD is always `US$` and CAD always `CA$`, whatever the device locale (D-24, D-32), so a CAD and a USD price read
