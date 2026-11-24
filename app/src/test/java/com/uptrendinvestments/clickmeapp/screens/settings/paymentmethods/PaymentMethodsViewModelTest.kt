@@ -189,6 +189,32 @@ class PaymentMethodsViewModelTest {
         }
 
     @Test
+    fun removeACardInUseShowsTheServerMessageAndKeepsTheCard() =
+        runTest(main.testDispatcher) {
+            val message =
+                "This card is linked to an upcoming booking. " +
+                    "You can remove it once that booking is completed or cancelled."
+            val vm = vm()
+            runCurrent()
+            api.deletePaymentMethodHandler = {
+                throw api.httpError(
+                    409,
+                    """{"status":"error","code":"PAYMENT_METHOD_IN_USE","message":"$message"}""",
+                )
+            }
+
+            vm.remove("pm_2")
+            runCurrent()
+
+            assertEquals(
+                PaymentMethodsDialog(R.string.payment_methods_error_remove_title, FieldError.Text(message)),
+                vm.uiState.value.dialog,
+            )
+            assertEquals(listOf(visa, master), vm.cards())
+            assertNull(vm.uiState.value.busy)
+        }
+
+    @Test
     fun removeFailureShowsRemoveDialogAndSuspendedShowsNothing() =
         runTest(main.testDispatcher) {
             val vm = vm()

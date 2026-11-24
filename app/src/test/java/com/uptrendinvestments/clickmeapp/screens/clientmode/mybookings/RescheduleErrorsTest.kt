@@ -171,6 +171,21 @@ class RescheduleErrorsTest {
     }
 
     @Test
+    fun cancel_session_already_ended_shows_the_server_message_and_stays() {
+        val message = "This session has already ended, so it can't be cancelled."
+        val error =
+            ApiException.Http(
+                status = 409,
+                code = null,
+                rawCode = "SESSION_ALREADY_ENDED",
+                serverMessage = message,
+                fieldErrors = emptyList(),
+                detail = null,
+            )
+        assertEquals(CancelFailure.Show(FieldError.Text(message), returnToBookings = false), error.toCancelFailure())
+    }
+
+    @Test
     fun cancel_transport_failures_map_to_network_and_unknown_copy() {
         assertEquals(
             CancelFailure.Show(res(R.string.login_error_network)),

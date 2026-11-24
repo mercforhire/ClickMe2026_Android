@@ -414,6 +414,24 @@ class ClientCancellationViewModelTest {
         }
 
     @Test
+    fun aSessionThatAlreadyEndedShowsTheServerMessageAndStaysOnConfirm() =
+        runTest(main.testDispatcher) {
+            val message = "This session has already ended, so it can't be cancelled."
+            stubDetail()
+            api.cancelClientBookingHandler = { _, _ -> throw apiError(409, "SESSION_ALREADY_ENDED", message) }
+            val vm = vm()
+            runCurrent()
+            vm.continueToConfirm()
+            vm.confirm()
+            runCurrent()
+            assertEquals(CancelErrorDialog(FieldError.Text(message), false), vm.uiState.value.error)
+            assertEquals(CancelStep.Confirm, vm.uiState.value.step)
+            vm.dismissError()
+            assertNull(launchRequest.pending.value)
+            assertFalse(vm.uiState.value.isFinished)
+        }
+
+    @Test
     fun aSuspendedAccountLeavesNoDialog() =
         runTest(main.testDispatcher) {
             stubDetail()
