@@ -446,6 +446,91 @@ class ExpertBookingSummaryScreenTest {
     }
 
     @Test
+    fun joinShownForACompletedBookingInTheReconnectTier() {
+        showScreen(
+            expertBookingDetail(
+                start = now.minusSeconds(5400),
+                end = now.minusSeconds(1800),
+                statusCode = "completed",
+                canJoin = true,
+            ),
+        )
+        rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun joinHiddenForACompletedBookingPastTheEndWithoutTheServerFlag() {
+        showScreen(
+            expertBookingDetail(
+                start = now.minusSeconds(5400),
+                end = now.minusSeconds(1800),
+                statusCode = "completed",
+                canJoin = false,
+            ),
+        )
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_JOIN_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun joinHiddenForACompletedBookingAfterTheReconnectWindow() {
+        showScreen(
+            expertBookingDetail(
+                start = now.minusSeconds(7201),
+                end = now.minusSeconds(3601),
+                statusCode = "completed",
+                canJoin = true,
+            ),
+        )
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_JOIN_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun completedJoinLeavesWhenTheJoinClockPassesTheReconnectWindow() {
+        var joinNow by mutableStateOf(start.plusSeconds(7200))
+        val state =
+            ExpertBookingSummaryUiState(
+                load =
+                    ExpertSummaryLoad.Loaded(
+                        expertBookingDetail(
+                            start = start,
+                            end = start.plusSeconds(3600),
+                            statusCode = "completed",
+                            canJoin = true,
+                        ).toSummaryDetails(Locale.US),
+                    ),
+            )
+        rule.setContent {
+            ClickMeTheme {
+                ExpertBookingSummaryContent(
+                    state = state,
+                    rescheduleState = RescheduleUiState(),
+                    joinNow = joinNow,
+                    onJoin = {},
+                    onBack = {},
+                    onRetry = {},
+                    onCancel = {},
+                    onAcceptReschedule = {},
+                    onDeclineReschedule = {},
+                    onDismissRescheduleDialog = {},
+                    onRescheduleNoticeConsumed = {},
+                    onOpenNote = {},
+                    onViewProfile = {},
+                    onRefresh = {},
+                    onRefreshFailureConsumed = {},
+                    zone = ZoneId.of("America/Toronto"),
+                    timeFormat = SimpleDateFormat("h:mm a", Locale.US),
+                    locale = Locale.US,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).performScrollTo().assertIsEnabled()
+        joinNow = start.plusSeconds(7201)
+        rule.waitForIdle()
+        rule.onAllNodesWithTag(EXPERT_SUMMARY_JOIN_TAG).assertCountEquals(0)
+    }
+
+    @Test
     fun messageCardOnlyWhenNotesPresent() {
         showScreen(expertBookingDetail(start = start, notes = "Please review my CV"))
         rule.onNodeWithText("Client's message").assertExists()
