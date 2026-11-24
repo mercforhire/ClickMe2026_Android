@@ -19,7 +19,8 @@ data class ExpertBookingsPayload(
  * One expert booking row. Unlike the client feed, [status] is an object and the topic, times and money live under
  * [session]. [reschedule] is non-null only while the booking is `pending_reschedule` and carries the slim block
  * (`proposed_start`, `initiated_by`). The server's accent color is deliberately not declared; unknown keys are
- * ignored. [actions] is declared (Phase 16.2, `can_reschedule`) and defaults to all false when the key is absent.
+ * ignored. [actions] is declared (`can_cancel`, `can_reschedule`, `can_join`) and defaults to all false when the key
+ * is absent.
  * [privateNotePreview] is the expert's own note, cut to 140 UTF-16 units by the server (Phase 16.4, D-08).
  * User-written: show it, never log it; toString omits it.
  */
@@ -83,9 +84,9 @@ data class ConsultationFeeDto(
 }
 
 /**
- * `GET /expert/bookings/{id}/details`. The server join flag and the message flag are deliberately not declared (the
- * join window is computed on the device and messaging is a later phase). The cancel and reschedule flags are declared
- * on [actions]. [expertPrivateNote] is the expert's own full note (Phase 16.4, D-08). User-written: show it, never log
+ * `GET /expert/bookings/{id}/details`. The cancel, reschedule and join flags are declared on [actions]; the join flag
+ * opens only the reconnect tier of `isWithinJoinWindow`. The message flag stays undeclared (messaging is a later
+ * phase). [expertPrivateNote] is the expert's own full note (Phase 16.4, D-08). User-written: show it, never log
  * it; toString omits it.
  */
 @JsonClass(generateAdapter = true)
@@ -133,10 +134,12 @@ data class PreparationNotesDto(
 /**
  * The cancel flag gates Cancel Booking (RESEARCH C8) and the reschedule flag gates the expert Reschedule button on
  * Expert Booking Summary and the expert upcoming card (Phase 16.2, locked). The server is the authority; a missing
- * key hides the button.
+ * key hides the button. The join flag feeds `isWithinJoinWindow` as its server flag (iOS
+ * `ExpertBookingItem.Actions.canJoin`); a missing key closes the reconnect tier.
  */
 @JsonClass(generateAdapter = true)
 data class ExpertBookingActionsDto(
     @Json(name = "can_cancel") val canCancel: Boolean = false,
     @Json(name = "can_reschedule") val canReschedule: Boolean = false,
+    @Json(name = "can_join") val canJoin: Boolean = false,
 )

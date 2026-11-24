@@ -185,6 +185,28 @@ class ExpertBookingsApiTest {
         }
 
     @Test
+    fun actionsCanJoinDecodesTrueFalseAndMissing() =
+        runTest {
+            val feedFalse = """"actions":{"can_join":false,"can_reschedule":true,"can_message":true}"""
+            val detailFalse =
+                """"actions":{"can_join":false,"can_reschedule":true,""" +
+                    """"can_cancel":true,"can_message":true}"""
+            enqueue(200, feedPayload(feedItem.replace(feedFalse, """"actions":{"can_join":true}""")))
+            enqueue(200, feedPayload(feedItem))
+            enqueue(200, feedPayload(feedItem.replace(feedFalse, """"actions":{"can_reschedule":true}""")))
+            enqueue(200, detailJson().replace(detailFalse, """"actions":{"can_join":true}"""))
+            enqueue(200, detailJson())
+            enqueue(200, detailJson().replace(detailFalse, """"actions":{"can_cancel":true}"""))
+
+            val upcoming = ExpertBookingsRepository.TYPE_UPCOMING
+            val rows = List(3) { repository.list(upcoming).bookings.single() }
+            val details = List(3) { repository.detail("abc") }
+
+            assertEquals(listOf(true, false, false), rows.map { it.actions.canJoin })
+            assertEquals(listOf(true, false, false), details.map { it.actions.canJoin })
+        }
+
+    @Test
     fun detailDecodesTheExpertNote() =
         runTest {
             val explicitNull =

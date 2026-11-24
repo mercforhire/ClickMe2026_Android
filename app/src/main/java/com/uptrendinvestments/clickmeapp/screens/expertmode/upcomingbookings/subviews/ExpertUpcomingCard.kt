@@ -201,7 +201,14 @@ fun ExpertUpcomingCard(
                 )
             }
             val clientName = clientDisplayName(item.client.name)
-            val joinEnabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now)
+            val joinEnabled =
+                isWithinJoinWindow(
+                    status = item.statusCode,
+                    start = item.startTime,
+                    end = item.endTime,
+                    now = now,
+                    serverCanJoin = item.actions.canJoin,
+                )
             if (onReschedule == null) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),

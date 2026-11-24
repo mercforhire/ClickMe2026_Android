@@ -58,6 +58,7 @@ fun expertBookingItem(
     breakdown: EarningsBreakdownDto? = breakdown(),
     canReschedule: Boolean = false,
     privateNotePreview: String? = null,
+    canJoin: Boolean = false,
 ): ExpertBookingItem =
     ExpertBookingItem(
         bookingId = id,
@@ -73,7 +74,7 @@ fun expertBookingItem(
             ),
         status = ExpertStatusMeta(label = null, code = statusCode),
         reschedule = reschedule,
-        actions = ExpertBookingActionsDto(canReschedule = canReschedule),
+        actions = ExpertBookingActionsDto(canReschedule = canReschedule, canJoin = canJoin),
         privateNotePreview = privateNotePreview,
     )
 
@@ -94,6 +95,7 @@ fun expertBookingDetail(
     breakdown: EarningsBreakdownDto? = breakdown(),
     canReschedule: Boolean = false,
     privateNote: String? = null,
+    canJoin: Boolean = false,
 ): ExpertBookingDetail =
     ExpertBookingDetail(
         bookingId = id,
@@ -109,7 +111,7 @@ fun expertBookingDetail(
                 meetingType = meetingType,
             ),
         preparationNotes = notes?.let { PreparationNotesDto(text = it) },
-        actions = ExpertBookingActionsDto(canCancel = canCancel, canReschedule = canReschedule),
+        actions = ExpertBookingActionsDto(canCancel = canCancel, canReschedule = canReschedule, canJoin = canJoin),
         expertPrivateNote = privateNote,
     )
 

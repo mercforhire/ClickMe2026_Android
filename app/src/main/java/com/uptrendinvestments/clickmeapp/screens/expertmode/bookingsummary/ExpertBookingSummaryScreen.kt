@@ -426,7 +426,14 @@ private fun LoadedBody(
             if (details.showsJoin) {
                 if (showCallResumeNote) CallResumeNote()
                 JoinCallButton(
-                    enabled = isWithinJoinWindow(details.statusCode, details.start, details.end, joinNow),
+                    enabled =
+                        isWithinJoinWindow(
+                            status = details.statusCode,
+                            start = details.start,
+                            end = details.end,
+                            now = joinNow,
+                            serverCanJoin = details.canJoin,
+                        ),
                     onClick = onJoin,
                     modifier = Modifier.testTag(EXPERT_SUMMARY_JOIN_TAG),
                 )

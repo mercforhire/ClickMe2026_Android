@@ -424,6 +424,27 @@ class ExpertBookingSummaryScreenTest {
         rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).assertExists()
     }
 
+    /** 30 minutes past the first-join edge (`max(end, start + 60 min)`), still inside end + 60 min. */
+    private fun pastTheFirstJoinEdge(canJoin: Boolean) =
+        expertBookingDetail(
+            start = now.minusSeconds(5400),
+            end = now.minusSeconds(1800),
+            statusCode = "in_progress",
+            canJoin = canJoin,
+        )
+
+    @Test
+    fun joinReconnectsPastTheEndWhenTheServerAllows() {
+        showScreen(pastTheFirstJoinEdge(canJoin = true))
+        rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun joinIsDisabledPastTheEndWithoutTheServerFlag() {
+        showScreen(pastTheFirstJoinEdge(canJoin = false))
+        rule.onNodeWithTag(EXPERT_SUMMARY_JOIN_TAG).performScrollTo().assertIsNotEnabled()
+    }
+
     @Test
     fun messageCardOnlyWhenNotesPresent() {
         showScreen(expertBookingDetail(start = start, notes = "Please review my CV"))

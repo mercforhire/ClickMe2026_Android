@@ -175,7 +175,14 @@ fun TodaysSessionCard(
                 if (item.hasClientProposedReschedule()) ExpertRescheduleBadge(initiatedByClient = true)
             }
             JoinCallButton(
-                enabled = isWithinJoinWindow(item.statusCode, item.startTime, item.endTime, now),
+                enabled =
+                    isWithinJoinWindow(
+                        status = item.statusCode,
+                        start = item.startTime,
+                        end = item.endTime,
+                        now = now,
+                        serverCanJoin = item.actions.canJoin,
+                    ),
                 onClick = onJoin,
                 modifier = Modifier.testTag(DASHBOARD_SESSION_JOIN_TAG),
             )
