@@ -96,7 +96,6 @@ class PaidFlowErrorTest {
                 ErrorCode.InvalidPaymentMethod to R.string.make_a_booking_error_invalid_payment_method,
                 ErrorCode.DirectChargeDisabled to R.string.make_a_booking_error_payments_unavailable,
                 ErrorCode.PaymentFailed to R.string.make_a_booking_error_card_declined,
-                ErrorCode.DuplicateBooking to R.string.make_a_booking_error_duplicate,
                 ErrorCode.AmountBelowMinimum to R.string.make_a_booking_error_amount_below_minimum,
                 ErrorCode.InvalidPromo to R.string.make_a_booking_error_invalid_promo,
                 ErrorCode.CannotBookSelf to R.string.make_a_booking_error_self,
@@ -105,6 +104,54 @@ class PaidFlowErrorTest {
             val expected = PaidFailure.Show(res(string))
             assertEquals(code.name, expected, createIntent(http(422, code)))
             assertEquals(code.name, expected, confirm(http(422, code)))
+        }
+    }
+
+    @Test
+    fun duplicate_booking_after_an_unknown_outcome_opens_the_server_booking() {
+        val id = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        listOf(id, id.uppercase()).forEach { bookingId ->
+            val error = http(409, ErrorCode.DuplicateBooking, detail = mapOf("booking_id" to bookingId))
+            assertEquals(
+                PaidFailure.OpenBooking(bookingId),
+                error.toPaidFailure(PaidPhase.CreateIntent, null, afterUnknownOutcome = true),
+            )
+        }
+    }
+
+    @Test
+    fun duplicate_booking_without_an_unknown_outcome_points_to_my_bookings_and_clears_the_slot() {
+        val expected =
+            PaidFailure.Show(
+                res(R.string.make_a_booking_error_may_already_booked),
+                newAttemptId = true,
+                clearSlotAndReload = true,
+            )
+        val detail = mapOf("booking_id" to "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assertEquals(expected, createIntent(http(409, ErrorCode.DuplicateBooking, detail = detail)))
+        assertEquals(expected, confirm(http(409, ErrorCode.DuplicateBooking, detail = detail)))
+    }
+
+    @Test
+    fun duplicate_booking_with_an_unusable_booking_id_points_to_my_bookings() {
+        val expected =
+            PaidFailure.Show(
+                res(R.string.make_a_booking_error_may_already_booked),
+                newAttemptId = true,
+                clearSlotAndReload = true,
+            )
+        listOf<Map<String, Any?>?>(
+            null,
+            emptyMap(),
+            mapOf("booking_id" to null),
+            mapOf("booking_id" to ""),
+            mapOf("booking_id" to "not-a-uuid"),
+            mapOf("booking_id" to "1-1-1-1-1"),
+            mapOf("booking_id" to 42),
+        ).forEach { detail ->
+            val error = http(409, ErrorCode.DuplicateBooking, detail = detail)
+            assertEquals("$detail", expected, error.toPaidFailure(PaidPhase.CreateIntent, null, true))
+            assertEquals("$detail", expected, error.toPaidFailure(PaidPhase.Confirm, "pi_1", true))
         }
     }
 
@@ -243,7 +290,7 @@ class PaidFlowErrorTest {
     }
 
     @Test
-    fun only_conflict_pi_and_slot_rows_ask_for_a_new_attempt_id() {
+    fun only_conflict_pi_slot_and_duplicate_rows_ask_for_a_new_attempt_id() {
         val asking =
             setOf(
                 ErrorCode.BookingAttemptConflict,
@@ -251,6 +298,7 @@ class PaidFlowErrorTest {
                 ErrorCode.PiContextMismatch,
                 ErrorCode.PiAmountMismatch,
                 ErrorCode.SlotUnavailable,
+                ErrorCode.DuplicateBooking,
             )
         ErrorCode.entries.forEach { code ->
             val failure = confirm(http(400, code, "msg", mapOf("client_secret" to "s", "stripe_account" to "a")))

@@ -576,7 +576,10 @@ class MakeABookingViewModel
             }
         }
 
-        /** Port of iOS `handlePaidFlowError` using the 07-03 table (D-13, D-14, D-16, D-19). */
+        /**
+         * Port of iOS `handlePaidFlowError` using the 07-03 table (D-13, D-14, D-16, D-19). BACK-15: a
+         * DUPLICATE_BOOKING that points to the booking a lost confirm created ends the flow on that booking.
+         */
         private fun applyPaidFailure(
             e: ApiException,
             phase: PaidPhase,
@@ -586,6 +589,7 @@ class MakeABookingViewModel
             when (val failure = e.toPaidFailure(phase, piId, afterUnknownOutcome = afterUnknown)) {
                 PaidFailure.Silent -> resetPaidFlow()
                 is PaidFailure.StartChallenge -> startChallenge(e, failure)
+                is PaidFailure.OpenBooking -> openExistingBooking(failure.bookingId)
                 is PaidFailure.Show -> {
                     if (failure.newAttemptId) newBookingAttempt()
                     // D-16: the attempt id is kept so a retry is idempotent; nothing retries automatically.
@@ -601,6 +605,28 @@ class MakeABookingViewModel
                         loadAvailability(_uiState.value.displayedMonth, keepVisible = true)
                     }
                 }
+            }
+        }
+
+        /**
+         * Terminal like a successful confirm: isSubmitting stays true while the screen navigates to Request Sent,
+         * which re-checks ownership through GET /client/bookings/:id. Not [resetPaidFlow], which would unlock Book
+         * Now during the push. The durable completed-booking store is keyed to a confirm attempt id that the
+         * create-intent step never sets, so it is not written.
+         */
+        private fun openExistingBooking(bookingId: String) {
+            unknownOutcomeAttemptId = null
+            clearPaidSecrets()
+            scaAttempted = false
+            savedStateHandle.remove<Boolean>(KEY_CHALLENGE_PENDING)
+            savedStateHandle[KEY_COMPLETED_BOOKING_ID] = bookingId
+            _uiState.update {
+                it.copy(
+                    paidStep = PaidStep.Idle,
+                    stripeRequest = null,
+                    challengeAccount = null,
+                    completedBookingId = bookingId,
+                )
             }
         }
 

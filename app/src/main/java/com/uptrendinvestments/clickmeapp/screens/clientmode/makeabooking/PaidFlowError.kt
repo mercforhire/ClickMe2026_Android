@@ -4,6 +4,8 @@ import com.uptrendinvestments.clickmeapp.R
 import com.uptrendinvestments.clickmeapp.model.enums.ErrorCode
 import com.uptrendinvestments.clickmeapp.network.ApiException
 import com.uptrendinvestments.clickmeapp.screens.login.FieldError
+import java.util.Locale
+import java.util.UUID
 
 /**
  * iOS `PaidPhase`. [Confirm] starts once a payment method has been chosen.
@@ -25,6 +27,15 @@ sealed interface PaidFailure {
     ) : PaidFailure {
         override fun toString(): String = "StartChallenge"
     }
+
+    /**
+     * BACK-15 (iOS D-15): the server answered DUPLICATE_BOOKING with its own booking for this expert, topic and
+     * start in `detail.booking_id` (backend `createPaymentIntent` at 1d18aac; the id is only ever the caller's).
+     * Open Request Sent for [bookingId] instead of showing a dead-end message.
+     */
+    data class OpenBooking(
+        val bookingId: String,
+    ) : PaidFailure
 
     /**
      * Show [message] in the error dialog.
@@ -124,7 +135,7 @@ private fun ApiException.Http.toHttpPaidFailure(
         ErrorCode.InvalidPaymentMethod -> res(R.string.make_a_booking_error_invalid_payment_method)
         ErrorCode.DirectChargeDisabled -> res(R.string.make_a_booking_error_payments_unavailable)
         ErrorCode.PaymentFailed -> res(R.string.make_a_booking_error_card_declined)
-        ErrorCode.DuplicateBooking -> res(R.string.make_a_booking_error_duplicate)
+        ErrorCode.DuplicateBooking -> duplicateBookingFailure(afterUnknownOutcome)
         ErrorCode.AmountBelowMinimum -> res(R.string.make_a_booking_error_amount_below_minimum)
         ErrorCode.InvalidPromo -> res(R.string.make_a_booking_error_invalid_promo)
         ErrorCode.CannotBookSelf -> res(R.string.make_a_booking_error_self)
@@ -138,6 +149,34 @@ private fun ApiException.Http.toHttpPaidFailure(
 }
 
 private const val HTTP_SERVER_ERROR = 500
+
+/**
+ * Port of iOS `MakeABookingViewModel` `case .duplicateBooking`. D-15: when this attempt's confirm ended in an
+ * unknown outcome and `detail.booking_id` is a canonical UUID, the booking the server points to is the one the lost
+ * confirm created, so open it ([PaidFailure.OpenBooking]). D-04: every other case clears the slot, mints a new
+ * attempt id and shows "You may already have this booking. Check My Bookings.".
+ *
+ * Android's gate is the existing per-attempt unknown-outcome record (D-16/D-19), where iOS uses its
+ * UnconfirmedBookingLedger keyed by expert and slot, so Android routes in a narrower set of cases and shows the
+ * message otherwise. The fallback reloads availability through the clear-and-reload flag, where iOS only clears the
+ * slot. iOS `UUID(uuidString:)` accepts only the canonical 36-character form in either case, so the id is checked
+ * against its own lowercase round trip.
+ */
+private fun ApiException.Http.duplicateBookingFailure(afterUnknownOutcome: Boolean): PaidFailure {
+    val bookingId =
+        (detail?.get("booking_id") as? String)?.takeIf { id ->
+            runCatching { UUID.fromString(id).toString() == id.lowercase(Locale.ROOT) }.getOrDefault(false)
+        }
+    return if (afterUnknownOutcome && bookingId != null) {
+        PaidFailure.OpenBooking(bookingId)
+    } else {
+        PaidFailure.Show(
+            FieldError.Res(R.string.make_a_booking_error_may_already_booked),
+            newAttemptId = true,
+            clearSlotAndReload = true,
+        )
+    }
+}
 
 /** PAY-05 / D-15: a usable 402 needs both the client secret and the connected account. */
 private fun ApiException.Http.challengeOrFailure(serverText: FieldError): PaidFailure {

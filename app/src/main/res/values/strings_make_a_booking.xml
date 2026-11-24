@@ -78,6 +78,7 @@
     <string name="make_a_booking_error_self">You can\'t book yourself.</string>
     <string name="make_a_booking_error_needs_payment">This topic needs payment. Please try booking again.</string>
     <string name="make_a_booking_error_duplicate">A booking for this session already exists.</string>
+    <string name="make_a_booking_error_may_already_booked">You may already have this booking. Check My Bookings.</string>
     <string name="make_a_booking_error_unconfirmed">We couldn\'t confirm your last booking request. It may already have been sent, so please check My Bookings before booking again.</string>
 
     <!-- Phase 7: paid flow errors (D-13 to D-16, D-19) -->

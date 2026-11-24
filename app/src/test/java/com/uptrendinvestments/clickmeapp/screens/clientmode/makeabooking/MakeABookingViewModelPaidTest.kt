@@ -707,6 +707,51 @@ class MakeABookingViewModelPaidTest {
         }
 
     @Test
+    fun aDuplicateBookingAfterAnUnknownOutcomeOpensTheExistingBooking() =
+        runTest(main.testDispatcher) {
+            api.confirmBookingHandler = { throw IOException("timeout") }
+            val vm = paidVm()
+            bookThroughTheSheet(vm)
+            vm.dismissError()
+
+            val serverBookingId = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            api.paymentIntentHandler = {
+                throw http(409, ErrorCode.DuplicateBooking, detail = mapOf("booking_id" to serverBookingId))
+            }
+            bookAndRun(vm)
+            val s = vm.uiState.value
+            assertEquals(serverBookingId, s.completedBookingId)
+            assertNull(s.dialogError)
+            assertTrue(s.isSubmitting)
+            assertEquals(PaidStep.Idle, s.paidStep)
+        }
+
+    @Test
+    fun aDuplicateBookingWithoutAnUnknownOutcomePointsToMyBookingsAndClearsTheSlot() =
+        runTest(main.testDispatcher) {
+            api.paymentIntentHandler = {
+                throw http(
+                    409,
+                    ErrorCode.DuplicateBooking,
+                    detail = mapOf("booking_id" to "3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+                )
+            }
+            val vm = paidVm()
+            bookAndRun(vm)
+            val s = vm.uiState.value
+            assertEquals(res(R.string.make_a_booking_error_may_already_booked), s.dialogError)
+            assertNull(s.completedBookingId)
+            assertNull(s.selectedSlotStart)
+            assertFalse(s.isSubmitting)
+
+            vm.dismissError()
+            vm.selectSlot(slotB)
+            bookAndRun(vm)
+            val ids = api.paymentIntentRequests.map { it.bookingAttemptId }
+            assertNotEquals(ids[0], ids[1])
+        }
+
+    @Test
     fun aSlotConflictAfterAConfirmServerErrorOnTheSameAttemptPointsToMyBookings() =
         runTest(main.testDispatcher) {
             api.confirmBookingHandler = { throw http(502, null) }
