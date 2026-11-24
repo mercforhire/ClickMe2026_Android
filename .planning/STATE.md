@@ -5,10 +5,10 @@ current_phase: 17
 current_phase_name: Play Store Release
 status: milestone-complete
 stopped_at: Phase 17 complete (production live 2026-11-10); milestone v1.0 ready for audit
-last_updated: "2026-11-10T23:03:59.276Z"
+last_updated: "2026-11-24T00:25:46.884Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 17 complete; ClickMe 1.0.0 (vc 6) live on Google Play
-state_head: 5fef5803f6b83ee3372438030386a0973f0ee7a9
+state_head: d22f4b83561aa1df290b915918527d95caa3b82f
 progress:
   total_phases: 22
   completed_phases: 13
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-11-01)
 Phase: 17 (Play Store Release) — COMPLETE (last roadmap phase)
 Plan: 10 of 10
 Status: Milestone v1.0 ready for audit (phase.complete pointed at Phase 2 again; re-pointed by hand)
-Last activity: 2026-11-10 — Phase 17 complete; production live on versionCode 6
+Last activity: 2026-11-23 - Completed quick task 261123-qgu: Port the iOS join rule to Android JoinWindow (pending_reschedule disabled, can_join reconnect tier)
 
 Progress: [████████░░] 76%
 
@@ -354,6 +354,7 @@ Recent decisions affecting current work:
 | 261028-to1 | Block new long-lead paid bookings (6-day paid window, 422 is an error), route booking/payment_actions push to the booking, dev BASE_URL override + debug localhost cleartext, local Stripe test runbook | 2026-10-28 | b2e3c4d | [261028-to1-block-new-long-lead-paid-bookings-route-](./quick/261028-to1-block-new-long-lead-paid-bookings-route-/) |
 | 261028-ve4 | Adopt backend 261028-uph: LONG_LEAD_NOT_AVAILABLE and RESCHEDULE_TOO_FAR_AHEAD codes, reschedule-accept mapping both sides, runbook sandbox expert done | 2026-10-28 | 3710e61 | [261028-ve4-adopt-backend-261028-uph-contract-new-er](./quick/261028-ve4-adopt-backend-261028-uph-contract-new-er/) |
 | 261031-v84 | Fix WR-04 (client Reschedule allow-list for upcoming statuses only, with terminal-status tests) and move the 16.1 Color(0xFF1F2E24) literal into ui/theme/Color.kt | 2026-10-31 | af4d2243 | [261031-v84-fix-wr-04-client-reschedule-allow-list-f](./quick/261031-v84-fix-wr-04-client-reschedule-allow-list-f/) |
+| 261123-qgu | Port the iOS join rule to Android JoinWindow (pending_reschedule disabled, can_join reconnect tier) | 2026-11-23 | d22f4b83 | [261123-qgu-port-the-ios-join-rule-to-android-joinwi](./quick/261123-qgu-port-the-ios-join-rule-to-android-joinwi/) |
 
 ### Roadmap Evolution
 
