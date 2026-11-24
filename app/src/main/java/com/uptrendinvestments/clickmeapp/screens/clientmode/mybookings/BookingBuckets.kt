@@ -22,6 +22,11 @@ data class BookingLists(
 /**
  * A completed session whose end time is still in the future: the server already moved it to Past, but the client can
  * still rejoin it, so it belongs in Upcoming (iOS `isRejoinableCompleted`). Strictly after [now].
+ *
+ * The list keeps this end-based edge on purpose, whatever `can_join` says: iOS `isRejoinableCompleted`
+ * (`UpcomingBookingsViewModel.swift` and `MyBookingsViewModel.swift`) moves a completed row to Past at its scheduled
+ * end on both lists. Only the detail screens extend a completed booking's Join visibility into the reconnect window
+ * (`showsJoinCard`, quick 261123-rdc). The client list payload carries no `can_join` at all.
  */
 fun ClientBookingItem.isRejoinableCompleted(now: Instant): Boolean = status == STATUS_COMPLETED && endTime.isAfter(now)
 

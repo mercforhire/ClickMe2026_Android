@@ -26,6 +26,11 @@ data class ExpertBookingLists(
 /**
  * A completed session whose end time is still in the future: the server already moved it to Past, but both parties can
  * still rejoin it, so it belongs in Upcoming (iOS `isRejoinableCompleted`, D-15). Strictly after [now].
+ *
+ * The list keeps this end-based edge on purpose, whatever `can_join` says: iOS `isRejoinableCompleted`
+ * (`UpcomingBookingsViewModel.swift` and `MyBookingsViewModel.swift`) moves a completed row to Past at its scheduled
+ * end on both lists. Only the detail screens extend a completed booking's Join visibility into the reconnect window
+ * (`showsJoinCard`, quick 261123-rdc).
  */
 fun ExpertBookingItem.isRejoinableCompleted(now: Instant): Boolean =
     statusCode == STATUS_COMPLETED && endTime.isAfter(now)

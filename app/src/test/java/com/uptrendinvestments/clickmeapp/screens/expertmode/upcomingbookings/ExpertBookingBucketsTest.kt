@@ -57,6 +57,22 @@ class ExpertBookingBucketsTest {
     }
 
     @Test
+    fun aCompletedPastRowInTheReconnectWindowStaysInPastEvenWithTheServerFlag() {
+        val ended =
+            expertBookingItem(
+                id = "reconnect",
+                statusCode = "completed",
+                start = now.minusSeconds(5400),
+                end = now.minusSeconds(1800),
+                canJoin = true,
+            )
+        val lists = buildExpertBookingLists(emptyList(), listOf(ended), now)
+        assertTrue(lists.upcoming.isEmpty())
+        assertEquals(listOf("reconnect"), lists.past.map { it.item.bookingId })
+        assertFalse(ended.isRejoinableCompleted(now))
+    }
+
+    @Test
     fun upcomingIsSortedByStartAscending() {
         val later = item("later", "confirmed", start = now.plusSeconds(7200))
         val sooner = item("sooner", "pending_reschedule", start = now.plusSeconds(600))

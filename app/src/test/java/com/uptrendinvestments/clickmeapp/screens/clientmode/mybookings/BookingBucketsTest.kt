@@ -45,6 +45,14 @@ class BookingBucketsTest {
     }
 
     @Test
+    fun completedBookingInsideTheReconnectWindowStaysInPast() {
+        val ended = item("reconnect", "completed", "2026-10-22T14:30:00Z", "2026-10-22T15:30:00Z")
+        val result = buildBookingLists(emptyList(), listOf(ended), now)
+        assertTrue(result.upcoming.isEmpty())
+        assertEquals(listOf("reconnect"), result.past.map { it.item.bookingId })
+    }
+
+    @Test
     fun pastStatusesMapToLabelsAndUnknownOnesAreDropped() {
         val statuses = listOf("completed", "cancelled", "declined", "missed", "expired", "rescheduled", "weird")
         val past =
