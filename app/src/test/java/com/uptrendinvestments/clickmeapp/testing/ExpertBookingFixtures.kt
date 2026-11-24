@@ -96,11 +96,17 @@ fun expertBookingDetail(
     canReschedule: Boolean = false,
     privateNote: String? = null,
     canJoin: Boolean = false,
+    authorizationExpiresAt: Instant? = null,
+    paymentActionRequired: Boolean? = null,
+    paymentNotCharged: Boolean? = null,
 ): ExpertBookingDetail =
     ExpertBookingDetail(
         bookingId = id,
         status = ExpertStatusMeta(label = null, code = statusCode),
         reschedule = reschedule,
+        authorizationExpiresAt = authorizationExpiresAt,
+        paymentActionRequired = paymentActionRequired,
+        paymentNotCharged = paymentNotCharged,
         client = ExpertBookingClientDto(id = "c1", name = clientName),
         session =
             ExpertBookingDetailSessionDto(

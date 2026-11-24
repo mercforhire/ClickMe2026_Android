@@ -28,7 +28,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Clock
 
 /**
  * Expert Cancel Booking state machine (EXP-09, D-17). Port of iOS `ExpertCancellationViewModel` into the Phase 8
@@ -49,7 +48,6 @@ class ExpertCancellationViewModel
         @Assisted key: ExpertCancelKey,
         private val savedStateHandle: SavedStateHandle,
         private val repository: ExpertBookingsRepository,
-        private val clock: Clock,
         private val launchRequest: ExpertLaunchRequest,
         private val callGuard: CallGuard,
     ) : ViewModel() {
@@ -87,15 +85,15 @@ class ExpertCancellationViewModel
             )
         }
 
-        /** Computed when the confirm step is reached, so the 24 hour boundary uses that moment. */
+        /** The client-money line follows the detail payload only (iOS D-14/D-16); it does not depend on the time. */
         private fun previewFor(detail: ExpertBookingDetail): ExpertRefundPreview {
             val fee = detail.session.consultationFee
             return expertRefundPreview(
-                payment = detail.paymentState(),
                 amountMajor = fee?.amount,
                 currency = fee?.currency,
-                start = detail.startTime,
-                now = clock.instant(),
+                authorizationExpiresAt = detail.authorizationExpiresAt,
+                paymentActionRequired = detail.paymentActionRequired,
+                paymentNotCharged = detail.paymentNotCharged,
             )
         }
 

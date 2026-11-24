@@ -1,81 +1,73 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation
 
-import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
 
+/** Mirrors iOS `ExpertCancelRefundLineTests` case by case. */
 class ExpertRefundPreviewTest {
-    private val now = Instant.parse("2026-10-23T12:00:00Z")
+    private val hold = Instant.parse("2026-10-24T12:00:00Z")
 
+    @Suppress("LongParameterList")
     private fun preview(
-        payment: PaymentState,
         amount: Double? = 75.0,
         currency: String? = "USD",
-        start: Instant = now.plusSeconds(HOURS_48),
-    ) = expertRefundPreview(payment, amount, currency, start, now)
+        expires: Instant? = null,
+        actionRequired: Boolean? = false,
+        notCharged: Boolean? = false,
+    ) = expertRefundPreview(
+        amountMajor = amount,
+        currency = currency,
+        authorizationExpiresAt = expires,
+        paymentActionRequired = actionRequired,
+        paymentNotCharged = notCharged,
+    )
 
     @Test
-    fun nonePaymentShowsNothing() {
-        assertEquals(ExpertRefundPreview.None, preview(PaymentState.None))
+    fun freeBookingHasNoLineWhateverTheKeysRead() {
+        listOf(0.0, null).forEach { amount ->
+            listOf(true, false, null).forEach { a ->
+                listOf(true, false, null).forEach { n ->
+                    assertEquals(
+                        ExpertRefundPreview.None,
+                        preview(amount = amount, expires = hold, actionRequired = a, notCharged = n),
+                    )
+                }
+            }
+        }
     }
 
     @Test
-    fun heldPaymentReleasesTheHoldWhateverTheTime() {
-        assertEquals(ExpertRefundPreview.HoldReleased, preview(PaymentState.Held, start = now.plusSeconds(HOURS_48)))
-        assertEquals(ExpertRefundPreview.HoldReleased, preview(PaymentState.Held, start = now.plusSeconds(60)))
-        assertEquals(ExpertRefundPreview.HoldReleased, preview(PaymentState.Held, start = now.minusSeconds(60)))
+    fun eitherKeyMissingShowsNoLine() {
+        listOf(hold, null).forEach { expires ->
+            assertEquals(ExpertRefundPreview.None, preview(expires = expires, actionRequired = null))
+            assertEquals(ExpertRefundPreview.None, preview(expires = expires, notCharged = null))
+            assertEquals(
+                ExpertRefundPreview.None,
+                preview(expires = expires, actionRequired = null, notCharged = null),
+            )
+        }
     }
 
     @Test
-    fun capturedMoreThan24HoursAheadRefundsInFull() {
-        val result = preview(PaymentState.Captured, start = now.plusSeconds(HOURS_24 + 1))
-
-        assertEquals(ExpertRefundPreview.ClientFullRefund(75.0, "USD"), result)
+    fun cardAuthenticationPendingShowsNoLine() {
+        assertEquals(ExpertRefundPreview.None, preview(expires = hold, actionRequired = true))
+        assertEquals(ExpertRefundPreview.None, preview(actionRequired = true))
     }
 
     @Test
-    fun capturedExactly24HoursAheadIsNotRefunded() {
-        val result = preview(PaymentState.Captured, start = now.plusSeconds(HOURS_24))
-
-        assertEquals(ExpertRefundPreview.ClientNoRefundWithin24h, result)
+    fun notChargedShowsNoLine() {
+        assertEquals(ExpertRefundPreview.None, preview(expires = hold, notCharged = true))
+        assertEquals(ExpertRefundPreview.None, preview(notCharged = true))
     }
 
     @Test
-    fun capturedWithinTheLast24HoursIsNotRefunded() {
-        assertEquals(
-            ExpertRefundPreview.ClientNoRefundWithin24h,
-            preview(PaymentState.Captured, start = now.plusSeconds(HOURS_24 - 1)),
-        )
+    fun liveHoldReadsAsReleased() {
+        assertEquals(ExpertRefundPreview.HoldReleased(75.0, "USD"), preview(expires = hold))
     }
 
     @Test
-    fun capturedWithoutAnAmountFallsBackToPolicy() {
-        assertEquals(ExpertRefundPreview.PolicyFallback, preview(PaymentState.Captured, amount = null))
-    }
-
-    @Test
-    fun capturedWithoutACurrencyFallsBackToPolicy() {
-        assertEquals(ExpertRefundPreview.PolicyFallback, preview(PaymentState.Captured, currency = null))
-    }
-
-    @Test
-    fun aPaidDetailIsHeld() {
-        assertEquals(PaymentState.Held, expertBookingDetail(fee = 75.0).paymentState())
-    }
-
-    @Test
-    fun aZeroFeeDetailIsNone() {
-        assertEquals(PaymentState.None, expertBookingDetail(fee = 0.0).paymentState())
-    }
-
-    @Test
-    fun aDetailWithoutAFeeIsNone() {
-        assertEquals(PaymentState.None, expertBookingDetail(fee = null).paymentState())
-    }
-
-    private companion object {
-        const val HOURS_24 = 24L * 3600
-        const val HOURS_48 = 48L * 3600
+    fun paidWithoutAHoldReadsAsFullRefund() {
+        assertEquals(ExpertRefundPreview.FullRefund(75.0, "USD"), preview(expires = null))
     }
 }

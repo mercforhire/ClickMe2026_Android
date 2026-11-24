@@ -84,7 +84,9 @@ data class ConsultationFeeDto(
 }
 
 /**
- * `GET /expert/bookings/{id}/details`. The cancel, reschedule and join flags are declared on [actions]; the join flag
+ * `GET /expert/bookings/{id}/details`. [paymentActionRequired] and [paymentNotCharged] were added by the backend at
+ * 65bb2ed (live in 1d18aac) and iOS reads them the same way (`ExpertBookingDetail.swift`); a missing key means
+ * unknown and the expert cancel line fails closed. The cancel, reschedule and join flags are declared on [actions]; the join flag
  * opens only the reconnect tier of `isWithinJoinWindow`. The message flag stays undeclared (messaging is a later
  * phase). [expertPrivateNote] is the expert's own full note (Phase 16.4, D-08). User-written: show it, never log
  * it; toString omits it.
@@ -95,6 +97,8 @@ data class ExpertBookingDetail(
     val status: ExpertStatusMeta,
     val reschedule: RescheduleDto? = null,
     @Json(name = "authorization_expires_at") val authorizationExpiresAt: Instant? = null,
+    @Json(name = "payment_action_required") val paymentActionRequired: Boolean? = null,
+    @Json(name = "payment_not_charged") val paymentNotCharged: Boolean? = null,
     val client: ExpertBookingClientDto,
     val session: ExpertBookingDetailSessionDto,
     @Json(name = "preparation_notes") val preparationNotes: PreparationNotesDto? = null,

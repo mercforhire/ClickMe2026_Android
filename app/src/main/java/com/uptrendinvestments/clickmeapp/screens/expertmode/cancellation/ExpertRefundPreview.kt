@@ -1,61 +1,53 @@
 package com.uptrendinvestments.clickmeapp.screens.expertmode.cancellation
 
-import com.uptrendinvestments.clickmeapp.model.responses.ExpertBookingDetail
-import com.uptrendinvestments.clickmeapp.screens.clientmode.cancellation.REFUND_FULL_WINDOW
-import java.time.Duration
 import java.time.Instant
 
-/** What is known about the booking's payment. The expert detail exposes no payment status (RESEARCH C7). */
-enum class PaymentState { None, Held, Captured }
-
-/** What the expert's cancel confirmation tells them about the client's money (D-16 as resolved, Open Question 1). */
+/**
+ * What the expert's cancel confirmation tells them about the client's money. Port of iOS `ExpertCancelRefundLine`
+ * (D-14, D-16, WR-03).
+ */
 sealed interface ExpertRefundPreview {
-    /** Captured and cancelled early: the client gets the full price, in major units. Dormant today. */
-    data class ClientFullRefund(
+    /** No client-money claim: a free booking, nothing charged, a charge still waiting on card authentication, or unknown. */
+    data object None : ExpertRefundPreview
+
+    /** A live authorization: cancelling releases it and nothing was charged. */
+    data class HoldReleased(
         val amountMajor: Double,
-        val currency: String,
+        val currency: String?,
     ) : ExpertRefundPreview
 
-    /** Captured and cancelled 24 hours or less before the start: the client is not refunded. Dormant today. */
-    data object ClientNoRefundWithin24h : ExpertRefundPreview
-
-    /** Paid booking whose payment is only held: cancelling releases the hold. */
-    data object HoldReleased : ExpertRefundPreview
-
-    /** Captured but the price is unknown: show the generic policy text. Dormant today. */
-    data object PolicyFallback : ExpertRefundPreview
-
-    /** Free booking: no refund line. */
-    data object None : ExpertRefundPreview
+    /** A captured payment: cancelling refunds it in full. */
+    data class FullRefund(
+        val amountMajor: Double,
+        val currency: String?,
+    ) : ExpertRefundPreview
 }
 
 /**
- * The refund preview for a booking in [payment] state at [now] (D-16 as resolved by Open Question 1). Mirrors backend
- * `refund.js` for a captured payment: a full refund only when the start is strictly more than 24 hours away, otherwise
- * nothing. A held payment is always released. The server result stays authoritative.
+ * The client-money line for the expert cancel sheet. An expert cancel always releases the hold or refunds in full
+ * (backend `cancel` in `expertBooking.controller.js`, D-17 at 1d18aac), so no within-24-hours outcome exists. The
+ * line may be shown only when the payload proves money is held or was taken:
+ *
+ * - [paymentActionRequired] true means a charge is waiting on the client's card authentication (D-14).
+ * - [paymentNotCharged] true means no money is held on or taken from the card (D-16).
+ * - A missing key (null) is unknown, so the rule fails closed.
+ *
+ * Only both keys exactly false gives a line: [ExpertRefundPreview.HoldReleased] while [authorizationExpiresAt] is set
+ * (a live hold), otherwise [ExpertRefundPreview.FullRefund]. The amount is the list fee, not what the client paid (a
+ * promo lowers it and the expert payload does not expose it), which is why the copy says "up to".
  */
 fun expertRefundPreview(
-    payment: PaymentState,
     amountMajor: Double?,
     currency: String?,
-    start: Instant,
-    now: Instant,
-): ExpertRefundPreview =
-    when (payment) {
-        PaymentState.None -> ExpertRefundPreview.None
-        PaymentState.Held -> ExpertRefundPreview.HoldReleased
-        PaymentState.Captured ->
-            when {
-                amountMajor == null || currency == null -> ExpertRefundPreview.PolicyFallback
-                Duration.between(now, start) > REFUND_FULL_WINDOW ->
-                    ExpertRefundPreview.ClientFullRefund(amountMajor, currency)
-                else -> ExpertRefundPreview.ClientNoRefundWithin24h
-            }
+    authorizationExpiresAt: Instant?,
+    paymentActionRequired: Boolean?,
+    paymentNotCharged: Boolean?,
+): ExpertRefundPreview {
+    if (amountMajor == null || amountMajor <= 0.0) return ExpertRefundPreview.None
+    if (paymentActionRequired != false || paymentNotCharged != false) return ExpertRefundPreview.None
+    return if (authorizationExpiresAt != null) {
+        ExpertRefundPreview.HoldReleased(amountMajor, currency)
+    } else {
+        ExpertRefundPreview.FullRefund(amountMajor, currency)
     }
-
-/**
- * The payment state the preview is fed. Capture happens only after the session completes, so every cancellable paid
- * booking is a hold, and the expert detail exposes no payment status (RESEARCH C7, Open Question Resolution 1). The
- * [PaymentState.Captured] rows are dormant until the API exposes a status.
- */
-fun ExpertBookingDetail.paymentState(): PaymentState = if (isPaid) PaymentState.Held else PaymentState.None
+}

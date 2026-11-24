@@ -17,7 +17,6 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
-import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
 import com.uptrendinvestments.clickmeapp.util.Money
 import kotlinx.coroutines.CompletableDeferred
@@ -41,20 +40,31 @@ class ExpertCancellationViewModelTest {
     private val api = FakeClickMeApi()
     private val guard = FakeCallGuard()
     private val launchRequest = ExpertLaunchRequest()
-    private val clock = MutableClock(Instant.parse("2026-10-23T12:00:00Z"))
 
     private fun vm(handle: SavedStateHandle = SavedStateHandle()) =
         ExpertCancellationViewModel(
             ExpertCancelKey("b1", ExpertBookingOrigin.Bookings),
             handle,
             ExpertBookingsRepository(api),
-            clock,
             launchRequest,
             guard,
         )
 
-    private fun stubDetail(fee: Double? = 75.0) {
-        api.expertBookingDetailsHandler = { expertBookingDetail(fee = fee) }
+    /** A paid booking with a live hold and both payment keys false unless told otherwise. */
+    private fun stubDetail(
+        fee: Double? = 75.0,
+        actionRequired: Boolean? = false,
+        notCharged: Boolean? = false,
+        hold: Instant? = HOLD_EXPIRES,
+    ) {
+        api.expertBookingDetailsHandler = {
+            expertBookingDetail(
+                fee = fee,
+                authorizationExpiresAt = hold,
+                paymentActionRequired = actionRequired,
+                paymentNotCharged = notCharged,
+            )
+        }
     }
 
     private fun apiError(
@@ -119,10 +129,33 @@ class ExpertCancellationViewModelTest {
             assertEquals("TechnicalIssues", handle.get<String>(ExpertCancellationViewModel.KEY_REASON))
             vm.continueToConfirm()
             assertEquals(CancelStep.Confirm, vm.uiState.value.step)
-            assertEquals(ExpertRefundPreview.HoldReleased, vm.uiState.value.refund)
+            assertEquals(ExpertRefundPreview.HoldReleased(75.0, "USD"), vm.uiState.value.refund)
 
             vm.backToReason()
             assertEquals(CancelStep.Reason, vm.uiState.value.step)
+        }
+
+    @Test
+    fun previewFollowsBothPaymentKeysAndTheHold() =
+        runTest(main.testDispatcher) {
+            suspend fun refundFor(
+                actionRequired: Boolean?,
+                notCharged: Boolean?,
+                hold: Instant?,
+            ): ExpertRefundPreview {
+                stubDetail(actionRequired = actionRequired, notCharged = notCharged, hold = hold)
+                val vm = vm()
+                runCurrent()
+                vm.selectReason(ExpertCancelReason.Other)
+                vm.continueToConfirm()
+                return vm.uiState.value.refund
+            }
+
+            assertEquals(ExpertRefundPreview.HoldReleased(75.0, "USD"), refundFor(false, false, HOLD_EXPIRES))
+            assertEquals(ExpertRefundPreview.FullRefund(75.0, "USD"), refundFor(false, false, null))
+            assertEquals(ExpertRefundPreview.None, refundFor(null, null, HOLD_EXPIRES))
+            assertEquals(ExpertRefundPreview.None, refundFor(true, false, HOLD_EXPIRES))
+            assertEquals(ExpertRefundPreview.None, refundFor(false, true, HOLD_EXPIRES))
         }
 
     @Test
@@ -380,7 +413,7 @@ class ExpertCancellationViewModelTest {
 
             runCurrent()
 
-            assertEquals(ExpertRefundPreview.HoldReleased, vm.uiState.value.refund)
+            assertEquals(ExpertRefundPreview.HoldReleased(75.0, "USD"), vm.uiState.value.refund)
         }
 
     @Test
@@ -433,5 +466,9 @@ class ExpertCancellationViewModelTest {
         assertTrue(merged.length <= 500)
         assertTrue(merged.startsWith("Scheduling Conflict: "))
         assertEquals("Other", expertCancelReason(ExpertCancelReason.Other, "   "))
+    }
+
+    private companion object {
+        val HOLD_EXPIRES: Instant = Instant.parse("2026-10-24T12:00:00Z")
     }
 }

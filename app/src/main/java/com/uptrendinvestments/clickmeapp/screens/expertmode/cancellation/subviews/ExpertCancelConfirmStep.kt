@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
@@ -205,7 +204,7 @@ private fun ConfirmCard(
                 )
             }
             SummaryCard(summary = summary, refund = refund, zone = zone, timeFormat = timeFormat, locale = locale)
-            if (refund is ExpertRefundPreview.ClientFullRefund) {
+            if (refund is ExpertRefundPreview.FullRefund) {
                 Text(
                     text = stringResource(R.string.expert_cancel_refund_note),
                     modifier = Modifier.fillMaxWidth(),
@@ -293,25 +292,42 @@ private fun RefundRow(
     locale: Locale,
 ) {
     when (refund) {
-        ExpertRefundPreview.HoldReleased ->
-            InfoRow(Icons.Outlined.Lock, stringResource(R.string.expert_cancel_refund_hold))
-        is ExpertRefundPreview.ClientFullRefund -> {
-            val amount = Money.formatMajor(refund.amountMajor, refund.currency, locale)
-            val text = stringResource(R.string.expert_cancel_refund_full, amount)
-            val emphasis = MaterialTheme.typography.titleMedium.toSpanStyle()
-            InfoRow(Icons.Outlined.CreditCard, amountEmphasised(text, amount, emphasis))
+        is ExpertRefundPreview.HoldReleased -> {
+            val amount = formatRefundAmount(refund.amountMajor, refund.currency, locale)
+            if (amount == null) {
+                InfoRow(Icons.Outlined.Lock, stringResource(R.string.expert_cancel_refund_hold))
+            } else {
+                val text = stringResource(R.string.expert_cancel_refund_hold_amount, amount)
+                InfoRow(Icons.Outlined.Lock, amountEmphasised(text, amount, amountStyle()))
+            }
         }
-        ExpertRefundPreview.ClientNoRefundWithin24h ->
-            InfoRow(
-                Icons.Outlined.ErrorOutline,
-                stringResource(R.string.expert_cancel_refund_none_24h),
-                iconTint = MaterialTheme.colorScheme.tertiary,
-            )
-        ExpertRefundPreview.PolicyFallback ->
-            InfoRow(Icons.Outlined.CreditCard, stringResource(R.string.cancel_booking_refund_policy))
+        is ExpertRefundPreview.FullRefund -> {
+            val amount = formatRefundAmount(refund.amountMajor, refund.currency, locale)
+            if (amount == null) {
+                InfoRow(Icons.Outlined.CreditCard, stringResource(R.string.expert_cancel_refund_full_no_amount))
+            } else {
+                val text = stringResource(R.string.expert_cancel_refund_full, amount)
+                InfoRow(Icons.Outlined.CreditCard, amountEmphasised(text, amount, amountStyle()))
+            }
+        }
         ExpertRefundPreview.None -> Unit
     }
 }
+
+@Composable
+private fun amountStyle(): SpanStyle = MaterialTheme.typography.titleMedium.toSpanStyle()
+
+/** Null when the currency is missing or blank or the amount is not finite, so the plain sentence is used. */
+private fun formatRefundAmount(
+    amount: Double,
+    currency: String?,
+    locale: Locale,
+): String? =
+    if (currency.isNullOrBlank() || !amount.isFinite()) {
+        null
+    } else {
+        Money.formatMajor(amount, currency, locale)
+    }
 
 private fun amountEmphasised(
     text: String,
@@ -370,7 +386,7 @@ private fun ExpertCancelConfirmStepPreview() {
                         start = Instant.parse("2026-10-24T18:00:00Z"),
                         end = Instant.parse("2026-10-24T19:00:00Z"),
                     ),
-                refund = ExpertRefundPreview.HoldReleased,
+                refund = ExpertRefundPreview.HoldReleased(75.0, "USD"),
                 isSubmitting = false,
                 onKeepBooking = {},
                 onConfirm = {},

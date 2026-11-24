@@ -36,7 +36,6 @@ import com.uptrendinvestments.clickmeapp.screens.login.FieldError
 import com.uptrendinvestments.clickmeapp.testing.FakeCallGuard
 import com.uptrendinvestments.clickmeapp.testing.FakeClickMeApi
 import com.uptrendinvestments.clickmeapp.testing.MainDispatcherRule
-import com.uptrendinvestments.clickmeapp.testing.MutableClock
 import com.uptrendinvestments.clickmeapp.testing.expertBookingDetail
 import com.uptrendinvestments.clickmeapp.ui.theme.ClickMeTheme
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,7 +63,6 @@ class ExpertCancellationScreenTest {
 
     private val api = FakeClickMeApi()
     private val launchRequest = ExpertLaunchRequest()
-    private val clock = MutableClock(Instant.parse("2026-10-23T12:00:00Z"))
     private var cancelledCount = 0
     private var backCount = 0
 
@@ -73,7 +71,14 @@ class ExpertCancellationScreenTest {
         refundAmount: Double = 0.0,
         currency: String? = "USD",
     ) {
-        api.expertBookingDetailsHandler = { expertBookingDetail(fee = fee) }
+        api.expertBookingDetailsHandler = {
+            expertBookingDetail(
+                fee = fee,
+                authorizationExpiresAt = Instant.parse("2026-10-24T12:00:00Z"),
+                paymentActionRequired = false,
+                paymentNotCharged = false,
+            )
+        }
         api.cancelExpertBookingHandler = { _, _ -> CancelBookingData(refundAmount, currency) }
     }
 
@@ -83,7 +88,6 @@ class ExpertCancellationScreenTest {
                 ExpertCancelKey("b1", ExpertBookingOrigin.Bookings),
                 handle,
                 ExpertBookingsRepository(api),
-                clock,
                 launchRequest,
                 FakeCallGuard(),
             )
@@ -182,7 +186,7 @@ class ExpertCancellationScreenTest {
 
         toConfirmStep()
 
-        rule.onNodeWithText("The client's payment hold will be released.").assertExists()
+        rule.onNodeWithText("The client's hold of up to US$75.00 will be released.").assertExists()
         rule.onAllNodesWithText("won't be refunded", substring = true).assertCountEquals(0)
         rule.onAllNodesWithText("full refund", substring = true).assertCountEquals(0)
         rule.onAllNodesWithText("Refunds typically appear", substring = true).assertCountEquals(0)
@@ -240,30 +244,55 @@ class ExpertCancellationScreenTest {
         )
 
     @Test
-    fun dormantFullRefundRowShowsAmountAndNote() {
-        showConfirmStep(ExpertRefundPreview.ClientFullRefund(75.0, "USD"))
+    fun holdLineStatesTheAmountWithNoFootnote() {
+        showConfirmStep(ExpertRefundPreview.HoldReleased(75.0, "USD"))
 
-        rule.onNodeWithText("Your client will receive a full refund of US$75.00", substring = true).assertExists()
+        rule.onNodeWithText("The client's hold of up to US$75.00 will be released.").assertExists()
+        rule.onAllNodesWithText("Refunds typically appear", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun fullRefundLineStatesTheAmountAndTheFootnote() {
+        showConfirmStep(ExpertRefundPreview.FullRefund(75.0, "USD"))
+
+        rule.onNodeWithText("The client will get a full refund of up to US$75.00").assertExists()
         rule
             .onNodeWithText("Refunds typically appear in the client's account within 3–5 business days.")
             .assertExists()
     }
 
     @Test
-    fun dormantNoRefundRowShowsItsLineAndNoNote() {
-        showConfirmStep(ExpertRefundPreview.ClientNoRefundWithin24h)
+    fun fullRefundLineKeepsTheCents() {
+        showConfirmStep(ExpertRefundPreview.FullRefund(12.5, "USD"))
 
-        rule
-            .onNodeWithText("Your client won't be refunded — cancelling within 24 hours of the session")
-            .assertExists()
-        rule.onAllNodesWithText("Refunds typically appear", substring = true).assertCountEquals(0)
+        rule.onNodeWithText("The client will get a full refund of up to US$12.50").assertExists()
     }
 
     @Test
-    fun dormantPolicyRowNeverStatesAnAmount() {
-        showConfirmStep(ExpertRefundPreview.PolicyFallback)
+    fun noMoneyLineShowsNeitherSentenceNorFootnote() {
+        showConfirmStep(ExpertRefundPreview.None)
 
-        rule.onNodeWithText("Any refund follows our cancellation policy.").assertExists()
+        rule.onAllNodesWithText("hold", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("full refund", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("Refunds typically appear", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("won't be refunded", substring = true).assertCountEquals(0)
+        rule.onAllNodesWithText("Any refund follows", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun sentencesWithoutAnAmountFallBackToThePlainText() {
+        showConfirmStep(ExpertRefundPreview.HoldReleased(75.0, null))
+        rule.onNodeWithText("The client's hold will be released.").assertExists()
+    }
+
+    @Test
+    fun aNonFiniteFullRefundAmountFallsBackAndKeepsTheFootnote() {
+        showConfirmStep(ExpertRefundPreview.FullRefund(Double.POSITIVE_INFINITY, "USD"))
+
+        rule.onNodeWithText("The client will get a full refund.").assertExists()
+        rule
+            .onNodeWithText("Refunds typically appear in the client's account within 3–5 business days.")
+            .assertExists()
     }
 
     // endregion

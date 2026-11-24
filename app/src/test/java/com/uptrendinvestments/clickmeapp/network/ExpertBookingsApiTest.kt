@@ -207,6 +207,22 @@ class ExpertBookingsApiTest {
         }
 
     @Test
+    fun detailDecodesPaymentActionRequiredAndPaymentNotChargedTrueFalseAndMissing() =
+        runTest {
+            val anchor = """"authorization_expires_at":"2026-11-04T09:00:00Z","""
+
+            fun withKeys(keys: String) = detailJson().replace(anchor, anchor + keys)
+            enqueue(200, withKeys(""""payment_action_required":true,"payment_not_charged":true,"""))
+            enqueue(200, withKeys(""""payment_action_required":false,"payment_not_charged":false,"""))
+            enqueue(200, detailJson())
+
+            val details = List(3) { repository.detail("abc") }
+
+            assertEquals(listOf<Boolean?>(true, false, null), details.map { it.paymentActionRequired })
+            assertEquals(listOf<Boolean?>(true, false, null), details.map { it.paymentNotCharged })
+        }
+
+    @Test
     fun detailDecodesTheExpertNote() =
         runTest {
             val explicitNull =

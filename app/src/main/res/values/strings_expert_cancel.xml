@@ -8,9 +8,10 @@
     <string name="expert_cancel_reason_other">Other</string>
     <string name="expert_cancel_choose_reason">Choose a reason to continue</string>
     <string name="expert_cancel_confirm_body">Please review the booking details below before confirming. Cancelling may affect your expert rating.</string>
-    <string name="expert_cancel_refund_hold">The client\'s payment hold will be released.</string>
-    <string name="expert_cancel_refund_full">Your client will receive a full refund of %1$s</string>
-    <string name="expert_cancel_refund_none_24h">Your client won\'t be refunded — cancelling within 24 hours of the session</string>
+    <string name="expert_cancel_refund_hold">The client\'s hold will be released.</string>
+    <string name="expert_cancel_refund_hold_amount">The client\'s hold of up to %1$s will be released.</string>
+    <string name="expert_cancel_refund_full">The client will get a full refund of up to %1$s</string>
+    <string name="expert_cancel_refund_full_no_amount">The client will get a full refund.</string>
     <string name="expert_cancel_refund_note">Refunds typically appear in the client\'s account within 3–5 business days.</string>
     <string name="expert_cancel_result_refunded">Booking cancelled. Your client will be refunded %1$s.</string>
 </resources>
