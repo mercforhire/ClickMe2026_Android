@@ -5,6 +5,8 @@ native Android app (Kotlin, Jetpack Compose), a port of the live iOS app (SwiftU
 Socket.IO backend, which is private and not part of this repository. The iOS app lives in a separate repository. The
 Android app is published on Google Play (versionName 1.0.0, application ID `com.uptrendinvestments.clickmeapp`).
 
+**Download:** [Google Play](https://play.google.com/store/apps/details?id=com.uptrendinvestments.clickmeapp) · [App Store](https://apps.apple.com/app/id6806057145)
+
 Users switch between a client mode and an expert mode inside the same app.
 
 ## Features
