@@ -350,12 +350,14 @@ private fun TabBody(
                                 UpcomingBookingCard(
                                     item = item,
                                     onClick = { onOpenUpcoming(item.bookingId) },
+                                    // GET /client/bookings rows carry no can_join; only the booking detail does.
                                     joinEnabled =
                                         isWithinJoinWindow(
-                                            item.status,
-                                            item.startTime,
-                                            item.endTime,
-                                            joinNow,
+                                            status = item.status,
+                                            start = item.startTime,
+                                            end = item.endTime,
+                                            now = joinNow,
+                                            serverCanJoin = null,
                                         ),
                                     onJoin = { onJoin(item) },
                                     onPrivateNote = { onPrivateNote(item.noteKey()) },

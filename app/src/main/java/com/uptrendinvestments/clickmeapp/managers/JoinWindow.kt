@@ -85,7 +85,7 @@ fun isWithinJoinWindow(
     start: Instant,
     end: Instant,
     now: Instant,
-    serverCanJoin: Boolean? = null,
+    serverCanJoin: Boolean?,
 ): Boolean {
     if (status !in JOIN_ENABLED_BOOKING_STATUSES) return false
     if (now.isBefore(start.minusSeconds(JOIN_LEAD_SECONDS))) return false

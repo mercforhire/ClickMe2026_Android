@@ -154,7 +154,15 @@ private fun TodaysSessionCard(
             }
             Spacer(Modifier.height(Spacing.md))
             JoinCallButton(
-                enabled = isWithinJoinWindow(session.status, session.startTime, session.endTime, now),
+                // The client home feed carries no can_join, so the reconnect tier stays closed.
+                enabled =
+                    isWithinJoinWindow(
+                        status = session.status,
+                        start = session.startTime,
+                        end = session.endTime,
+                        now = now,
+                        serverCanJoin = null,
+                    ),
                 onClick = onJoin,
                 modifier = Modifier.testTag(TODAYS_SESSION_JOIN_TAG),
             )
